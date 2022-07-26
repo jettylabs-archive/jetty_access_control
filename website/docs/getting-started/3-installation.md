@@ -28,8 +28,7 @@ jetty core 0.1.2
 :::tip
 If it's not working for you, open a new terminal window and try running `jetty --version` again. If it's still not working, check out our [troubleshooting guide](../troubleshooting.md) or reach out to us on [Slack](https://slack.com/)
 :::
-
-### 🎉🎉 Congratulations! 🎉🎉
+**🎉🎉 Congratulations! 🎉🎉**
 
 You have successfully installed Jetty!
 
