@@ -1,6 +1,6 @@
 ---
 sidebar_position: 3
-slug: '../installation'
+slug: "../installation"
 ---
 
 # Create a Jetty project
@@ -15,11 +15,15 @@ To install Jetty on your local computer, make sure that you have Python 3 and pi
 
 :::
 
-To install Jetty, open your terminal and run `pip install jetty-core`.
+To install Jetty, open your terminal and run
+
+```python
+pip install jetty-core
+```
 
 To see if it worked, try running `jetty --version`. You should see something like this:
 
-```
+```buttonless
 > jetty --version
 
 jetty core 0.1.2
@@ -40,7 +44,7 @@ In that directory there will be several files and directories where the project 
 
 To make sure that everything worked, try running `jetty status` in the terminal. You should see something like this:
 
-```
+```buttonless
 > jetty status
 
 Your project is up to date

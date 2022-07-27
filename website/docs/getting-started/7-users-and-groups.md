@@ -1,13 +1,13 @@
 ---
 sidebar_position: 7
-slug: './users-and-groups'
+slug: "./users-and-groups"
 ---
 
 # Manage users and groups
 
 ## Users
 
-In Jetty, users represent users of your data tools, human or otherwise. The primary key for users is their email address and other user information can also be, also be associated with users in the form of attribute key-value pairs. These attributes can be configured directly in the `users.yaml` configuration file or can be provided as metadata from connectors. As we mentioned in the [section on bootstrapping](./5-bootstrap.md), user records can also specify the platform that the user exists in.
+In Jetty, users represent users of your data tools, human or otherwise. The primary key for users is their email address and other relevant information can also be associated with users in the form of attribute key-value pairs. These attributes can be configured directly in the `users.yaml` configuration file or can be provided as metadata from connectors. As we mentioned in the [section on bootstrapping](./5-bootstrap.md), user records can also specify the connector where the user originates.
 
 Users are defined in the `/users/` directory. When you bootstrap the system, a `users.yaml` file will be created in that directory, but you are welcome to split your groups across any number of files in any number of sub-directories. A user object is structured as follows:
 
@@ -22,9 +22,13 @@ elliot@gmail.com:
     gdpr_training: false
 ```
 
+:::info
+As your Jetty configs grow, each file may get quite large. To learn how we recommend splitting them up and structuring your project, see [Managing a Large Jetty Project](#).
+:::
+
 ## Groups
 
-In Jetty, groups are managed at the system level, but applied across each connector individually, when applicable. For example, in Snowflake, the groups I define in Jetty will be materialized into roles and access will be granted to those roles. Groups have a name (the object key) and an optional description and can have users or other groups as members.
+In Jetty, groups are managed at the system level but applied across each connector individually when applicable. For example, in Snowflake, the groups I define in Jetty will be materialized into roles and access will be granted to those roles. Groups have a name (the object key) and an optional description and can have users or other groups as members.
 
 Groups are defined in the `/groups/` directory, and as with users, you are welcome to split your groups across any number of files in any number of sub-directories. A group object is structured as follows:
 
