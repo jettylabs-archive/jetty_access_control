@@ -1,6 +1,6 @@
 ---
 sidebar_position: 8
-slug: './assets'
+slug: "./assets"
 ---
 
 # Manage assets
@@ -18,9 +18,9 @@ override_derived_from:
 
 ## Tagging assets
 
-As with groups, Jetty manages tags across multiple tools, but when appropriate applies them in the individual tools. Tags are applied to assets, and are automatically inherited through asset hierarchy and through data lineage. For example, a tag can be applied to a database table, and thanks to hierarchical inheritance, every column of that table will have the tag applied too. Thanks to derived asset inheritance, any other asset that Jetty can detect is built using data from this table will have the same tag applied.
+As with groups, Jetty manages tags across multiple tools and, when appropriate, applies them in the individual tools. Tags are applied to assets, and are automatically inherited through asset hierarchy and through data lineage. For example, a tag can be applied to a database table, and thanks to hierarchical inheritance, every column of that table will have the tag applied too. Thanks to derived asset inheritance, any other asset that Jetty can detect is built using data from this table will have the same tag applied. Read more about these concepts in [Hierarchical vs Derived Inheritance](#).
 
-There are times, however, when we might want to break this chain of inheritance. This can be done with a strip_tags object:
+There are times, however, when you might want to break this chain of inheritance. This can be done with a strip_tags object:
 
 ```yaml
 name: snow.analytics.raw.greenhouse_recruiting_masked
@@ -49,10 +49,10 @@ Now that you understand how tags and lineage are managed, try updating some of t
 return Tag("hr_data").get_assets()
 ```
 
-:::tip
-When you ran this you might have noticed that explore provided two results - one for the current state of your infrastructure, and one for the current state of your configuration files. This is one of the ways to look at the effects that a config change will have.
-:::
-
 Can you see any derived assets that also inherited that tag?
+
+:::tip
+Now that you've changed a config you might have noticed that the explore command produced two results - one for the current state of your infrastructure, and one that includes your local changes. This is one of the ways to look at the effects that a config change will have.
+:::
 
 Next we'll talk about policies.

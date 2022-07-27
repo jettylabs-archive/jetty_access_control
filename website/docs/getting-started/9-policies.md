@@ -1,11 +1,13 @@
 ---
 sidebar_position: 9
-slug: './policies'
+slug: "./policies"
 ---
 
 # Manage policies
 
-In Jetty, policies are mechanism we use to actually grant (or revoke) data access. Policies are found in the `policies/` directory and can be split across as many files and subdirectories as you would like. The policies detected by `jetty bootstrap` are all stored in `policies/policies.yaml`. For the policies that already existed in, you may notice the `connectors` attribute (something like `connectors: include: -snowflake`). When we detect existing policies, those policies should only apply to the system in which they were detected. The `connectors` property makes sure of that.
+In Jetty, a policy is the mechanism you use to actually grant (or revoke) data access.
+
+Policies are found in the `policies/` directory and can be split across as many files and subdirectories as you would like. The policies detected by `jetty bootstrap` are all stored in `policies/policies.yaml`. For the policies created when bootstrapping, you may notice the `connectors` attribute (something like `connectors: include: -snowflake`). When we detect existing policies, we assume that those policies should only apply to the system in which they were detected, at least initially. The `connectors` property makes sure of that.
 
 Jetty policies fall into two broad categories: **allow** policies and **deny** policies. By default, users do not have access to any assets unless explicit policies are defined.
 
@@ -31,9 +33,9 @@ target:
 Within Allow policies, there are three levels of access, or scope: `metadata`, `read`, and `write`.
 Metadata access allows users to see the existence of assets within Jetty or other data governance tools. Read access allows users to read the actual data, and write access allows users to modify the data.
 
-Allow policies must be defined on assets (and optionally tags) and are inherited only hierarchically. This means that if I explicitly grant access to a schema in Snowflake, access is also granted to the tables in the schema (this is hierarchical inheritance). Access is not automatically granted to derived assets (that would be derived inheritance). The inheritance of policies can be disabled by setting the `inherit` field to false.
+Allow policies must be defined on assets (and optionally tags) and are inherited only hierarchically. This means that if I explicitly grant access to a schema in Snowflake, then access is also granted implicitly to the tables in it (this is hierarchical inheritance). Access is not automatically granted to derived assets (that would be derived inheritance). The inheritance of policies can be disabled by setting the `inherit` field to false.
 
-Another thing to note is that allow policies are applied only in the platform in which the original asset exists. That means, for example, that a user having read access to a table in Snowflake doesn't mean that they will automatically have access to every dashboard in Tableau that uses that table. An allow policy in Tableau would be required to grant access to the dashboards.
+Another thing to note is that **allow policies are applied only in the platform in which the original asset exists**. That means, for example, that a user having read access to a table in Snowflake doesn't mean that they will automatically have access to every dashboard in Tableau that uses that table. An allow policy in Tableau would be required to grant access to the dashboards.
 
 ## Deny policies
 
@@ -66,7 +68,7 @@ To help clarify policy precedence, let's look at some examples:
 
 **Policy 1:** User A has `write` access to `schema_1.table_b`  
 **Policy 2:** User A is denied access to `schema_1`  
-**Result:** The table specification is more specific than the schema permission, so the user does have `write` access to table_b (Policy 1)
+**Result:** The table specification is more specific than the schema permission, so the user does have `write` access to table_b (Policy 1) but denied access to the remaining assets under `schema_1` (Policy 2).
 
 **Policy 1:** User A has `write` access to `schema_1.table_b`  
 **Policy 2:** User A is denied access to `schema_1.table_b`  
@@ -85,7 +87,7 @@ To help clarify policy precedence, let's look at some examples:
 **Result:** In this case there are conflicting Allow permissions, and so the most permissive permission persists (`write`). This helps in cases where a user could be a part of several groups, each with escalating permissions.
 
 :::info
-In the case that a policy set natively in a a tool cannot be represented entirely in Jetty yet (for example, Snowflake row-access policy are not yet managed by Jetty), that policy still shows up, but has the attribute `managed: false` and includes a representation of the policy in the `connector_scope` field.
+In the case that a policy set natively in a a tool cannot be represented entirely in Jetty yet (for example, Snowflake row-access policies are not yet managed by Jetty), that policy still shows up, but has the attribute `managed: false` and includes a representation of the policy in the `connector_scope` field.
 :::
 
 Now try setting some policies yourself. You can then see how they're applied using `jetty explore`. For example, you could add this policy:

@@ -1,6 +1,6 @@
 ---
 sidebar_position: 10
-slug: './apply'
+slug: "./apply"
 ---
 
 # Apply configurations
@@ -13,6 +13,30 @@ The output of this command shows what changes will happen in the system when the
 
 Because it fetches the current state of your data infrastructure, `jetty plan` can also help identify when real-world configurations have drifted from Jetty-defined configurations.
 
+<!-- This ended up being much more complex than I thought to come up with so I'm not going to spend the time to lay it out right now.
+The output of `jetty plan` looks something like this:
+
+```buttonless
+> jetty plan
+
+Fetching state from your connectors... done!
+Materializing state from your configs... done!
+Running tests... all tests pass!
+
+Summary of changes:
+  Users
+  - 1 new user
+  - 0 updated users
+  - 0 removed users
+  Assets
+  - 2 new assets
+  - 2 updated assets
+  - 0 removed assets
+  Policies
+  - No changes!
+```
+-->
+
 :::tip
 To fetch the current state without actually creating a plan, you can run `jetty fetch`.
 :::
@@ -20,7 +44,7 @@ To fetch the current state without actually creating a plan, you can run `jetty 
 ## Applying configurations
 
 :::note
-If you are using Jetty's demo connectors, the apply step will fail. That's ok. It will work when you're using your real data tooling!
+If you are using Jetty's demo connectors, the apply command will fail. That's ok. It will work when you're using a real connector!
 :::
 
 Once you're happy with the how your configurations will be materialized in your infrastructure, you can run `jetty apply` to apply the changes specified in your configuration file. The apply process can use a recently created plan (from a recent run of `jetty plan`), but if needed, it will just generate a plan automatically.

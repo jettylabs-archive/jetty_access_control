@@ -58,6 +58,7 @@ button.navbar__toggle {
   --prism-background-color: #ebebeb !important;
 }
 
-.language-buttonless button {
+.language-buttonless button,
+.language-yaml button {
   display: none !important;
 }

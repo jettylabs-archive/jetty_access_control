@@ -1,6 +1,6 @@
 ---
 sidebar_position: 11
-slug: './test'
+slug: "./test"
 ---
 
 # Test configurations
@@ -9,7 +9,7 @@ Now that you can manage access policies with Jetty, it's important to make sure 
 
 Tests should be saved in the `test/` directory, and are comprised of a name, description and explore query that evaluates to true or false. Any result other than true will lead to a failed test.
 
-For example, to make sure that nobody in the `haxorz` group and has access to PII, you can write the following test:
+For example, to make sure that nobody in the `haxorz` group has access to PII, you can write the following test:
 
 ```yaml
 “Haxors PII Test”:

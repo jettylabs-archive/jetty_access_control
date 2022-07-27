@@ -102,7 +102,7 @@ Running `jetty status` should now show the dbt connector as well:
 ```buttonless
 > jetty status
 
-Your project out of date
+Your project is out of date
 
 Connector             Last Fetch                Connection Test
 dbt-core (demo)       ---                       ✅
@@ -146,7 +146,7 @@ If you run `jetty status` you should now see all three of our connectors listed:
 ```
 > jetty status
 
-Your project out of date
+Your project is out of date
 
 Connector             Last Fetch                Connection Test
 dbt-core (demo)       ---                       ✅
