@@ -34,7 +34,7 @@ Once your confirm/reject the config backup, Jetty will begin fetching the releva
 
 It is in this file that tags and custom lineage can be applied to assets. We'll discuss all of this later in the tutorial.
 
-**users/users.yaml** - This file serves as a reference of all of the users in your different data tools, along with properties to show which tools they exist in. Platform access isn't yet managed by Jetty, so changes to this file will not add users to or remove users from.
+**users/users.yaml** - This file serves as a reference of all of the users in your different data tools, along with properties to show which tools they exist in. User provisioning isn't yet managed by Jetty, so changes to this file will not add users to or remove users from a particular tool. In this file, however, you can add metadata attributes about users.
 
 **groups/groups.yaml** - Groups are a Jetty abstraction that can mean different things in different tools. For example, in Snowflake, Jetty groups are equivalent to roles. The `groups.yaml` file is populated with all of the existing groups and their membership (users or other groups) from all platforms that leverage this abstraction. If you look at this file, you'll notice that by default, each role is has an attribute `managed: false` and specifies that it is only applied one connector `connectors: include: -snow`. `managed: false` means that while Jetty will observe the membership of these groups, it will not enforce them. If a user is added to a Snowflake role by Okta, for example, Jetty won’t try to manage membership based on this file and kick them back out. This lets you gradually begin managing groups in Jetty by removing the `managed: false` attribute for each group only when you are ready.
 
