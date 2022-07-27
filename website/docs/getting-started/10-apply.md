@@ -19,4 +19,14 @@ To fetch the current state without actually creating a plan, you can run `jetty 
 
 ## Applying configurations
 
-Once you're happy with the how your configurations will be materialized in your infrastructure, you can run `jetty apply` to apply the changes specified in your configuration file. It can use a recently created plan (from a recent run of `jetty plan`), but if needed, it will also generate a plan automatically. If there is an error, the system will retry, and if unresolved, report the error state to the user.
+:::note
+If you are using Jetty's demo connectors, the apply step will fail. That's ok. It will work when you're using your real data tooling!
+:::
+
+Once you're happy with the how your configurations will be materialized in your infrastructure, you can run `jetty apply` to apply the changes specified in your configuration file. The apply process can use a recently created plan (from a recent run of `jetty plan`), but if needed, it will just generate a plan automatically.
+
+If there is an error, the system will retry, and if unresolved, report the error state to the user.
+
+**🎉🎉 Congratulations! 🎉🎉** You are now managing your data access policies in Jetty!
+
+In the next section we'll talk about how you can use Jetty to test your configurations.

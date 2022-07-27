@@ -22,7 +22,7 @@ To learn about writing your own connector, check out our [developer documentatio
 ## Connecting to Snowflake with the CLI
 
 :::info
-For the connector to work, you must log in to Snowflake with a user with the \_\_\_\_\_\_ role. We recommend making a Jetty-specific user. Read [this](#) for help configuring your Jetty user.
+For the connector to work, you must log in to Snowflake with a user with the `SECURITYADMIN` role. We recommend making a Jetty-specific user. Read [this](#) for help configuring your Jetty user.
 :::
 
 The Snowflake connector provides user, role, asset, and policy metadata to Jetty, and also allows Jetty to set policies itself. To connect to Snowflake, open your terminal, navigate to the project directory and run `jetty connect snowflake`. After running `jetty connect` follow the prompts to set up the connector.

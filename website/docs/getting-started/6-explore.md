@@ -41,11 +41,11 @@ return users
 return User("elliot@haxorz.com").accessible_assets()
 ```
 
-#### Who has access to data tagged PII: “Phone Number”
+#### Who has access to data tagged “Phone Number”
 
 ```python
 users = set()
-for asset in range(Tag("PII:Phone Number").get_assets()):
+for asset in range(Tag("Phone Number").get_assets()):
   for user in range(asset.users_with_access()):
     users.add(user)
 return users
@@ -85,3 +85,19 @@ Now try writing some of your own queries (you can use the [Explore query documen
 :::tip
 When you find useful queries, `jetty explore “<query text>”` to run that single query without opening the interactive shell. This can be especially useful for generating compliance reports.
 :::
+
+## Audit data access with `explain_access()`
+
+In addition to the `jetty explore` capabilities you have already seen, `explore` has an `explain_access()` function designed to describes why a user can or can’t access a particular data asset, highlighting specific configurations that affect the the final materialized access controls. `explain_access()` accepts two parameters: a user and an asset (or list of assets).
+
+For example, if I want to understand why `elliot@gmail.com` does or doesn't have access to the asset `snow.analytics.raw` (a Snowflake schema), I can run:
+
+```python
+explain_access("elliot@gmail.com", "snow.analytics.raw")
+```
+
+In this case, the output describes that Elliot has partial access to the asset because he has access to some of the child assets. It also lists the policies that lead to that access.
+
+If Elliot didn't have access to the schema, it would also explain why.
+
+Now that you can explore your data, you are ready to learn more about managing users and groups.
