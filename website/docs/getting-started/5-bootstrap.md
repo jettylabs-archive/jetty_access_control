@@ -1,11 +1,11 @@
 ---
 sidebar_position: 5
-slug: './bootstrap'
+slug: "./bootstrap"
 ---
 
 # Bootstrap your project
 
-Typically systems like Snowflake and Tableau already have some groups or roles and access policies configured. Bootstrapping your project takes these existing permissions and turns them into configuration files that can serve as the base for your system configuration.
+Systems like Snowflake and Tableau already have some groups or roles and access policies configured by default. You may have added more controls on top of that already. Bootstrapping your project takes these existing permissions and turns them into configuration files that can serve as the base for your system configuration.
 
 Once connectors are all configured, all we need to do is run `jetty bootstrap`.
 :::tip
@@ -21,18 +21,22 @@ Would you like to back up your existing configuration files?(Y/n)
 ```
 
 :::tip
-You can skip the prompt and automatically back up existing configuration files by running `jetty bootstrap --backup`
+You can skip the prompt and automatically back up existing configuration files by running `jetty bootstrap --backup`. You can turn on backup by default by adding `backup: true` in the Jetty config.
 :::
 
-Once your confirm/reject the config backup, Jetty will begin fetching the relevant information from all of your connectors. The time this takes will depend on the connectors you're using, but in some cases can take a minute or more. Once the process is complete, your config files will have been updated to reflect the current state of your data infrastructure. Below is an explanation of the project files and their contents:
+Once you confirm/reject the config backup, Jetty will begin fetching the relevant information from all of your connectors. The time this takes will depend on the connectors you're using, but in some cases can take a minute or more. Once the process is complete, your config files will have been updated to reflect the current state of your data infrastructure. Below is an explanation of the project files and their contents:
 
 **jetty-config.yaml** - This file contains information about your project, including connectors, and isn't modified by `jetty bootstrap`
 
-**taxonomy.yaml** - This file lists all the tags or attributes present in your system (for example, Snowflake or Tableau tags). Jetty starts from a pre-defined hierarchy of tags, and tries to put your existing tags into the right place in that hierarchy (for example, `email address` should be a child tag to `PII`). This hierarchy allows you to write policies that can apply to across groups of similar data classes.
+**taxonomy.yaml** - This file lists all data tags and attributes present in your system (for example, Snowflake or Tableau tags). Jetty starts from a pre-defined hierarchy of tags, and tries to put your existing tags into the right place in that hierarchy (for example, `email address` should be a child tag to `PII`). This hierarchy allows you to write policies that can apply to across groups of similar data classes and across the tools in your stack.
 
-**assets/assets.yaml** - This file is populated with all the assets that have had tags applied directly to them in their source systems (it doesn't include inherited tags from Snowflake, for example). Only the tagged assets are shown so that the file can provide useful information without overwhelming the user. Some organizations have hundreds of thousands of assets, and displaying them all in a yaml file would not be particularly valuable. Assets that don't appear in the file can still be referenced in policies, and can be added to the assets file without any bad side-effects. You may also notice that assets are specified as `manged: false`. Again, the goal is to allow you to adopt Jetty as gradually as you need.
+**assets/assets.yaml** - This file is populated with all the assets that have had tags applied directly to them in their source systems (it doesn't include inherited tags from Snowflake, for example). Only the tagged assets are shown so that the file can provide useful information without overwhelming the user. Some organizations have hundreds of thousands of assets, and displaying them all in a yaml file would not be particularly valuable. Assets that don't appear in the file can still be referenced in policies, and can be added to the assets file without any negative side-effects. You may also notice that assets are specified as `managed: false`. This means that by default, Jetty provides you insight into your controls but doesn't manage them itself. Again, the goal is to allow you to adopt Jetty as gradually as you need.
 
 It is in this file that tags and custom lineage can be applied to assets. We'll discuss all of this later in the tutorial.
+
+:::info
+As your Jetty configs grow, assets.yaml will get quite large. To learn how we recommend splitting it up and structuring your assets directory, see [Managing a Large Jetty Project](#).
+:::
 
 **users/users.yaml** - This file serves as a reference of all of the users in your different data tools, along with properties to show which tools they exist in. User provisioning isn't yet managed by Jetty, so changes to this file will not add users to or remove users from a particular tool. In this file, however, you can add metadata attributes about users.
 

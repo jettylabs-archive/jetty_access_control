@@ -4,7 +4,6 @@
  * work well for content-centric websites.
  */
 
-
 nav.navbar a.navbar__link--active {
   color: white;
   font-weight: bold;
@@ -15,8 +14,10 @@ button.navbar__toggle {
 }
 /* You can override the default Infima variables here. */
 :root {
-  --ifm-font-family-base: Roboto, system-ui, -apple-system, Segoe UI, Ubuntu, Cantarell, Noto Sans, sans-serif, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
-  --ifm-navbar-background-color: #084C61;
+  --ifm-font-family-base: Roboto, system-ui, -apple-system, Segoe UI, Ubuntu,
+    Cantarell, Noto Sans, sans-serif, BlinkMacSystemFont, "Segoe UI", Helvetica,
+    Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  --ifm-navbar-background-color: #084c61;
   --ifm-navbar-link-color: white;
   --ifm-color-primary: #4ba178;
   --ifm-color-primary-dark: #348e5a;
@@ -32,7 +33,7 @@ button.navbar__toggle {
 }
 
 /* For readability concerns, you should choose a lighter palette in dark mode. */
-[data-theme='dark'] {
+[data-theme="dark"] {
   --ifm-color-primary: #25c2a0;
   --ifm-color-primary-dark: #21af90;
   --ifm-color-primary-darker: #1fa588;
@@ -50,5 +51,13 @@ button.navbar__toggle {
   border: 1px solid var(--ifm-color-emphasis-200);
   box-shadow: 0 1.5px 3px 0 rgb(0 0 0 / 15%);
   transition: all var(--ifm-transition-fast) ease;
-  transition-property: border,box-shadow;
+  transition-property: border, box-shadow;
+}
+
+.theme-code-block {
+  --prism-background-color: #ebebeb !important;
+}
+
+.language-buttonless button {
+  display: none !important;
 }
