@@ -23,7 +23,7 @@ As with groups, Jetty manages tags across multiple tools, but when appropriate a
 There are times, however, when we might want to break this chain of inheritance. This can be done with a strip_tags object:
 
 ```yaml
-name: snowflake.analytics.raw.greenhouse_recruiting_masked
+name: snow.analytics.raw.greenhouse_recruiting_masked
 tags:
 	- masked-pii
 strip_tags:
@@ -33,7 +33,7 @@ strip_tags:
 The inheritance of tags can also be controlled on a tag-by-tag basis with tags_no_inherit, tags_no_lineage, and tags_no_hierarchy objects:
 
 ```yaml
-name: snowflake.analytics.raw.greenhouse_recruiting_xf
+name: snow.analytics.raw.greenhouse_recruiting_xf
 description:
 tags_no_inherit:
 	- masked-pii
