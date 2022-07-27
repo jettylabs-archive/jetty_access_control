@@ -1,6 +1,6 @@
 ---
 sidebar_position: 9
-slug: "./policies"
+slug: './policies'
 ---
 
 # Manage policies
@@ -15,7 +15,7 @@ A policy will look something like this:
 
 ```yaml
 description: Give  write access on raw greenhouse data to Elliot and Special Group
-scope: write
+privilege: write
 agents:
   users:
     - elliot@gmail.com
@@ -30,7 +30,7 @@ target:
 
 ## Allow policies
 
-Within Allow policies, there are three levels of access, or scope: `metadata`, `read`, and `write`.
+Within Allow policies, there are three levels of access, or privilege: `metadata`, `read`, and `write`.
 Metadata access allows users to see the existence of assets within Jetty or other data governance tools. Read access allows users to read the actual data, and write access allows users to modify the data.
 
 Allow policies must be defined on assets (and optionally tags) and are inherited only hierarchically. This means that if I explicitly grant access to a schema in Snowflake, then access is also granted implicitly to the tables in it (this is hierarchical inheritance). Access is not automatically granted to derived assets (that would be derived inheritance). The inheritance of policies can be disabled by setting the `inherit` field to false.
@@ -39,7 +39,7 @@ Another thing to note is that **allow policies are applied only in the platform 
 
 ## Deny policies
 
-Deny policies are behave slightly different than allow policies and are signified by a scope of `deny`. They can be defined on assets and/or tags, and are inherited by downstream hierarchical _and_ derived assets. That means that if I deny access to a schema, access will be denied to the tables in the schema as well as to any derivatives of those tables. Additionally, deny policies _are_ automatically applied across platforms.
+Deny policies are behave slightly different than allow policies and are signified by a privilege of `deny`. They can be defined on assets and/or tags, and are inherited by downstream hierarchical _and_ derived assets. That means that if I deny access to a schema, access will be denied to the tables in the schema as well as to any derivatives of those tables. Additionally, deny policies _are_ automatically applied across platforms.
 
 When tags are used to define policies, they can be used across all levels of the taxonomy hierarchy (defined in `taxonomy.yaml`). For example, a policy could be applied to the `PII` tag, which would include `Phone Number` as a child tag, or it could be applied directly on `Phone Number`.
 
@@ -47,7 +47,7 @@ A deny policy could look something like this:
 
 ```yaml
 description: Don't let Elliot see masked PII
-scope: deny
+privilege: deny
 agents:
   users:
     - elliot@gmail.com
@@ -87,14 +87,14 @@ To help clarify policy precedence, let's look at some examples:
 **Result:** In this case there are conflicting Allow permissions, and so the most permissive permission persists (`write`). This helps in cases where a user could be a part of several groups, each with escalating permissions.
 
 :::info
-In the case that a policy set natively in a a tool cannot be represented entirely in Jetty yet (for example, Snowflake row-access policies are not yet managed by Jetty), that policy still shows up, but has the attribute `managed: false` and includes a representation of the policy in the `connector_scope` field.
+In the case that a policy set natively in a a tool cannot be represented entirely in Jetty yet (for example, Snowflake row-access policies are not yet managed by Jetty), that policy still shows up, but has the attribute `managed: false` and includes a representation of the policy in the `connector_privilege` field.
 :::
 
 Now try setting some policies yourself. You can then see how they're applied using `jetty explore`. For example, you could add this policy:
 
 ```yaml
 description: Let Elliot see greenhouse recruiting data
-scope: read
+privilege: read
 agents:
   users:
     - elliot@gmail.com
@@ -115,7 +115,7 @@ You can also check if he has write access:
 ```python
 return User("elliot@gmail.com")\
   .can_access("snow.analytics.raw.greenhouse_recruiting_xf",
-              scope="write")
+              privilege="write")
 ```
 
 Now that you've figured out how create and edit policies, let's talk about how to apply the changes we've made in our configuration files to our actual data tools.

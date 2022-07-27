@@ -1,6 +1,6 @@
 ---
 sidebar_position: 5
-slug: "./bootstrap"
+slug: './bootstrap'
 ---
 
 # Bootstrap your project
@@ -42,6 +42,6 @@ As your Jetty configs grow, assets.yaml will get quite large. To learn how we re
 
 **groups/groups.yaml** - Groups are a Jetty abstraction that can mean different things in different tools. For example, in Snowflake, Jetty groups are equivalent to roles. The `groups.yaml` file is populated with all of the existing groups and their membership (users or other groups) from all platforms that leverage this abstraction. If you look at this file, you'll notice that by default, each role is has an attribute `managed: false` and specifies that it is only applied one connector `connectors: include: -snow`. `managed: false` means that while Jetty will observe the membership of these groups, it will not enforce them. If a user is added to a Snowflake role by Okta, for example, Jetty won’t try to manage membership based on this file and kick them back out. This lets you gradually begin managing groups in Jetty by removing the `managed: false` attribute for each group only when you are ready.
 
-**policies/policies.yaml** - This file is populated with the access controls that exist within your data tools. Jetty’s permissions are structured as objects with an `agent` (who is the policy applied to), a `target` (the assets the policy applies to), and a `scope` (the level of access granted). The basic scopes are `deny`, `none`, `metadata`, `read`, and `write`, each one granting more access than the previous. There is also a `connector_scope` field that allows a JSON object to specify connector-specific permissions. Jetty management of these permissions is limited, but it allows users to apply custom, high-granularity permissions in a native tool and see that reflected in Jetty.
+**policies/policies.yaml** - This file is populated with the access controls that exist within your data tools. Jetty’s permissions are structured as objects with an `agent` (who is the policy applied to), a `target` (the assets the policy applies to), and a `privilege` (the level of access granted). The basic privilege are `deny`, `none`, `metadata`, `read`, and `write`, each one granting more access than the previous. There is also a `connector_privilege` field that allows a JSON object to specify connector-specific permissions. Jetty management of these permissions is limited, but it allows users to apply custom, high-granularity permissions in a native tool and see that reflected in Jetty.
 
 **/.state/** - This directory contains a metadata snapshot of your Jetty ecosystem, including details that aren’t shown in the configuration files (for example, all assets, not just the tagged ones are represented here). This metadata can be accessed using `jetty explore` (we'll get there next).
