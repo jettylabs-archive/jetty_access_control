@@ -67,7 +67,7 @@ const config = {
         // title: 'Jetty Labs',
         logo: {
           alt: 'Jetty Labs Logo',
-          src: 'img/logo.svg',
+          src: 'img/logo.png',
         },
         items: [
           {
@@ -76,7 +76,7 @@ const config = {
             position: 'left',
             label: 'Documentation',
           },
-          {to: 'blog', label: 'Blog', position: 'right'},
+          {to: '#', label: 'Blog', position: 'right'},
         ],
       },
       footer: {
@@ -87,7 +87,7 @@ const config = {
             items: [
               {
                 label: 'Tutorial',
-                to: '/docs/intro',
+                to: '/docs/getting-started/',
               },
             ],
           },
@@ -96,15 +96,15 @@ const config = {
             items: [
               {
                 label: 'Stack Overflow',
-                href: 'https://stackoverflow.com/questions/tagged/docusaurus',
+                href: '#',
               },
               {
                 label: 'Discord',
-                href: 'https://discordapp.com/invite/docusaurus',
+                href: '#',
               },
               {
                 label: 'Twitter',
-                href: 'https://twitter.com/docusaurus',
+                href: '#',
               },
             ],
           },
@@ -113,11 +113,11 @@ const config = {
             items: [
               {
                 label: 'Blog',
-                to: '/blog',
+                to: '#',
               },
               {
                 label: 'GitHub',
-                href: 'https://github.com/facebook/docusaurus',
+                href: '#',
               },
             ],
           },
