@@ -8,7 +8,7 @@ const darkCodeTheme = require('prism-react-renderer/themes/dracula');
 const config = {
   title: 'Jetty Core',
   tagline: 'Governance for the modern data stack',
-  url: 'https://your-docusaurus-test-site.com',
+  url: 'https://docs.get-jetty.com',
   baseUrl: '/',
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
