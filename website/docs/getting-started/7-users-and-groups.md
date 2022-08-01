@@ -1,6 +1,6 @@
 ---
 sidebar_position: 7
-slug: "./users-and-groups"
+slug: './users-and-groups'
 ---
 
 # Manage users and groups
@@ -28,7 +28,7 @@ As your Jetty configs grow, each file may get quite large. To learn how we recom
 
 ## Groups
 
-In Jetty, groups are managed at the system level but applied across each connector individually when applicable. For example, in Snowflake, the groups I define in Jetty will be materialized into roles and access will be granted to those roles. Groups have a name (the object key) and an optional description and can have users or other groups as members.
+In Jetty, groups are managed at the system level but applied across each connector individually when applicable. For example, in Snowflake, the groups defined in Jetty will be materialized into roles and access will be granted to those roles. Groups have a name (the object key) and an optional description and can have users or other groups as members.
 
 Groups are defined in the `/groups/` directory, and as with users, you are welcome to split your groups across any number of files in any number of sub-directories. A group object is structured as follows:
 

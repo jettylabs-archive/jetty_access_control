@@ -39,7 +39,7 @@ Another thing to note is that **allow policies are applied only in the platform 
 
 ## Deny policies
 
-Deny policies are behave slightly different than allow policies and are signified by a privilege of `deny`. They can be defined on assets and/or tags, and are inherited by downstream hierarchical _and_ derived assets. That means that if I deny access to a schema, access will be denied to the tables in the schema as well as to any derivatives of those tables. Additionally, deny policies _are_ automatically applied across platforms.
+Deny policies behave differently than allow policies and are signified by a privilege of `deny`. They can be defined on assets and/or tags, and are inherited by downstream hierarchical _and_ derived assets. That means that if I deny access to a schema, access will be denied to the tables in the schema as well as to any derivatives of those tables. Additionally, deny policies _are_ automatically applied across platforms.
 
 When tags are used to define policies, they can be used across all levels of the taxonomy hierarchy (defined in `taxonomy.yaml`). For example, a policy could be applied to the `PII` tag, which would include `Phone Number` as a child tag, or it could be applied directly on `Phone Number`.
 
@@ -72,11 +72,11 @@ To help clarify policy precedence, let's look at some examples:
 
 **Policy 1:** User A has `write` access to `schema_1.table_b`  
 **Policy 2:** User A is denied access to `schema_1.table_b`  
-**Result:** The specificity between the policies is equivalent, so the deny policy is applied
+**Result:** The specificity between the policies is equivalent, so the deny policy is applied.
 
 **Policy 1:** User A has `write` access to `schema_1.table_b`  
 **Policy 2:** User A is denied access to the PII tag, which has been applied to `schema_1` (and its children)  
-**Result:** The tag specificity is applied as more specific than the asset specificity, so User A does not have access to table_b
+**Result:** Tag references are classified as more specific than asset references, so Policy 2 is applied and User A does not have access to table_b.
 
 **Policy 1:** User A has `write` access to `schema_1.table_b` with `include_tags: [“PII”]`  
 **Policy 2:** User A is denied access to the PII tag, which has been applied to `schema_1` (and its children)  
