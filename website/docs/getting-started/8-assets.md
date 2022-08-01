@@ -1,6 +1,6 @@
 ---
 sidebar_position: 8
-slug: "./assets"
+slug: './assets'
 ---
 
 # Manage assets
@@ -13,7 +13,7 @@ description: This is an optional description of the asset
 tags:
 	- pii
 override_derived_from:
-  - snow.analytcs.raw.greenhouse_recruiting_pipeline
+  - snow.analytics.raw.greenhouse_recruiting_pipeline
 ```
 
 ## Tagging assets

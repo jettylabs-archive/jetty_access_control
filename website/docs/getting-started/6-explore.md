@@ -1,11 +1,11 @@
 ---
 sidebar_position: 6
-slug: "./explore"
+slug: './explore'
 ---
 
 # Explore your environment
 
-Because Jetty connects to all your data tools, it can also give you visibility into access to those tools through a single interface, surfacing information about data assets, tags, and groups, and users.
+Because Jetty connects to all your data tools, it can also give you visibility into access to those tools through a single interface, surfacing information about data assets, tags, groups, and users.
 
 To begin exploring your data access environment with Jetty, open your terminal and run `jetty explore`. This will open an interactive prompt you can use to write explore functions. Explore functions look like standard Python code and support a [subset of the Python language](#). They can return or yield values that will be shown in the prompt.
 
@@ -88,7 +88,7 @@ When you find useful queries, `jetty explore “<query text>”` to run that sin
 
 ## Audit data access with `explain_access()`
 
-In addition to the `jetty explore` capabilities you have already seen, `explore` has an `explain_access()` function designed to describes why a user can or can’t access a particular data asset, highlighting specific configurations that affect the the final materialized access controls. `explain_access()` accepts two parameters: a user and an asset (or list of assets).
+In addition to the `jetty explore` capabilities you have already seen, `explore` has an `explain_access()` function designed to describe why a user can or can’t access a particular data asset, highlighting specific configurations that affect the the final materialized access controls. `explain_access()` accepts two parameters: a user and an asset (or list of assets).
 
 For example, if I want to understand why `elliot@gmail.com` does or doesn't have access to the asset `snow.analytics.raw` (a Snowflake schema), I can run:
 
