@@ -7,4 +7,3 @@ edition = "2021"
 
 [dependencies]
 jetty_core = {path="../jetty_core"}
-jetty_snowflake = {path="../jetty_snowflake"}
