@@ -27,6 +27,8 @@ use jsonwebtoken::{encode, get_current_timestamp, Algorithm, EncodingKey, Header
 use reqwest;
 use serde::{Deserialize, Serialize};
 
+const AUTH_HEADER: &str = "Authorization";
+
 /// The main Snowflake Connector struct.
 /// 
 /// Use this connector to access Snowflake data.
@@ -112,6 +114,16 @@ impl Connector for Snowflake {
     }
 
     async fn check(&self) -> bool {
+        if self.execute("SELECT 1").await.is_err(){
+            false
+        }else{
+            true
+        }
+    }
+}
+
+impl Snowflake{
+    fn get_jwt(&self) -> Result<String>{
         let qualified_username = format![
             "{}.{}",
             self.credentials.account.to_uppercase(),
@@ -128,20 +140,31 @@ impl Connector for Snowflake {
 
         println!("{}", self.credentials.private_key);
 
-        let token = encode(
+        encode(
             &Header::new(Algorithm::RS256),
             &claims,
-            &EncodingKey::from_rsa_pem(std::include_bytes!("/Users/jk/rsa_key.p8")).unwrap(),
-        )
-        .unwrap();
-
-        // request
-
-        // This will POST a body of `{"lang":"rust","body":"json"}`
+            &EncodingKey::from_rsa_pem(std::include_bytes!("/Users/jk/rsa_key.p8"))?,
+        ).map_err(anyhow::Error::from)
+    }
+    
+    fn get_body<'a>(&'a self, sql:&'a str)->HashMap<&str, &'a str>{
         let mut body = HashMap::new();
-        body.insert("statement", "SELECT 1");
+        body.insert("statement", sql);
         body.insert("warehouse", "main");
         body.insert("role", &self.credentials.role);
+        body
+    }
+
+    /// Execute a query, dropping the result.
+    /// 
+    /// `execute` should only be used for
+    /// SQL statements that don't expect results,
+    /// such as those that are used to update
+    /// state in Snowflake.
+    async fn execute(&self, sql:&str) -> Result<()>{
+
+        let token = self.get_jwt()?;
+        let body = self.get_body(sql);
 
         let client = reqwest::Client::new();
 
@@ -151,19 +174,20 @@ impl Connector for Snowflake {
                 self.credentials.account
             ])
             .json(&body)
-            .header("Authorization", format!["Bearer {}", token])
+            .header(AUTH_HEADER, format!["Bearer {}", token])
             .header("Content-Type", "application/json")
             .header("Accept", "application/json")
             .header("X-Snowflake-Authorization-Token-Type", "KEYPAIR_JWT")
             .header("User-Agent", "test")
             .send()
-            .await
-            // each response is wrapped in a `Result` type
-            // we'll unwrap here for simplicity
-            .unwrap()
+            .await?
             .text()
             .await;
         println!["{:#?}", res];
-        true
+        Ok(())
     }
+
+    // fn query<R>(&self, sql:&str)->R{
+        // R::deserialize()
+    // }
 }
