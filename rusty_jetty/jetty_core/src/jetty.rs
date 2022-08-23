@@ -1,5 +1,5 @@
 //! Jetty Module
-//! 
+//!
 use std::collections::HashMap;
 use std::fs;
 
@@ -62,9 +62,11 @@ pub struct Jetty {
 }
 
 impl Jetty {
-    /// Convenience method for struct creation. Uses the default location for 
+    /// Convenience method for struct creation. Uses the default location for
     /// config files.
-    pub fn new()->Result<Self>{
-        Ok(Jetty { config: JettyConfig::new()? })
+    pub fn new() -> Result<Self> {
+        Ok(Jetty {
+            config: JettyConfig::new()?,
+        })
     }
 }
