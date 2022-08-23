@@ -1,3 +1,8 @@
+//! Snowflake Connector
+//!
+//! Everything needed for connection and interaction with Snowflake.
+//! 
+
 use crate::{
     connectors::Connector,
     jetty::{ConnectorConfig, CredentialsBlob},
@@ -6,12 +11,16 @@ use crate::{
 use std::collections::{HashMap, HashSet};
 
 use anyhow::{anyhow, Result};
+use async_trait::async_trait;
 use jsonwebtoken::{encode, get_current_timestamp, Algorithm, EncodingKey, Header};
 use reqwest;
 use serde::{Deserialize, Serialize};
-use async_trait::async_trait;
 
+/// The main Snowflake Connector struct.
+/// 
+/// Use this connector to access Snowflake data.
 pub struct Snowflake {
+    /// The credentials used to authenticate into Snowflake.
     credentials: SnowflakeCredentials,
 }
 #[derive(Deserialize, Debug, Default)]
