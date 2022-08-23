@@ -27,7 +27,7 @@ use jsonwebtoken::{encode, get_current_timestamp, Algorithm, EncodingKey, Header
 use reqwest;
 use reqwest::RequestBuilder;
 use serde::{Deserialize, Serialize};
-use serde_json::Value as JsonValue;
+use serde_json::Value;
 
 const AUTH_HEADER: &str = "Authorization";
 
@@ -54,10 +54,6 @@ struct SnowflakeCredentials {
     public_key_fp: String,
 }
 
-#[derive(Deserialize, Debug)]
-struct RoleResult {
-    data: Vec<Role>,
-}
 /// Snowflake Role entry.
 #[derive(Deserialize, Debug)]
 pub struct Role {
@@ -242,7 +238,9 @@ impl Snowflake {
     pub async fn get_roles(&self) -> Result<Vec<Role>> {
         let result = self.query("SHOW ROLES").await?;
         println!("{:#?}", result);
-        let roles: RoleResult = serde_json::from_str(&result)?;
-        Ok(roles.data)
+        let roles_value: Value = serde_json::from_str(&result)?;
+        let roles_data = roles_value["data"].clone();
+        let roles = serde_json::from_value(roles_data)?;
+        Ok(roles)
     }
 }
