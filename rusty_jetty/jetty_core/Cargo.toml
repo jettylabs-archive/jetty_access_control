@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 anyhow="^1"
+async-trait = "0.1.57"
 dirs = "4.0.0"
 jsonwebtoken = "8.1.1"
 reqwest = {version = "0.11.11", features = ["json"]}

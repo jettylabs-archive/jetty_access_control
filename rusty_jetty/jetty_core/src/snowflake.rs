@@ -9,6 +9,7 @@ use anyhow::{anyhow, Result};
 use jsonwebtoken::{encode, get_current_timestamp, Algorithm, EncodingKey, Header};
 use reqwest;
 use serde::{Deserialize, Serialize};
+use async_trait::async_trait;
 
 pub struct Snowflake {
     credentials: SnowflakeCredentials,
@@ -32,6 +33,7 @@ struct Claims {
     sub: String, // Optional. Subject (whom token refers to)
 }
 
+#[async_trait]
 impl Connector for Snowflake {
     fn new(config: &ConnectorConfig, credentials: &CredentialsBlob) -> Result<Box<Self>> {
         let mut conn = SnowflakeCredentials::default();
@@ -71,10 +73,8 @@ impl Connector for Snowflake {
             Ok(Box::new(Snowflake { credentials: conn }))
         }
     }
-}
 
-impl Snowflake {
-    pub async fn check(&self) -> bool {
+    async fn check(&self) -> bool {
         let qualified_username = format![
             "{}.{}",
             self.credentials.account.to_uppercase(),
@@ -94,7 +94,7 @@ impl Snowflake {
         let token = encode(
             &Header::new(Algorithm::RS256),
             &claims,
-            &EncodingKey::from_rsa_pem(std::include_bytes!("/Users/isaac/rsa_key.p8")).unwrap(),
+            &EncodingKey::from_rsa_pem(std::include_bytes!("/Users/jk/rsa_key.p8")).unwrap(),
         )
         .unwrap();
 
