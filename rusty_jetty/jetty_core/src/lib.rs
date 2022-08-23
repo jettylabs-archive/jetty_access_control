@@ -6,10 +6,10 @@
 #![deny(missing_docs)]
 
 
-mod jetty;
+pub mod jetty;
 pub use jetty::fetch_credentials;
 pub use jetty::Jetty;
 
-mod connectors;
+pub mod connectors;
 pub use connectors::Connector;
 pub mod snowflake;

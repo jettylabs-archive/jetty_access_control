@@ -1,3 +1,5 @@
+//! Jetty Module
+//! 
 use std::collections::HashMap;
 use std::fs;
 
@@ -11,10 +13,12 @@ use yaml_peg::serde as yaml;
 pub struct JettyConfig {
     version: String,
     name: String,
+    /// All connector configs defined.
     pub connectors: Vec<ConnectorConfig>,
 }
 
 impl JettyConfig {
+    /// Use the default filepath to ingest the Jetty config.
     pub fn new() -> Result<JettyConfig> {
         let config_raw = fs::read_to_string("./jetty_config.yaml")?;
         let mut config = yaml::from_str::<JettyConfig>(&config_raw)?;
@@ -23,15 +27,18 @@ impl JettyConfig {
     }
 }
 
-#[derive(Deserialize, Debug)]
+/// Config for all connectors in this project.
+#[derive(Deserialize, Default, Debug)]
 pub struct ConnectorConfig {
     namespace: String,
     #[serde(rename = "type")]
     connector_type: String,
+    /// Additional configuration, specific to the connector.
     pub config: HashMap<String, String>,
 }
 
-pub(crate) type CredentialsBlob = HashMap<String, String>;
+/// Alias for HashMap to hold credentials information.
+pub type CredentialsBlob = HashMap<String, String>;
 
 /// Fetch the credentials from the Jetty connectors config.
 pub fn fetch_credentials() -> Result<HashMap<String, CredentialsBlob>> {
