@@ -1,41 +1,53 @@
-use std::fs::read_to_string;
-use std::collections::{HashMap};
-use std::boxed::Box;
-use crate::{ConnectorConfig, ConnectorCredentials};
+use std::collections::HashMap;
+use std::fs;
 
-use serde::Deserialize;
 use anyhow::{anyhow, Result};
-use yaml_peg::serde::from_str;
 use dirs::home_dir;
+use serde::Deserialize;
+use yaml_peg::serde as yaml;
 
 #[derive(Deserialize, Debug)]
-pub struct JettyConfig{
+pub struct JettyConfig {
     version: String,
     name: String,
-    connectors: Vec<ConnectorConfig>
+    pub connectors: Vec<ConnectorConfig>,
 }
 
-impl JettyConfig{
-    pub fn new()->Result<JettyConfig>{
-        let config_raw = read_to_string("./jetty_config.yaml")?;
-        let mut config= from_str::<JettyConfig>(&config_raw)?;
-        
-        
-        Ok(config.pop().ok_or(anyhow!["failed"])?)
-        // let mut default_path = home_dir().unwrap();
+impl JettyConfig {
+    pub fn new() -> Result<JettyConfig> {
+        let config_raw = fs::read_to_string("./jetty_config.yaml")?;
+        let mut config = yaml::from_str::<JettyConfig>(&config_raw)?;
 
-        // default_path.push(".jetty/connectors.yaml");
-        // let config_raw = read_to_string(default_path)?;
-        // let mut config= from_str::<Vec<dyn ConnectorCredentials>>(&config_raw)?;
-        // println!("config:");
-        // println!("{:#?}", config);
-        
-        
-        // Ok(config.pop().ok_or(anyhow!["failed"])?)
+        Ok(config.pop().ok_or(anyhow!["failed"])?)
     }
 }
 
-pub struct Jetty{
-    config:JettyConfig,
-    connector_config: HashMap<String, Box<dyn ConnectorCredentials>>
+#[derive(Deserialize, Debug)]
+pub struct ConnectorConfig {
+    namespace: String,
+    #[serde(rename = "type")]
+    connector_type: String,
+    pub config: HashMap<String, String>,
 }
+
+pub(crate) type CredentialsBlob = HashMap<String, String>;
+
+pub fn fetch_credentials() -> Result<HashMap<String, CredentialsBlob>> {
+    let mut default_path = home_dir().unwrap();
+
+    default_path.push(".jetty/connectors.yaml");
+
+    println!("{:?}", default_path);
+
+    let credentials_raw = fs::read_to_string(default_path)?;
+    let mut config = yaml::from_str::<HashMap<String, CredentialsBlob>>(&credentials_raw)?;
+
+    Ok(config.pop().ok_or(anyhow!["failed"])?)
+}
+
+pub struct Jetty {
+    pub config: JettyConfig,
+    // connector_config: HashMap<String, ConnectorCredentials>,
+}
+
+impl Jetty {}

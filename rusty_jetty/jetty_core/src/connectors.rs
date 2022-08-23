@@ -1,13 +1,7 @@
-use std::collections::HashMap;
+use crate::jetty::{ConnectorConfig, CredentialsBlob};
+use anyhow::Result;
 
-use serde::Deserialize;
-
-#[derive(Deserialize, Debug)]
-pub struct ConnectorConfig{
-    namespace: String, 
-    #[serde(rename = "type")]
-    connector_type: String,
-    config: HashMap<String, String>,
+pub trait Connector {
+    fn new(config: &ConnectorConfig, credentials: &CredentialsBlob) -> Result<Box<Self>>;
+    // fn check() -> bool;
 }
-
-pub trait ConnectorCredentials{}
