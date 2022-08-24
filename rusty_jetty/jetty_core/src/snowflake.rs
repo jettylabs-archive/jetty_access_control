@@ -1,3 +1,19 @@
+//! Snowflake Connector
+//!
+//! Everything needed for connection and interaction with Snowflake.
+//! 
+//! ```
+//! use jetty_core::snowflake::Snowflake;
+//! use jetty_core::connectors::Connector;
+//! use jetty_core::jetty::{ConnectorConfig, CredentialsBlob};
+//! 
+//! fn main(){
+//!     let config = ConnectorConfig::default();
+//!     let credentials = CredentialsBlob::default();
+//!     let snow = Snowflake::new(&config, &credentials);
+//! }
+//! ```
+
 use crate::{
     connectors::Connector,
     jetty::{ConnectorConfig, CredentialsBlob},
@@ -6,14 +22,23 @@ use crate::{
 use std::collections::{HashMap, HashSet};
 
 use anyhow::{anyhow, Result};
+use async_trait::async_trait;
 use jsonwebtoken::{encode, get_current_timestamp, Algorithm, EncodingKey, Header};
 use reqwest;
 use serde::{Deserialize, Serialize};
-use async_trait::async_trait;
 
+/// The main Snowflake Connector struct.
+/// 
+/// Use this connector to access Snowflake data.
 pub struct Snowflake {
+    /// The credentials used to authenticate into Snowflake.
     credentials: SnowflakeCredentials,
 }
+
+/// Credentials for authenticating to Snowflake.
+/// 
+/// The user sets these up by following Jetty documentation
+/// and pasting their keys into their connector config.
 #[derive(Deserialize, Debug, Default)]
 struct SnowflakeCredentials {
     account: String,
@@ -25,16 +50,28 @@ struct SnowflakeCredentials {
     public_key_fp: String,
 }
 
+/// Claims for use with the `jsonwebtoken` crate when
+/// creating a new JWT.
 #[derive(Debug, Serialize, Deserialize)]
 struct Claims {
-    exp: usize, // Required (validate_exp defaults to true in validation). Expiration time (as UTC timestamp)
-    iat: usize, // Optional. Issued at (as UTC timestamp)
-    iss: String, // Optional. Issuer
-    sub: String, // Optional. Subject (whom token refers to)
+    /// Required (validate_exp defaults to true in validation). Expiration time (as UTC timestamp)
+    exp: usize, 
+    /// Optional. Issued at (as UTC timestamp)
+    iat: usize, 
+    /// Optional. Issuer
+    iss: String, 
+    /// Optional. Subject (whom token refers to)
+    sub: String, 
 }
 
+/// Main connector implementation.
 #[async_trait]
 impl Connector for Snowflake {
+    /// Validates the configs and bootstraps a Snowflake connection.
+    /// 
+    /// Validates that the required fields are present to authenticate to 
+    /// Snowflake. Stashes the credentials in the struct for use when 
+    /// connecting.
     fn new(config: &ConnectorConfig, credentials: &CredentialsBlob) -> Result<Box<Self>> {
         let mut conn = SnowflakeCredentials::default();
         let mut required_fields: HashSet<_> = vec![
