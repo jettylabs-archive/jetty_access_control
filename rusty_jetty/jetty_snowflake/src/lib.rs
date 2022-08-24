@@ -13,11 +13,12 @@
 //! ```
 
 mod consts;
+mod database;
 mod grant;
 mod role;
-mod snowflake_query;
 mod user;
 
+pub use database::Database;
 pub use grant::Grant;
 pub use role::Role;
 pub use user::User;
@@ -221,14 +222,56 @@ impl Snowflake {
 
     /// Get all grants to a user
     pub async fn get_grants_to_user(&self, user_name: &str) -> Result<Vec<Grant>> {
-        let result = self
-            .query(&format!("SHOW GRANTS TO USER {}", user_name))
-            .await?;
-        let grants_val: JsonValue = serde_json::from_str::<JsonValue>(&result)?["data"].clone();
-        let grants = serde_json::from_value(grants_val)?;
-        Ok(grants)
+        Ok(self
+            .query_to_obj::<Grant>(&format!("SHOW GRANTS TO USER {}", user_name))
+            .await?)
     }
 
-    query_fn!(get_users, User, "SHOW USERS");
-    query_fn!(get_roles, Role, "SHOW ROLES");
+    /// Get all users.
+    pub async fn get_users(&self) -> Result<Vec<User>> {
+        Ok(self.query_to_obj::<User>("SHOW USERS").await?)
+    }
+
+    /// Get all roles.
+    pub async fn get_roles(&self) -> Result<Vec<Role>> {
+        Ok(self.query_to_obj::<Role>("SHOW ROLES").await?)
+    }
+
+    /// Get all databases.
+    pub async fn get_databases(&self) -> Result<Vec<Database>> {
+        Ok(self.query_to_obj::<Database>("SHOW DATABASES").await?)
+    }
+    /// Execute the given query and deserialize the result into the given type.
+    pub async fn query_to_obj<T>(&self, query: &str) -> Result<Vec<T>>
+    where
+        T: FromMap,
+    {
+        let result = self.query(query).await.context("query failed")?;
+        let rows_value: JsonValue =
+            serde_json::from_str(&result).context("failed to deserialize")?;
+        let rows_data = rows_value["data"].clone();
+        let rows: Vec<Vec<Value>> = serde_json::from_value::<Vec<Vec<Option<String>>>>(rows_data)
+            .context("failed to deserialize rows")?
+            .iter()
+            .map(|i| {
+                i.iter()
+                    .map(|x| Value::new(x.clone().unwrap_or_else(|| String::new())))
+                    .collect()
+            })
+            .collect();
+        let fields_intermediate: Vec<SnowflakeField> =
+            serde_json::from_value(rows_value["resultSetMetaData"]["rowType"].clone())
+                .context("failed to deserialize fields")?;
+        let fields: Vec<String> = fields_intermediate.iter().map(|i| i.name.clone()).collect();
+        println!("fields: {:?}", fields);
+        Ok(rows
+            .iter()
+            .map(|i| {
+                // Zip field - i
+                let map: GenericMap = zip(fields.clone(), i.clone()).collect();
+                map
+            })
+            .map(|i| T::from_genericmap(i))
+            .collect())
+    }
 }
