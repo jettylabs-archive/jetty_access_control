@@ -2,5 +2,4 @@
 members = [
     "jetty_core",
     "jetty_cli",
-    "access_graph",
 ]
