@@ -1,5 +1,5 @@
 //! Jetty Module
-//! 
+//!
 use std::collections::HashMap;
 use std::fs;
 
@@ -9,6 +9,7 @@ use serde::Deserialize;
 use yaml_peg::serde as yaml;
 
 /// Struct representing the jetty_config.yaml file.
+#[allow(dead_code)]
 #[derive(Deserialize, Debug)]
 pub struct JettyConfig {
     version: String,
@@ -28,6 +29,7 @@ impl JettyConfig {
 }
 
 /// Config for all connectors in this project.
+#[allow(dead_code)]
 #[derive(Deserialize, Default, Debug)]
 pub struct ConnectorConfig {
     namespace: String,
@@ -62,9 +64,11 @@ pub struct Jetty {
 }
 
 impl Jetty {
-    /// Convenience method for struct creation. Uses the default location for 
+    /// Convenience method for struct creation. Uses the default location for
     /// config files.
-    pub fn new()->Result<Self>{
-        Ok(Jetty { config: JettyConfig::new()? })
+    pub fn new() -> Result<Self> {
+        Ok(Jetty {
+            config: JettyConfig::new()?,
+        })
     }
 }

@@ -9,7 +9,11 @@ async fn main() -> Result<()> {
     let creds = fetch_credentials()?;
     let snow = snowflake::Snowflake::new(&jetty.config.connectors[0], &creds["snow"])?;
     println!("checking for connection...");
-    snow.check().await;
+    println!("working? {}", snow.check().await);
+
+    println!("{:#?}", snow.get_roles().await?);
+    let users = snow.get_users().await.unwrap();
+    println!("{:#?}", users);
 
     Ok(())
 }
