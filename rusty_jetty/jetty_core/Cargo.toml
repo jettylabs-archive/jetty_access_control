@@ -18,3 +18,4 @@ serde_json = "1.0.85"
 yaml-peg = { version = "1.0.4", features = ["serde"] }
 graphviz-rust = "0.2.1"
 petgraph = "0.6.2"
+derivative = "2.2.0"

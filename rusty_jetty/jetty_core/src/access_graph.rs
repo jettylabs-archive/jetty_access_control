@@ -2,6 +2,8 @@
 //!
 //! `access_graph` is a library for modeling data access permissions and metadata as a graph.
 
+mod helpers;
+
 use std::collections::HashMap;
 
 use anyhow::{context, *};
@@ -17,12 +19,17 @@ use petgraph::stable_graph::StableDiGraph;
 #[derive(Debug)]
 struct UserAttributes {
     name: String,
+    identifiers: HashMap<connectors::UserIdentifier, String>,
+    metadata: HashMap<String, String>,
+    connectors: Vec<String>,
 }
 
 /// Attributes associated with a Group node
 #[derive(Debug)]
 struct GroupAttributes {
     name: String,
+    metadata: HashMap<String, String>,
+    connectors: Vec<String>,
 }
 
 /// Enum of node types
@@ -50,7 +57,9 @@ struct NodeMap {
 
 /// Representation of data access state
 pub struct AccessGraph {
+    /// The graph itself
     graph: StableDiGraph<JettyNode, JettyEdge>,
+    /// A map of node identifiers to indecies
     nodes: NodeMap,
 }
 
