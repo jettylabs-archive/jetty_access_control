@@ -12,8 +12,8 @@ async fn main() -> Result<()> {
     println!("working? {}", snow.check().await);
 
     println!("{:#?}", snow.get_roles().await?);
-    // let users = snow.get_users().await.unwrap();
-    // println!("{:#?}", users);
+    let users = snow.get_users().await.unwrap();
+    println!("{:#?}", users);
 
     Ok(())
 }

@@ -198,16 +198,6 @@ impl Snowflake {
         Ok(res)
     }
 
-    // /// Get all roles contained within the account.
-    // pub async fn get_roles(&self) -> Result<Vec<Role>> {
-    //     let result = self.query("SHOW ROLES").await?;
-    //     // println!("{:#?}", result);
-    //     let roles_value: JsonValue = serde_json::from_str(&result)?;
-    //     let roles_data = roles_value["data"].clone();
-    //     let roles = serde_json::from_value(roles_data)?;
-    //     Ok(roles)
-    // }
-
     /// Get all grants to a user
     pub async fn get_grants_to_user(&self, user_name: &str) -> Result<Vec<Grant>> {
         let result = self
