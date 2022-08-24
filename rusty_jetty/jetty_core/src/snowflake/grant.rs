@@ -3,5 +3,5 @@ use structmap::FromMap;
 use structmap_derive::FromMap;
 
 /// Snowflake Grant entry.
-#[derive(Deserialize, Debug)]
+#[derive(FromMap, Default, Deserialize, Debug)]
 pub struct Grant {}

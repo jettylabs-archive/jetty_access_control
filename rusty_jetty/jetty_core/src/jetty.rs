@@ -9,6 +9,7 @@ use serde::Deserialize;
 use yaml_peg::serde as yaml;
 
 /// Struct representing the jetty_config.yaml file.
+#[allow(dead_code)]
 #[derive(Deserialize, Debug)]
 pub struct JettyConfig {
     version: String,
@@ -28,6 +29,7 @@ impl JettyConfig {
 }
 
 /// Config for all connectors in this project.
+#[allow(dead_code)]
 #[derive(Deserialize, Default, Debug)]
 pub struct ConnectorConfig {
     namespace: String,
