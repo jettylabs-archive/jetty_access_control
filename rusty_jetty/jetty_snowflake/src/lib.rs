@@ -16,12 +16,20 @@ mod consts;
 mod database;
 mod grant;
 mod role;
+mod schema;
+mod table;
 mod user;
+mod view;
+mod warehouse;
 
 pub use database::Database;
 pub use grant::Grant;
 pub use role::Role;
+pub use schema::Schema;
+pub use table::Table;
 pub use user::User;
+pub use view::View;
+pub use warehouse::Warehouse;
 
 use jetty_core::{
     connectors::Connector,
@@ -222,25 +230,51 @@ impl Snowflake {
 
     /// Get all grants to a user
     pub async fn get_grants_to_user(&self, user_name: &str) -> Result<Vec<Grant>> {
-        Ok(self
-            .query_to_obj::<Grant>(&format!("SHOW GRANTS TO USER {}", user_name))
-            .await?)
+        self.query_to_obj::<Grant>(&format!("SHOW GRANTS TO USER {}", user_name))
+            .await
+    }
+
+    /// Get all grants to a role
+    pub async fn get_grants_to_role(&self, role_name: &str) -> Result<Vec<Grant>> {
+        self.query_to_obj::<Grant>(&format!("SHOW GRANTS TO ROLE {}", role_name))
+            .await
     }
 
     /// Get all users.
     pub async fn get_users(&self) -> Result<Vec<User>> {
-        Ok(self.query_to_obj::<User>("SHOW USERS").await?)
+        self.query_to_obj::<User>("SHOW USERS").await
     }
 
     /// Get all roles.
     pub async fn get_roles(&self) -> Result<Vec<Role>> {
-        Ok(self.query_to_obj::<Role>("SHOW ROLES").await?)
+        self.query_to_obj::<Role>("SHOW ROLES").await
     }
 
     /// Get all databases.
     pub async fn get_databases(&self) -> Result<Vec<Database>> {
-        Ok(self.query_to_obj::<Database>("SHOW DATABASES").await?)
+        self.query_to_obj::<Database>("SHOW DATABASES").await
     }
+
+    /// Get all warehouses.
+    pub async fn get_warehouses(&self) -> Result<Vec<Warehouse>> {
+        self.query_to_obj::<Warehouse>("SHOW WAREHOUSES").await
+    }
+
+    /// Get all schemas.
+    pub async fn get_schemas(&self) -> Result<Vec<Schema>> {
+        self.query_to_obj::<Schema>("SHOW SCHEMAS").await
+    }
+
+    /// Get all views.
+    pub async fn get_views(&self) -> Result<Vec<View>> {
+        self.query_to_obj::<View>("SHOW VIEWS").await
+    }
+
+    /// Get all tables.
+    pub async fn get_tables(&self) -> Result<Vec<Table>> {
+        self.query_to_obj::<Table>("SHOW TABLES").await
+    }
+
     /// Execute the given query and deserialize the result into the given type.
     pub async fn query_to_obj<T>(&self, query: &str) -> Result<Vec<T>>
     where
@@ -255,7 +289,7 @@ impl Snowflake {
             .iter()
             .map(|i| {
                 i.iter()
-                    .map(|x| Value::new(x.clone().unwrap_or_else(|| String::new())))
+                    .map(|x| Value::new(x.clone().unwrap_or_default()))
                     .collect()
             })
             .collect();
