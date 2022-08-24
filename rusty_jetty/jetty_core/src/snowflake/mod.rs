@@ -7,11 +7,9 @@
 //! use jetty_core::connectors::Connector;
 //! use jetty_core::jetty::{ConnectorConfig, CredentialsBlob};
 //!
-//! fn main(){
-//!     let config = ConnectorConfig::default();
-//!     let credentials = CredentialsBlob::default();
-//!     let snow = Snowflake::new(&config, &credentials);
-//! }
+//! let config = ConnectorConfig::default();
+//! let credentials = CredentialsBlob::default();
+//! let snow = Snowflake::new(&config, &credentials);
 //! ```
 
 mod consts;
