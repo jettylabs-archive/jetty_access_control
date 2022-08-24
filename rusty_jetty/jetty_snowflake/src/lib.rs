@@ -22,10 +22,9 @@ pub use grant::Grant;
 pub use role::Role;
 pub use user::User;
 
-use crate::{
+use jetty_core::{
     connectors::Connector,
     jetty::{ConnectorConfig, CredentialsBlob},
-    query_fn,
 };
 
 use std::collections::{HashMap, HashSet};
@@ -34,7 +33,6 @@ use std::iter::zip;
 use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
 use jsonwebtoken::{encode, get_current_timestamp, Algorithm, EncodingKey, Header};
-use reqwest;
 use reqwest::RequestBuilder;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
