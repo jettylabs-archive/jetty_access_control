@@ -1,35 +1,27 @@
-//! Snowflake Connector
-//!
-//! Everything needed for connection and interaction with Snowflake.
-//!
-//! ```
-//! use jetty_core::snowflake::Snowflake;
-//! use jetty_core::connectors::Connector;
-//! use jetty_core::jetty::{ConnectorConfig, CredentialsBlob};
-//!
-//! fn main(){
-//!     let config = ConnectorConfig::default();
-//!     let credentials = CredentialsBlob::default();
-//!     let snow = Snowflake::new(&config, &credentials);
-//! }
-//! ```
-
 use crate::{
     connectors::Connector,
     jetty::{ConnectorConfig, CredentialsBlob},
+    query_fn,
+    snowflake::{consts, Grant, Role, User},
 };
 
 use std::collections::{HashMap, HashSet};
+use std::iter::zip;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
 use jsonwebtoken::{encode, get_current_timestamp, Algorithm, EncodingKey, Header};
 use reqwest;
 use reqwest::RequestBuilder;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::Value as JsonValue;
+use structmap::{value::Value, FromMap, GenericMap};
 
-const AUTH_HEADER: &str = "Authorization";
+#[derive(Deserialize, Debug)]
+struct SnowflakeField {
+    #[serde(default)]
+    name: String,
+}
 
 /// The main Snowflake Connector struct.
 ///
@@ -54,35 +46,10 @@ struct SnowflakeCredentials {
     public_key_fp: String,
 }
 
-/// Snowflake Role entry.
-#[derive(Deserialize, Debug)]
-pub struct Role {
-    #[serde(skip_serializing)]
-    _created_on_unused: String,
-    /// The role name in Snowflake.
-    pub name: String,
-    #[serde(skip_serializing)]
-    _is_default_unused: String,
-    #[serde(skip_serializing)]
-    _is_current_unused: String,
-    #[serde(skip_serializing)]
-    _is_inherited_unused: String,
-    #[serde(skip_serializing)]
-    _assigned_to_users_unused: String,
-    #[serde(skip_serializing)]
-    _granted_to_roles_unused: String,
-    #[serde(skip_serializing)]
-    _granted_roles_unused: String,
-    #[serde(skip_serializing)]
-    _owner_unused: String,
-    #[serde(skip_serializing)]
-    _comment_unused: String,
-}
-
 /// Claims for use with the `jsonwebtoken` crate when
 /// creating a new JWT.
 #[derive(Debug, Serialize, Deserialize)]
-struct Claims {
+struct JwtClaims {
     /// Required (validate_exp defaults to true in validation). Expiration time (as UTC timestamp)
     exp: usize,
     /// Optional. Issued at (as UTC timestamp)
@@ -141,15 +108,14 @@ impl Connector for Snowflake {
     }
 
     async fn check(&self) -> bool {
-        let res = self.execute("SELECT 1").await.unwrap();
-        true
-        // return match res {
-        //     Err(e) => {
-        //         println!("{:?}", e);
-        //         false
-        //     }
-        //     Ok(_) => true,
-        // };
+        let res = self.execute("SELECT 1").await;
+        return match res {
+            Err(e) => {
+                println!("{:?}", e);
+                false
+            }
+            Ok(_) => true,
+        };
     }
 }
 
@@ -162,7 +128,7 @@ impl Snowflake {
         ];
 
         // Generate jwt
-        let claims = Claims {
+        let claims = JwtClaims {
             exp: (get_current_timestamp() + 3600) as usize,
             iat: get_current_timestamp() as usize,
             iss: format!["{}.{}", qualified_username, self.credentials.public_key_fp],
@@ -206,7 +172,7 @@ impl Snowflake {
                 self.credentials.account
             ])
             .json(&body)
-            .header(AUTH_HEADER, format!["Bearer {}", token])
+            .header(consts::AUTH_HEADER, format!["Bearer {}", token])
             .header("Content-Type", "application/json")
             .header("Accept", "application/json")
             .header("X-Snowflake-Authorization-Token-Type", "KEYPAIR_JWT")
@@ -221,9 +187,7 @@ impl Snowflake {
     /// state in Snowflake.
     async fn execute(&self, sql: &str) -> Result<()> {
         let request = self.get_request(sql)?;
-
-        let res = request.send().await?.text().await;
-        println!["{:#?}", res];
+        request.send().await?.text().await?;
         Ok(())
     }
 
@@ -234,13 +198,28 @@ impl Snowflake {
         Ok(res)
     }
 
-    /// Get all roles contained within the account.
-    pub async fn get_roles(&self) -> Result<Vec<Role>> {
-        let result = self.query("SHOW ROLES").await?;
-        println!("{:#?}", result);
-        let roles_value: Value = serde_json::from_str(&result)?;
-        let roles_data = roles_value["data"].clone();
-        let roles = serde_json::from_value(roles_data)?;
-        Ok(roles)
+    // /// Get all roles contained within the account.
+    // pub async fn get_roles(&self) -> Result<Vec<Role>> {
+    //     let result = self.query("SHOW ROLES").await?;
+    //     // println!("{:#?}", result);
+    //     let roles_value: JsonValue = serde_json::from_str(&result)?;
+    //     let roles_data = roles_value["data"].clone();
+    //     let roles = serde_json::from_value(roles_data)?;
+    //     Ok(roles)
+    // }
+
+    /// Get all grants to a user
+    pub async fn get_grants_to_user(&self, user_name: &str) -> Result<Vec<Grant>> {
+        let result = self
+            .query(&format!("SHOW GRANTS TO USER {}", user_name))
+            .await?;
+        let grants_val: JsonValue = serde_json::from_str::<JsonValue>(&result)?["data"].clone();
+        let grants = serde_json::from_value(grants_val)?;
+        Ok(grants)
     }
+
+    /// Get all users
+    query_fn!(get_users, User, "SHOW USERS");
+    /// Get all roles
+    query_fn!(get_roles, Role, "SHOW ROLES");
 }
