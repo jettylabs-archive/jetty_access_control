@@ -16,6 +16,8 @@ pub trait Connector {
 }
 
 /// Enum of identifiers used to resolve user identities
+
+#[derive(Debug)]
 pub enum UserIdentifier {
     /// User's first name
     FirstName,

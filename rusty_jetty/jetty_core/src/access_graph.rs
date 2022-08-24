@@ -4,9 +4,10 @@
 
 mod helpers;
 
+use super::connectors;
 use std::collections::HashMap;
 
-use anyhow::{context, *};
+use anyhow::{anyhow, Context, Result};
 
 use graphviz_rust as graphviz;
 use graphviz_rust::cmd::CommandArg;
@@ -47,12 +48,12 @@ enum JettyEdge {
 }
 
 /// Mapping of node identifiers (like asset name) to their id in the graph
-struct NodeMap {
-    users: HashMap<String, usize>,
-    groups: HashMap<String, usize>,
-    assets: HashMap<String, usize>,
-    policies: HashMap<String, usize>,
-    tags: HashMap<String, usize>,
+enum NodeID {
+    User(String),
+    Group(String),
+    Asset(String),
+    Policy(String),
+    Tag(String),
 }
 
 /// Representation of data access state
@@ -60,15 +61,21 @@ pub struct AccessGraph {
     /// The graph itself
     graph: StableDiGraph<JettyNode, JettyEdge>,
     /// A map of node identifiers to indecies
-    nodes: NodeMap,
+    nodes: HashMap<NodeID, u32>,
 }
 
 impl AccessGraph {
     /// Save a svg of the access graph to the specified filename
-    pub fn visualize(&self, path: String) -> anyhow::Result<String> {
+    pub fn visualize(&self, path: String) -> Result<String> {
         let my_dot = dot::Dot::new(&self.graph);
-        let g = graphviz::parse(&format!["{:?}", my_dot])
-            .context("Failed to parse dot object into Graphviz")?;
+        let g: Result<graphviz::dot_structures::Graph, String> =
+            graphviz::parse(&format!["{:?}", my_dot]);
+        // Strangely, graphviz::parse returns Result<Graph, String>, so we have to
+        // handle it explicitly (rather than just using `?`)
+        let g = match g {
+            Err(s) => return Err(anyhow![s]),
+            Ok(v) => v,
+        };
         let draw = graphviz::exec(
             g,
             &mut PrinterContext::default(),
