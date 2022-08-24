@@ -7,7 +7,7 @@ mod helpers;
 use super::connectors;
 use std::collections::HashMap;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Context, Result, *};
 
 use graphviz_rust as graphviz;
 use graphviz_rust::cmd::CommandArg;
@@ -68,14 +68,7 @@ impl AccessGraph {
     /// Save a svg of the access graph to the specified filename
     pub fn visualize(&self, path: String) -> Result<String> {
         let my_dot = dot::Dot::new(&self.graph);
-        let g: Result<graphviz::dot_structures::Graph, String> =
-            graphviz::parse(&format!["{:?}", my_dot]);
-        // Strangely, graphviz::parse returns Result<Graph, String>, so we have to
-        // handle it explicitly (rather than just using `?`)
-        let g = match g {
-            Err(s) => return Err(anyhow![s]),
-            Ok(v) => v,
-        };
+        let g = graphviz::parse(&format!["{:?}", my_dot]).map_err(|s| anyhow!(s))?;
         let draw = graphviz::exec(
             g,
             &mut PrinterContext::default(),
