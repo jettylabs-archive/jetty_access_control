@@ -4,7 +4,7 @@
 
 use std::collections::HashMap;
 
-use anyhow;
+use anyhow::{context, *};
 
 use graphviz_rust as graphviz;
 use graphviz_rust::cmd::CommandArg;
@@ -58,27 +58,13 @@ impl AccessGraph {
     /// Save a svg of the access graph to the specified filename
     pub fn visualize(&self, path: String) -> anyhow::Result<String> {
         let my_dot = dot::Dot::new(&self.graph);
-        let g = graphviz::parse(&format!["{:?}", my_dot]).unwrap();
+        let g = graphviz::parse(&format!["{:?}", my_dot])
+            .context("Failed to parse dot object into Graphviz")?;
         let draw = graphviz::exec(
             g,
             &mut PrinterContext::default(),
             vec![CommandArg::Format(Format::Svg), CommandArg::Output(path)],
         )?;
         Ok(draw)
-    }
-}
-
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
     }
 }
