@@ -30,6 +30,8 @@ pub enum UserIdentifier {
 }
 
 /// Enum of known asset types
+
+#[derive(Default)]
 pub enum AssetType {
     /// Database Table
     DBTable,
@@ -42,5 +44,6 @@ pub enum AssetType {
     /// Database Warehouse
     DBWarehouse,
     /// A catch-all that can be used by connector implementors
+    #[default]
     Other,
 }
