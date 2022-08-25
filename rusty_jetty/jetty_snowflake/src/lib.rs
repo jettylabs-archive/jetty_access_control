@@ -13,14 +13,23 @@
 //! ```
 
 mod consts;
+mod database;
 mod grant;
 mod role;
-mod snowflake_query;
+mod schema;
+mod table;
 mod user;
+mod view;
+mod warehouse;
 
+pub use database::Database;
 pub use grant::Grant;
 pub use role::Role;
+pub use schema::Schema;
+pub use table::Table;
 pub use user::User;
+pub use view::View;
+pub use warehouse::Warehouse;
 
 use jetty_core::{
     connectors::Connector,
@@ -221,14 +230,82 @@ impl Snowflake {
 
     /// Get all grants to a user
     pub async fn get_grants_to_user(&self, user_name: &str) -> Result<Vec<Grant>> {
-        let result = self
-            .query(&format!("SHOW GRANTS TO USER {}", user_name))
-            .await?;
-        let grants_val: JsonValue = serde_json::from_str::<JsonValue>(&result)?["data"].clone();
-        let grants = serde_json::from_value(grants_val)?;
-        Ok(grants)
+        self.query_to_obj::<Grant>(&format!("SHOW GRANTS TO USER {}", user_name))
+            .await
     }
 
-    query_fn!(get_users, User, "SHOW USERS");
-    query_fn!(get_roles, Role, "SHOW ROLES");
+    /// Get all grants to a role
+    pub async fn get_grants_to_role(&self, role_name: &str) -> Result<Vec<Grant>> {
+        self.query_to_obj::<Grant>(&format!("SHOW GRANTS TO ROLE {}", role_name))
+            .await
+    }
+
+    /// Get all users.
+    pub async fn get_users(&self) -> Result<Vec<User>> {
+        self.query_to_obj::<User>("SHOW USERS").await
+    }
+
+    /// Get all roles.
+    pub async fn get_roles(&self) -> Result<Vec<Role>> {
+        self.query_to_obj::<Role>("SHOW ROLES").await
+    }
+
+    /// Get all databases.
+    pub async fn get_databases(&self) -> Result<Vec<Database>> {
+        self.query_to_obj::<Database>("SHOW DATABASES").await
+    }
+
+    /// Get all warehouses.
+    pub async fn get_warehouses(&self) -> Result<Vec<Warehouse>> {
+        self.query_to_obj::<Warehouse>("SHOW WAREHOUSES").await
+    }
+
+    /// Get all schemas.
+    pub async fn get_schemas(&self) -> Result<Vec<Schema>> {
+        self.query_to_obj::<Schema>("SHOW SCHEMAS").await
+    }
+
+    /// Get all views.
+    pub async fn get_views(&self) -> Result<Vec<View>> {
+        self.query_to_obj::<View>("SHOW VIEWS").await
+    }
+
+    /// Get all tables.
+    pub async fn get_tables(&self) -> Result<Vec<Table>> {
+        self.query_to_obj::<Table>("SHOW TABLES").await
+    }
+
+    /// Execute the given query and deserialize the result into the given type.
+    pub async fn query_to_obj<T>(&self, query: &str) -> Result<Vec<T>>
+    where
+        T: FromMap,
+    {
+        let result = self.query(query).await.context("query failed")?;
+        let rows_value: JsonValue =
+            serde_json::from_str(&result).context("failed to deserialize")?;
+        let rows_data = rows_value["data"].clone();
+        let rows: Vec<Vec<Value>> = serde_json::from_value::<Vec<Vec<Option<String>>>>(rows_data)
+            .context("failed to deserialize rows")?
+            .iter()
+            .map(|i| {
+                i.iter()
+                    .map(|x| Value::new(x.clone().unwrap_or_default()))
+                    .collect()
+            })
+            .collect();
+        let fields_intermediate: Vec<SnowflakeField> =
+            serde_json::from_value(rows_value["resultSetMetaData"]["rowType"].clone())
+                .context("failed to deserialize fields")?;
+        let fields: Vec<String> = fields_intermediate.iter().map(|i| i.name.clone()).collect();
+        println!("fields: {:?}", fields);
+        Ok(rows
+            .iter()
+            .map(|i| {
+                // Zip field - i
+                let map: GenericMap = zip(fields.clone(), i.clone()).collect();
+                map
+            })
+            .map(|i| T::from_genericmap(i))
+            .collect())
+    }
 }
