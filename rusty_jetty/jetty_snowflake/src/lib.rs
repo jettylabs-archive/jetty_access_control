@@ -3,9 +3,9 @@
 //! Everything needed for connection and interaction with Snowflake.&
 //!
 //! ```
-//! use jetty_core::snowflake::Snowflake;
 //! use jetty_core::connectors::Connector;
 //! use jetty_core::jetty::{ConnectorConfig, CredentialsBlob};
+//! use jetty_snowflake::Snowflake;
 //!
 //! let config = ConnectorConfig::default();
 //! let credentials = CredentialsBlob::default();
@@ -32,7 +32,7 @@ pub use view::View;
 pub use warehouse::Warehouse;
 
 use jetty_core::{
-    connectors::Connector,
+    connectors::{nodes, Connector},
     jetty::{ConnectorConfig, CredentialsBlob},
 };
 
@@ -46,6 +46,9 @@ use reqwest::RequestBuilder;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use structmap::{value::Value, FromMap, GenericMap};
+
+#[macro_use]
+extern crate maplit;
 
 #[derive(Deserialize, Debug)]
 struct SnowflakeField {
@@ -93,6 +96,28 @@ struct JwtClaims {
 /// Main connector implementation.
 #[async_trait]
 impl Connector for Snowflake {
+    async fn check(&self) -> bool {
+        let res = self.execute("SELECT 1").await;
+        return match res {
+            Err(e) => {
+                println!("{:?}", e);
+                false
+            }
+            Ok(_) => true,
+        };
+    }
+
+    fn get_data(&self) -> nodes::ConnectorData {
+        todo!();
+        // nodes::ConnectorData {
+        //     groups: self.get_jetty_groups(),
+        //     users: self.get_jetty_users(),
+        //     assets: self.get_jetty_assets(),
+        //     tags: self.get_jetty_tags(),
+        //     policies: self.get_jetty_policies(),
+        // }
+    }
+
     /// Validates the configs and bootstraps a Snowflake connection.
     ///
     /// Validates that the required fields are present to authenticate to
@@ -135,17 +160,6 @@ impl Connector for Snowflake {
         } else {
             Ok(Box::new(Snowflake { credentials: conn }))
         }
-    }
-
-    async fn check(&self) -> bool {
-        let res = self.execute("SELECT 1").await;
-        return match res {
-            Err(e) => {
-                println!("{:?}", e);
-                false
-            }
-            Ok(_) => true,
-        };
     }
 }
 
@@ -307,5 +321,19 @@ impl Snowflake {
             })
             .map(|i| T::from_genericmap(i))
             .collect())
+    }
+
+    fn get_jetty_assets(&self) -> Vec<nodes::Asset> {
+        // let mut res = vec![];
+        // for table in self.get_tables().await? {
+        //     res.push(nodes::Asset::new(
+        //         table.name,
+        //         AssetType::DBTable,
+        //         hashmap![],
+        //         vec![],
+        //     ));
+        // }
+        // res
+        todo!();
     }
 }

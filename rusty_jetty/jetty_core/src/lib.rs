@@ -13,3 +13,6 @@ pub mod connectors;
 pub use connectors::Connector;
 
 pub mod access_graph;
+
+#[macro_use]
+extern crate derive_new;
