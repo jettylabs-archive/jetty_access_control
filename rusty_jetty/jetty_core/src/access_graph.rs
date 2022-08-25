@@ -134,7 +134,7 @@ impl TagAttributes {
 #[derive(Debug, Clone)]
 pub(crate) struct PolicyAttributes {
     name: String,
-    privileges: Vec<String>,
+    privileges: HashSet<String>,
     pass_through_hierarchy: bool,
     pass_through_lineage: bool,
     connectors: HashSet<String>,
