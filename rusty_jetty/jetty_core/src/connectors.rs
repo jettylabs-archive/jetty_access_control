@@ -25,7 +25,7 @@ pub trait Connector {
 
 /// Enum of identifiers used to resolve user identities
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum UserIdentifier {
     /// User's first name
     FirstName,
@@ -35,13 +35,11 @@ pub enum UserIdentifier {
     FullName,
     /// User's email address
     Email,
-    /// A platform specific identifier
-    PlatformID,
 }
 
 /// Enum of known asset types
 
-#[derive(Default, Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AssetType {
     /// Database Table
     DBTable,
