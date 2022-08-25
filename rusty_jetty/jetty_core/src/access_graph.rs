@@ -2,18 +2,14 @@
 //!
 //! `access_graph` is a library for modeling data access permissions and metadata as a graph.
 
+mod graph;
 mod helpers;
 
+use crate::connectors::AssetType;
+
+use super::connectors;
 use std::collections::HashMap;
-
-use anyhow::{context, *};
-
-use graphviz_rust as graphviz;
-use graphviz_rust::cmd::CommandArg;
-use graphviz_rust::cmd::Format;
-use graphviz_rust::printer::PrinterContext;
-use petgraph::dot;
-use petgraph::stable_graph::StableDiGraph;
+use std::collections::HashSet;
 
 /// Attributes associated with a User node
 #[derive(Debug)]
@@ -32,48 +28,78 @@ struct GroupAttributes {
     connectors: Vec<String>,
 }
 
+#[derive(Debug)]
+struct AssetAttributes {
+    name: String,
+    asset_type: AssetType,
+    metadata: HashMap<String, String>,
+    connectors: Vec<String>,
+}
+
 /// Enum of node types
 #[derive(Debug)]
-enum JettyNode {
+pub(crate) enum JettyNode {
     Group(GroupAttributes),
     User(UserAttributes),
+    Asset(AssetAttributes),
 }
 
 /// Enum of edge types
-#[derive(Debug)]
-enum JettyEdge {
+#[derive(PartialEq, Eq, Hash, Debug, Copy, Clone)]
+enum EdgeType {
     MemberOf,
     Includes,
+    GrantedBy,
+    ChildOf,
+    ParentOf,
+    DerivedFrom,
+    DerivedTo,
+    TaggedAs,
+    GovernedBy,
+    AppliedTo,
+    Governs,
+    GrantedTo,
+}
+
+fn get_edge_type_pair(edge_type: &EdgeType) -> EdgeType {
+    match edge_type {
+        EdgeType::MemberOf => EdgeType::Includes,
+        EdgeType::Includes => EdgeType::MemberOf,
+        EdgeType::GrantedBy => EdgeType::GrantedTo,
+        EdgeType::GrantedTo => EdgeType::GrantedBy,
+        EdgeType::ChildOf => EdgeType::ParentOf,
+        EdgeType::ParentOf => EdgeType::ChildOf,
+        EdgeType::DerivedFrom => EdgeType::DerivedTo,
+        EdgeType::DerivedTo => EdgeType::DerivedFrom,
+        EdgeType::TaggedAs => EdgeType::AppliedTo,
+        EdgeType::AppliedTo => EdgeType::TaggedAs,
+        EdgeType::GovernedBy => EdgeType::Governs,
+        EdgeType::Governs => EdgeType::GovernedBy,
+    }
 }
 
 /// Mapping of node identifiers (like asset name) to their id in the graph
-struct NodeMap {
-    users: HashMap<String, usize>,
-    groups: HashMap<String, usize>,
-    assets: HashMap<String, usize>,
-    policies: HashMap<String, usize>,
-    tags: HashMap<String, usize>,
+#[derive(PartialEq, Eq, Hash, Clone)]
+enum NodeName {
+    User(String),
+    Group(String),
+    Asset(String),
+    Policy(String),
+    Tag(String),
+}
+
+#[derive(Hash, Eq, PartialEq)]
+pub(crate) struct JettyEdge {
+    from: NodeName,
+    to: NodeName,
+    edge_type: EdgeType,
 }
 
 /// Representation of data access state
 pub struct AccessGraph {
     /// The graph itself
-    graph: StableDiGraph<JettyNode, JettyEdge>,
-    /// A map of node identifiers to indecies
-    nodes: NodeMap,
+    graph: graph::Graph,
+    edge_cache: HashSet<JettyEdge>,
 }
 
-impl AccessGraph {
-    /// Save a svg of the access graph to the specified filename
-    pub fn visualize(&self, path: String) -> anyhow::Result<String> {
-        let my_dot = dot::Dot::new(&self.graph);
-        let g = graphviz::parse(&format!["{:?}", my_dot])
-            .context("Failed to parse dot object into Graphviz")?;
-        let draw = graphviz::exec(
-            g,
-            &mut PrinterContext::default(),
-            vec![CommandArg::Format(Format::Svg), CommandArg::Output(path)],
-        )?;
-        Ok(draw)
-    }
-}
+impl AccessGraph {}

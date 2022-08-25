@@ -1,5 +1,8 @@
 //! Connectors module.
 //!
+
+pub mod nodes;
+
 use anyhow::Result;
 use async_trait::async_trait;
 
@@ -16,6 +19,8 @@ pub trait Connector {
 }
 
 /// Enum of identifiers used to resolve user identities
+
+#[derive(Debug, Clone)]
 pub enum UserIdentifier {
     /// User's first name
     FirstName,
@@ -31,7 +36,7 @@ pub enum UserIdentifier {
 
 /// Enum of known asset types
 
-#[derive(Default)]
+#[derive(Default, Debug, Clone, Copy)]
 pub enum AssetType {
     /// Database Table
     DBTable,
