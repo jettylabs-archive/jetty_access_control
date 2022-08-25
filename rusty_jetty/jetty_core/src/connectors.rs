@@ -20,7 +20,7 @@ pub trait Connector {
 
 /// Enum of identifiers used to resolve user identities
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum UserIdentifier {
     /// User's first name
     FirstName,
@@ -36,7 +36,7 @@ pub enum UserIdentifier {
 
 /// Enum of known asset types
 
-#[derive(Default)]
+#[derive(Default, Debug, Clone, Copy)]
 pub enum AssetType {
     /// Database Table
     DBTable,

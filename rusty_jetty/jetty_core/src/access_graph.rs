@@ -5,6 +5,8 @@
 mod graph;
 mod helpers;
 
+use crate::connectors::AssetType;
+
 use super::connectors;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -26,15 +28,24 @@ struct GroupAttributes {
     connectors: Vec<String>,
 }
 
+#[derive(Debug)]
+struct AssetAttributes {
+    name: String,
+    asset_type: AssetType,
+    metadata: HashMap<String, String>,
+    connectors: Vec<String>,
+}
+
 /// Enum of node types
 #[derive(Debug)]
-enum JettyNode {
+pub(crate) enum JettyNode {
     Group(GroupAttributes),
     User(UserAttributes),
+    Asset(AssetAttributes),
 }
 
 /// Enum of edge types
-#[derive(PartialEq, Eq, Hash, Debug)]
+#[derive(PartialEq, Eq, Hash, Debug, Copy, Clone)]
 enum EdgeType {
     MemberOf,
     Includes,
@@ -50,8 +61,25 @@ enum EdgeType {
     GrantedTo,
 }
 
+fn get_edge_type_pair(edge_type: &EdgeType) -> EdgeType {
+    match edge_type {
+        EdgeType::MemberOf => EdgeType::Includes,
+        EdgeType::Includes => EdgeType::MemberOf,
+        EdgeType::GrantedBy => EdgeType::GrantedTo,
+        EdgeType::GrantedTo => EdgeType::GrantedBy,
+        EdgeType::ChildOf => EdgeType::ParentOf,
+        EdgeType::ParentOf => EdgeType::ChildOf,
+        EdgeType::DerivedFrom => EdgeType::DerivedTo,
+        EdgeType::DerivedTo => EdgeType::DerivedFrom,
+        EdgeType::TaggedAs => EdgeType::AppliedTo,
+        EdgeType::AppliedTo => EdgeType::TaggedAs,
+        EdgeType::GovernedBy => EdgeType::Governs,
+        EdgeType::Governs => EdgeType::GovernedBy,
+    }
+}
+
 /// Mapping of node identifiers (like asset name) to their id in the graph
-#[derive(PartialEq, Eq, Hash)]
+#[derive(PartialEq, Eq, Hash, Clone)]
 enum NodeName {
     User(String),
     Group(String),
@@ -61,7 +89,7 @@ enum NodeName {
 }
 
 #[derive(Hash, Eq, PartialEq)]
-struct JettyEdge {
+pub(crate) struct JettyEdge {
     from: NodeName,
     to: NodeName,
     edge_type: EdgeType,
