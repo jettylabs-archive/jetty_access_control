@@ -6,7 +6,10 @@ pub mod nodes;
 use anyhow::Result;
 use async_trait::async_trait;
 
-use crate::jetty::{ConnectorConfig, CredentialsBlob};
+use crate::{
+    connectors::nodes::ConnectorData,
+    jetty::{ConnectorConfig, CredentialsBlob},
+};
 
 /// The trait all connectors are expected to implement.
 #[async_trait]
@@ -16,6 +19,8 @@ pub trait Connector {
     /// Check if the Connector is properly set up and return the connection
     /// status (true for connected, false for not).
     async fn check(&self) -> bool;
+    /// Get all data in one container for the connector to supply to the graph.
+    fn get_data(&self) -> ConnectorData;
 }
 
 /// Enum of identifiers used to resolve user identities
