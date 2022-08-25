@@ -5,11 +5,11 @@ use derivative::Derivative;
 
 /// Container for all node data for a given connector
 pub struct ConnectorData {
-    groups: Vec<Group>,
-    users: Vec<User>,
-    assets: Vec<Asset>,
-    tags: Vec<Tag>,
-    policies: Vec<Policy>,
+    pub(crate) groups: Vec<Group>,
+    pub(crate) users: Vec<User>,
+    pub(crate) assets: Vec<Asset>,
+    pub(crate) tags: Vec<Tag>,
+    pub(crate) policies: Vec<Policy>,
 }
 
 /// Group data provided by connectors
