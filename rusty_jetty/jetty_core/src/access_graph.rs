@@ -5,7 +5,6 @@
 mod graph;
 mod helpers;
 
-use crate::connectors::nodes::User;
 use crate::connectors::AssetType;
 
 use super::connectors;
@@ -22,6 +21,7 @@ use anyhow::{anyhow, Context, Result};
 pub(crate) struct UserAttributes {
     name: String,
     identifiers: HashMap<connectors::UserIdentifier, String>,
+    other_identifiers: HashSet<String>,
     metadata: HashMap<String, String>,
     connectors: HashSet<String>,
 }
@@ -32,12 +32,15 @@ impl UserAttributes {
             .context("field: UserAttributes.name")?;
         let identifiers = merge_map(&self.identifiers, &new_attributes.identifiers)
             .context("field: UserAttributes.identifiers")?;
+        let other_identifiers =
+            merge_set(&self.other_identifiers, &new_attributes.other_identifiers);
         let metadata = merge_map(&self.metadata, &new_attributes.metadata)
             .context("field: UserAttributes.metadata")?;
         let connectors = merge_set(&self.connectors, &new_attributes.connectors);
         Ok(UserAttributes {
             name,
             identifiers,
+            other_identifiers,
             metadata,
             connectors,
         })

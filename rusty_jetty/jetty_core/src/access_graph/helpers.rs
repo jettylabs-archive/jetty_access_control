@@ -69,6 +69,7 @@ impl NodeHelper for nodes::User {
         JettyNode::User(UserAttributes {
             name: self.name.to_owned(),
             identifiers: self.identifiers.to_owned(),
+            other_identifiers: self.other_identifiers.to_owned(),
             metadata: self.metadata.to_owned(),
             connectors: HashSet::from([connector.to_owned()]),
         })

@@ -41,6 +41,9 @@ pub struct User {
     /// Additional user identifiers that are used to resolve users
     /// cross-platform
     pub identifiers: HashMap<super::UserIdentifier, String>,
+    /// Additional identifying strings that can be used for cross-
+    /// platform entity resolution
+    pub other_identifiers: HashSet<String>,
     /// K-V pairs of user-specific metadata. When sent to the graph
     /// the keys should be namespaced (e.g. `snow::key : value`)
     pub metadata: HashMap<String, String>,
