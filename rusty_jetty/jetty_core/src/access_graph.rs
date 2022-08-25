@@ -36,12 +36,32 @@ struct AssetAttributes {
     connectors: Vec<String>,
 }
 
+#[derive(Debug)]
+struct TagAttributes {
+    name: String,
+    value: Option<String>,
+    pass_through_hierarchy: bool,
+    pass_through_lineage: bool,
+    connectors: Vec<String>,
+}
+
+#[derive(Debug)]
+struct PolicyAttributes {
+    name: String,
+    privileges: Vec<String>,
+    pass_through_hierarchy: bool,
+    pass_through_lineage: bool,
+    connectors: Vec<String>,
+}
+
 /// Enum of node types
 #[derive(Debug)]
 pub(crate) enum JettyNode {
     Group(GroupAttributes),
     User(UserAttributes),
     Asset(AssetAttributes),
+    Tag(TagAttributes),
+    Policy(PolicyAttributes),
 }
 
 /// Enum of edge types
