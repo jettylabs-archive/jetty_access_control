@@ -1,14 +1,21 @@
 //! Helpers to represent data on its way into the graph
 
-use std::collections::HashMap;
+use std::{
+    collections::{HashMap, HashSet},
+    hash::Hash,
+};
 
-use super::{connectors, connectors::nodes, AccessGraph};
-use anyhow::{Ok, Result};
+use super::{
+    connectors, connectors::nodes, AccessGraph, EdgeType, GroupAttributes, JettyEdge, JettyNode,
+    NodeName,
+};
+use anyhow::Result;
 /// All helper types implement NodeHelpers.
 pub trait NodeHelper {
-    /// Register construct or update a node in the graph and
-    /// stash the required edges in the edge cache
-    fn register(&self, g: AccessGraph) -> Result<()>;
+    /// Return a JettyNode from the helper
+    fn get_node(&self) -> JettyNode;
+    /// Return a set of JettyEdges from the helper
+    fn get_edges(&self) -> HashSet<JettyEdge>;
 }
 
 /// Object used to populate group nodes and edges in the graph
@@ -19,8 +26,24 @@ pub struct Group {
 }
 
 impl NodeHelper for Group {
-    fn register(&self, g: AccessGraph) -> Result<()> {
-        Ok(())
+    fn get_node(&self) -> JettyNode {
+        JettyNode::Group(GroupAttributes {
+            name: self.node.name.to_owned(),
+            metadata: self.node.metadata.to_owned(),
+            connectors: self.connectors.to_owned(),
+        })
+    }
+
+    fn get_edges(&self) -> HashSet<JettyEdge> {
+        let mut hs = HashSet::<JettyEdge>::new();
+        for v in &self.node.member_of {
+            hs.insert(JettyEdge {
+                from: NodeName::Group(self.node.name.to_owned()),
+                to: NodeName::Group(v.to_owned()),
+                edge_type: EdgeType::MemberOf,
+            });
+        }
+        hs
     }
 }
 

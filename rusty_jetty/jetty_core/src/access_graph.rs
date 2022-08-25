@@ -2,19 +2,12 @@
 //!
 //! `access_graph` is a library for modeling data access permissions and metadata as a graph.
 
+mod graph;
 mod helpers;
 
 use super::connectors;
 use std::collections::HashMap;
-
-use anyhow::{anyhow, Context, Result, *};
-
-use graphviz_rust as graphviz;
-use graphviz_rust::cmd::CommandArg;
-use graphviz_rust::cmd::Format;
-use graphviz_rust::printer::PrinterContext;
-use petgraph::dot;
-use petgraph::stable_graph::StableDiGraph;
+use std::collections::HashSet;
 
 /// Attributes associated with a User node
 #[derive(Debug)]
@@ -41,14 +34,25 @@ enum JettyNode {
 }
 
 /// Enum of edge types
-#[derive(Debug)]
-enum JettyEdge {
+#[derive(PartialEq, Eq, Hash, Debug)]
+enum EdgeType {
     MemberOf,
     Includes,
+    GrantedBy,
+    ChildOf,
+    ParentOf,
+    DerivedFrom,
+    DerivedTo,
+    TaggedAs,
+    GovernedBy,
+    AppliedTo,
+    Governs,
+    GrantedTo,
 }
 
 /// Mapping of node identifiers (like asset name) to their id in the graph
-enum NodeID {
+#[derive(PartialEq, Eq, Hash)]
+enum NodeName {
     User(String),
     Group(String),
     Asset(String),
@@ -56,24 +60,18 @@ enum NodeID {
     Tag(String),
 }
 
+#[derive(Hash, Eq, PartialEq)]
+struct JettyEdge {
+    from: NodeName,
+    to: NodeName,
+    edge_type: EdgeType,
+}
+
 /// Representation of data access state
 pub struct AccessGraph {
     /// The graph itself
-    graph: StableDiGraph<JettyNode, JettyEdge>,
-    /// A map of node identifiers to indecies
-    nodes: HashMap<NodeID, u32>,
+    graph: graph::Graph,
+    edge_cache: HashSet<JettyEdge>,
 }
 
-impl AccessGraph {
-    /// Save a svg of the access graph to the specified filename
-    pub fn visualize(&self, path: String) -> Result<String> {
-        let my_dot = dot::Dot::new(&self.graph);
-        let g = graphviz::parse(&format!["{:?}", my_dot]).map_err(|s| anyhow!(s))?;
-        let draw = graphviz::exec(
-            g,
-            &mut PrinterContext::default(),
-            vec![CommandArg::Format(Format::Svg), CommandArg::Output(path)],
-        )?;
-        Ok(draw)
-    }
-}
+impl AccessGraph {}

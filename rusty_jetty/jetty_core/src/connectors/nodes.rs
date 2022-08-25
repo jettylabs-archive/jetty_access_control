@@ -101,9 +101,9 @@ pub struct Policy {
     /// IDs of tags governed by the policy
     pub governs_tags: Vec<String>,
     /// IDs or goups the policy is applied to
-    pub grants_to_groups: Vec<String>,
+    pub granted_to_groups: Vec<String>,
     /// IDs of users the policy is applied to
-    pub grants_to_users: Vec<String>,
+    pub granted_to_users: Vec<String>,
     /// Whether the policy also applies to child assets
     #[derivative(Default(value = "true"))]
     pub pass_through_hierarchy: bool,
