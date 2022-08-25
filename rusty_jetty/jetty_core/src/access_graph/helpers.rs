@@ -10,57 +10,50 @@ use super::{
 /// All helper types implement NodeHelpers.
 pub(crate) trait NodeHelper {
     /// Return a JettyNode from the helper
-    fn get_node(&self) -> JettyNode;
+    fn get_node(&self, connector: String) -> JettyNode;
     /// Return a set of JettyEdges from the helper
     fn get_edges(&self) -> HashSet<JettyEdge>;
 }
 
-/// Object used to populate group nodes and edges in the graph
-#[derive(Default)]
-pub(crate) struct Group {
-    node: nodes::Group,
-    connectors: Vec<String>,
-}
-
-impl NodeHelper for Group {
-    fn get_node(&self) -> JettyNode {
+impl NodeHelper for nodes::Group {
+    fn get_node(&self, connector: String) -> JettyNode {
         JettyNode::Group(GroupAttributes {
-            name: self.node.name.to_owned(),
-            metadata: self.node.metadata.to_owned(),
-            connectors: self.connectors.to_owned(),
+            name: self.name.to_owned(),
+            metadata: self.metadata.to_owned(),
+            connectors: HashSet::from([connector.to_owned()]),
         })
     }
 
     fn get_edges(&self) -> HashSet<JettyEdge> {
         let mut hs = HashSet::<JettyEdge>::new();
-        for v in &self.node.member_of {
+        for v in &self.member_of {
             insert_edge_pair(
                 &mut hs,
-                NodeName::Group(self.node.name.to_owned()),
+                NodeName::Group(self.name.to_owned()),
                 NodeName::Group(v.to_owned()),
                 EdgeType::MemberOf,
             );
         }
-        for v in &self.node.includes_users {
+        for v in &self.includes_users {
             insert_edge_pair(
                 &mut hs,
-                NodeName::Group(self.node.name.to_owned()),
+                NodeName::Group(self.name.to_owned()),
                 NodeName::User(v.to_owned()),
                 EdgeType::Includes,
             );
         }
-        for v in &self.node.includes_groups {
+        for v in &self.includes_groups {
             insert_edge_pair(
                 &mut hs,
-                NodeName::Group(self.node.name.to_owned()),
+                NodeName::Group(self.name.to_owned()),
                 NodeName::Group(v.to_owned()),
                 EdgeType::Includes,
             );
         }
-        for v in &self.node.granted_by {
+        for v in &self.granted_by {
             insert_edge_pair(
                 &mut hs,
-                NodeName::Group(self.node.name.to_owned()),
+                NodeName::Group(self.name.to_owned()),
                 NodeName::Policy(v.to_owned()),
                 EdgeType::GrantedBy,
             );
@@ -70,36 +63,31 @@ impl NodeHelper for Group {
 }
 
 /// Object used to populate user nodes and edges in the graph
-#[derive(Default)]
-pub(crate) struct User {
-    node: nodes::User,
-    connectors: Vec<String>,
-}
 
-impl NodeHelper for User {
-    fn get_node(&self) -> JettyNode {
+impl NodeHelper for nodes::User {
+    fn get_node(&self, connector: String) -> JettyNode {
         JettyNode::User(UserAttributes {
-            name: self.node.name.to_owned(),
-            identifiers: self.node.identifiers.to_owned(),
-            metadata: self.node.metadata.to_owned(),
-            connectors: self.connectors.to_owned(),
+            name: self.name.to_owned(),
+            identifiers: self.identifiers.to_owned(),
+            metadata: self.metadata.to_owned(),
+            connectors: HashSet::from([connector.to_owned()]),
         })
     }
 
     fn get_edges(&self) -> HashSet<JettyEdge> {
         let mut hs = HashSet::<JettyEdge>::new();
-        for v in &self.node.member_of {
+        for v in &self.member_of {
             insert_edge_pair(
                 &mut hs,
-                NodeName::User(self.node.name.to_owned()),
+                NodeName::User(self.name.to_owned()),
                 NodeName::Group(v.to_owned()),
                 EdgeType::MemberOf,
             );
         }
-        for v in &self.node.granted_by {
+        for v in &self.granted_by {
             insert_edge_pair(
                 &mut hs,
-                NodeName::User(self.node.name.to_owned()),
+                NodeName::User(self.name.to_owned()),
                 NodeName::Policy(v.to_owned()),
                 EdgeType::GrantedBy,
             );
@@ -108,69 +96,62 @@ impl NodeHelper for User {
     }
 }
 
-/// Object used to populate asset nodes and edges in the graph
-#[derive(Default)]
-pub(crate) struct Asset {
-    node: nodes::Asset,
-    connectors: Vec<String>,
-}
-
-impl NodeHelper for Asset {
-    fn get_node(&self) -> JettyNode {
+impl NodeHelper for nodes::Asset {
+    fn get_node(&self, connector: String) -> JettyNode {
         JettyNode::Asset(AssetAttributes {
-            name: self.node.name.to_owned(),
-            asset_type: self.node.asset_type.to_owned(),
-            metadata: self.node.metadata.to_owned(),
-            connectors: self.connectors.to_owned(),
+            name: self.name.to_owned(),
+            asset_type: self.asset_type.to_owned(),
+            metadata: self.metadata.to_owned(),
+            connectors: HashSet::from([connector.to_owned()]),
         })
     }
 
     fn get_edges(&self) -> HashSet<JettyEdge> {
         let mut hs = HashSet::<JettyEdge>::new();
-        for v in &self.node.governed_by {
+        for v in &self.governed_by {
             insert_edge_pair(
                 &mut hs,
-                NodeName::Asset(self.node.name.to_owned()),
+                NodeName::Asset(self.name.to_owned()),
                 NodeName::Policy(v.to_owned()),
                 EdgeType::GovernedBy,
             );
         }
-        for v in &self.node.child_of {
+        for v in &self.child_of {
             insert_edge_pair(
                 &mut hs,
-                NodeName::Asset(self.node.name.to_owned()),
+                NodeName::Asset(self.name.to_owned()),
                 NodeName::Asset(v.to_owned()),
                 EdgeType::ChildOf,
             );
         }
-        for v in &self.node.parent_of {
+        for v in &self.parent_of {
             insert_edge_pair(
                 &mut hs,
-                NodeName::Asset(self.node.name.to_owned()),
+                NodeName::Asset(self.name.to_owned()),
                 NodeName::Asset(v.to_owned()),
                 EdgeType::ParentOf,
             );
         }
-        for v in &self.node.derived_from {
+        for v in &self.derived_from {
             insert_edge_pair(
                 &mut hs,
-                NodeName::Asset(self.node.name.to_owned()),
+                NodeName::Asset(self.name.to_owned()),
                 NodeName::Asset(v.to_owned()),
                 EdgeType::DerivedFrom,
             );
         }
-        for v in &self.node.derived_to {
+        for v in &self.derived_to {
             insert_edge_pair(
                 &mut hs,
-                NodeName::Asset(self.node.name.to_owned()),
+                NodeName::Asset(self.name.to_owned()),
                 NodeName::Asset(v.to_owned()),
                 EdgeType::DerivedTo,
             );
         }
-        for v in &self.node.tagged_as {
+        for v in &self.tagged_as {
             insert_edge_pair(
                 &mut hs,
-                NodeName::Asset(self.node.name.to_owned()),
+                NodeName::Asset(self.name.to_owned()),
                 NodeName::Tag(v.to_owned()),
                 EdgeType::TaggedAs,
             );
@@ -179,37 +160,31 @@ impl NodeHelper for Asset {
     }
 }
 
-/// Object used to populate tag nodes and edges in the graph
-#[derive(Debug)]
-pub(crate) struct Tag {
-    node: nodes::Tag,
-    connectors: Vec<String>,
-}
-impl NodeHelper for Tag {
-    fn get_node(&self) -> JettyNode {
+impl NodeHelper for nodes::Tag {
+    fn get_node(&self, connector: String) -> JettyNode {
         JettyNode::Tag(TagAttributes {
-            name: self.node.name.to_owned(),
-            value: self.node.value.to_owned(),
-            pass_through_hierarchy: self.node.pass_through_hierarchy,
-            pass_through_lineage: self.node.pass_through_lineage,
-            connectors: self.connectors.to_owned(),
+            name: self.name.to_owned(),
+            value: self.value.to_owned(),
+            pass_through_hierarchy: self.pass_through_hierarchy,
+            pass_through_lineage: self.pass_through_lineage,
+            connectors: HashSet::from([connector.to_owned()]),
         })
     }
 
     fn get_edges(&self) -> HashSet<JettyEdge> {
         let mut hs = HashSet::<JettyEdge>::new();
-        for v in &self.node.applied_to {
+        for v in &self.applied_to {
             insert_edge_pair(
                 &mut hs,
-                NodeName::Tag(self.node.name.to_owned()),
+                NodeName::Tag(self.name.to_owned()),
                 NodeName::Asset(v.to_owned()),
                 EdgeType::AppliedTo,
             );
         }
-        for v in &self.node.governed_by {
+        for v in &self.governed_by {
             insert_edge_pair(
                 &mut hs,
-                NodeName::Tag(self.node.name.to_owned()),
+                NodeName::Tag(self.name.to_owned()),
                 NodeName::Policy(v.to_owned()),
                 EdgeType::GovernedBy,
             );
@@ -218,54 +193,47 @@ impl NodeHelper for Tag {
     }
 }
 
-/// Object used to populate policy nodes and edges in the graph
-#[derive(Debug)]
-pub(crate) struct Policy {
-    node: nodes::Policy,
-    connectors: Vec<String>,
-}
-
-impl NodeHelper for Policy {
-    fn get_node(&self) -> JettyNode {
+impl NodeHelper for nodes::Policy {
+    fn get_node(&self, connector: String) -> JettyNode {
         JettyNode::Policy(PolicyAttributes {
-            name: self.node.name.to_owned(),
-            privileges: self.node.privileges.to_owned(),
-            pass_through_hierarchy: self.node.pass_through_hierarchy,
-            pass_through_lineage: self.node.pass_through_lineage,
-            connectors: self.connectors.to_owned(),
+            name: self.name.to_owned(),
+            privileges: self.privileges.to_owned(),
+            pass_through_hierarchy: self.pass_through_hierarchy,
+            pass_through_lineage: self.pass_through_lineage,
+            connectors: HashSet::from([connector.to_owned()]),
         })
     }
 
     fn get_edges(&self) -> HashSet<JettyEdge> {
         let mut hs = HashSet::<JettyEdge>::new();
-        for v in &self.node.governs_assets {
+        for v in &self.governs_assets {
             insert_edge_pair(
                 &mut hs,
-                NodeName::Policy(self.node.name.to_owned()),
+                NodeName::Policy(self.name.to_owned()),
                 NodeName::Asset(v.to_owned()),
                 EdgeType::Governs,
             );
         }
-        for v in &self.node.governs_tags {
+        for v in &self.governs_tags {
             insert_edge_pair(
                 &mut hs,
-                NodeName::Policy(self.node.name.to_owned()),
+                NodeName::Policy(self.name.to_owned()),
                 NodeName::Tag(v.to_owned()),
                 EdgeType::Governs,
             );
         }
-        for v in &self.node.granted_to_groups {
+        for v in &self.granted_to_groups {
             insert_edge_pair(
                 &mut hs,
-                NodeName::Policy(self.node.name.to_owned()),
+                NodeName::Policy(self.name.to_owned()),
                 NodeName::Group(v.to_owned()),
                 EdgeType::GrantedTo,
             );
         }
-        for v in &self.node.granted_to_users {
+        for v in &self.granted_to_users {
             insert_edge_pair(
                 &mut hs,
-                NodeName::Policy(self.node.name.to_owned()),
+                NodeName::Policy(self.name.to_owned()),
                 NodeName::User(v.to_owned()),
                 EdgeType::GrantedTo,
             );

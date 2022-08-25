@@ -1,10 +1,12 @@
 use std::collections::HashMap;
+use std::net::UdpSocket;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use graphviz_rust as graphviz;
 use graphviz_rust::cmd::CommandArg;
 use graphviz_rust::cmd::Format;
 use graphviz_rust::printer::PrinterContext;
+use petgraph::stable_graph::NodeIndex;
 use petgraph::{dot, stable_graph::StableDiGraph};
 
 use super::{EdgeType, JettyNode, NodeName};
@@ -36,9 +38,17 @@ impl Graph {
         return Ok(());
     }
 
-    /// Updates a node. Should return the updated node. Throws an
-    /// error if the nodes are incompatible (would require overwriting values)
-    pub fn update_node(&self, original: u32, new: JettyNode) -> Result<()> {
+    /// Updates a node. Should return the updated node. Returns an
+    /// error if the nodes are incompatible (would require overwriting values).
+    /// To be compatible, metadata from each
+    pub fn merge_nodes(&mut self, idx: u32, new: &JettyNode) -> Result<()> {
+        // Fetch node from graph
+        let idx: usize = idx.try_into().context("convert node index to usize")?;
+        let node = &mut self.graph[NodeIndex::new(idx)];
+
+        *node = node
+            .merge_nodes(new)
+            .context(format!["merging: {:?}, {:?}", node, new])?;
         Ok(())
     }
 
