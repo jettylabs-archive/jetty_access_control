@@ -1,8 +1,16 @@
 //! Nodes to be recieved from connectors
-
 use std::collections::HashMap;
 
 use derivative::Derivative;
+
+/// Container for all node data for a given connector
+pub struct ConnectorData {
+    groups: Vec<Group>,
+    users: Vec<User>,
+    assets: Vec<Asset>,
+    tags: Vec<Tag>,
+    policies: Vec<Policy>,
+}
 
 /// Group data provided by connectors
 #[derive(Default)]
@@ -43,7 +51,7 @@ pub struct User {
 }
 
 /// Struct used to populate asset nodes and edges in the graph
-#[derive(Default)]
+#[derive(Default, new)]
 pub struct Asset {
     /// Name of asset, fully qualified for the scope of use (connector)
     /// or graph.
@@ -53,7 +61,8 @@ pub struct Asset {
     /// K-V pairs of asset-specific metadata. When sent to the graph
     /// the keys should be namespaced (e.g. `snow::key : value`)
     pub metadata: HashMap<String, String>,
-    /// IDs of policies that govern this asset
+    /// IDs of policies that govern this asset.
+    /// Jetty will dedup these with Policy.governs_assets.
     pub governed_by: Vec<String>,
     /// IDs of hierarchical children of the asset
     pub child_of: Vec<String>,

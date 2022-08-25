@@ -1,5 +1,6 @@
 use anyhow::Result;
 use jetty_core::{fetch_credentials, Connector, Jetty};
+use jetty_snowflake::{Role, User};
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
@@ -10,8 +11,8 @@ async fn main() -> Result<()> {
     println!("checking for connection...");
     println!("working? {}", snow.check().await);
 
-    println!("{:#?}", snow.get_roles().await?);
-    let users = snow.get_users().await.unwrap();
+    println!("{:#?}", snow.query_to_obj::<Role>("SHOW ROLES").await?);
+    let users = snow.query_to_obj::<User>("SHOW USERS").await.unwrap();
     println!("{:#?}", users);
 
     Ok(())
