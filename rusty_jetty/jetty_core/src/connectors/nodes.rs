@@ -1,15 +1,15 @@
 //! Nodes to be recieved from connectors
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use derivative::Derivative;
 
 /// Container for all node data for a given connector
 pub struct ConnectorData {
-    groups: Vec<Group>,
-    users: Vec<User>,
-    assets: Vec<Asset>,
-    tags: Vec<Tag>,
-    policies: Vec<Policy>,
+    pub(crate) groups: Vec<Group>,
+    pub(crate) users: Vec<User>,
+    pub(crate) assets: Vec<Asset>,
+    pub(crate) tags: Vec<Tag>,
+    pub(crate) policies: Vec<Policy>,
 }
 
 /// Group data provided by connectors
@@ -21,13 +21,13 @@ pub struct Group {
     /// the keys should be namespaced (e.g. `snow::key : value`)
     pub metadata: HashMap<String, String>,
     /// IDs of the groups this group is a member of
-    pub member_of: Vec<String>,
+    pub member_of: HashSet<String>,
     /// IDs of users that are members of this group
-    pub includes_users: Vec<String>,
+    pub includes_users: HashSet<String>,
     /// IDs of groups that are members of this group
-    pub includes_groups: Vec<String>,
+    pub includes_groups: HashSet<String>,
     /// IDs of policies that are applied to this group
-    pub granted_by: Vec<String>,
+    pub granted_by: HashSet<String>,
 }
 
 /// User data provided by connectors
@@ -41,13 +41,16 @@ pub struct User {
     /// Additional user identifiers that are used to resolve users
     /// cross-platform
     pub identifiers: HashMap<super::UserIdentifier, String>,
+    /// Additional identifying strings that can be used for cross-
+    /// platform entity resolution
+    pub other_identifiers: HashSet<String>,
     /// K-V pairs of user-specific metadata. When sent to the graph
     /// the keys should be namespaced (e.g. `snow::key : value`)
     pub metadata: HashMap<String, String>,
     /// IDs of the groups this user is a member of
-    pub member_of: Vec<String>,
+    pub member_of: HashSet<String>,
     /// IDs of policies that are applied to this user
-    pub granted_by: Vec<String>,
+    pub granted_by: HashSet<String>,
 }
 
 /// Struct used to populate asset nodes and edges in the graph
@@ -63,17 +66,17 @@ pub struct Asset {
     pub metadata: HashMap<String, String>,
     /// IDs of policies that govern this asset.
     /// Jetty will dedup these with Policy.governs_assets.
-    pub governed_by: Vec<String>,
+    pub governed_by: HashSet<String>,
     /// IDs of hierarchical children of the asset
-    pub child_of: Vec<String>,
+    pub child_of: HashSet<String>,
     /// IDs of hierarchical parents of the asset
-    pub parent_of: Vec<String>,
+    pub parent_of: HashSet<String>,
     /// IDs of assets this asset is derived from
-    pub derived_from: Vec<String>,
+    pub derived_from: HashSet<String>,
     /// IDs of assets that are derived from this one
-    pub derived_to: Vec<String>,
+    pub derived_to: HashSet<String>,
     /// IDs of tags associated with this asset
-    pub tagged_as: Vec<String>,
+    pub tagged_as: HashSet<String>,
 }
 
 /// Struct used to populate tag nodes and edges in the graph
@@ -91,9 +94,9 @@ pub struct Tag {
     /// Whether the tag is to be passed through asset lineage
     pub pass_through_lineage: bool,
     /// IDs of assets the tag is applied to
-    pub applied_to: Vec<String>,
+    pub applied_to: HashSet<String>,
     /// IDs of policies that are applied to this asset
-    pub governed_by: Vec<String>,
+    pub governed_by: HashSet<String>,
 }
 
 /// Struct used to populate policy nodes and edges in the graph
@@ -104,15 +107,15 @@ pub struct Policy {
     pub name: String,
     /// Privileges associated with the policy, scoped to
     /// relevant context
-    pub privileges: Vec<String>,
+    pub privileges: HashSet<String>,
     /// IDs of assets governed by the policy
-    pub governs_assets: Vec<String>,
+    pub governs_assets: HashSet<String>,
     /// IDs of tags governed by the policy
-    pub governs_tags: Vec<String>,
+    pub governs_tags: HashSet<String>,
     /// IDs or goups the policy is applied to
-    pub granted_to_groups: Vec<String>,
+    pub granted_to_groups: HashSet<String>,
     /// IDs of users the policy is applied to
-    pub granted_to_users: Vec<String>,
+    pub granted_to_users: HashSet<String>,
     /// Whether the policy also applies to child assets
     #[derivative(Default(value = "true"))]
     pub pass_through_hierarchy: bool,

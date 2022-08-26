@@ -1,6 +1,3 @@
-use std::collections::HashMap;
-use std::net::UdpSocket;
-
 use anyhow::{anyhow, Context, Result};
 use graphviz_rust as graphviz;
 use graphviz_rust::cmd::CommandArg;
@@ -8,13 +5,14 @@ use graphviz_rust::cmd::Format;
 use graphviz_rust::printer::PrinterContext;
 use petgraph::stable_graph::NodeIndex;
 use petgraph::{dot, stable_graph::StableDiGraph};
+use std::collections::HashMap;
 
 use super::{EdgeType, JettyNode, NodeName};
 
 pub struct Graph {
     graph: StableDiGraph<JettyNode, EdgeType>,
     /// A map of node identifiers to indecies
-    nodes: HashMap<NodeName, u32>,
+    nodes: HashMap<NodeName, NodeIndex>,
 }
 
 impl Graph {
@@ -30,21 +28,23 @@ impl Graph {
         Ok(draw)
     }
     /// Check whether a given node already exists in the graph
-    pub fn node_exists(&self, node: NodeName) -> Option<u32> {
-        Some(10)
+    pub fn get_node(&self, node: &NodeName) -> Option<&NodeIndex> {
+        self.nodes.get(node)
     }
-    /// Adds a node to the graph. Maybe Make this generic. What is the input?
-    pub fn add_node(&self, node: JettyNode) -> Result<()> {
-        return Ok(());
+    /// Adds a node to the graph and returns the index.
+    pub fn add_node(&mut self, node: &JettyNode) -> Result<NodeIndex> {
+        let node_name = node.get_name();
+        let idx = self.graph.add_node(node.to_owned());
+        self.nodes.insert(node_name, idx);
+        Ok(idx)
     }
 
     /// Updates a node. Should return the updated node. Returns an
     /// error if the nodes are incompatible (would require overwriting values).
     /// To be compatible, metadata from each
-    pub fn merge_nodes(&mut self, idx: u32, new: &JettyNode) -> Result<()> {
+    pub fn merge_nodes(&mut self, idx: &NodeIndex, new: &JettyNode) -> Result<()> {
         // Fetch node from graph
-        let idx: usize = idx.try_into().context("convert node index to usize")?;
-        let node = &mut self.graph[NodeIndex::new(idx)];
+        let node = &mut self.graph[*idx];
 
         *node = node
             .merge_nodes(new)
@@ -53,7 +53,18 @@ impl Graph {
     }
 
     /// Add edges from cache. Return an error if to/from doesn't exist
-    pub fn add_edge(&self, edge: super::JettyEdge) -> Result<()> {
+    pub fn add_edge(&mut self, edge: super::JettyEdge) -> Result<()> {
+        let to = self.get_node(&edge.to);
+        if let None = to {
+            return Err(anyhow!["Unable to find \"to\" node: {:?}", &edge.to]);
+        }
+        let from = self.get_node(&edge.from);
+        if let None = from {
+            return Err(anyhow!["Unable to find \"from\" node: {:?}", &edge.from]);
+        }
+
+        self.graph
+            .add_edge(*from.unwrap(), *to.unwrap(), edge.edge_type);
         Ok(())
     }
 }

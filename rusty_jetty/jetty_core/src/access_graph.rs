@@ -5,8 +5,10 @@
 mod graph;
 mod helpers;
 
-use crate::connectors::nodes::User;
 use crate::connectors::AssetType;
+
+use self::helpers::NodeHelper;
+use self::helpers::ProcessedConnectorData;
 
 use super::connectors;
 use core::hash::Hash;
@@ -22,6 +24,7 @@ use anyhow::{anyhow, Context, Result};
 pub(crate) struct UserAttributes {
     name: String,
     identifiers: HashMap<connectors::UserIdentifier, String>,
+    other_identifiers: HashSet<String>,
     metadata: HashMap<String, String>,
     connectors: HashSet<String>,
 }
@@ -32,12 +35,15 @@ impl UserAttributes {
             .context("field: UserAttributes.name")?;
         let identifiers = merge_map(&self.identifiers, &new_attributes.identifiers)
             .context("field: UserAttributes.identifiers")?;
+        let other_identifiers =
+            merge_set(&self.other_identifiers, &new_attributes.other_identifiers);
         let metadata = merge_map(&self.metadata, &new_attributes.metadata)
             .context("field: UserAttributes.metadata")?;
         let connectors = merge_set(&self.connectors, &new_attributes.connectors);
         Ok(UserAttributes {
             name,
             identifiers,
+            other_identifiers,
             metadata,
             connectors,
         })
@@ -134,7 +140,7 @@ impl TagAttributes {
 #[derive(Debug, Clone)]
 pub(crate) struct PolicyAttributes {
     name: String,
-    privileges: Vec<String>,
+    privileges: HashSet<String>,
     pass_through_hierarchy: bool,
     pass_through_lineage: bool,
     connectors: HashSet<String>,
@@ -196,10 +202,23 @@ impl JettyNode {
             (JettyNode::Policy(a1), JettyNode::Policy(a2)) => {
                 Ok(JettyNode::Policy(a1.merge_attributes(a2)?))
             }
-            (a, b) => Err(anyhow![format![
+            (a, b) => Err(anyhow![
                 "Unable to merge nodes of different types: {:?}, {:?}",
-                a, b
-            ]]),
+                a,
+                b
+            ]),
+        }
+    }
+
+    /// Given a node, return the NodeName. This will return the name field
+    /// wrapped in the appropriate enum.
+    fn get_name(&self) -> NodeName {
+        match &self {
+            JettyNode::Asset(a) => NodeName::Asset(a.name.to_owned()),
+            JettyNode::Group(a) => NodeName::Group(a.name.to_owned()),
+            JettyNode::Policy(a) => NodeName::Policy(a.name.to_owned()),
+            JettyNode::Tag(a) => NodeName::Tag(a.name.to_owned()),
+            JettyNode::User(a) => NodeName::User(a.name.to_owned()),
         }
     }
 }
@@ -239,7 +258,7 @@ fn get_edge_type_pair(edge_type: &EdgeType) -> EdgeType {
 }
 
 /// Mapping of node identifiers (like asset name) to their id in the graph
-#[derive(PartialEq, Eq, Hash, Clone)]
+#[derive(PartialEq, Eq, Hash, Clone, Debug)]
 enum NodeName {
     User(String),
     Group(String),
@@ -248,7 +267,7 @@ enum NodeName {
     Tag(String),
 }
 
-#[derive(Hash, Eq, PartialEq)]
+#[derive(Hash, Eq, PartialEq, Debug, Clone)]
 pub(crate) struct JettyEdge {
     from: NodeName,
     to: NodeName,
@@ -260,9 +279,36 @@ pub struct AccessGraph {
     /// The graph itself
     graph: graph::Graph,
     edge_cache: HashSet<JettyEdge>,
+    last_modified: usize,
 }
 
-impl AccessGraph {}
+impl AccessGraph {
+    pub(crate) fn build_graph(&mut self, data: ProcessedConnectorData) -> Result<()> {
+        self.get_node_and_edges(&data.data.groups, &data.connector)?;
+        self.get_node_and_edges(&data.data.users, &data.connector)?;
+        self.get_node_and_edges(&data.data.assets, &data.connector)?;
+        self.get_node_and_edges(&data.data.policies, &data.connector)?;
+        self.get_node_and_edges(&data.data.tags, &data.connector)?;
+        for edge in &self.edge_cache {
+            self.graph.add_edge(edge.to_owned())?;
+        }
+        Ok(())
+    }
+
+    fn get_node_and_edges<T: NodeHelper>(
+        &mut self,
+        nodes: &Vec<T>,
+        connector: &String,
+    ) -> Result<()> {
+        for n in nodes {
+            let node = n.get_node(connector.to_owned());
+            self.graph.add_node(&node)?;
+            let edges = n.get_edges();
+            self.edge_cache.extend(edges);
+        }
+        Ok(())
+    }
+}
 
 fn merge_set(s1: &HashSet<String>, s2: &HashSet<String>) -> HashSet<String> {
     let mut s1 = s1.to_owned();
@@ -275,10 +321,11 @@ where
     T: std::cmp::PartialEq + std::cmp::Eq + Debug + Clone,
 {
     if s1 != s2 {
-        return Err(anyhow![format![
+        return Err(anyhow![
             "unable to merge: fields don't match: {:?}, {:?}",
-            s1, s2
-        ]]);
+            s1,
+            s2
+        ]);
     }
     Ok(s1.to_owned())
 }
@@ -291,10 +338,12 @@ where
     for (k, v) in m2 {
         if let Some(w) = m1.get(k) {
             if w != v {
-                return Err(anyhow![format![
+                return Err(anyhow![
                     "unable to merge: conflicting data on key {:?}: {:?}, {:?}",
-                    k, w, v
-                ]]);
+                    k,
+                    w,
+                    v
+                ]);
             }
         }
     }
