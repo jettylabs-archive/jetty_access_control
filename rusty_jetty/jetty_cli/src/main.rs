@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use jetty_core::{access_graph::AccessGraph, fetch_credentials, Connector, Jetty};
 use jetty_snowflake::{Role, User};
 
@@ -18,7 +18,10 @@ async fn main() -> Result<()> {
         data: snow_data,
     };
     let ag = AccessGraph::new(vec![pcd])?;
-    let res = ag.graph.visualize("/tmp/graph".to_owned())?;
+    let res = ag
+        .graph
+        .visualize("/tmp/graph.svg".to_owned())
+        .context("failed to visualize")?;
     println!("{}", res);
 
     Ok(())

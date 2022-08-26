@@ -30,7 +30,7 @@ use jetty_core::{
 use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
 use jsonwebtoken::{encode, get_current_timestamp, Algorithm, EncodingKey, Header};
-use reqwest_middleware::{ClientBuilder, RequestBuilder};
+use reqwest_middleware::{ClientBuilder, ClientWithMiddleware, RequestBuilder};
 use reqwest_retry::{policies::ExponentialBackoff, RetryTransientMiddleware};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -51,6 +51,7 @@ struct SnowflakeField {
 pub struct Snowflake {
     /// The credentials used to authenticate into Snowflake.
     credentials: SnowflakeCredentials,
+    http_client: ClientWithMiddleware,
 }
 
 /// Credentials for authenticating to Snowflake.
@@ -146,7 +147,14 @@ impl Connector for Snowflake {
                 required_fields
             ])
         } else {
-            Ok(Box::new(Snowflake { credentials: conn }))
+            let retry_policy = ExponentialBackoff::builder().build_with_max_retries(3);
+            let client = ClientBuilder::new(reqwest::Client::new())
+                .with(RetryTransientMiddleware::new_with_policy(retry_policy))
+                .build();
+            Ok(Box::new(Snowflake {
+                credentials: conn,
+                http_client: client,
+            }))
         }
     }
 }
@@ -196,12 +204,8 @@ impl Snowflake {
         let token = self.get_jwt()?;
         let body = self.get_body(sql);
 
-        let retry_policy = ExponentialBackoff::builder().build_with_max_retries(3);
-        let client = ClientBuilder::new(reqwest::Client::new())
-            .with(RetryTransientMiddleware::new_with_policy(retry_policy))
-            .build();
-
-        Ok(client
+        Ok(self
+            .http_client
             .post(format![
                 "https://{}.snowflakecomputing.com/api/v2/statements",
                 self.credentials.account
@@ -346,9 +350,11 @@ impl Snowflake {
                 .get_grants_to_role(&role.name)
                 .await?
                 .iter()
-                // We don't need children groups. Those relationships will be taken care of
+                // Ignored types here:
+                // ACCOUNT, FUNCTION, WAREHOUSE: These are TODOs for a future iteration.
+                // ROLE: We don't need children groups. Those relationships will be taken care of
                 // as parent roles.
-                .filter(|g| g.granted_on != "ROLE")
+                .filter(|g| consts::ASSET_TYPES.contains(&g.granted_on.as_str()))
                 .map(|g| self.grant_to_policy(&role.name, g))
                 .collect::<FuturesUnordered<_>>()
                 .collect::<Vec<_>>()
@@ -399,11 +405,14 @@ impl Snowflake {
         let mut res = vec![];
         for table in self.get_tables().await? {
             res.push(nodes::Asset::new(
-                table.name,
+                format!(
+                    "{}.{}.{}",
+                    table.database_name, table.schema_name, table.name
+                ),
                 connectors::AssetType::DBTable,
                 hashmap![],
                 hashset![],
-                hashset![table.schema_name],
+                hashset![format!("{}.{}", table.database_name, table.schema_name)],
                 hashset![],
                 hashset![],
                 hashset![],
@@ -413,11 +422,11 @@ impl Snowflake {
 
         for view in self.get_views().await? {
             res.push(nodes::Asset::new(
-                view.name,
+                format!("{}.{}.{}", view.database_name, view.schema_name, view.name),
                 connectors::AssetType::DBView,
                 hashmap![],
                 hashset![],
-                hashset![view.schema_name],
+                hashset![format!("{}.{}", view.database_name, view.schema_name)],
                 hashset![],
                 hashset![],
                 hashset![],
@@ -430,7 +439,7 @@ impl Snowflake {
         for schema in schemas {
             // TODO: Get subassets
             res.push(nodes::Asset::new(
-                schema.name,
+                format!("{}.{}", schema.database_name, schema.name),
                 connectors::AssetType::DBSchema,
                 hashmap![],
                 hashset![],

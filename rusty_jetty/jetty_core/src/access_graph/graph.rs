@@ -23,12 +23,15 @@ impl Graph {
     /// Save a svg of the access graph to the specified filename
     pub fn visualize(&self, path: String) -> Result<String> {
         let my_dot = dot::Dot::new(&self.graph);
-        let g = graphviz::parse(&format!["{:?}", my_dot]).map_err(|s| anyhow!(s))?;
+        let g = graphviz::parse(&format!["{:?}", my_dot])
+            .map_err(|s| anyhow!(s))
+            .context("failed to parse")?;
         let draw = graphviz::exec(
             g,
             &mut PrinterContext::default(),
             vec![CommandArg::Format(Format::Svg), CommandArg::Output(path)],
-        )?;
+        )
+        .context("failed to exec graphviz. do you need to install it?")?;
         Ok(draw)
     }
     /// Check whether a given node already exists in the graph
@@ -60,11 +63,19 @@ impl Graph {
     pub(crate) fn add_edge(&mut self, edge: super::JettyEdge) -> Result<()> {
         let to = self.get_node(&edge.to);
         if let None = to {
-            return Err(anyhow!["Unable to find \"to\" node: {:?}", &edge.to]);
+            return Err(anyhow![
+                "Unable to find \"to\" node: {:?} for \"from\" {:?}",
+                &edge.to,
+                &edge.from
+            ]);
         }
         let from = self.get_node(&edge.from);
         if let None = from {
-            return Err(anyhow!["Unable to find \"from\" node: {:?}", &edge.from]);
+            return Err(anyhow![
+                "Unable to find \"from\" node: {:?} for \"to\" {:?}",
+                &edge.from,
+                &edge.to
+            ]);
         }
 
         self.graph
