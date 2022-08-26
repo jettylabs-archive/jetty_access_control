@@ -7,4 +7,5 @@ use structmap_derive::FromMap;
 pub struct Schema {
     /// The schema name in Snowflake.
     pub name: String,
+    pub database_name: String,
 }

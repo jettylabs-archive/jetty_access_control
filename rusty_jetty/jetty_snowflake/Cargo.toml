@@ -20,3 +20,6 @@ yaml-peg = { version = "1.0.4", features = ["serde"] }
 graphviz-rust = "0.2.1"
 petgraph = "0.6.2"
 maplit = "1.0.2"
+futures = "0.3.23"
+reqwest-retry = "0.1.5"
+reqwest-middleware = "0.1.6"

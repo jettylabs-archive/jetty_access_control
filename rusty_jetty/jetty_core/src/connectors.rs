@@ -20,7 +20,7 @@ pub trait Connector {
     /// status (true for connected, false for not).
     async fn check(&self) -> bool;
     /// Get all data in one container for the connector to supply to the graph.
-    fn get_data(&self) -> ConnectorData;
+    async fn get_data(&self) -> ConnectorData;
 }
 
 /// Enum of identifiers used to resolve user identities
