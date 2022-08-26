@@ -191,6 +191,7 @@ pub(crate) enum JettyNode {
 }
 
 impl JettyNode {
+    #[allow(dead_code)]
     fn merge_nodes(&self, new_node: &JettyNode) -> Result<JettyNode> {
         match (&self, new_node) {
             (JettyNode::Group(a1), JettyNode::Group(a2)) => {
@@ -231,7 +232,7 @@ impl JettyNode {
 
 /// Enum of edge types
 #[derive(PartialEq, Eq, Hash, Debug, Copy, Clone)]
-enum EdgeType {
+pub(crate) enum EdgeType {
     MemberOf,
     Includes,
     GrantedBy,
@@ -290,6 +291,7 @@ pub struct AccessGraph {
     /// The graph itself
     pub graph: graph::Graph,
     edge_cache: HashSet<JettyEdge>,
+    #[allow(dead_code)]
     last_modified: usize,
 }
 
@@ -337,12 +339,14 @@ impl AccessGraph {
     }
 }
 
+#[allow(dead_code)]
 fn merge_set(s1: &HashSet<String>, s2: &HashSet<String>) -> HashSet<String> {
     let mut s1 = s1.to_owned();
     let s2 = s2.to_owned();
     s1.extend(s2);
     s1
 }
+#[allow(dead_code)]
 fn merge_matched_field<T>(s1: &T, s2: &T) -> Result<T>
 where
     T: std::cmp::PartialEq + std::cmp::Eq + Debug + Clone,
@@ -357,6 +361,7 @@ where
     Ok(s1.to_owned())
 }
 
+#[allow(dead_code)]
 fn merge_map<K, V>(m1: &HashMap<K, V>, m2: &HashMap<K, V>) -> Result<HashMap<K, V>>
 where
     K: Debug + Clone + Hash + std::cmp::Eq,

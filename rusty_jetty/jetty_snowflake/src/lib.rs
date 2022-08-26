@@ -327,7 +327,7 @@ impl Snowflake {
     }
 
     async fn grant_to_policy(&self, role_name: &str, grant: &Grant) -> Result<nodes::Policy> {
-        let granted_to_groups = self
+        let _granted_to_groups = self
             .get_grants_on_role(role_name)
             .await
             .context(format!("failed to get grants on role {}", &role_name))?;

@@ -29,7 +29,7 @@ impl NodeHelper for nodes::Group {
         JettyNode::Group(GroupAttributes {
             name: self.name.to_owned(),
             metadata: self.metadata.to_owned(),
-            connectors: HashSet::from([connector.to_owned()]),
+            connectors: HashSet::from([connector]),
         })
     }
 
@@ -80,7 +80,7 @@ impl NodeHelper for nodes::User {
             identifiers: self.identifiers.to_owned(),
             other_identifiers: self.other_identifiers.to_owned(),
             metadata: self.metadata.to_owned(),
-            connectors: HashSet::from([connector.to_owned()]),
+            connectors: HashSet::from([connector]),
         })
     }
 
@@ -112,7 +112,7 @@ impl NodeHelper for nodes::Asset {
             name: self.name.to_owned(),
             asset_type: self.asset_type.to_owned(),
             metadata: self.metadata.to_owned(),
-            connectors: HashSet::from([connector.to_owned()]),
+            connectors: HashSet::from([connector]),
         })
     }
 
@@ -177,7 +177,7 @@ impl NodeHelper for nodes::Tag {
             value: self.value.to_owned(),
             pass_through_hierarchy: self.pass_through_hierarchy,
             pass_through_lineage: self.pass_through_lineage,
-            connectors: HashSet::from([connector.to_owned()]),
+            connectors: HashSet::from([connector]),
         })
     }
 
@@ -210,7 +210,7 @@ impl NodeHelper for nodes::Policy {
             privileges: self.privileges.to_owned(),
             pass_through_hierarchy: self.pass_through_hierarchy,
             pass_through_lineage: self.pass_through_lineage,
-            connectors: HashSet::from([connector.to_owned()]),
+            connectors: HashSet::from([connector]),
         })
     }
 
@@ -264,8 +264,8 @@ fn insert_edge_pair(
         edge_type: edge_type.to_owned(),
     });
     hs.insert(JettyEdge {
-        from: to.to_owned(),
-        to: from.to_owned(),
+        from: to,
+        to: from,
         edge_type: super::get_edge_type_pair(&edge_type),
     });
 }

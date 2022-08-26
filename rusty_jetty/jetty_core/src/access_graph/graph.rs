@@ -49,6 +49,7 @@ impl Graph {
     /// Updates a node. Should return the updated node. Returns an
     /// error if the nodes are incompatible (would require overwriting values).
     /// To be compatible, metadata from each
+    #[allow(dead_code)]
     pub(crate) fn merge_nodes(&mut self, idx: &NodeIndex, new: &JettyNode) -> Result<()> {
         // Fetch node from graph
         let node = &mut self.graph[*idx];
@@ -62,21 +63,21 @@ impl Graph {
     /// Add edges from cache. Return an error if to/from doesn't exist
     pub(crate) fn add_edge(&mut self, edge: super::JettyEdge) -> Result<()> {
         let to = self.get_node(&edge.to);
-        if let None = to {
-            return Err(anyhow![
+        to.ok_or_else(|| {
+            anyhow![
                 "Unable to find \"to\" node: {:?} for \"from\" {:?}",
                 &edge.to,
                 &edge.from
-            ]);
-        }
+            ]
+        })?;
         let from = self.get_node(&edge.from);
-        if let None = from {
-            return Err(anyhow![
+        from.ok_or_else(|| {
+            anyhow![
                 "Unable to find \"from\" node: {:?} for \"to\" {:?}",
                 &edge.from,
                 &edge.to
-            ]);
-        }
+            ]
+        })?;
 
         self.graph
             .add_edge(*from.unwrap(), *to.unwrap(), edge.edge_type);
