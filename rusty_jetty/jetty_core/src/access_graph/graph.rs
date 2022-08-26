@@ -1,3 +1,6 @@
+//! Graph stuff
+//!
+
 use anyhow::{anyhow, Context, Result};
 use graphviz_rust as graphviz;
 use graphviz_rust::cmd::CommandArg;
@@ -9,10 +12,11 @@ use std::collections::HashMap;
 
 use super::{EdgeType, JettyNode, NodeName};
 
+/// The main graph wrapper
 pub struct Graph {
-    graph: StableDiGraph<JettyNode, EdgeType>,
+    pub(crate) graph: StableDiGraph<JettyNode, EdgeType>,
     /// A map of node identifiers to indecies
-    nodes: HashMap<NodeName, NodeIndex>,
+    pub(crate) nodes: HashMap<NodeName, NodeIndex>,
 }
 
 impl Graph {
@@ -32,7 +36,7 @@ impl Graph {
         self.nodes.get(node)
     }
     /// Adds a node to the graph and returns the index.
-    pub fn add_node(&mut self, node: &JettyNode) -> Result<NodeIndex> {
+    pub(crate) fn add_node(&mut self, node: &JettyNode) -> Result<NodeIndex> {
         let node_name = node.get_name();
         let idx = self.graph.add_node(node.to_owned());
         self.nodes.insert(node_name, idx);
@@ -42,7 +46,7 @@ impl Graph {
     /// Updates a node. Should return the updated node. Returns an
     /// error if the nodes are incompatible (would require overwriting values).
     /// To be compatible, metadata from each
-    pub fn merge_nodes(&mut self, idx: &NodeIndex, new: &JettyNode) -> Result<()> {
+    pub(crate) fn merge_nodes(&mut self, idx: &NodeIndex, new: &JettyNode) -> Result<()> {
         // Fetch node from graph
         let node = &mut self.graph[*idx];
 
@@ -53,7 +57,7 @@ impl Graph {
     }
 
     /// Add edges from cache. Return an error if to/from doesn't exist
-    pub fn add_edge(&mut self, edge: super::JettyEdge) -> Result<()> {
+    pub(crate) fn add_edge(&mut self, edge: super::JettyEdge) -> Result<()> {
         let to = self.get_node(&edge.to);
         if let None = to {
             return Err(anyhow!["Unable to find \"to\" node: {:?}", &edge.to]);

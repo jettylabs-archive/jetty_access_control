@@ -9,9 +9,11 @@ use super::{
 
 /// Wrapper for including the connector name and updated
 /// connector data.
-pub(crate) struct ProcessedConnectorData {
-    pub(crate) connector: String,
-    pub(crate) data: nodes::ConnectorData,
+pub struct ProcessedConnectorData {
+    /// Connector name to identify where this data came from
+    pub connector: String,
+    /// Connector data straight from the source
+    pub data: nodes::ConnectorData,
 }
 
 /// All helper types implement NodeHelpers.

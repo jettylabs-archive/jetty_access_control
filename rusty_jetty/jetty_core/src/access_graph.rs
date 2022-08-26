@@ -2,13 +2,13 @@
 //!
 //! `access_graph` is a library for modeling data access permissions and metadata as a graph.
 
-mod graph;
+pub mod graph;
 mod helpers;
 
 use crate::connectors::AssetType;
 
 use self::helpers::NodeHelper;
-use self::helpers::ProcessedConnectorData;
+pub use self::helpers::ProcessedConnectorData;
 
 use super::connectors;
 use core::hash::Hash;
@@ -17,6 +17,7 @@ use std::collections::HashSet;
 use std::fmt::Debug;
 
 use anyhow::{anyhow, Context, Result};
+use maplit::{hashmap, hashset};
 
 /// Attributes associated with a User node
 
@@ -177,10 +178,15 @@ impl PolicyAttributes {
 /// Enum of node types
 #[derive(Debug, Clone)]
 pub(crate) enum JettyNode {
+    /// Group node
     Group(GroupAttributes),
+    /// User node
     User(UserAttributes),
+    /// Asset node
     Asset(AssetAttributes),
+    /// Tag node
     Tag(TagAttributes),
+    /// Policy node
     Policy(PolicyAttributes),
 }
 
@@ -259,11 +265,16 @@ fn get_edge_type_pair(edge_type: &EdgeType) -> EdgeType {
 
 /// Mapping of node identifiers (like asset name) to their id in the graph
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
-enum NodeName {
+pub enum NodeName {
+    /// User node
     User(String),
+    /// Group node
     Group(String),
+    /// Asset node
     Asset(String),
+    /// Policy node
     Policy(String),
+    /// Tag node
     Tag(String),
 }
 
@@ -277,12 +288,28 @@ pub(crate) struct JettyEdge {
 /// Representation of data access state
 pub struct AccessGraph {
     /// The graph itself
-    graph: graph::Graph,
+    pub graph: graph::Graph,
     edge_cache: HashSet<JettyEdge>,
     last_modified: usize,
 }
 
 impl AccessGraph {
+    /// New graph
+    pub fn new(data: Vec<ProcessedConnectorData>) -> Result<Self> {
+        let mut ag = AccessGraph {
+            graph: graph::Graph {
+                graph: petgraph::stable_graph::StableDiGraph::new(),
+                nodes: hashmap![],
+            },
+            edge_cache: hashset![],
+            last_modified: 0,
+        };
+        for connector_data in data {
+            ag.build_graph(connector_data)?;
+        }
+        Ok(ag)
+    }
+
     pub(crate) fn build_graph(&mut self, data: ProcessedConnectorData) -> Result<()> {
         self.get_node_and_edges(&data.data.groups, &data.connector)?;
         self.get_node_and_edges(&data.data.users, &data.connector)?;

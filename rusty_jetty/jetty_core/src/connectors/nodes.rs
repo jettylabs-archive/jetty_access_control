@@ -7,15 +7,15 @@ use derivative::Derivative;
 #[derive(Debug)]
 pub struct ConnectorData {
     /// All groups in the connector
-    pub(crate) groups: Vec<Group>,
+    pub groups: Vec<Group>,
     /// All users in the connector
-    pub(crate) users: Vec<User>,
+    pub users: Vec<User>,
     /// All assets in the connector
-    pub(crate) assets: Vec<Asset>,
+    pub assets: Vec<Asset>,
     /// All tags in the connector
-    pub(crate) tags: Vec<Tag>,
+    pub tags: Vec<Tag>,
     /// All policies in the connector
-    pub(crate) policies: Vec<Policy>,
+    pub policies: Vec<Policy>,
 }
 
 /// Group data provided by connectors

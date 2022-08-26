@@ -30,7 +30,7 @@ use jetty_core::{
 use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
 use jsonwebtoken::{encode, get_current_timestamp, Algorithm, EncodingKey, Header};
-use reqwest_middleware::{ClientBuilder, ClientWithMiddleware, RequestBuilder};
+use reqwest_middleware::{ClientBuilder, RequestBuilder};
 use reqwest_retry::{policies::ExponentialBackoff, RetryTransientMiddleware};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -208,10 +208,10 @@ impl Snowflake {
             ])
             .json(&body)
             .header(consts::AUTH_HEADER, format!["Bearer {}", token])
-            .header("Content-Type", "application/json")
-            .header("Accept", "application/json")
-            .header("X-Snowflake-Authorization-Token-Type", "KEYPAIR_JWT")
-            .header("User-Agent", "jetty-labs"))
+            .header(consts::CONTENT_TYPE_HEADER, "application/json")
+            .header(consts::ACCEPT_HEADER, "application/json")
+            .header(consts::SNOWFLAKE_AUTH_HEADER, "KEYPAIR_JWT")
+            .header(consts::USER_AGENT_HEADER, "jetty-labs"))
     }
 
     /// Execute a query, dropping the result.
@@ -329,12 +329,12 @@ impl Snowflake {
             .context(format!("failed to get grants on role {}", &role_name))?;
         Ok(nodes::Policy::new(
             role_name.to_owned(),
-            vec![grant.privilege.clone()],
+            hashset![grant.privilege.clone()],
             // This
-            vec![grant.name.to_owned()],
-            vec![],
-            vec![],
-            vec![],
+            hashset![grant.name.to_owned()],
+            hashset![],
+            hashset![],
+            hashset![],
             false,
             false,
         ))
@@ -370,10 +370,10 @@ impl Snowflake {
             res.push(nodes::Group::new(
                 role.name,
                 hashmap![],
-                vec![],
-                vec![],
-                vec![],
-                vec![],
+                hashset![],
+                hashset![],
+                hashset![],
+                hashset![],
             ));
         }
         Ok(res)
@@ -386,9 +386,10 @@ impl Snowflake {
             res.push(nodes::User::new(
                 user.name,
                 hashmap![],
+                hashset![],
                 hashmap![],
                 user_roles.iter().map(|role| role.role.clone()).collect(),
-                vec![],
+                hashset![],
             ));
         }
         Ok(res)
@@ -401,12 +402,12 @@ impl Snowflake {
                 table.name,
                 connectors::AssetType::DBTable,
                 hashmap![],
-                vec![],
-                vec![table.schema_name],
-                vec![],
-                vec![],
-                vec![],
-                vec![],
+                hashset![],
+                hashset![table.schema_name],
+                hashset![],
+                hashset![],
+                hashset![],
+                hashset![],
             ));
         }
 
@@ -415,12 +416,12 @@ impl Snowflake {
                 view.name,
                 connectors::AssetType::DBView,
                 hashmap![],
-                vec![],
-                vec![view.schema_name],
-                vec![],
-                vec![],
-                vec![],
-                vec![],
+                hashset![],
+                hashset![view.schema_name],
+                hashset![],
+                hashset![],
+                hashset![],
+                hashset![],
             ));
         }
 
@@ -432,12 +433,12 @@ impl Snowflake {
                 schema.name,
                 connectors::AssetType::DBSchema,
                 hashmap![],
-                vec![],
-                vec![schema.database_name],
-                vec![],
-                vec![],
-                vec![],
-                vec![],
+                hashset![],
+                hashset![schema.database_name],
+                hashset![],
+                hashset![],
+                hashset![],
+                hashset![],
             ));
         }
 
@@ -447,12 +448,12 @@ impl Snowflake {
                 db.name,
                 connectors::AssetType::DBDB,
                 hashmap![],
-                vec![],
-                vec![],
-                vec![],
-                vec![],
-                vec![],
-                vec![],
+                hashset![],
+                hashset![],
+                hashset![],
+                hashset![],
+                hashset![],
+                hashset![],
             ));
         }
 
