@@ -7,6 +7,13 @@ use super::{
     PolicyAttributes, TagAttributes, UserAttributes,
 };
 
+/// Wrapper for including the connector name and updated
+/// connector data.
+pub(crate) struct ProcessedConnectorData {
+    pub(crate) connector: String,
+    pub(crate) data: nodes::ConnectorData,
+}
+
 /// All helper types implement NodeHelpers.
 pub(crate) trait NodeHelper {
     /// Return a JettyNode from the helper
@@ -69,6 +76,7 @@ impl NodeHelper for nodes::User {
         JettyNode::User(UserAttributes {
             name: self.name.to_owned(),
             identifiers: self.identifiers.to_owned(),
+            other_identifiers: self.other_identifiers.to_owned(),
             metadata: self.metadata.to_owned(),
             connectors: HashSet::from([connector.to_owned()]),
         })

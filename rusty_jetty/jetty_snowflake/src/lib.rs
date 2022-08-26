@@ -141,10 +141,10 @@ impl Connector for Snowflake {
         }
 
         if !required_fields.is_empty() {
-            Err(anyhow![format![
+            Err(anyhow![
                 "Snowflake config missing required fields: {:#?}",
                 required_fields
-            ]])
+            ])
         } else {
             Ok(Box::new(Snowflake { credentials: conn }))
         }
