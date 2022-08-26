@@ -10,4 +10,3 @@ jetty_core = { path = "../jetty_core" }
 jetty_snowflake = { path = "../jetty_snowflake" }
 tokio = { version = "1.20.1", features = ["rt", "macros"] }
 anyhow = "^1"
-petgraph = "0.6.2"
