@@ -5,5 +5,5 @@ use structmap_derive::FromMap;
 /// Snowflake User entry.
 #[derive(FromMap, Deserialize, Debug, Default)]
 pub struct User {
-    name: String,
+    pub name: String,
 }

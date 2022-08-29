@@ -4,16 +4,22 @@ use std::collections::{HashMap, HashSet};
 use derivative::Derivative;
 
 /// Container for all node data for a given connector
+#[derive(Debug)]
 pub struct ConnectorData {
-    pub(crate) groups: Vec<Group>,
-    pub(crate) users: Vec<User>,
-    pub(crate) assets: Vec<Asset>,
-    pub(crate) tags: Vec<Tag>,
-    pub(crate) policies: Vec<Policy>,
+    /// All groups in the connector
+    pub groups: Vec<Group>,
+    /// All users in the connector
+    pub users: Vec<User>,
+    /// All assets in the connector
+    pub assets: Vec<Asset>,
+    /// All tags in the connector
+    pub tags: Vec<Tag>,
+    /// All policies in the connector
+    pub policies: Vec<Policy>,
 }
 
 /// Group data provided by connectors
-#[derive(Default)]
+#[derive(Default, Debug, new)]
 pub struct Group {
     /// Group name
     pub name: String,
@@ -31,7 +37,7 @@ pub struct Group {
 }
 
 /// User data provided by connectors
-#[derive(Default)]
+#[derive(Default, Debug, new)]
 pub struct User {
     /// The name of the user. When coming from a connector, this
     /// should be the name the connector uses to refer to a person.
@@ -54,7 +60,7 @@ pub struct User {
 }
 
 /// Struct used to populate asset nodes and edges in the graph
-#[derive(Default, new)]
+#[derive(Default, new, Debug)]
 pub struct Asset {
     /// Name of asset, fully qualified for the scope of use (connector)
     /// or graph.
@@ -100,7 +106,7 @@ pub struct Tag {
 }
 
 /// Struct used to populate policy nodes and edges in the graph
-#[derive(Debug, Derivative)]
+#[derive(Debug, Derivative, Clone, new)]
 #[derivative(Default)]
 pub struct Policy {
     /// ID of the Policy, namespaced for the relevant context

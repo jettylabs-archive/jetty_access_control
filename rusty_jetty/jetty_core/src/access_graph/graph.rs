@@ -1,3 +1,6 @@
+//! Graph stuff
+//!
+
 use anyhow::{anyhow, Context, Result};
 use graphviz_rust as graphviz;
 use graphviz_rust::cmd::CommandArg;
@@ -9,22 +12,26 @@ use std::collections::HashMap;
 
 use super::{EdgeType, JettyNode, NodeName};
 
+/// The main graph wrapper
 pub struct Graph {
-    graph: StableDiGraph<JettyNode, EdgeType>,
+    pub(crate) graph: StableDiGraph<JettyNode, EdgeType>,
     /// A map of node identifiers to indecies
-    nodes: HashMap<NodeName, NodeIndex>,
+    pub(crate) nodes: HashMap<NodeName, NodeIndex>,
 }
 
 impl Graph {
     /// Save a svg of the access graph to the specified filename
     pub fn visualize(&self, path: String) -> Result<String> {
         let my_dot = dot::Dot::new(&self.graph);
-        let g = graphviz::parse(&format!["{:?}", my_dot]).map_err(|s| anyhow!(s))?;
+        let g = graphviz::parse(&format!["{:?}", my_dot])
+            .map_err(|s| anyhow!(s))
+            .context("failed to parse")?;
         let draw = graphviz::exec(
             g,
             &mut PrinterContext::default(),
             vec![CommandArg::Format(Format::Svg), CommandArg::Output(path)],
-        )?;
+        )
+        .context("failed to exec graphviz. do you need to install it?")?;
         Ok(draw)
     }
     /// Check whether a given node already exists in the graph

@@ -13,36 +13,25 @@
 //! ```
 
 mod consts;
-mod database;
-mod grant;
-mod role;
-mod schema;
-mod table;
-mod user;
-mod view;
-mod warehouse;
+mod entry;
 
-pub use database::Database;
-pub use grant::Grant;
-pub use role::Role;
-pub use schema::Schema;
-pub use table::Table;
-pub use user::User;
-pub use view::View;
-pub use warehouse::Warehouse;
+pub use entry::*;
+
+use futures::{stream::FuturesUnordered, StreamExt};
+use std::collections::{HashMap, HashSet};
+use std::iter::zip;
 
 use jetty_core::{
+    connectors,
     connectors::{nodes, Connector},
     jetty::{ConnectorConfig, CredentialsBlob},
 };
 
-use std::collections::{HashMap, HashSet};
-use std::iter::zip;
-
 use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
 use jsonwebtoken::{encode, get_current_timestamp, Algorithm, EncodingKey, Header};
-use reqwest::RequestBuilder;
+use reqwest_middleware::{ClientBuilder, ClientWithMiddleware, RequestBuilder};
+use reqwest_retry::{policies::ExponentialBackoff, RetryTransientMiddleware};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use structmap::{value::Value, FromMap, GenericMap};
@@ -62,6 +51,7 @@ struct SnowflakeField {
 pub struct Snowflake {
     /// The credentials used to authenticate into Snowflake.
     credentials: SnowflakeCredentials,
+    http_client: ClientWithMiddleware,
 }
 
 /// Credentials for authenticating to Snowflake.
@@ -107,15 +97,14 @@ impl Connector for Snowflake {
         };
     }
 
-    fn get_data(&self) -> nodes::ConnectorData {
-        todo!();
-        // nodes::ConnectorData {
-        //     groups: self.get_jetty_groups(),
-        //     users: self.get_jetty_users(),
-        //     assets: self.get_jetty_assets(),
-        //     tags: self.get_jetty_tags(),
-        //     policies: self.get_jetty_policies(),
-        // }
+    async fn get_data(&self) -> nodes::ConnectorData {
+        nodes::ConnectorData {
+            groups: self.get_jetty_groups().await.unwrap(),
+            users: self.get_jetty_users().await.unwrap(),
+            assets: self.get_jetty_assets().await.unwrap(),
+            tags: self.get_jetty_tags().await.unwrap(),
+            policies: self.get_jetty_policies().await.unwrap(),
+        }
     }
 
     /// Validates the configs and bootstraps a Snowflake connection.
@@ -158,7 +147,14 @@ impl Connector for Snowflake {
                 required_fields
             ])
         } else {
-            Ok(Box::new(Snowflake { credentials: conn }))
+            let retry_policy = ExponentialBackoff::builder().build_with_max_retries(3);
+            let client = ClientBuilder::new(reqwest::Client::new())
+                .with(RetryTransientMiddleware::new_with_policy(retry_policy))
+                .build();
+            Ok(Box::new(Snowflake {
+                credentials: conn,
+                http_client: client,
+            }))
         }
     }
 }
@@ -208,19 +204,18 @@ impl Snowflake {
         let token = self.get_jwt()?;
         let body = self.get_body(sql);
 
-        let client = reqwest::Client::new();
-
-        Ok(client
+        Ok(self
+            .http_client
             .post(format![
                 "https://{}.snowflakecomputing.com/api/v2/statements",
                 self.credentials.account
             ])
             .json(&body)
             .header(consts::AUTH_HEADER, format!["Bearer {}", token])
-            .header("Content-Type", "application/json")
-            .header("Accept", "application/json")
-            .header("X-Snowflake-Authorization-Token-Type", "KEYPAIR_JWT")
-            .header("User-Agent", "jetty-labs"))
+            .header(consts::CONTENT_TYPE_HEADER, "application/json")
+            .header(consts::ACCEPT_HEADER, "application/json")
+            .header(consts::SNOWFLAKE_AUTH_HEADER, "KEYPAIR_JWT")
+            .header(consts::USER_AGENT_HEADER, "jetty-labs"))
     }
 
     /// Execute a query, dropping the result.
@@ -243,17 +238,22 @@ impl Snowflake {
     }
 
     /// Get all grants to a user
-    pub async fn get_grants_to_user(&self, user_name: &str) -> Result<Vec<Grant>> {
-        self.query_to_obj::<Grant>(&format!("SHOW GRANTS TO USER {}", user_name))
+    pub async fn get_grants_to_user(&self, user_name: &str) -> Result<Vec<RoleGrant>> {
+        self.query_to_obj::<RoleGrant>(&format!("SHOW GRANTS TO USER {}", user_name))
             .await
     }
 
-    /// Get all grants to a role
+    /// Get all grants to a role – the privileges and "children" roles.
     pub async fn get_grants_to_role(&self, role_name: &str) -> Result<Vec<Grant>> {
         self.query_to_obj::<Grant>(&format!("SHOW GRANTS TO ROLE {}", role_name))
             .await
     }
 
+    /// Get all grants on a role – the "parent" roles.
+    pub async fn get_grants_on_role(&self, role_name: &str) -> Result<Vec<Grant>> {
+        self.query_to_obj::<Grant>(&format!("SHOW GRANTS ON ROLE {}", role_name))
+            .await
+    }
     /// Get all users.
     pub async fn get_users(&self) -> Result<Vec<User>> {
         self.query_to_obj::<User>("SHOW USERS").await
@@ -295,6 +295,10 @@ impl Snowflake {
         T: FromMap,
     {
         let result = self.query(query).await.context("query failed")?;
+        if result.is_empty() {
+            // TODO: Determine whether this is actually okay behavior.
+            return Ok(vec![]);
+        }
         let rows_value: JsonValue =
             serde_json::from_str(&result).context("failed to deserialize")?;
         let rows_data = rows_value["data"].clone();
@@ -311,7 +315,6 @@ impl Snowflake {
             serde_json::from_value(rows_value["resultSetMetaData"]["rowType"].clone())
                 .context("failed to deserialize fields")?;
         let fields: Vec<String> = fields_intermediate.iter().map(|i| i.name.clone()).collect();
-        println!("fields: {:?}", fields);
         Ok(rows
             .iter()
             .map(|i| {
@@ -323,17 +326,146 @@ impl Snowflake {
             .collect())
     }
 
-    fn get_jetty_assets(&self) -> Vec<nodes::Asset> {
-        // let mut res = vec![];
-        // for table in self.get_tables().await? {
-        //     res.push(nodes::Asset::new(
-        //         table.name,
-        //         AssetType::DBTable,
-        //         hashmap![],
-        //         vec![],
-        //     ));
-        // }
-        // res
-        todo!();
+    async fn grant_to_policy(&self, role_name: &str, grant: &Grant) -> Result<nodes::Policy> {
+        let granted_to_groups = self
+            .get_grants_on_role(role_name)
+            .await
+            .context(format!("failed to get grants on role {}", &role_name))?;
+        Ok(nodes::Policy::new(
+            role_name.to_owned(),
+            hashset![grant.privilege.clone()],
+            // This
+            hashset![grant.name.to_owned()],
+            hashset![],
+            hashset![],
+            hashset![],
+            false,
+            false,
+        ))
+    }
+    async fn get_jetty_policies(&self) -> Result<Vec<nodes::Policy>> {
+        let mut res = vec![];
+        for role in self.get_roles().await? {
+            let mut grants_to_role = self
+                .get_grants_to_role(&role.name)
+                .await?
+                .iter()
+                // Ignored types here:
+                // ACCOUNT, FUNCTION, WAREHOUSE: These are TODOs for a future iteration.
+                // ROLE: We don't need children groups. Those relationships will be taken care of
+                // as parent roles.
+                .filter(|g| consts::ASSET_TYPES.contains(&g.granted_on.as_str()))
+                .map(|g| self.grant_to_policy(&role.name, g))
+                .collect::<FuturesUnordered<_>>()
+                .collect::<Vec<_>>()
+                .await;
+            res.append(&mut grants_to_role)
+        }
+        let res = res.iter().map(|x| x.as_ref().unwrap()).cloned().collect();
+        Ok(res)
+    }
+
+    async fn get_jetty_tags(&self) -> Result<Vec<nodes::Tag>> {
+        Ok(vec![])
+    }
+
+    async fn get_jetty_groups(&self) -> Result<Vec<nodes::Group>> {
+        let mut res = vec![];
+        for role in self.get_roles().await? {
+            // TODO: Get members for role.
+            res.push(nodes::Group::new(
+                role.name,
+                hashmap![],
+                hashset![],
+                hashset![],
+                hashset![],
+                hashset![],
+            ));
+        }
+        Ok(res)
+    }
+
+    async fn get_jetty_users(&self) -> Result<Vec<nodes::User>> {
+        let mut res = vec![];
+        for user in self.get_users().await? {
+            let user_roles = self.get_grants_to_user(&user.name).await?;
+            res.push(nodes::User::new(
+                user.name,
+                hashmap![],
+                hashset![],
+                hashmap![],
+                user_roles.iter().map(|role| role.role.clone()).collect(),
+                hashset![],
+            ));
+        }
+        Ok(res)
+    }
+
+    async fn get_jetty_assets(&self) -> Result<Vec<nodes::Asset>> {
+        let mut res = vec![];
+        for table in self.get_tables().await? {
+            res.push(nodes::Asset::new(
+                format!(
+                    "{}.{}.{}",
+                    table.database_name, table.schema_name, table.name
+                ),
+                connectors::AssetType::DBTable,
+                hashmap![],
+                hashset![],
+                hashset![format!("{}.{}", table.database_name, table.schema_name)],
+                hashset![],
+                hashset![],
+                hashset![],
+                hashset![],
+            ));
+        }
+
+        for view in self.get_views().await? {
+            res.push(nodes::Asset::new(
+                format!("{}.{}.{}", view.database_name, view.schema_name, view.name),
+                connectors::AssetType::DBView,
+                hashmap![],
+                hashset![],
+                hashset![format!("{}.{}", view.database_name, view.schema_name)],
+                hashset![],
+                hashset![],
+                hashset![],
+                hashset![],
+            ));
+        }
+
+        let schemas = self.get_schemas().await?;
+
+        for schema in schemas {
+            // TODO: Get subassets
+            res.push(nodes::Asset::new(
+                format!("{}.{}", schema.database_name, schema.name),
+                connectors::AssetType::DBSchema,
+                hashmap![],
+                hashset![],
+                hashset![schema.database_name],
+                hashset![],
+                hashset![],
+                hashset![],
+                hashset![],
+            ));
+        }
+
+        for db in self.get_databases().await? {
+            // TODO: Get subassets
+            res.push(nodes::Asset::new(
+                db.name,
+                connectors::AssetType::DBDB,
+                hashmap![],
+                hashset![],
+                hashset![],
+                hashset![],
+                hashset![],
+                hashset![],
+                hashset![],
+            ));
+        }
+
+        Ok(res)
     }
 }
