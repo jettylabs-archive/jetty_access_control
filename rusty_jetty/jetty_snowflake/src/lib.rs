@@ -216,7 +216,8 @@ impl Snowflake {
     }
 
     /// When we read, a policy will get created for each unique
-    /// role/user, privilege, asset combination.
+    /// role/user, asset combination. All privileges will be bunched together
+    /// for that combination.
     async fn grant_to_policy(
         &self,
         role_name: &str,
@@ -251,9 +252,6 @@ impl Snowflake {
         let mut res = vec![];
         // Role grants
         for role in self.get_roles().await? {
-            // TODO: Update this so that we group roles by asset. So if a role has
-            // multiple grants to a given asset, we can bunch those
-            // privileges all in the same policy.
             let mut grants_to_role = self
                 .get_grants_to_role(&role.name)
                 .await?
