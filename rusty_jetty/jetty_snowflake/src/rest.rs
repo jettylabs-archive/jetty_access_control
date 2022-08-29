@@ -62,16 +62,32 @@ impl SnowflakeRestClient {
         Ok(res)
     }
 
+    /// If the URL is explicitly defined, that's used first.
+    /// Otherwise, the standard account configuration
+    /// is used
+    fn get_url(&self) -> String {
+        let default_url = self.credentials.url.to_owned().unwrap_or_else(|| {
+            format![
+                "https://{}.snowflakecomputing.com/api/v2/statements",
+                self.credentials.account
+            ]
+        });
+        #[cfg(not(test))]
+        return default_url;
+        #[cfg(test)]
+        return match crate::rest::tests::MOCK_HTTP_SERVER.read().unwrap().server {
+            Some(ref v) => v.uri(),
+            None => default_url,
+        };
+    }
+
     fn get_request(&self, sql: &str) -> Result<RequestBuilder> {
         let token = self.get_jwt()?;
         let body = self.get_body(sql);
 
         Ok(self
             .http_client
-            .post(format![
-                "https://{}.snowflakecomputing.com/api/v2/statements",
-                self.credentials.account
-            ])
+            .post(self.get_url())
             .json(&body)
             .header(consts::AUTH_HEADER, format!["Bearer {}", token])
             .header(consts::CONTENT_TYPE_HEADER, "application/json")
@@ -118,5 +134,53 @@ impl SnowflakeRestClient {
             )?,
         )
         .map_err(anyhow::Error::from)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::RwLock;
+
+    use super::*;
+
+    use lazy_static::lazy_static;
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    pub struct WiremockServer {
+        pub server: Option<MockServer>,
+    }
+
+    impl WiremockServer {
+        pub fn new() -> Self {
+            Self { server: None }
+        }
+
+        pub async fn init(&mut self) {
+            let mock_server = MockServer::start().await;
+            Mock::given(method("POST"))
+                .and(path("/api/v2/statements"))
+                .respond_with(
+                    ResponseTemplate::new(404).set_body_string(r#"{"text": "wiremock cat fact"}"#),
+                )
+                .mount(&mock_server)
+                .await;
+            self.server = Some(mock_server);
+        }
+    }
+
+    lazy_static! {
+        pub static ref MOCK_HTTP_SERVER: RwLock<WiremockServer> =
+            RwLock::new(WiremockServer::new());
+    }
+
+    async fn setup_wiremock() {
+        MOCK_HTTP_SERVER.write().unwrap().init().await;
+    }
+
+    #[tokio::test]
+    async fn test_me() {
+        setup_wiremock().await;
+        // SnowflakeRestClient {}
     }
 }

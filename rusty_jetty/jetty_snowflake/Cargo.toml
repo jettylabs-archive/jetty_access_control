@@ -23,3 +23,8 @@ maplit = "1.0.2"
 futures = "0.3.23"
 reqwest-retry = "0.1.5"
 reqwest-middleware = "0.1.6"
+
+[dev-dependencies]
+lazy_static = "1.4.0"
+tokio = "1.20.1"
+wiremock = "0.5"

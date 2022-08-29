@@ -13,4 +13,5 @@ pub(crate) struct SnowflakeCredentials {
     pub(crate) warehouse: String,
     pub(crate) private_key: String,
     pub(crate) public_key_fp: String,
+    pub(crate) url: Option<String>,
 }

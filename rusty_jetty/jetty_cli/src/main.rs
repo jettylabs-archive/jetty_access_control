@@ -17,11 +17,11 @@ async fn main() -> Result<()> {
         data: snow_data,
     };
     let ag = AccessGraph::new(vec![pcd])?;
-    let res = ag
-        .graph
-        .visualize("/tmp/graph.svg".to_owned())
-        .context("failed to visualize")?;
-    println!("{}", res);
+    // let res = ag
+    //     .graph
+    //     .visualize("/tmp/graph.svg".to_owned())
+    //     .context("failed to visualize")?;
+    // println!("{}", res);
 
     Ok(())
 }
