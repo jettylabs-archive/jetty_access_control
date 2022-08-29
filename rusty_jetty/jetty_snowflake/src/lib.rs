@@ -13,12 +13,15 @@
 //! ```
 
 mod consts;
+mod creds;
 mod entry;
+mod rest;
 
 pub use entry::*;
+use rest::SnowflakeRestClient;
 
 use futures::{stream::FuturesUnordered, StreamExt};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::iter::zip;
 
 use jetty_core::{
@@ -29,65 +32,22 @@ use jetty_core::{
 
 use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
-use jsonwebtoken::{encode, get_current_timestamp, Algorithm, EncodingKey, Header};
-use reqwest_middleware::{ClientBuilder, ClientWithMiddleware, RequestBuilder};
-use reqwest_retry::{policies::ExponentialBackoff, RetryTransientMiddleware};
-use serde::{Deserialize, Serialize};
+use maplit::{hashmap, hashset};
 use serde_json::Value as JsonValue;
 use structmap::{value::Value, FromMap, GenericMap};
-
-#[macro_use]
-extern crate maplit;
-
-#[derive(Deserialize, Debug)]
-struct SnowflakeField {
-    #[serde(default)]
-    name: String,
-}
 
 /// The main Snowflake Connector struct.
 ///
 /// Use this connector to access Snowflake data.
 pub struct Snowflake {
-    /// The credentials used to authenticate into Snowflake.
-    credentials: SnowflakeCredentials,
-    http_client: ClientWithMiddleware,
-}
-
-/// Credentials for authenticating to Snowflake.
-///
-/// The user sets these up by following Jetty documentation
-/// and pasting their keys into their connector config.
-#[derive(Deserialize, Debug, Default)]
-struct SnowflakeCredentials {
-    account: String,
-    password: String,
-    role: String,
-    user: String,
-    warehouse: String,
-    private_key: String,
-    public_key_fp: String,
-}
-
-/// Claims for use with the `jsonwebtoken` crate when
-/// creating a new JWT.
-#[derive(Debug, Serialize, Deserialize)]
-struct JwtClaims {
-    /// Required (validate_exp defaults to true in validation). Expiration time (as UTC timestamp)
-    exp: usize,
-    /// Optional. Issued at (as UTC timestamp)
-    iat: usize,
-    /// Optional. Issuer
-    iss: String,
-    /// Optional. Subject (whom token refers to)
-    sub: String,
+    rest_client: SnowflakeRestClient,
 }
 
 /// Main connector implementation.
 #[async_trait]
 impl Connector for Snowflake {
     async fn check(&self) -> bool {
-        let res = self.execute("SELECT 1").await;
+        let res = self.rest_client.execute("SELECT 1").await;
         return match res {
             Err(e) => {
                 println!("{:?}", e);
@@ -113,7 +73,7 @@ impl Connector for Snowflake {
     /// Snowflake. Stashes the credentials in the struct for use when
     /// connecting.
     fn new(_config: &ConnectorConfig, credentials: &CredentialsBlob) -> Result<Box<Self>> {
-        let mut conn = SnowflakeCredentials::default();
+        let mut conn = creds::SnowflakeCredentials::default();
         let mut required_fields: HashSet<_> = vec![
             "account",
             "password",
@@ -147,96 +107,14 @@ impl Connector for Snowflake {
                 required_fields
             ])
         } else {
-            let retry_policy = ExponentialBackoff::builder().build_with_max_retries(3);
-            let client = ClientBuilder::new(reqwest::Client::new())
-                .with(RetryTransientMiddleware::new_with_policy(retry_policy))
-                .build();
             Ok(Box::new(Snowflake {
-                credentials: conn,
-                http_client: client,
+                rest_client: SnowflakeRestClient::new(conn),
             }))
         }
     }
 }
 
 impl Snowflake {
-    fn get_jwt(&self) -> Result<String> {
-        let qualified_username = format![
-            "{}.{}",
-            self.credentials.account.to_uppercase(),
-            self.credentials.user.to_uppercase()
-        ];
-
-        // Generate jwt
-        let claims = JwtClaims {
-            exp: (get_current_timestamp() + 3600) as usize,
-            iat: get_current_timestamp() as usize,
-            iss: format!["{}.{}", qualified_username, self.credentials.public_key_fp],
-            sub: qualified_username,
-        };
-
-        // println!("{}", self.credentials.private_key.replace(r" ", ""));
-
-        encode(
-            &Header::new(Algorithm::RS256),
-            &claims,
-            &EncodingKey::from_rsa_pem(
-                self.credentials
-                    .private_key
-                    .replace(' ', "")
-                    .replace("ENDPRIVATEKEY", "END PRIVATE KEY")
-                    .replace("BEGINPRIVATEKEY", "BEGIN PRIVATE KEY")
-                    .as_bytes(),
-            )?,
-        )
-        .map_err(anyhow::Error::from)
-    }
-
-    fn get_body<'a>(&'a self, sql: &'a str) -> HashMap<&str, &'a str> {
-        let mut body = HashMap::new();
-        body.insert("statement", sql);
-        body.insert("warehouse", "main");
-        body.insert("role", &self.credentials.role);
-        body
-    }
-
-    fn get_request(&self, sql: &str) -> Result<RequestBuilder> {
-        let token = self.get_jwt()?;
-        let body = self.get_body(sql);
-
-        Ok(self
-            .http_client
-            .post(format![
-                "https://{}.snowflakecomputing.com/api/v2/statements",
-                self.credentials.account
-            ])
-            .json(&body)
-            .header(consts::AUTH_HEADER, format!["Bearer {}", token])
-            .header(consts::CONTENT_TYPE_HEADER, "application/json")
-            .header(consts::ACCEPT_HEADER, "application/json")
-            .header(consts::SNOWFLAKE_AUTH_HEADER, "KEYPAIR_JWT")
-            .header(consts::USER_AGENT_HEADER, "jetty-labs"))
-    }
-
-    /// Execute a query, dropping the result.
-    ///
-    /// `execute` should only be used for
-    /// SQL statements that don't expect results,
-    /// such as those that are used to update
-    /// state in Snowflake.
-    async fn execute(&self, sql: &str) -> Result<()> {
-        let request = self.get_request(sql)?;
-        request.send().await?.text().await?;
-        Ok(())
-    }
-
-    async fn query(&self, sql: &str) -> Result<String> {
-        let request = self.get_request(sql)?;
-
-        let res = request.send().await?.text().await?;
-        Ok(res)
-    }
-
     /// Get all grants to a user
     pub async fn get_grants_to_user(&self, user_name: &str) -> Result<Vec<RoleGrant>> {
         self.query_to_obj::<RoleGrant>(&format!("SHOW GRANTS TO USER {}", user_name))
@@ -294,7 +172,11 @@ impl Snowflake {
     where
         T: FromMap,
     {
-        let result = self.query(query).await.context("query failed")?;
+        let result = self
+            .rest_client
+            .query(query)
+            .await
+            .context("query failed")?;
         if result.is_empty() {
             // TODO: Determine whether this is actually okay behavior.
             return Ok(vec![]);
@@ -311,10 +193,9 @@ impl Snowflake {
                     .collect()
             })
             .collect();
-        let fields_intermediate: Vec<SnowflakeField> =
+        let fields: Vec<String> =
             serde_json::from_value(rows_value["resultSetMetaData"]["rowType"].clone())
                 .context("failed to deserialize fields")?;
-        let fields: Vec<String> = fields_intermediate.iter().map(|i| i.name.clone()).collect();
         Ok(rows
             .iter()
             .map(|i| {
