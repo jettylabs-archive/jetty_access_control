@@ -221,13 +221,13 @@ impl Snowflake {
         &self,
         role_name: &str,
         grants: &HashSet<Grant>,
-    ) -> Result<Option<nodes::Policy>> {
+    ) -> Option<nodes::Policy> {
         if grants.len() < 1 {
             // No privileges.
-            return Ok(None);
+            return None;
         }
         let privileges: Vec<String> = grants.iter().map(|g| g.privilege.to_owned()).collect();
-        Ok(Some(nodes::Policy::new(
+        Some(nodes::Policy::new(
             format!(
                 "{}.{}.{}",
                 role_name.to_owned(),
@@ -244,7 +244,7 @@ impl Snowflake {
             // Defaults here for data read from Snowflake should be false.
             false,
             false,
-        )))
+        ))
     }
 
     async fn get_jetty_policies(&self) -> Result<Vec<nodes::Policy>> {
@@ -285,7 +285,9 @@ impl Snowflake {
         let res = res
             .iter()
             // TODO: This is disgusting, we should fix it.
-            .map(|x| x.as_ref().unwrap().as_ref().unwrap().clone())
+            .filter(|x| x.is_some())
+            .map(|x| x.as_ref().unwrap())
+            .cloned()
             .collect();
         Ok(res)
     }
