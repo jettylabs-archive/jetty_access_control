@@ -392,11 +392,12 @@ where
 mod tests {
     use std::collections::HashSet;
 
-    use anyhow::{anyhow, Result};
+    use anyhow::Result;
 
     use crate::connectors::nodes::{self, ConnectorData};
 
-    use super::{AccessGraph, EdgeType, JettyEdge, NodeName, ProcessedConnectorData};
+    use super::*;
+
     #[test]
     fn edges_generated_from_group() -> Result<()> {
         let input_group = vec![nodes::Group {

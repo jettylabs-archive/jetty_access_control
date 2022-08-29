@@ -10,8 +10,6 @@ use petgraph::stable_graph::NodeIndex;
 use petgraph::{dot, stable_graph::StableDiGraph};
 use std::collections::HashMap;
 
-use crate::Jetty;
-
 use super::{EdgeType, JettyNode, NodeName};
 
 /// The main graph wrapper
@@ -88,41 +86,47 @@ impl Graph {
 mod tests {
     use anyhow::{anyhow, Context, Result};
 
-    use crate::access_graph::{GroupAttributes, NodeName};
+    use crate::access_graph::GroupAttributes;
 
-    use super::JettyNode;
+    use super::*;
     use std::collections::{HashMap, HashSet};
 
     /// Test merge_nodes
     #[test]
     fn group_node_same_name_no_conflict() -> Result<()> {
         let mut g = new_graph();
-        g.add_node(&JettyNode::Group(GroupAttributes {
+
+        let original_node = JettyNode::Group(GroupAttributes {
             name: "Group 1".to_string(),
             metadata: HashMap::new(),
-            connectors: HashSet::new(),
-        }))?;
+            connectors: HashSet::from(["test1".to_string()]),
+        });
 
-        let &idx = g
-            .get_node(&NodeName::Group("Group 1".to_string()))
-            .ok_or(anyhow!["Unable to find \"to\" node: {:?}", "Group 1"])?;
-
+        // new_node introduces a new connector value
         let new_node = JettyNode::Group(GroupAttributes {
             name: "Group 1".to_string(),
             metadata: HashMap::new(),
-            connectors: HashSet::from(["snowflake".to_string()]),
+            connectors: HashSet::from(["test2".to_string()]),
         });
+
+        // desired output
+        let combined_node = JettyNode::Group(GroupAttributes {
+            name: "Group 1".to_string(),
+            metadata: HashMap::new(),
+            connectors: HashSet::from(["test2".to_string(), "test1".to_string()]),
+        });
+
+        g.add_node(&original_node)?;
+
+        let &idx = g
+            .get_node(&original_node.get_name())
+            .ok_or(anyhow!["Unable to find \"to\" node: {:?}", &original_node])?;
 
         let merged_node = g
             .merge_nodes(idx, &new_node)
             .context(anyhow!["merging nodes"])?;
 
-        let outcome_node = g
-            .graph
-            .node_weight(idx)
-            .ok_or(anyhow!("couldn't find node"))?;
-
-        assert_eq!(outcome_node, &merged_node);
+        assert_eq!(combined_node, merged_node);
 
         Ok(())
     }
@@ -130,21 +134,25 @@ mod tests {
     #[test]
     fn group_node_name_conflict() -> Result<()> {
         let mut g = new_graph();
-        g.add_node(&JettyNode::Group(GroupAttributes {
+
+        let original_node = JettyNode::Group(GroupAttributes {
             name: "Group 1".to_string(),
             metadata: HashMap::new(),
             connectors: HashSet::new(),
-        }))?;
+        });
 
-        let &idx = g
-            .get_node(&NodeName::Group("Group 1".to_string()))
-            .ok_or(anyhow!["Unable to find \"to\" node: {:?}", "Group 1"])?;
-
+        // new_node introduces a connector value
         let new_node = JettyNode::Group(GroupAttributes {
             name: "Group 2".to_string(),
             metadata: HashMap::new(),
-            connectors: HashSet::from(["snowflake".to_string()]),
+            connectors: HashSet::new(),
         });
+
+        g.add_node(&original_node)?;
+
+        let &idx = g
+            .get_node(&original_node.get_name())
+            .ok_or(anyhow!["Unable to find \"to\" node: {:?}", &original_node])?;
 
         let merged_node = g
             .merge_nodes(idx, &new_node)
@@ -158,21 +166,25 @@ mod tests {
     #[test]
     fn group_node_hashmap_conflict() -> Result<()> {
         let mut g = new_graph();
-        g.add_node(&JettyNode::Group(GroupAttributes {
+
+        let original_node = JettyNode::Group(GroupAttributes {
             name: "Group 1".to_string(),
             metadata: HashMap::from([("test1".to_string(), "value2".to_string())]),
             connectors: HashSet::new(),
-        }))?;
+        });
 
-        let &idx = g
-            .get_node(&NodeName::Group("Group 1".to_string()))
-            .ok_or(anyhow!["Unable to find \"to\" node: {:?}", "Group 1"])?;
-
+        // new_node introduces a conflicting metadata value
         let new_node = JettyNode::Group(GroupAttributes {
             name: "Group 1".to_string(),
             metadata: HashMap::from([("test1".to_string(), "other_value".to_string())]),
             connectors: HashSet::new(),
         });
+
+        g.add_node(&original_node)?;
+
+        let &idx = g
+            .get_node(&original_node.get_name())
+            .ok_or(anyhow!["Unable to find \"to\" node: {:?}", &original_node])?;
 
         let merged_node = g
             .merge_nodes(idx, &new_node)
@@ -186,22 +198,21 @@ mod tests {
     #[test]
     fn group_node_hashmap_expand() -> Result<()> {
         let mut g = new_graph();
-        g.add_node(&JettyNode::Group(GroupAttributes {
+
+        let original_node = JettyNode::Group(GroupAttributes {
             name: "Group 1".to_string(),
             metadata: HashMap::from([("test1".to_string(), "value2".to_string())]),
             connectors: HashSet::new(),
-        }))?;
+        });
 
-        let &idx = g
-            .get_node(&NodeName::Group("Group 1".to_string()))
-            .ok_or(anyhow!["Unable to find \"to\" node: {:?}", "Group 1"])?;
-
+        // new_node introduces a new metadata key
         let new_node = JettyNode::Group(GroupAttributes {
             name: "Group 1".to_string(),
             metadata: HashMap::from([("test2".to_string(), "value 3".to_string())]),
             connectors: HashSet::new(),
         });
 
+        // when merged, the result should be:
         let combined_node = JettyNode::Group(GroupAttributes {
             name: "Group 1".to_string(),
             metadata: HashMap::from([
@@ -210,6 +221,12 @@ mod tests {
             ]),
             connectors: HashSet::new(),
         });
+
+        g.add_node(&original_node)?;
+
+        let &idx = g
+            .get_node(&original_node.get_name())
+            .ok_or(anyhow!["Unable to find \"to\" node: {:?}", &original_node])?;
 
         let merged_node = g
             .merge_nodes(idx, &new_node)
