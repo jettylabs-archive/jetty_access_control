@@ -313,25 +313,25 @@ impl AccessGraph {
     }
 
     pub(crate) fn build_graph(&mut self, data: ProcessedConnectorData) -> Result<()> {
-        self.get_node_and_edges(&data.data.groups, &data.connector)?;
-        self.get_node_and_edges(&data.data.users, &data.connector)?;
-        self.get_node_and_edges(&data.data.assets, &data.connector)?;
-        self.get_node_and_edges(&data.data.policies, &data.connector)?;
-        self.get_node_and_edges(&data.data.tags, &data.connector)?;
+        self.register_nodes_and_edges(&data.data.groups, &data.connector)?;
+        self.register_nodes_and_edges(&data.data.users, &data.connector)?;
+        self.register_nodes_and_edges(&data.data.assets, &data.connector)?;
+        self.register_nodes_and_edges(&data.data.policies, &data.connector)?;
+        self.register_nodes_and_edges(&data.data.tags, &data.connector)?;
         for edge in &self.edge_cache {
             self.graph.add_edge(edge.to_owned())?;
         }
         Ok(())
     }
 
-    fn get_node_and_edges<T: NodeHelper>(
+    fn register_nodes_and_edges<T: NodeHelper>(
         &mut self,
         nodes: &Vec<T>,
         connector: &String,
     ) -> Result<()> {
         for n in nodes {
             let node = n.get_node(connector.to_owned());
-            self.graph.add_node(&node)?;
+            self.graph.add_node(&node);
             let edges = n.get_edges();
             self.edge_cache.extend(edges);
         }
