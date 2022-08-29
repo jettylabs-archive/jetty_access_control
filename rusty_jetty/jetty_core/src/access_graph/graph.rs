@@ -40,7 +40,7 @@ impl Graph {
         self.nodes.get(node)
     }
     /// Adds a node to the graph and returns the index.
-    pub fn add_node(&mut self, node: &JettyNode) {
+    pub(crate) fn add_node(&mut self, node: &JettyNode) {
         let node_name = node.get_name();
         let idx = self.graph.add_node(node.to_owned());
         self.nodes.insert(node_name, idx);
@@ -49,7 +49,8 @@ impl Graph {
     /// Updates a node. Should return the updated node. Returns an
     /// error if the nodes are incompatible (would require overwriting values).
     /// To be compatible, metadata from each
-    pub fn merge_nodes(&mut self, idx: NodeIndex, new: &JettyNode) -> Result<()> {
+    #[allow(dead_code)]
+    pub(crate) fn merge_nodes(&mut self, idx: NodeIndex, new: &JettyNode) -> Result<()> {
         // Fetch node from graph
         let node = &mut self.graph[idx];
 
@@ -60,7 +61,7 @@ impl Graph {
     }
 
     /// Add edges from cache. Return an error if to/from doesn't exist
-    pub fn add_edge(&mut self, edge: super::JettyEdge) -> Result<()> {
+    pub(crate) fn add_edge(&mut self, edge: super::JettyEdge) -> Result<()> {
         let to = self
             .get_node(&edge.to)
             .ok_or(anyhow!["Unable to find \"to\" node: {:?}", &edge.to])?;

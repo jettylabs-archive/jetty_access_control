@@ -1,6 +1,5 @@
 use anyhow::{Context, Result};
 use jetty_core::{access_graph::AccessGraph, fetch_credentials, Connector, Jetty};
-use jetty_snowflake::{Role, User};
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
