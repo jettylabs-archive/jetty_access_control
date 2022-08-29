@@ -319,7 +319,9 @@ impl AccessGraph {
         self.register_nodes_and_edges(&data.data.policies, &data.connector)?;
         self.register_nodes_and_edges(&data.data.tags, &data.connector)?;
         for edge in &self.edge_cache {
-            self.graph.add_edge(edge.to_owned())?;
+            self.graph
+                .add_edge(edge.to_owned())
+                .context(format!("couldn't add edge {:?} to graph", edge))?;
         }
         Ok(())
     }

@@ -20,8 +20,8 @@ mod rest;
 pub use entry::*;
 use rest::SnowflakeRestClient;
 
-use futures::{stream::FuturesUnordered, StreamExt};
-use std::collections::HashSet;
+use futures::stream::{FuturesUnordered, StreamExt};
+use std::collections::{HashMap, HashSet};
 use std::iter::zip;
 
 use jetty_core::{
@@ -217,16 +217,26 @@ impl Snowflake {
 
     /// When we read, a policy will get created for each unique
     /// role/user, privilege, asset combination.
-    async fn grant_to_policy(&self, role_name: &str, grant: &Grant) -> Result<nodes::Policy> {
-        Ok(nodes::Policy::new(
+    async fn grant_to_policy(
+        &self,
+        role_name: &str,
+        grants: &HashSet<Grant>,
+    ) -> Result<Option<nodes::Policy>> {
+        if grants.len() < 1 {
+            // No privileges.
+            return Ok(None);
+        }
+        let privileges: Vec<String> = grants.iter().map(|g| g.privilege.to_owned()).collect();
+        Ok(Some(nodes::Policy::new(
             format!(
                 "{}.{}.{}",
                 role_name.to_owned(),
-                grant.privilege.clone(),
-                grant.name.to_owned()
+                privileges.join("."),
+                role_name,
             ),
-            hashset![grant.privilege.clone()],
-            hashset![grant.name.to_owned()],
+            privileges.iter().cloned().collect(),
+            // Unwrap here is fine since we asserted that the set was not empty above.
+            hashset![grants.iter().next().unwrap().name.to_owned()],
             hashset![],
             hashset![role_name.to_owned()],
             // No direct user grants in Snowflake. Grants must pass through roles.
@@ -234,13 +244,16 @@ impl Snowflake {
             // Defaults here for data read from Snowflake should be false.
             false,
             false,
-        ))
+        )))
     }
 
     async fn get_jetty_policies(&self) -> Result<Vec<nodes::Policy>> {
         let mut res = vec![];
         // Role grants
         for role in self.get_roles().await? {
+            // TODO: Update this so that we group roles by asset. So if a role has
+            // multiple grants to a given asset, we can bunch those
+            // privileges all in the same policy.
             let mut grants_to_role = self
                 .get_grants_to_role(&role.name)
                 .await?
@@ -250,13 +263,30 @@ impl Snowflake {
                 // ROLE: We don't need children groups. Those relationships will be taken care of
                 // as parent roles.
                 .filter(|g| consts::ASSET_TYPES.contains(&g.granted_on.as_str()))
-                .map(|g| self.grant_to_policy(&role.name, g))
+                // Collect roles by asset name so the policy:asset ratio is 1:1.
+                .fold(
+                    HashMap::new(),
+                    |mut asset_map: HashMap<String, HashSet<Grant>>, g| {
+                        if let Some(asset_privileges) = asset_map.get_mut(&g.name) {
+                            asset_privileges.insert(g.clone());
+                        } else {
+                            asset_map.insert(g.name.to_owned(), hashset![g.clone()]);
+                        }
+                        asset_map
+                    },
+                )
+                .iter()
+                .map(|(_asset_name, grants)| self.grant_to_policy(&role.name, grants))
                 .collect::<FuturesUnordered<_>>()
                 .collect::<Vec<_>>()
                 .await;
             res.append(&mut grants_to_role)
         }
-        let res = res.iter().map(|x| x.as_ref().unwrap()).cloned().collect();
+        let res = res
+            .iter()
+            // TODO: This is disgusting, we should fix it.
+            .map(|x| x.as_ref().unwrap().as_ref().unwrap().clone())
+            .collect();
         Ok(res)
     }
 
