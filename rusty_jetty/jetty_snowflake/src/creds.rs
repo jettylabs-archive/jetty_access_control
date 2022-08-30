@@ -5,7 +5,7 @@ use serde::Deserialize;
 ///
 /// The user sets these up by following Jetty documentation
 /// and pasting their keys into their connector config.
-#[derive(Deserialize, Debug, Default, new)]
+#[derive(Deserialize, Debug, Default)]
 pub(crate) struct SnowflakeCredentials {
     pub(crate) account: String,
     pub(crate) role: String,

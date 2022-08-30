@@ -37,9 +37,6 @@ use serde::Deserialize;
 use serde_json::Value as JsonValue;
 use structmap::{value::Value, FromMap, GenericMap};
 
-#[macro_use]
-extern crate derive_new;
-
 /// The main Snowflake Connector struct.
 ///
 /// Use this connector to access Snowflake data.
