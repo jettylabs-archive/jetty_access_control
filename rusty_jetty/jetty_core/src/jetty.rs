@@ -53,7 +53,9 @@ pub fn fetch_credentials() -> Result<HashMap<String, CredentialsBlob>> {
     let credentials_raw = fs::read_to_string(default_path)?;
     let mut config = yaml::from_str::<HashMap<String, CredentialsBlob>>(&credentials_raw)?;
 
-    config.pop().ok_or_else(|| anyhow!["failed"])
+    config
+        .pop()
+        .ok_or_else(|| anyhow!["failed to generate credentials"])
 }
 
 /// Represents Jetty Core in its entirety.
