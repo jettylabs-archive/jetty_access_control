@@ -37,6 +37,9 @@ use serde::Deserialize;
 use serde_json::Value as JsonValue;
 use structmap::{value::Value, FromMap, GenericMap};
 
+#[macro_use]
+extern crate derive_new;
+
 /// The main Snowflake Connector struct.
 ///
 /// Use this connector to access Snowflake data.
@@ -83,7 +86,6 @@ impl Connector for Snowflake {
         let mut conn = creds::SnowflakeCredentials::default();
         let mut required_fields: HashSet<_> = vec![
             "account",
-            "password",
             "role",
             "user",
             "warehouse",
@@ -96,7 +98,6 @@ impl Connector for Snowflake {
         for (k, v) in credentials.iter() {
             match k.as_ref() {
                 "account" => conn.account = v.to_string(),
-                "password" => conn.password = v.to_string(),
                 "role" => conn.role = v.to_string(),
                 "user" => conn.user = v.to_string(),
                 "warehouse" => conn.warehouse = v.to_string(),
@@ -115,7 +116,7 @@ impl Connector for Snowflake {
             ])
         } else {
             Ok(Box::new(Snowflake {
-                rest_client: SnowflakeRestClient::new(conn),
+                rest_client: SnowflakeRestClient::new(conn)?,
             }))
         }
     }

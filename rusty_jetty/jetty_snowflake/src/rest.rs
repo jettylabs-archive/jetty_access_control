@@ -3,7 +3,7 @@
 
 use crate::{consts, creds::SnowflakeCredentials};
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use jsonwebtoken::{encode, get_current_timestamp, Algorithm, EncodingKey, Header};
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware, RequestBuilder};
 use reqwest_retry::{policies::ExponentialBackoff, RetryTransientMiddleware};
@@ -33,15 +33,16 @@ pub(crate) struct SnowflakeRestClient {
 }
 
 impl SnowflakeRestClient {
-    pub(crate) fn new(credentials: SnowflakeCredentials) -> Self {
+    pub(crate) fn new(credentials: SnowflakeCredentials) -> Result<Self> {
+        credentials.validate()?;
         let retry_policy = ExponentialBackoff::builder().build_with_max_retries(3);
         let client = ClientBuilder::new(reqwest::Client::new())
             .with(RetryTransientMiddleware::new_with_policy(retry_policy))
             .build();
-        Self {
+        Ok(Self {
             credentials,
             http_client: client,
-        }
+        })
     }
     /// Execute a query, dropping the result.
     ///
@@ -51,14 +52,28 @@ impl SnowflakeRestClient {
     /// state in Snowflake.
     pub(crate) async fn execute(&self, sql: &str) -> Result<()> {
         let request = self.get_request(sql)?;
-        request.send().await?.text().await?;
+        request
+            .send()
+            .await
+            .context("couldn't send request")?
+            .text()
+            .await
+            .context("couldn't get body text")?;
         Ok(())
     }
 
     pub(crate) async fn query(&self, sql: &str) -> Result<String> {
-        let request = self.get_request(sql)?;
+        let request = self
+            .get_request(sql)
+            .context("failed to get request for query")?;
 
-        let res = request.send().await?.text().await?;
+        let res = request
+            .send()
+            .await
+            .context("couldn't send request")?
+            .text()
+            .await
+            .context("couldn't get body text")?;
         Ok(res)
     }
 
@@ -76,7 +91,7 @@ impl SnowflakeRestClient {
         return default_url;
         #[cfg(test)]
         return match crate::rest::tests::MOCK_HTTP_SERVER.read().unwrap().server {
-            Some(ref v) => v.uri(),
+            Some(ref v) => format!("{}/api/v2/statements", v.uri()),
             None => default_url,
         };
     }
@@ -105,35 +120,40 @@ impl SnowflakeRestClient {
     }
 
     fn get_jwt(&self) -> Result<String> {
-        let qualified_username = format![
-            "{}.{}",
-            self.credentials.account.to_uppercase(),
-            self.credentials.user.to_uppercase()
-        ];
+        #[cfg(not(test))]
+        {
+            let qualified_username = format![
+                "{}.{}",
+                self.credentials.account.to_uppercase(),
+                self.credentials.user.to_uppercase()
+            ];
 
-        // Generate jwt
-        let claims = JwtClaims {
-            exp: (get_current_timestamp() + 3600) as usize,
-            iat: get_current_timestamp() as usize,
-            iss: format!["{}.{}", qualified_username, self.credentials.public_key_fp],
-            sub: qualified_username,
-        };
+            // Generate jwt
+            let claims = JwtClaims {
+                exp: (get_current_timestamp() + 3600) as usize,
+                iat: get_current_timestamp() as usize,
+                iss: format!["{}.{}", qualified_username, self.credentials.public_key_fp],
+                sub: qualified_username,
+            };
 
-        // println!("{}", self.credentials.private_key.replace(r" ", ""));
+            // println!("{}", self.credentials.private_key.replace(r" ", ""));
 
-        encode(
-            &Header::new(Algorithm::RS256),
-            &claims,
-            &EncodingKey::from_rsa_pem(
-                self.credentials
-                    .private_key
-                    .replace(' ', "")
-                    .replace("ENDPRIVATEKEY", "END PRIVATE KEY")
-                    .replace("BEGINPRIVATEKEY", "BEGIN PRIVATE KEY")
-                    .as_bytes(),
-            )?,
-        )
-        .map_err(anyhow::Error::from)
+            encode(
+                &Header::new(Algorithm::RS256),
+                &claims,
+                &EncodingKey::from_rsa_pem(
+                    self.credentials
+                        .private_key
+                        .replace(' ', "")
+                        .replace("ENDPRIVATEKEY", "END PRIVATE KEY")
+                        .replace("BEGINPRIVATEKEY", "BEGIN PRIVATE KEY")
+                        .as_bytes(),
+                )?,
+            )
+            .map_err(anyhow::Error::from)
+        }
+        #[cfg(test)]
+        Ok("FAKE_JWT".to_owned())
     }
 }
 
@@ -160,9 +180,7 @@ mod tests {
             let mock_server = MockServer::start().await;
             Mock::given(method("POST"))
                 .and(path("/api/v2/statements"))
-                .respond_with(
-                    ResponseTemplate::new(404).set_body_string(r#"{"text": "wiremock cat fact"}"#),
-                )
+                .respond_with(ResponseTemplate::new(404).set_body_string(r#"{"text": "wiremock"}"#))
                 .mount(&mock_server)
                 .await;
             self.server = Some(mock_server);
@@ -179,8 +197,54 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_me() {
+    #[should_panic]
+    async fn empty_creds_fails_to_load() {
+        SnowflakeRestClient::new(SnowflakeCredentials::default()).unwrap();
+    }
+
+    #[tokio::test]
+    async fn filled_creds_works() {
+        let creds = SnowflakeCredentials {
+            account: "my_account".to_owned(),
+            role: "role".to_owned(),
+            user: "user".to_owned(),
+            warehouse: "warehouse".to_owned(),
+            private_key: "private_key".to_owned(),
+            public_key_fp: "fp".to_owned(),
+            url: None,
+        };
+        SnowflakeRestClient::new(creds).unwrap();
+    }
+
+    #[tokio::test]
+    async fn execute_works() {
         setup_wiremock().await;
-        // SnowflakeRestClient {}
+        let creds = SnowflakeCredentials {
+            account: "my_account".to_owned(),
+            role: "role".to_owned(),
+            user: "user".to_owned(),
+            warehouse: "warehouse".to_owned(),
+            private_key: "private_key".to_owned(),
+            public_key_fp: "fp".to_owned(),
+            url: None,
+        };
+        let client = SnowflakeRestClient::new(creds).unwrap();
+        client.execute("select 1").await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn query_works() {
+        setup_wiremock().await;
+        let creds = SnowflakeCredentials {
+            account: "my_account".to_owned(),
+            role: "role".to_owned(),
+            user: "user".to_owned(),
+            warehouse: "warehouse".to_owned(),
+            private_key: "private_key".to_owned(),
+            public_key_fp: "fp".to_owned(),
+            url: None,
+        };
+        let client = SnowflakeRestClient::new(creds).unwrap();
+        client.query("select 1").await.unwrap();
     }
 }
