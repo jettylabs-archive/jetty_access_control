@@ -25,6 +25,11 @@ struct JwtClaims {
     sub: String,
 }
 
+#[derive(Default)]
+pub(crate) struct SnowflakeRestConfig {
+    /// Enable/disable retry logic.
+    pub(crate) retry: bool,
+}
 /// Wrapper struct for http functionality
 pub(crate) struct SnowflakeRestClient {
     /// The credentials used to authenticate into Snowflake.
@@ -33,12 +38,18 @@ pub(crate) struct SnowflakeRestClient {
 }
 
 impl SnowflakeRestClient {
-    pub(crate) fn new(credentials: SnowflakeCredentials) -> Result<Self> {
+    pub(crate) fn new(
+        credentials: SnowflakeCredentials,
+        config: SnowflakeRestConfig,
+    ) -> Result<Self> {
         credentials.validate()?;
         let retry_policy = ExponentialBackoff::builder().build_with_max_retries(3);
-        let client = ClientBuilder::new(reqwest::Client::new())
-            .with(RetryTransientMiddleware::new_with_policy(retry_policy))
-            .build();
+        let mut client_builder = ClientBuilder::new(reqwest::Client::new());
+        if config.retry {
+            client_builder =
+                client_builder.with(RetryTransientMiddleware::new_with_policy(retry_policy))
+        }
+        let client = client_builder.build();
         Ok(Self {
             credentials,
             http_client: client,
@@ -56,9 +67,7 @@ impl SnowflakeRestClient {
             .send()
             .await
             .context("couldn't send request")?
-            .text()
-            .await
-            .context("couldn't get body text")?;
+            .error_for_status()?;
         Ok(())
     }
 
@@ -67,13 +76,13 @@ impl SnowflakeRestClient {
             .get_request(sql)
             .context("failed to get request for query")?;
 
-        let res = request
+        let response = request
             .send()
             .await
             .context("couldn't send request")?
-            .text()
-            .await
-            .context("couldn't get body text")?;
+            .error_for_status()?;
+        println!("status for query {:?}: {:?}", sql, response.status());
+        let res = response.text().await.context("couldn't get body text")?;
         Ok(res)
     }
 
@@ -81,19 +90,12 @@ impl SnowflakeRestClient {
     /// Otherwise, the standard account configuration
     /// is used
     fn get_url(&self) -> String {
-        let default_url = self.credentials.url.to_owned().unwrap_or_else(|| {
+        self.credentials.url.to_owned().unwrap_or_else(|| {
             format![
                 "https://{}.snowflakecomputing.com/api/v2/statements",
                 self.credentials.account
             ]
-        });
-        #[cfg(not(test))]
-        return default_url;
-        #[cfg(test)]
-        return match crate::rest::tests::MOCK_HTTP_SERVER.read().unwrap().server {
-            Some(ref v) => format!("{}/api/v2/statements", v.uri()),
-            None => default_url,
-        };
+        })
     }
 
     fn get_request(&self, sql: &str) -> Result<RequestBuilder> {
@@ -164,11 +166,23 @@ mod tests {
     use super::*;
 
     use lazy_static::lazy_static;
-    use wiremock::matchers::{method, path};
-    use wiremock::{Mock, MockServer, ResponseTemplate};
+    use wiremock::matchers::{body_string_contains, method, path};
+    use wiremock::{Mock, MockGuard, MockServer, ResponseTemplate};
 
     pub struct WiremockServer {
         pub server: Option<MockServer>,
+    }
+
+    #[derive(Default)]
+    pub struct MockServerConfig {
+        /// Use the default settings and patches.
+        use_default: bool,
+    }
+
+    impl MockServerConfig {
+        fn new(use_default: bool) -> MockServerConfig {
+            MockServerConfig { use_default }
+        }
     }
 
     impl WiremockServer {
@@ -178,32 +192,31 @@ mod tests {
 
         pub async fn init(&mut self) {
             let mock_server = MockServer::start().await;
-            Mock::given(method("POST"))
-                .and(path("/api/v2/statements"))
-                .respond_with(ResponseTemplate::new(404).set_body_string(r#"{"text": "wiremock"}"#))
-                .mount(&mock_server)
-                .await;
             self.server = Some(mock_server);
         }
     }
 
-    lazy_static! {
-        pub static ref MOCK_HTTP_SERVER: RwLock<WiremockServer> =
-            RwLock::new(WiremockServer::new());
-    }
-
-    async fn setup_wiremock() {
-        MOCK_HTTP_SERVER.write().unwrap().init().await;
+    async fn mount_default_guard(server: &WiremockServer) -> MockGuard {
+        Mock::given(method("POST"))
+            .and(path("/api/v2/statements"))
+            .respond_with(ResponseTemplate::new(200).set_body_string(r#"{"text": "wiremock"}"#))
+            .named("execute_does_not_panic")
+            .mount_as_scoped(server.server.as_ref().unwrap())
+            .await
     }
 
     #[tokio::test]
     #[should_panic]
     async fn empty_creds_fails_to_load() {
-        SnowflakeRestClient::new(SnowflakeCredentials::default()).unwrap();
+        SnowflakeRestClient::new(
+            SnowflakeCredentials::default(),
+            SnowflakeRestConfig::default(),
+        )
+        .unwrap();
     }
 
     #[tokio::test]
-    async fn filled_creds_works() {
+    async fn filled_creds_create_client_successfully() {
         let creds = SnowflakeCredentials {
             account: "my_account".to_owned(),
             role: "role".to_owned(),
@@ -213,12 +226,14 @@ mod tests {
             public_key_fp: "fp".to_owned(),
             url: None,
         };
-        SnowflakeRestClient::new(creds).unwrap();
+        SnowflakeRestClient::new(creds, SnowflakeRestConfig::default()).unwrap();
     }
 
     #[tokio::test]
-    async fn execute_works() {
-        setup_wiremock().await;
+    async fn execute_does_not_panic() {
+        let mut server = WiremockServer::new();
+        server.init().await;
+        let _guard = mount_default_guard(&server).await;
         let creds = SnowflakeCredentials {
             account: "my_account".to_owned(),
             role: "role".to_owned(),
@@ -226,15 +241,20 @@ mod tests {
             warehouse: "warehouse".to_owned(),
             private_key: "private_key".to_owned(),
             public_key_fp: "fp".to_owned(),
-            url: None,
+            url: Some(format!(
+                "{}/api/v2/statements",
+                server.server.as_ref().unwrap().uri()
+            )),
         };
-        let client = SnowflakeRestClient::new(creds).unwrap();
+        let client = SnowflakeRestClient::new(creds, SnowflakeRestConfig::default()).unwrap();
         client.execute("select 1").await.unwrap();
     }
 
     #[tokio::test]
-    async fn query_works() {
-        setup_wiremock().await;
+    async fn query_does_not_panic() {
+        let mut server = WiremockServer::new();
+        server.init().await;
+        let _guard = mount_default_guard(&server).await;
         let creds = SnowflakeCredentials {
             account: "my_account".to_owned(),
             role: "role".to_owned(),
@@ -242,9 +262,50 @@ mod tests {
             warehouse: "warehouse".to_owned(),
             private_key: "private_key".to_owned(),
             public_key_fp: "fp".to_owned(),
-            url: None,
+            url: Some(format!(
+                "{}/api/v2/statements",
+                server.server.as_ref().unwrap().uri()
+            )),
         };
-        let client = SnowflakeRestClient::new(creds).unwrap();
+        let client = SnowflakeRestClient::new(creds, SnowflakeRestConfig::default()).unwrap();
         client.query("select 1").await.unwrap();
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn server_error_panics() {
+        let mut server = (WiremockServer::new());
+        server.init().await;
+        // We will use a custom guard for this one to mock a bad response (500).
+        let _guard = Mock::given(method("POST"))
+            .and(path("/api/v2/statements"))
+            .and(body_string_contains("select 2"))
+            .respond_with(ResponseTemplate::new(500).set_body_string(r#"{"text": "wiremock"}"#))
+            .named("500 server error")
+            .mount_as_scoped(server.server.as_ref().unwrap())
+            .await;
+
+        let creds = SnowflakeCredentials {
+            account: "my_account".to_owned(),
+            role: "role".to_owned(),
+            user: "user".to_owned(),
+            warehouse: "warehouse".to_owned(),
+            private_key: "private_key".to_owned(),
+            public_key_fp: "fp".to_owned(),
+            url: Some(format!(
+                "{}/api/v2/statements",
+                server.server.as_ref().unwrap().uri()
+            )),
+        };
+        let client = SnowflakeRestClient::new(creds, SnowflakeRestConfig::default()).unwrap();
+        println!(
+            "change this {:?}",
+            client
+                .query("select 2")
+                .await
+                .context("query failed")
+                .unwrap()
+        );
+        drop(_guard);
     }
 }

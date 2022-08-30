@@ -27,7 +27,7 @@ impl SnowflakeCredentials {
             || self.public_key_fp.is_empty()
         {
             return Err(anyhow!(
-                "Credentials are missing. Please make sure your connectors.yaml file is correct."
+                "Credentials are missing. Please make sure your connectors.yaml file is correct. Credentials received: {:#?}", self
             ));
         }
         Ok(())

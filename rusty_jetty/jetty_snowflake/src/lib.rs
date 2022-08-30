@@ -18,7 +18,7 @@ mod entry;
 mod rest;
 
 pub use entry::*;
-use rest::SnowflakeRestClient;
+use rest::{SnowflakeRestClient, SnowflakeRestConfig};
 
 use futures::stream::{FuturesUnordered, StreamExt};
 use std::collections::{HashMap, HashSet};
@@ -113,7 +113,7 @@ impl Connector for Snowflake {
             ])
         } else {
             Ok(Box::new(Snowflake {
-                rest_client: SnowflakeRestClient::new(conn)?,
+                rest_client: SnowflakeRestClient::new(conn, SnowflakeRestConfig { retry: true })?,
             }))
         }
     }
