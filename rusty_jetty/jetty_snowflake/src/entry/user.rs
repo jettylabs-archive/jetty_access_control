@@ -6,4 +6,9 @@ use structmap_derive::FromMap;
 #[derive(FromMap, Deserialize, Debug, Default)]
 pub struct User {
     pub name: String,
+    pub first_name: String,
+    pub last_name: String,
+    pub email: String,
+    pub login_name: String,
+    pub display_name: String,
 }
