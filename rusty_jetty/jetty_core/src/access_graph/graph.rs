@@ -69,13 +69,17 @@ impl Graph {
 
     /// Add edges from cache. Return an error if to/from doesn't exist
     pub(crate) fn add_edge(&mut self, edge: super::JettyEdge) -> Result<()> {
-        let to = self
-            .get_node(&edge.to)
-            .ok_or(anyhow!["Unable to find \"to\" node: {:?}", &edge.to])?;
+        let to = self.get_node(&edge.to).ok_or(anyhow![
+            "Unable to find \"to\" node: {:?} for \"from\" {:?}",
+            &edge.to,
+            &edge.from
+        ])?;
 
-        let from = self
-            .get_node(&edge.from)
-            .ok_or(anyhow!["Unable to find \"from\" node: {:?}", &edge.from])?;
+        let from = self.get_node(&edge.from).ok_or(anyhow![
+            "Unable to find \"from\" node: {:?} for \"to\" {:?}",
+            &edge.from,
+            &edge.to
+        ])?;
 
         self.graph.add_edge(*from, *to, edge.edge_type);
         Ok(())

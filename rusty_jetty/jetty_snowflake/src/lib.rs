@@ -20,19 +20,20 @@ mod rest;
 pub use entry::*;
 use rest::SnowflakeRestClient;
 
-use futures::{stream::FuturesUnordered, StreamExt};
-use std::collections::HashSet;
+use futures::stream::{FuturesUnordered, StreamExt};
+use std::collections::{HashMap, HashSet};
 use std::iter::zip;
 
 use jetty_core::{
     connectors,
-    connectors::{nodes, Connector},
+    connectors::{nodes, Connector, UserIdentifier},
     jetty::{ConnectorConfig, CredentialsBlob},
 };
 
 use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
 use maplit::{hashmap, hashset};
+use serde::Deserialize;
 use serde_json::Value as JsonValue;
 use structmap::{value::Value, FromMap, GenericMap};
 
@@ -41,6 +42,12 @@ use structmap::{value::Value, FromMap, GenericMap};
 /// Use this connector to access Snowflake data.
 pub struct Snowflake {
     rest_client: SnowflakeRestClient,
+}
+
+#[derive(Deserialize, Debug)]
+struct SnowflakeField {
+    #[serde(default)]
+    name: String,
 }
 
 /// Main connector implementation.
@@ -193,9 +200,10 @@ impl Snowflake {
                     .collect()
             })
             .collect();
-        let fields: Vec<String> =
+        let fields_intermediate: Vec<SnowflakeField> =
             serde_json::from_value(rows_value["resultSetMetaData"]["rowType"].clone())
                 .context("failed to deserialize fields")?;
+        let fields: Vec<String> = fields_intermediate.iter().map(|i| i.name.clone()).collect();
         Ok(rows
             .iter()
             .map(|i| {
@@ -207,25 +215,42 @@ impl Snowflake {
             .collect())
     }
 
-    async fn grant_to_policy(&self, role_name: &str, grant: &Grant) -> Result<nodes::Policy> {
-        let _granted_to_groups = self
-            .get_grants_on_role(role_name)
-            .await
-            .context(format!("failed to get grants on role {}", &role_name))?;
-        Ok(nodes::Policy::new(
-            role_name.to_owned(),
-            hashset![grant.privilege.clone()],
-            // This
-            hashset![grant.name.to_owned()],
+    /// When we read, a policy will get created for each unique
+    /// role/user, asset combination. All privileges will be bunched together
+    /// for that combination.
+    async fn grant_to_policy(
+        &self,
+        role_name: &str,
+        grants: &HashSet<Grant>,
+    ) -> Option<nodes::Policy> {
+        if grants.len() < 1 {
+            // No privileges.
+            return None;
+        }
+        let privileges: Vec<String> = grants.iter().map(|g| g.privilege.to_owned()).collect();
+        Some(nodes::Policy::new(
+            format!(
+                "{}.{}.{}",
+                role_name.to_owned(),
+                privileges.join("."),
+                role_name,
+            ),
+            privileges.iter().cloned().collect(),
+            // Unwrap here is fine since we asserted that the set was not empty above.
+            hashset![grants.iter().next().unwrap().name.to_owned()],
             hashset![],
+            hashset![role_name.to_owned()],
+            // No direct user grants in Snowflake. Grants must pass through roles.
             hashset![],
-            hashset![],
+            // Defaults here for data read from Snowflake should be false.
             false,
             false,
         ))
     }
+
     async fn get_jetty_policies(&self) -> Result<Vec<nodes::Policy>> {
         let mut res = vec![];
+        // Role grants
         for role in self.get_roles().await? {
             let mut grants_to_role = self
                 .get_grants_to_role(&role.name)
@@ -236,16 +261,36 @@ impl Snowflake {
                 // ROLE: We don't need children groups. Those relationships will be taken care of
                 // as parent roles.
                 .filter(|g| consts::ASSET_TYPES.contains(&g.granted_on.as_str()))
-                .map(|g| self.grant_to_policy(&role.name, g))
+                // Collect roles by asset name so the policy:asset ratio is 1:1.
+                .fold(
+                    HashMap::new(),
+                    |mut asset_map: HashMap<String, HashSet<Grant>>, g| {
+                        if let Some(asset_privileges) = asset_map.get_mut(&g.name) {
+                            asset_privileges.insert(g.clone());
+                        } else {
+                            asset_map.insert(g.name.to_owned(), hashset![g.clone()]);
+                        }
+                        asset_map
+                    },
+                )
+                .iter()
+                .map(|(_asset_name, grants)| self.grant_to_policy(&role.name, grants))
                 .collect::<FuturesUnordered<_>>()
                 .collect::<Vec<_>>()
                 .await;
             res.append(&mut grants_to_role)
         }
-        let res = res.iter().map(|x| x.as_ref().unwrap()).cloned().collect();
+        let res = res
+            .iter()
+            // TODO: This is disgusting, we should fix it.
+            .filter(|x| x.is_some())
+            .map(|x| x.as_ref().unwrap())
+            .cloned()
+            .collect();
         Ok(res)
     }
 
+    /// Enterprise-only feature. We'll have to do something about that at some point.
     async fn get_jetty_tags(&self) -> Result<Vec<nodes::Tag>> {
         Ok(vec![])
     }
@@ -253,13 +298,24 @@ impl Snowflake {
     async fn get_jetty_groups(&self) -> Result<Vec<nodes::Group>> {
         let mut res = vec![];
         for role in self.get_roles().await? {
-            // TODO: Get members for role.
+            let sub_roles = self
+                .get_grants_to_role(&role.name)
+                .await?
+                .iter()
+                // Only get subgroups
+                .filter(|g| g.granted_on == "ROLE")
+                .map(|g| g.name.to_owned())
+                .collect();
             res.push(nodes::Group::new(
-                role.name,
+                role.name.to_owned(),
                 hashmap![],
+                // We only handle parent relationships. The resulting
+                // child relationships are handled by Jetty.
                 hashset![],
+                // Included users are handled in get_jetty_users
                 hashset![],
-                hashset![],
+                sub_roles,
+                // Policies applied are handled in get_jetty_policies
                 hashset![],
             ));
         }
@@ -272,10 +328,15 @@ impl Snowflake {
             let user_roles = self.get_grants_to_user(&user.name).await?;
             res.push(nodes::User::new(
                 user.name,
-                hashmap![],
-                hashset![],
+                hashmap! {
+                    UserIdentifier::Email => user.email,
+                    UserIdentifier::FirstName => user.first_name,
+                    UserIdentifier::LastName => user.last_name
+                },
+                hashset![user.display_name, user.login_name],
                 hashmap![],
                 user_roles.iter().map(|role| role.role.clone()).collect(),
+                // Policies applied are handled in get_jetty_policies
                 hashset![],
             ));
         }
@@ -292,9 +353,12 @@ impl Snowflake {
                 ),
                 connectors::AssetType::DBTable,
                 hashmap![],
+                // Policies applied are handled in get_jetty_policies
                 hashset![],
                 hashset![format!("{}.{}", table.database_name, table.schema_name)],
+                // Handled in child_of for parents.
                 hashset![],
+                // We aren't extracting lineage from Snowflake right now.
                 hashset![],
                 hashset![],
                 hashset![],
@@ -306,9 +370,12 @@ impl Snowflake {
                 format!("{}.{}.{}", view.database_name, view.schema_name, view.name),
                 connectors::AssetType::DBView,
                 hashmap![],
+                // Policies applied are handled in get_jetty_policies
                 hashset![],
                 hashset![format!("{}.{}", view.database_name, view.schema_name)],
+                // Handled in child_of for parents.
                 hashset![],
+                // We aren't extracting lineage from Snowflake right now.
                 hashset![],
                 hashset![],
                 hashset![],
@@ -323,9 +390,12 @@ impl Snowflake {
                 format!("{}.{}", schema.database_name, schema.name),
                 connectors::AssetType::DBSchema,
                 hashmap![],
+                // Policies applied are handled in get_jetty_policies
                 hashset![],
                 hashset![schema.database_name],
+                // Handled in child_of for parents.
                 hashset![],
+                // We aren't extracting lineage from Snowflake right now.
                 hashset![],
                 hashset![],
                 hashset![],
@@ -338,9 +408,12 @@ impl Snowflake {
                 db.name,
                 connectors::AssetType::DBDB,
                 hashmap![],
+                // Policies applied are handled in get_jetty_policies
                 hashset![],
                 hashset![],
+                // Handled in child_of for parents.
                 hashset![],
+                // We aren't extracting lineage from Snowflake right now.
                 hashset![],
                 hashset![],
                 hashset![],
