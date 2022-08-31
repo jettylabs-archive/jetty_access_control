@@ -1,0 +1,18 @@
+# Dev config file
+
+name: jetty_dev
+version: '0.1.0'
+
+connectors:
+    - namespace: snow
+      type: snowflake
+      config:
+          config1: stuff
+    - namespace: dbt
+      type: dbt
+      config:
+          some_other_config: wow
+    - namespace: tableau
+      type: tableau
+      config:
+          test_key: test_val

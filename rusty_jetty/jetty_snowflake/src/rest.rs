@@ -88,7 +88,6 @@ impl SnowflakeRestClient {
             .await
             .context("couldn't send request")?
             .error_for_status()?;
-        println!("status for query {:?}: {:?}", config.sql, response.status());
         let res = response.text().await.context("couldn't get body text")?;
         Ok(res)
     }
