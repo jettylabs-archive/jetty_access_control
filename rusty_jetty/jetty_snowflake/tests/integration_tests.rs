@@ -224,7 +224,6 @@ async fn construct_connector_from(input: &TestInput) -> TestHarness<Snowflake> {
     }
 }
 
-// #[ignore]
 #[tokio::test]
 async fn input_produces_correct_results() {
     let expected_groups: Vec<Group> = vec![Group {
