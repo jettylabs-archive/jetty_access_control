@@ -1,5 +1,8 @@
+use crate::nodes::CreateNode;
+
 use super::*;
 use anyhow::Context;
+use jetty_core::connectors::nodes as jetty_nodes;
 use reqwest;
 
 /// Wrapper struct for http functionality
@@ -26,7 +29,6 @@ impl TableauRestClient {
 
     /// Get site_id token from the TableauRestClient.
     /// If not available, fetch it.
-    #[allow(dead_code)]
     async fn get_site_id(&mut self) -> Result<String> {
         if let Some(t) = &self.site_id {
             return Ok(t.to_owned());
@@ -40,7 +42,6 @@ impl TableauRestClient {
 
     /// Get authentication token from the TableauRestClient.
     /// If not available, fetch a new token.
-    #[allow(dead_code)]
     async fn get_token(&mut self) -> Result<String> {
         if let Some(t) = &self.token {
             return Ok(t.to_owned());
@@ -99,7 +100,7 @@ impl TableauRestClient {
     }
 
     #[allow(dead_code)]
-    async fn get_users(&mut self) -> Result<Vec<String>> {
+    async fn get_users(&mut self) -> Result<Vec<jetty_nodes::User>> {
         let users = self
             .get_json_response(
                 "users".to_owned(),
@@ -109,20 +110,9 @@ impl TableauRestClient {
             )
             .await
             .context("fetching users")?;
-        let a = if let serde_json::Value::Array(users_vec) = users {
-            let mut return_vals = vec![];
-            for user in users_vec {
-                let name = get_json_from_path(&user, &vec!["name".to_owned()])?;
-                return_vals.push(name.to_string())
-            }
-            Ok(return_vals)
-        } else {
-            Err(anyhow!("unable to iterate though users array"))
-        };
-        a
+        users.to_users()
     }
 
-    #[allow(dead_code)]
     async fn get_json_response(
         &mut self,
         endpoint: String,
@@ -149,8 +139,6 @@ impl TableauRestClient {
         if let Some(v) = resp.get("pagination") {
             #[derive(Deserialize)]
             struct PaginationInfo {
-                #[serde(rename = "pageNumber")]
-                page_number: String,
                 #[serde(rename = "pageSize")]
                 page_size: String,
                 #[serde(rename = "totalAvailable")]
@@ -213,7 +201,6 @@ impl TableauRestClient {
         }
     }
 
-    #[allow(dead_code)]
     async fn build_request(
         &mut self,
         endpoint: String,
@@ -245,7 +232,6 @@ impl TableauRestClient {
         Ok(req)
     }
 
-    #[allow(dead_code)]
     /// Add authentication header to requests
     async fn add_auth(&mut self, req: reqwest::RequestBuilder) -> Result<reqwest::RequestBuilder> {
         let token = self.get_token().await.context("getting token")?;
@@ -286,7 +272,7 @@ mod tests {
         let mut tc = connector_setup().context("running tableau connector setup")?;
         let users = tc.client.get_users().await?;
         for u in users {
-            println!("{}", u.trim_matches('"'));
+            println!("{}", u.name);
         }
         Ok(())
     }
