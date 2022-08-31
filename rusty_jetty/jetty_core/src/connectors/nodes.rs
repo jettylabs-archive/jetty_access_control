@@ -19,7 +19,7 @@ pub struct ConnectorData {
 }
 
 /// Group data provided by connectors
-#[derive(Default, Debug, new)]
+#[derive(Default, Debug, PartialEq, new)]
 pub struct Group {
     /// Group name
     pub name: String,
