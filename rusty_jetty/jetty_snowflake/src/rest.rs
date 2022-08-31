@@ -80,8 +80,8 @@ impl SnowflakeRestClient {
 
     pub(crate) async fn query(&self, config: &SnowflakeRequestConfig) -> Result<String> {
         let request = self
-            .get_request(&config)
-            .context("failed to get request for query")?;
+            .get_request(config)
+            .context(format!("failed to get request for query {:?}", &config.sql))?;
 
         let response = request
             .send()

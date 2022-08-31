@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use jetty_core::{
     access_graph::AccessGraph, connectors::ConnectorClient, fetch_credentials, Connector, Jetty,
 };
@@ -22,7 +22,8 @@ async fn main() -> Result<()> {
         connector: "Snowflake".to_owned(),
         data: snow_data,
     };
-    let ag = AccessGraph::new(vec![pcd])?;
+    AccessGraph::new(vec![pcd])?;
+    // let ag = AccessGraph::new(vec![pcd])?;
     // let res = ag
     //     .graph
     //     .visualize("/tmp/graph.svg".to_owned())

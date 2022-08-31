@@ -3,13 +3,14 @@
 //! Everything needed for connection and interaction with Snowflake.&
 //!
 //! ```
-//! use jetty_core::connectors::Connector;
+//! use jetty_core::connectors::{Connector, ConnectorClient};
 //! use jetty_core::jetty::{ConnectorConfig, CredentialsBlob};
 //! use jetty_snowflake::Snowflake;
 //!
 //! let config = ConnectorConfig::default();
 //! let credentials = CredentialsBlob::default();
-//! let snow = Snowflake::new(&config, &credentials);
+//! let connector_client = ConnectorClient::Core;
+//! let snow = Snowflake::new(&config, &credentials, Some(connector_client));
 //! ```
 
 mod consts;
@@ -73,11 +74,31 @@ impl Connector for Snowflake {
 
     async fn get_data(&self) -> nodes::ConnectorData {
         nodes::ConnectorData {
-            groups: self.get_jetty_groups().await.unwrap(),
-            users: self.get_jetty_users().await.unwrap(),
-            assets: self.get_jetty_assets().await.unwrap(),
-            tags: self.get_jetty_tags().await.unwrap(),
-            policies: self.get_jetty_policies().await.unwrap(),
+            groups: self
+                .get_jetty_groups()
+                .await
+                .context("failed to get groups")
+                .unwrap(),
+            users: self
+                .get_jetty_users()
+                .await
+                .context("failed to get users")
+                .unwrap(),
+            assets: self
+                .get_jetty_assets()
+                .await
+                .context("failed to get assets")
+                .unwrap(),
+            tags: self
+                .get_jetty_tags()
+                .await
+                .context("failed to get tags")
+                .unwrap(),
+            policies: self
+                .get_jetty_policies()
+                .await
+                .context("failed to get policies")
+                .unwrap(),
         }
     }
 
@@ -139,52 +160,69 @@ impl Snowflake {
     pub async fn get_grants_to_user(&self, user_name: &str) -> Result<Vec<RoleGrant>> {
         self.query_to_obj::<RoleGrant>(&format!("SHOW GRANTS TO USER {}", user_name))
             .await
+            .context("failed to get grants to user")
     }
 
     /// Get all grants to a role – the privileges and "children" roles.
     pub async fn get_grants_to_role(&self, role_name: &str) -> Result<Vec<Grant>> {
         self.query_to_obj::<Grant>(&format!("SHOW GRANTS TO ROLE {}", role_name))
             .await
+            .context("failed to get grants to role")
     }
 
     /// Get all grants on a role – the "parent" roles.
     pub async fn get_grants_on_role(&self, role_name: &str) -> Result<Vec<Grant>> {
         self.query_to_obj::<Grant>(&format!("SHOW GRANTS ON ROLE {}", role_name))
             .await
+            .context("failed to get grants on role")
     }
     /// Get all users.
     pub async fn get_users(&self) -> Result<Vec<User>> {
-        self.query_to_obj::<User>("SHOW USERS").await
+        self.query_to_obj::<User>("SHOW USERS")
+            .await
+            .context("failed to get users")
     }
 
     /// Get all roles.
     pub async fn get_roles(&self) -> Result<Vec<Role>> {
-        self.query_to_obj::<Role>("SHOW ROLES").await
+        self.query_to_obj::<Role>("SHOW ROLES")
+            .await
+            .context("failed to get roles")
     }
 
     /// Get all databases.
     pub async fn get_databases(&self) -> Result<Vec<Database>> {
-        self.query_to_obj::<Database>("SHOW DATABASES").await
+        self.query_to_obj::<Database>("SHOW DATABASES")
+            .await
+            .context("failed to get databases")
     }
 
     /// Get all warehouses.
     pub async fn get_warehouses(&self) -> Result<Vec<Warehouse>> {
-        self.query_to_obj::<Warehouse>("SHOW WAREHOUSES").await
+        self.query_to_obj::<Warehouse>("SHOW WAREHOUSES")
+            .await
+            .context("failed to get warehouses")
     }
 
     /// Get all schemas.
     pub async fn get_schemas(&self) -> Result<Vec<Schema>> {
-        self.query_to_obj::<Schema>("SHOW SCHEMAS").await
+        self.query_to_obj::<Schema>("SHOW SCHEMAS")
+            .await
+            .context("failed to get schemas")
     }
 
     /// Get all views.
     pub async fn get_views(&self) -> Result<Vec<View>> {
-        self.query_to_obj::<View>("SHOW VIEWS").await
+        self.query_to_obj::<View>("SHOW VIEWS")
+            .await
+            .context("failed to get views")
     }
 
     /// Get all tables.
     pub async fn get_tables(&self) -> Result<Vec<Table>> {
-        self.query_to_obj::<Table>("SHOW TABLES").await
+        self.query_to_obj::<Table>("SHOW TABLES")
+            .await
+            .context("failed to get tables")
     }
 
     /// Execute the given query and deserialize the result into the given type.
@@ -239,7 +277,7 @@ impl Snowflake {
         role_name: &str,
         grants: &HashSet<Grant>,
     ) -> Option<nodes::Policy> {
-        if grants.len() < 1 {
+        if grants.is_empty() {
             // No privileges.
             return None;
         }
@@ -313,7 +351,7 @@ impl Snowflake {
 
     async fn get_jetty_groups(&self) -> Result<Vec<nodes::Group>> {
         let mut res = vec![];
-        for role in self.get_roles().await? {
+        for role in self.get_roles().await.context("failed to get roles")? {
             let sub_roles = self
                 .get_grants_to_role(&role.name)
                 .await?
