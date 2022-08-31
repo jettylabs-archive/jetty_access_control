@@ -26,6 +26,13 @@ struct JwtClaims {
 }
 
 #[derive(Default)]
+pub struct SnowflakeRequestConfig {
+    pub sql: String,
+    /// Only used to bypass JWT logic in testing
+    pub use_jwt: bool,
+}
+
+#[derive(Default)]
 pub(crate) struct SnowflakeRestConfig {
     /// Enable/disable retry logic.
     pub(crate) retry: bool,
@@ -61,8 +68,8 @@ impl SnowflakeRestClient {
     /// SQL statements that don't expect results,
     /// such as those that are used to update
     /// state in Snowflake.
-    pub(crate) async fn execute(&self, sql: &str) -> Result<()> {
-        let request = self.get_request(sql)?;
+    pub(crate) async fn execute(&self, config: &SnowflakeRequestConfig) -> Result<()> {
+        let request = self.get_request(config)?;
         request
             .send()
             .await
@@ -71,9 +78,9 @@ impl SnowflakeRestClient {
         Ok(())
     }
 
-    pub(crate) async fn query(&self, sql: &str) -> Result<String> {
+    pub(crate) async fn query(&self, config: &SnowflakeRequestConfig) -> Result<String> {
         let request = self
-            .get_request(sql)
+            .get_request(&config)
             .context("failed to get request for query")?;
 
         let response = request
@@ -81,7 +88,7 @@ impl SnowflakeRestClient {
             .await
             .context("couldn't send request")?
             .error_for_status()?;
-        println!("status for query {:?}: {:?}", sql, response.status());
+        println!("status for query {:?}: {:?}", config.sql, response.status());
         let res = response.text().await.context("couldn't get body text")?;
         Ok(res)
     }
@@ -90,6 +97,7 @@ impl SnowflakeRestClient {
     /// Otherwise, the standard account configuration
     /// is used
     fn get_url(&self) -> String {
+        println!("url should be {:?}", self.credentials.url);
         self.credentials.url.to_owned().unwrap_or_else(|| {
             format![
                 "https://{}.snowflakecomputing.com/api/v2/statements",
@@ -98,19 +106,22 @@ impl SnowflakeRestClient {
         })
     }
 
-    fn get_request(&self, sql: &str) -> Result<RequestBuilder> {
-        let token = self.get_jwt()?;
-        let body = self.get_body(sql);
+    fn get_request(&self, config: &SnowflakeRequestConfig) -> Result<RequestBuilder> {
+        let body = self.get_body(&config.sql);
 
-        Ok(self
+        let mut builder = self
             .http_client
             .post(self.get_url())
             .json(&body)
-            .header(consts::AUTH_HEADER, format!["Bearer {}", token])
             .header(consts::CONTENT_TYPE_HEADER, "application/json")
             .header(consts::ACCEPT_HEADER, "application/json")
             .header(consts::SNOWFLAKE_AUTH_HEADER, "KEYPAIR_JWT")
-            .header(consts::USER_AGENT_HEADER, "jetty-labs"))
+            .header(consts::USER_AGENT_HEADER, "jetty-labs");
+        if config.use_jwt {
+            let token = self.get_jwt().context("failed to get jwt")?;
+            builder = builder.header(consts::AUTH_HEADER, format!["Bearer {}", token]);
+        }
+        Ok(builder)
     }
 
     fn get_body<'a>(&'a self, sql: &'a str) -> HashMap<&str, &'a str> {
@@ -161,28 +172,13 @@ impl SnowflakeRestClient {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::RwLock;
-
     use super::*;
 
-    use lazy_static::lazy_static;
     use wiremock::matchers::{body_string_contains, method, path};
     use wiremock::{Mock, MockGuard, MockServer, ResponseTemplate};
 
     pub struct WiremockServer {
         pub server: Option<MockServer>,
-    }
-
-    #[derive(Default)]
-    pub struct MockServerConfig {
-        /// Use the default settings and patches.
-        use_default: bool,
-    }
-
-    impl MockServerConfig {
-        fn new(use_default: bool) -> MockServerConfig {
-            MockServerConfig { use_default }
-        }
     }
 
     impl WiremockServer {
@@ -247,7 +243,13 @@ mod tests {
             )),
         };
         let client = SnowflakeRestClient::new(creds, SnowflakeRestConfig::default()).unwrap();
-        client.execute("select 1").await.unwrap();
+        client
+            .execute(&SnowflakeRequestConfig {
+                sql: "select 1".to_owned(),
+                use_jwt: false,
+            })
+            .await
+            .unwrap();
     }
 
     #[tokio::test]
@@ -268,7 +270,13 @@ mod tests {
             )),
         };
         let client = SnowflakeRestClient::new(creds, SnowflakeRestConfig::default()).unwrap();
-        client.query("select 1").await.unwrap();
+        client
+            .query(&SnowflakeRequestConfig {
+                sql: "select 1".to_owned(),
+                use_jwt: false,
+            })
+            .await
+            .unwrap();
     }
 
     #[tokio::test]
@@ -301,7 +309,10 @@ mod tests {
         println!(
             "change this {:?}",
             client
-                .query("select 2")
+                .query(&SnowflakeRequestConfig {
+                    sql: "select 2".to_owned(),
+                    use_jwt: false
+                })
                 .await
                 .context("query failed")
                 .unwrap()

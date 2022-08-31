@@ -3,7 +3,7 @@ use structmap::FromMap;
 use structmap_derive::FromMap;
 
 /// Snowflake User entry.
-#[derive(FromMap, Deserialize, Debug, Default)]
+#[derive(FromMap, Clone, Deserialize, Debug, Default)]
 pub struct User {
     pub name: String,
     pub first_name: String,

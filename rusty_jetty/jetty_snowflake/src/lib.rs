@@ -18,7 +18,7 @@ mod entry;
 mod rest;
 
 pub use entry::*;
-use rest::{SnowflakeRestClient, SnowflakeRestConfig};
+use rest::{SnowflakeRequestConfig, SnowflakeRestClient, SnowflakeRestConfig};
 
 use futures::stream::{FuturesUnordered, StreamExt};
 use std::collections::{HashMap, HashSet};
@@ -42,6 +42,7 @@ use structmap::{value::Value, FromMap, GenericMap};
 /// Use this connector to access Snowflake data.
 pub struct Snowflake {
     rest_client: SnowflakeRestClient,
+    client: connectors::ConnectorClient,
 }
 
 #[derive(Deserialize, Debug)]
@@ -54,7 +55,13 @@ struct SnowflakeField {
 #[async_trait]
 impl Connector for Snowflake {
     async fn check(&self) -> bool {
-        let res = self.rest_client.execute("SELECT 1").await;
+        let res = self
+            .rest_client
+            .execute(&SnowflakeRequestConfig {
+                sql: "SELECT 1".to_string(),
+                use_jwt: true,
+            })
+            .await;
         return match res {
             Err(e) => {
                 println!("{:?}", e);
@@ -79,7 +86,11 @@ impl Connector for Snowflake {
     /// Validates that the required fields are present to authenticate to
     /// Snowflake. Stashes the credentials in the struct for use when
     /// connecting.
-    fn new(_config: &ConnectorConfig, credentials: &CredentialsBlob) -> Result<Box<Self>> {
+    fn new(
+        _config: &ConnectorConfig,
+        credentials: &CredentialsBlob,
+        connector_client: Option<connectors::ConnectorClient>,
+    ) -> Result<Box<Self>> {
         let mut conn = creds::SnowflakeCredentials::default();
         let mut required_fields: HashSet<_> = vec![
             "account",
@@ -88,6 +99,7 @@ impl Connector for Snowflake {
             "warehouse",
             "private_key",
             "public_key_fp",
+            // "url" // URL not required – defaults to typical account URL.
         ]
         .into_iter()
         .collect();
@@ -100,6 +112,7 @@ impl Connector for Snowflake {
                 "warehouse" => conn.warehouse = v.to_string(),
                 "private_key" => conn.private_key = v.to_string(),
                 "public_key_fp" => conn.public_key_fp = v.to_string(),
+                "url" => conn.url = Some(v.to_string()),
                 _ => (),
             }
 
@@ -112,7 +125,9 @@ impl Connector for Snowflake {
                 required_fields
             ])
         } else {
+            let client = connector_client.unwrap_or(connectors::ConnectorClient::Core);
             Ok(Box::new(Snowflake {
+                client,
                 rest_client: SnowflakeRestClient::new(conn, SnowflakeRestConfig { retry: true })?,
             }))
         }
@@ -179,7 +194,10 @@ impl Snowflake {
     {
         let result = self
             .rest_client
-            .query(query)
+            .query(&SnowflakeRequestConfig {
+                sql: query.to_string(),
+                use_jwt: self.client != connectors::ConnectorClient::Test,
+            })
             .await
             .context("query failed")?;
         if result.is_empty() {

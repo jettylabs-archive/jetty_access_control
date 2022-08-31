@@ -1,12 +1,18 @@
 use anyhow::{Context, Result};
-use jetty_core::{access_graph::AccessGraph, fetch_credentials, Connector, Jetty};
+use jetty_core::{
+    access_graph::AccessGraph, connectors::ConnectorClient, fetch_credentials, Connector, Jetty,
+};
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
     let jetty = Jetty::new()?;
     // println!("{:#?}", jetty.config);
     let creds = fetch_credentials()?;
-    let snow = jetty_snowflake::Snowflake::new(&jetty.config.connectors[0], &creds["snow"])?;
+    let snow = jetty_snowflake::Snowflake::new(
+        &jetty.config.connectors[0],
+        &creds["snow"],
+        Some(ConnectorClient::Core),
+    )?;
     println!("checking for connection...");
     println!("working? {}", snow.check().await);
 

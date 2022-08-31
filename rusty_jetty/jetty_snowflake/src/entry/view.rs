@@ -3,7 +3,7 @@ use structmap::FromMap;
 use structmap_derive::FromMap;
 
 /// Snowflake View entry.
-#[derive(FromMap, Default, Deserialize, Debug)]
+#[derive(FromMap, Clone, Default, Deserialize, Debug)]
 pub struct View {
     /// The view name in Snowflake.
     pub name: String,
