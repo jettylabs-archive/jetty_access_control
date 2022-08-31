@@ -244,6 +244,9 @@ impl Snowflake {
         }
         let rows_value: JsonValue =
             serde_json::from_str(&result).context("failed to deserialize")?;
+        if let Some(info) = rows_value.get("partitionInfo") {
+            panic!("Unexpected partitioned return value: {}", info);
+        }
         let rows_data = rows_value["data"].clone();
         let rows: Vec<Vec<Value>> = serde_json::from_value::<Vec<Vec<Option<String>>>>(rows_data)
             .context("failed to deserialize rows")?
