@@ -15,10 +15,10 @@
 
 mod consts;
 mod creds;
-mod entry;
+mod entry_types;
 mod rest;
 
-pub use entry::*;
+pub use entry_types::*;
 use rest::{SnowflakeRequestConfig, SnowflakeRestClient, SnowflakeRestConfig};
 
 use futures::stream::{FuturesUnordered, StreamExt};
@@ -41,7 +41,7 @@ use structmap::{value::Value, FromMap, GenericMap};
 /// The main Snowflake Connector struct.
 ///
 /// Use this connector to access Snowflake data.
-pub struct Snowflake {
+pub struct SnowflakeConnector {
     rest_client: SnowflakeRestClient,
     client: connectors::ConnectorClient,
 }
@@ -54,7 +54,7 @@ struct SnowflakeField {
 
 /// Main connector implementation.
 #[async_trait]
-impl Connector for Snowflake {
+impl Connector for SnowflakeConnector {
     async fn check(&self) -> bool {
         let res = self
             .rest_client
@@ -147,7 +147,7 @@ impl Connector for Snowflake {
             ])
         } else {
             let client = connector_client.unwrap_or(connectors::ConnectorClient::Core);
-            Ok(Box::new(Snowflake {
+            Ok(Box::new(SnowflakeConnector {
                 client,
                 rest_client: SnowflakeRestClient::new(conn, SnowflakeRestConfig { retry: true })?,
             }))
@@ -155,7 +155,7 @@ impl Connector for Snowflake {
     }
 }
 
-impl Snowflake {
+impl SnowflakeConnector {
     /// Get all grants to a user
     pub async fn get_grants_to_user(&self, user_name: &str) -> Result<Vec<RoleGrant>> {
         self.query_to_obj::<RoleGrant>(&format!("SHOW GRANTS TO USER {}", user_name))
