@@ -4,7 +4,7 @@ mod rest;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use jetty_core::{
-    connectors::nodes::ConnectorData,
+    connectors::{nodes::ConnectorData, ConnectorClient},
     jetty::{ConnectorConfig, CredentialsBlob},
     Connector,
 };
@@ -41,7 +41,11 @@ impl Connector for TableauConnector {
     /// Validates that the required fields are present to authenticate to
     /// Tableau. Stashes the credentials in the struct for use when
     /// connecting.
-    fn new(config: &ConnectorConfig, credentials: &CredentialsBlob) -> Result<Box<Self>> {
+    fn new(
+        config: &ConnectorConfig,
+        credentials: &CredentialsBlob,
+        _client: Option<ConnectorClient>,
+    ) -> Result<Box<Self>> {
         let mut creds = TableauCredentials::default();
         let mut required_fields =
             HashSet::from(["server_name", "site_name", "username", "password"]);

@@ -281,7 +281,7 @@ mod tests {
         let j = jetty::Jetty::new().context("creating Jetty")?;
         let creds = jetty::fetch_credentials().context("fetching credentials from file")?;
         let config = &j.config.connectors[0];
-        let tc = TableauConnector::new(config, &creds["tableau"])
+        let tc = TableauConnector::new(config, &creds["tableau"], None)
             .context("reading tableau credentials")?;
         Ok(*tc)
     }
