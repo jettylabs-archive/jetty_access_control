@@ -8,7 +8,7 @@ async fn main() -> Result<()> {
     let jetty = Jetty::new()?;
     // println!("{:#?}", jetty.config);
     let creds = fetch_credentials()?;
-    let snow = jetty_snowflake::Snowflake::new(
+    let snow = jetty_snowflake::SnowflakeConnector::new(
         &jetty.config.connectors[0],
         &creds["snow"],
         Some(ConnectorClient::Core),
