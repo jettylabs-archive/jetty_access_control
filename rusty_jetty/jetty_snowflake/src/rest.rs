@@ -97,7 +97,6 @@ impl SnowflakeRestClient {
     /// Otherwise, the standard account configuration
     /// is used
     fn get_url(&self) -> String {
-        println!("url should be {:?}", self.credentials.url);
         self.credentials.url.to_owned().unwrap_or_else(|| {
             format![
                 "https://{}.snowflakecomputing.com/api/v2/statements",
@@ -133,7 +132,6 @@ impl SnowflakeRestClient {
     }
 
     fn get_jwt(&self) -> Result<String> {
-        #[cfg(not(test))]
         {
             let qualified_username = format![
                 "{}.{}",
@@ -165,8 +163,6 @@ impl SnowflakeRestClient {
             )
             .map_err(anyhow::Error::from)
         }
-        #[cfg(test)]
-        Ok("FAKE_JWT".to_owned())
     }
 }
 
