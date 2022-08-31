@@ -20,7 +20,7 @@ impl TableauRestClient {
             http_client: reqwest::Client::new(),
             token: None,
             site_id: None,
-            api_version: "3.4".to_string(),
+            api_version: "3.4".to_owned(),
         }
     }
 
@@ -68,7 +68,7 @@ impl TableauRestClient {
                 &self.credentials.server_name, &self.api_version
             ])
             .json(&request_body)
-            .header("Accept".to_string(), "application/json".to_string())
+            .header("Accept".to_owned(), "application/json".to_owned())
             .send()
             .await?
             .json::<serde_json::Value>()
@@ -102,7 +102,7 @@ impl TableauRestClient {
     async fn get_users(&mut self) -> Result<Vec<String>> {
         let users = self
             .get_json_response(
-                "users".to_string(),
+                "users".to_owned(),
                 None,
                 reqwest::Method::GET,
                 Some(vec!["users".to_owned(), "user".to_owned()]),
@@ -255,7 +255,7 @@ impl TableauRestClient {
 }
 
 fn get_json_from_path(val: &serde_json::Value, path: &Vec<String>) -> Result<serde_json::Value> {
-    let mut full_path: String = "Object".to_string();
+    let mut full_path: String = "Object".to_owned();
     let mut return_val = val;
     for p in path {
         full_path = format!("{}.{}", full_path, p);
