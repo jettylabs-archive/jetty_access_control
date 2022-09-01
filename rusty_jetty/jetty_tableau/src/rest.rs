@@ -143,23 +143,6 @@ impl TableauRestClient {
         let mut groups = groups.to_groups().context("parse JSON into groups")?;
 
         // get members of the groups
-        for i in 0..groups.len() {
-            let group_id = groups[i]
-                .metadata
-                .get("group_id")
-                .ok_or(anyhow!("Unable to get group id for {:#?}", groups[i]))?;
-            let resp = self
-                .get_json_response(
-                    format!("groups/{}/users", group_id),
-                    None,
-                    reqwest::Method::GET,
-                    Some(vec!["users".to_owned(), "user".to_owned()]),
-                )
-                .await
-                .context(format!("getting users for group {}", groups[i].name))?;
-            groups[i].includes_users = resp.to_users()?.iter().map(|u| u.name.to_owned()).collect();
-        }
-
         for group in &mut groups {
             let group_id = group
                 .metadata
