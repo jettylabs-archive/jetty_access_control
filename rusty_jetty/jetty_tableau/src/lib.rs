@@ -47,8 +47,12 @@ impl Connector for TableauConnector {
         _client: Option<ConnectorClient>,
     ) -> Result<Box<Self>> {
         let mut creds = TableauCredentials::default();
-        let mut required_fields =
-            HashSet::from(["server_name", "site_name", "username", "password"]);
+        let mut required_fields = HashSet::from([
+            "server_name".to_owned(),
+            "site_name".to_owned(),
+            "username".to_owned(),
+            "password".to_owned(),
+        ]);
 
         for (k, v) in credentials.iter() {
             match k.as_ref() {
@@ -59,7 +63,7 @@ impl Connector for TableauConnector {
                 _ => (),
             }
 
-            required_fields.remove::<str>(k);
+            required_fields.remove(k);
         }
 
         if !required_fields.is_empty() {

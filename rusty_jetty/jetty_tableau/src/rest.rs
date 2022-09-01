@@ -1,7 +1,7 @@
 use crate::nodes::CreateNode;
 
 use super::*;
-use anyhow::Context;
+use anyhow::{bail, Context};
 use jetty_core::connectors::nodes as jetty_nodes;
 use reqwest;
 
@@ -143,6 +143,23 @@ impl TableauRestClient {
                 .context(format!("getting users for group {}", groups[i].name))?;
             groups[i].includes_users = resp.to_users()?.iter().map(|u| u.name.to_owned()).collect();
         }
+
+        for group in &mut groups {
+            let group_id = group
+                .metadata
+                .get("group_id")
+                .ok_or(anyhow!("Unable to get group id for {:#?}", group))?;
+            let resp = self
+                .get_json_response(
+                    format!("groups/{}/users", group_id),
+                    None,
+                    reqwest::Method::GET,
+                    Some(vec!["users".to_owned(), "user".to_owned()]),
+                )
+                .await
+                .context(format!("getting users for group {}", group.name))?;
+            group.includes_users = resp.to_users()?.iter().map(|u| u.name.to_owned()).collect();
+        }
         Ok(groups)
     }
 
@@ -163,13 +180,15 @@ impl TableauRestClient {
             .ok_or(anyhow!("unable to clone request"))?
             .send()
             .await
-            .context("making request")?
+            .context("making request")?;
+
+        let parsed_response = resp
             .json::<serde_json::Value>()
             .await
             .context("parsing json response")?;
 
         // Check for pagination
-        if let Some(v) = resp.get("pagination") {
+        if let Some(v) = parsed_response.get("pagination") {
             #[derive(Deserialize)]
             struct PaginationInfo {
                 #[serde(rename = "pageSize")]
@@ -190,21 +209,26 @@ impl TableauRestClient {
                 "cannot use paginated results without path_to_paginated_iterable"
             ])?;
 
-            let mut page_number = 1;
+            let extra_page = if total_available % page_size == 0 {
+                0
+            } else {
+                1
+            };
+            let total_required_pages = total_available / page_size + extra_page;
+
             let mut results_vec = vec![];
 
             // get first page of results
             if let serde_json::Value::Array(vals) =
-                get_json_from_path(&resp, path_to_paginated_iterable)
+                get_json_from_path(&parsed_response, path_to_paginated_iterable)
                     .context("getting target json object")?
             {
                 results_vec.extend(vals);
             } else {
-                return Err(anyhow!["Unable to find target array"]);
+                bail!["Unable to find target array"];
             };
-            page_number += 1;
 
-            while page_size * page_number < total_available + page_size {
+            for page_number in 2..total_required_pages + 1 {
                 let paged_resp = req
                     .try_clone()
                     .ok_or(anyhow!("unable to clone request"))?
@@ -226,11 +250,10 @@ impl TableauRestClient {
                 } else {
                     return Err(anyhow!["Unable to find target array"]);
                 };
-                page_number += 1;
             }
             Ok(serde_json::Value::Array(results_vec))
         } else {
-            Ok(resp)
+            Ok(parsed_response)
         }
     }
 
@@ -255,7 +278,7 @@ impl TableauRestClient {
             .context("adding auth header")?
             .header("Accept", "application/json")
             // In the case that pageSize is allowed, set it to the max
-            .query(&[("pageSize", "1")]);
+            .query(&[("pageSize", "1000")]);
 
         // Add body if exists
         if let Some(b) = body {
@@ -276,6 +299,7 @@ impl TableauRestClient {
 fn get_json_from_path(val: &serde_json::Value, path: &Vec<String>) -> Result<serde_json::Value> {
     let mut full_path: String = "Object".to_owned();
     let mut return_val = val;
+
     for p in path {
         full_path = format!("{}.{}", full_path, p);
         return_val = return_val.get(p).ok_or(anyhow!(
@@ -294,14 +318,14 @@ mod tests {
     use jetty_core::jetty;
 
     #[tokio::test]
-    async fn test_fetching_token() -> Result<()> {
+    async fn test_fetching_token_works() -> Result<()> {
         let mut tc = connector_setup().context("running tableau connector setup")?;
         tc.client.get_token().await?;
         Ok(())
     }
 
     #[tokio::test]
-    async fn test_fetching_users() -> Result<()> {
+    async fn test_fetching_users_works() -> Result<()> {
         let mut tc = connector_setup().context("running tableau connector setup")?;
         let users = tc.client.get_users().await?;
         for u in users {
@@ -311,7 +335,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_fetching_groups() -> Result<()> {
+    async fn test_fetching_groups_works() -> Result<()> {
         let mut tc = connector_setup().context("running tableau connector setup")?;
         let groups = tc.client.get_groups().await?;
         for g in groups {
