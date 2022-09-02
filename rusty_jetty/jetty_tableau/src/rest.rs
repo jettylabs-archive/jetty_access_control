@@ -315,7 +315,7 @@ fn get_json_from_path(val: &serde_json::Value, path: &Vec<String>) -> Result<ser
 mod tests {
     use super::*;
     use anyhow::Context;
-    use jetty_core::jetty;
+    use jetty_core::{connectors::ConnectorClient, jetty};
 
     #[tokio::test]
     async fn test_fetching_token_works() -> Result<()> {
@@ -348,7 +348,7 @@ mod tests {
         let j = jetty::Jetty::new().context("creating Jetty")?;
         let creds = jetty::fetch_credentials().context("fetching credentials from file")?;
         let config = &j.config.connectors[0];
-        let tc = TableauConnector::new(config, &creds["tableau"], None)
+        let tc = TableauConnector::new(config, &creds["tableau"], Some(ConnectorClient::Test))
             .context("reading tableau credentials")?;
         Ok(*tc)
     }

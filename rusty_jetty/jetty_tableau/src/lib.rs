@@ -23,6 +23,7 @@ type TableauConfig = HashMap<String, String>;
 struct TableauCredentials {
     username: String,
     password: String,
+    /// Tableau server name like 10ay.online.tableau.com *without* the `https://`
     server_name: String,
     site_name: String,
 }
