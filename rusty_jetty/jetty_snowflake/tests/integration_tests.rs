@@ -9,7 +9,7 @@ use jetty_core::{
     jetty::{ConnectorConfig, CredentialsBlob},
     Connector,
 };
-use jetty_snowflake::{Asset, Snowflake};
+use jetty_snowflake::{Asset, SnowflakeConnector};
 
 use serde::Serialize;
 use serde_json;
@@ -195,7 +195,7 @@ struct TestInput {
 }
 
 /// Get a mocked-out connector that will ingest the input.
-async fn construct_connector_from(input: &TestInput) -> TestHarness<Snowflake> {
+async fn construct_connector_from(input: &TestInput) -> TestHarness<SnowflakeConnector> {
     let wiremock_server = WiremockServer::new().init(&input).await;
     let creds = HashMap::from([
         ("account".to_owned(), "my_account".to_owned()),
@@ -215,7 +215,7 @@ async fn construct_connector_from(input: &TestInput) -> TestHarness<Snowflake> {
     TestHarness {
         input: input.clone(),
         mock_server: wiremock_server,
-        connector: Snowflake::new(
+        connector: SnowflakeConnector::new(
             &ConnectorConfig::default(),
             &creds,
             Some(ConnectorClient::Test),
