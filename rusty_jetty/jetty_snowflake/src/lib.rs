@@ -33,7 +33,6 @@ use jetty_core::{
 
 use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
-use maplit::{hashmap, hashset};
 use serde::Deserialize;
 use serde_json::Value as JsonValue;
 use structmap::{value::Value, FromMap, GenericMap};
@@ -294,11 +293,11 @@ impl SnowflakeConnector {
             ),
             privileges.iter().cloned().collect(),
             // Unwrap here is fine since we asserted that the set was not empty above.
-            hashset![grants.iter().next().unwrap().name.to_owned()],
-            hashset![],
-            hashset![role_name.to_owned()],
+            HashSet::from([grants.iter().next().unwrap().name.to_owned()]),
+            HashSet::new(),
+            HashSet::from([role_name.to_owned()]),
             // No direct user grants in Snowflake. Grants must pass through roles.
-            hashset![],
+            HashSet::new(),
             // Defaults here for data read from Snowflake should be false.
             false,
             false,
@@ -325,7 +324,7 @@ impl SnowflakeConnector {
                         if let Some(asset_privileges) = asset_map.get_mut(&g.name) {
                             asset_privileges.insert(g.clone());
                         } else {
-                            asset_map.insert(g.name.to_owned(), hashset![g.clone()]);
+                            asset_map.insert(g.name.to_owned(), HashSet::from([g.clone()]));
                         }
                         asset_map
                     },
@@ -365,15 +364,15 @@ impl SnowflakeConnector {
                 .collect();
             res.push(nodes::Group::new(
                 role.name.to_owned(),
-                hashmap![],
+                HashMap::new(),
                 // We only handle parent relationships. The resulting
                 // child relationships are handled by Jetty.
-                hashset![],
+                HashSet::new(),
                 // Included users are handled in get_jetty_users
-                hashset![],
+                HashSet::new(),
                 sub_roles,
                 // Policies applied are handled in get_jetty_policies
-                hashset![],
+                HashSet::new(),
             ));
         }
         Ok(res)
@@ -385,16 +384,16 @@ impl SnowflakeConnector {
             let user_roles = self.get_grants_to_user(&user.name).await?;
             res.push(nodes::User::new(
                 user.name,
-                hashmap! {
-                    UserIdentifier::Email => user.email,
-                    UserIdentifier::FirstName => user.first_name,
-                    UserIdentifier::LastName => user.last_name
-                },
-                hashset![user.display_name, user.login_name],
-                hashmap![],
+                HashMap::from([
+                    (UserIdentifier::Email, user.email),
+                    (UserIdentifier::FirstName, user.first_name),
+                    (UserIdentifier::LastName, user.last_name),
+                ]),
+                HashSet::from([user.display_name, user.login_name]),
+                HashMap::new(),
                 user_roles.iter().map(|role| role.role.clone()).collect(),
                 // Policies applied are handled in get_jetty_policies
-                hashset![],
+                HashSet::new(),
             ));
         }
         Ok(res)
@@ -409,16 +408,16 @@ impl SnowflakeConnector {
                     table.database_name, table.schema_name, table.name
                 ),
                 connectors::AssetType::DBTable,
-                hashmap![],
+                HashMap::new(),
                 // Policies applied are handled in get_jetty_policies
-                hashset![],
-                hashset![format!("{}.{}", table.database_name, table.schema_name)],
+                HashSet::new(),
+                HashSet::from([format!("{}.{}", table.database_name, table.schema_name)]),
                 // Handled in child_of for parents.
-                hashset![],
+                HashSet::new(),
                 // We aren't extracting lineage from Snowflake right now.
-                hashset![],
-                hashset![],
-                hashset![],
+                HashSet::new(),
+                HashSet::new(),
+                HashSet::new(),
             ));
         }
 
@@ -426,16 +425,16 @@ impl SnowflakeConnector {
             res.push(nodes::Asset::new(
                 format!("{}.{}.{}", view.database_name, view.schema_name, view.name),
                 connectors::AssetType::DBView,
-                hashmap![],
+                HashMap::new(),
                 // Policies applied are handled in get_jetty_policies
-                hashset![],
-                hashset![format!("{}.{}", view.database_name, view.schema_name)],
+                HashSet::new(),
+                HashSet::from([format!("{}.{}", view.database_name, view.schema_name)]),
                 // Handled in child_of for parents.
-                hashset![],
+                HashSet::new(),
                 // We aren't extracting lineage from Snowflake right now.
-                hashset![],
-                hashset![],
-                hashset![],
+                HashSet::new(),
+                HashSet::new(),
+                HashSet::new(),
             ));
         }
 
@@ -446,16 +445,16 @@ impl SnowflakeConnector {
             res.push(nodes::Asset::new(
                 format!("{}.{}", schema.database_name, schema.name),
                 connectors::AssetType::DBSchema,
-                hashmap![],
+                HashMap::new(),
                 // Policies applied are handled in get_jetty_policies
-                hashset![],
-                hashset![schema.database_name],
+                HashSet::new(),
+                HashSet::from([schema.database_name]),
                 // Handled in child_of for parents.
-                hashset![],
+                HashSet::new(),
                 // We aren't extracting lineage from Snowflake right now.
-                hashset![],
-                hashset![],
-                hashset![],
+                HashSet::new(),
+                HashSet::new(),
+                HashSet::new(),
             ));
         }
 
@@ -464,16 +463,16 @@ impl SnowflakeConnector {
             res.push(nodes::Asset::new(
                 db.name,
                 connectors::AssetType::DBDB,
-                hashmap![],
+                HashMap::new(),
                 // Policies applied are handled in get_jetty_policies
-                hashset![],
-                hashset![],
+                HashSet::new(),
+                HashSet::new(),
                 // Handled in child_of for parents.
-                hashset![],
+                HashSet::new(),
                 // We aren't extracting lineage from Snowflake right now.
-                hashset![],
-                hashset![],
-                hashset![],
+                HashSet::new(),
+                HashSet::new(),
+                HashSet::new(),
             ));
         }
 
