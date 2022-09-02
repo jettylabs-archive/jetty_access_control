@@ -1,5 +1,8 @@
+use crate::nodes::CreateNode;
+
 use super::*;
-use anyhow::Context;
+use anyhow::{bail, Context};
+use jetty_core::connectors::nodes as jetty_nodes;
 use reqwest;
 
 /// Wrapper struct for http functionality
@@ -26,7 +29,6 @@ impl TableauRestClient {
 
     /// Get site_id token from the TableauRestClient.
     /// If not available, fetch it.
-    #[allow(dead_code)]
     async fn get_site_id(&mut self) -> Result<String> {
         if let Some(t) = &self.site_id {
             return Ok(t.to_owned());
@@ -40,7 +42,6 @@ impl TableauRestClient {
 
     /// Get authentication token from the TableauRestClient.
     /// If not available, fetch a new token.
-    #[allow(dead_code)]
     async fn get_token(&mut self) -> Result<String> {
         if let Some(t) = &self.token {
             return Ok(t.to_owned());
@@ -99,7 +100,7 @@ impl TableauRestClient {
     }
 
     #[allow(dead_code)]
-    async fn get_users(&mut self) -> Result<Vec<String>> {
+    async fn get_users(&mut self) -> Result<Vec<jetty_nodes::User>> {
         let users = self
             .get_json_response(
                 "users".to_owned(),
@@ -109,20 +110,59 @@ impl TableauRestClient {
             )
             .await
             .context("fetching users")?;
-        let a = if let serde_json::Value::Array(users_vec) = users {
-            let mut return_vals = vec![];
-            for user in users_vec {
-                let name = get_json_from_path(&user, &vec!["name".to_owned()])?;
-                return_vals.push(name.to_string())
-            }
-            Ok(return_vals)
-        } else {
-            Err(anyhow!("unable to iterate though users array"))
-        };
-        a
+        users.to_users()
     }
 
     #[allow(dead_code)]
+    async fn get_groups(&mut self) -> Result<Vec<jetty_nodes::Group>> {
+        let groups = self
+            .get_json_response(
+                "groups".to_owned(),
+                None,
+                reqwest::Method::GET,
+                Some(vec!["groups".to_owned(), "group".to_owned()]),
+            )
+            .await
+            .context("fetching groups")?;
+        let mut groups = groups.to_groups().context("parse JSON into groups")?;
+
+        // get members of the groups
+        for i in 0..groups.len() {
+            let group_id = groups[i]
+                .metadata
+                .get("group_id")
+                .ok_or(anyhow!("Unable to get group id for {:#?}", groups[i]))?;
+            let resp = self
+                .get_json_response(
+                    format!("groups/{}/users", group_id),
+                    None,
+                    reqwest::Method::GET,
+                    Some(vec!["users".to_owned(), "user".to_owned()]),
+                )
+                .await
+                .context(format!("getting users for group {}", groups[i].name))?;
+            groups[i].includes_users = resp.to_users()?.iter().map(|u| u.name.to_owned()).collect();
+        }
+
+        for group in &mut groups {
+            let group_id = group
+                .metadata
+                .get("group_id")
+                .ok_or(anyhow!("Unable to get group id for {:#?}", group))?;
+            let resp = self
+                .get_json_response(
+                    format!("groups/{}/users", group_id),
+                    None,
+                    reqwest::Method::GET,
+                    Some(vec!["users".to_owned(), "user".to_owned()]),
+                )
+                .await
+                .context(format!("getting users for group {}", group.name))?;
+            group.includes_users = resp.to_users()?.iter().map(|u| u.name.to_owned()).collect();
+        }
+        Ok(groups)
+    }
+
     async fn get_json_response(
         &mut self,
         endpoint: String,
@@ -140,17 +180,17 @@ impl TableauRestClient {
             .ok_or(anyhow!("unable to clone request"))?
             .send()
             .await
-            .context("making request")?
+            .context("making request")?;
+
+        let parsed_response = resp
             .json::<serde_json::Value>()
             .await
             .context("parsing json response")?;
 
         // Check for pagination
-        if let Some(v) = resp.get("pagination") {
+        if let Some(v) = parsed_response.get("pagination") {
             #[derive(Deserialize)]
             struct PaginationInfo {
-                #[serde(rename = "pageNumber")]
-                page_number: String,
                 #[serde(rename = "pageSize")]
                 page_size: String,
                 #[serde(rename = "totalAvailable")]
@@ -169,21 +209,26 @@ impl TableauRestClient {
                 "cannot use paginated results without path_to_paginated_iterable"
             ])?;
 
-            let mut page_number = 1;
+            let extra_page = if total_available % page_size == 0 {
+                0
+            } else {
+                1
+            };
+            let total_required_pages = total_available / page_size + extra_page;
+
             let mut results_vec = vec![];
 
             // get first page of results
             if let serde_json::Value::Array(vals) =
-                get_json_from_path(&resp, path_to_paginated_iterable)
+                get_json_from_path(&parsed_response, path_to_paginated_iterable)
                     .context("getting target json object")?
             {
                 results_vec.extend(vals);
             } else {
-                return Err(anyhow!["Unable to find target array"]);
+                bail!["Unable to find target array"];
             };
-            page_number += 1;
 
-            while page_size * page_number < total_available + page_size {
+            for page_number in 2..total_required_pages + 1 {
                 let paged_resp = req
                     .try_clone()
                     .ok_or(anyhow!("unable to clone request"))?
@@ -205,15 +250,13 @@ impl TableauRestClient {
                 } else {
                     return Err(anyhow!["Unable to find target array"]);
                 };
-                page_number += 1;
             }
             Ok(serde_json::Value::Array(results_vec))
         } else {
-            Ok(resp)
+            Ok(parsed_response)
         }
     }
 
-    #[allow(dead_code)]
     async fn build_request(
         &mut self,
         endpoint: String,
@@ -235,7 +278,7 @@ impl TableauRestClient {
             .context("adding auth header")?
             .header("Accept", "application/json")
             // In the case that pageSize is allowed, set it to the max
-            .query(&[("pageSize", "1")]);
+            .query(&[("pageSize", "1000")]);
 
         // Add body if exists
         if let Some(b) = body {
@@ -245,7 +288,6 @@ impl TableauRestClient {
         Ok(req)
     }
 
-    #[allow(dead_code)]
     /// Add authentication header to requests
     async fn add_auth(&mut self, req: reqwest::RequestBuilder) -> Result<reqwest::RequestBuilder> {
         let token = self.get_token().await.context("getting token")?;
@@ -257,6 +299,7 @@ impl TableauRestClient {
 fn get_json_from_path(val: &serde_json::Value, path: &Vec<String>) -> Result<serde_json::Value> {
     let mut full_path: String = "Object".to_owned();
     let mut return_val = val;
+
     for p in path {
         full_path = format!("{}.{}", full_path, p);
         return_val = return_val.get(p).ok_or(anyhow!(
@@ -275,18 +318,28 @@ mod tests {
     use jetty_core::jetty;
 
     #[tokio::test]
-    async fn test_fetching_token() -> Result<()> {
+    async fn test_fetching_token_works() -> Result<()> {
         let mut tc = connector_setup().context("running tableau connector setup")?;
         tc.client.get_token().await?;
         Ok(())
     }
 
     #[tokio::test]
-    async fn test_fetching_users() -> Result<()> {
+    async fn test_fetching_users_works() -> Result<()> {
         let mut tc = connector_setup().context("running tableau connector setup")?;
         let users = tc.client.get_users().await?;
         for u in users {
-            println!("{}", u.trim_matches('"'));
+            println!("{}", u.name);
+        }
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_fetching_groups_works() -> Result<()> {
+        let mut tc = connector_setup().context("running tableau connector setup")?;
+        let groups = tc.client.get_groups().await?;
+        for g in groups {
+            println!("{:#?}", g);
         }
         Ok(())
     }
@@ -295,7 +348,7 @@ mod tests {
         let j = jetty::Jetty::new().context("creating Jetty")?;
         let creds = jetty::fetch_credentials().context("fetching credentials from file")?;
         let config = &j.config.connectors[0];
-        let tc = TableauConnector::new(config, &creds["tableau"])
+        let tc = TableauConnector::new(config, &creds["tableau"], None)
             .context("reading tableau credentials")?;
         Ok(*tc)
     }
