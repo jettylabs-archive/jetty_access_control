@@ -8,5 +8,6 @@ edition = "2021"
 [dependencies]
 jetty_core = { path = "../jetty_core" }
 jetty_snowflake = { path = "../jetty_snowflake" }
+jetty_dbt = { path = "../jetty_dbt" }
 tokio = { version = "1.20.1", features = ["rt", "macros"] }
 anyhow = "^1"

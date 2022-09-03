@@ -16,11 +16,24 @@ async fn main() -> Result<()> {
     println!("checking for connection...");
     println!("working? {}", snow.check().await);
 
-    let snow_data = snow.get_data().await;
-    println!("{:#?}", snow_data);
+    // let snow_data = snow.get_data().await;
+    // println!("{:#?}", snow_data);
+    // let pcd = jetty_core::access_graph::ProcessedConnectorData {
+    //     connector: "Snowflake".to_owned(),
+    //     data: snow_data,
+    // };
+    // AccessGraph::new(vec![pcd])?;
+
+    let dbt = jetty_dbt::DbtConnector::new(
+        &jetty.config.connectors[1],
+        &creds["dbt"],
+        Some(ConnectorClient::Core),
+    )?;
+    let dbt_data = dbt.get_data().await;
+    println!("dbt data: {:#?}", dbt_data);
     let pcd = jetty_core::access_graph::ProcessedConnectorData {
-        connector: "Snowflake".to_owned(),
-        data: snow_data,
+        connector: "dbt".to_owned(),
+        data: dbt_data,
     };
     AccessGraph::new(vec![pcd])?;
     // let ag = AccessGraph::new(vec![pcd])?;
