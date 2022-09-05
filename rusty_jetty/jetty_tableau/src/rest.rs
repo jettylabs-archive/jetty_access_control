@@ -114,6 +114,22 @@ impl TableauRestClient {
     }
 
     #[allow(dead_code)]
+    async fn get_assets(&mut self) -> Result<Vec<jetty_nodes::Asset>> {
+        let todo = "implement for additional asset types";
+
+        let projects = self
+            .get_json_response(
+                "projects".to_owned(),
+                None,
+                reqwest::Method::GET,
+                Some(vec!["projects".to_owned(), "project".to_owned()]),
+            )
+            .await
+            .context("fetching projects")?;
+        projects.to_projects()
+    }
+
+    #[allow(dead_code)]
     async fn get_groups(&mut self) -> Result<Vec<jetty_nodes::Group>> {
         let groups = self
             .get_json_response(
@@ -127,23 +143,6 @@ impl TableauRestClient {
         let mut groups = groups.to_groups().context("parse JSON into groups")?;
 
         // get members of the groups
-        for i in 0..groups.len() {
-            let group_id = groups[i]
-                .metadata
-                .get("group_id")
-                .ok_or(anyhow!("Unable to get group id for {:#?}", groups[i]))?;
-            let resp = self
-                .get_json_response(
-                    format!("groups/{}/users", group_id),
-                    None,
-                    reqwest::Method::GET,
-                    Some(vec!["users".to_owned(), "user".to_owned()]),
-                )
-                .await
-                .context(format!("getting users for group {}", groups[i].name))?;
-            groups[i].includes_users = resp.to_users()?.iter().map(|u| u.name.to_owned()).collect();
-        }
-
         for group in &mut groups {
             let group_id = group
                 .metadata
@@ -330,6 +329,16 @@ mod tests {
         let users = tc.client.get_users().await?;
         for u in users {
             println!("{}", u.name);
+        }
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_fetching_assets_works() -> Result<()> {
+        let mut tc = connector_setup().context("running tableau connector setup")?;
+        let assets = tc.client.get_assets().await?;
+        for a in assets {
+            println!("{:#?}", a);
         }
         Ok(())
     }
