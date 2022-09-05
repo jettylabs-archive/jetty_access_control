@@ -17,7 +17,6 @@ use std::collections::HashSet;
 use std::fmt::Debug;
 
 use anyhow::{anyhow, Context, Result};
-use maplit::{hashmap, hashset};
 
 /// Attributes associated with a User node
 
@@ -301,9 +300,9 @@ impl AccessGraph {
         let mut ag = AccessGraph {
             graph: graph::Graph {
                 graph: petgraph::stable_graph::StableDiGraph::new(),
-                nodes: hashmap![],
+                nodes: HashMap::new(),
             },
-            edge_cache: hashset![],
+            edge_cache: HashSet::new(),
             last_modified: 0,
         };
         for connector_data in data {
