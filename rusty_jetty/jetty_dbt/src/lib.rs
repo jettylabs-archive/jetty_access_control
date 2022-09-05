@@ -11,15 +11,12 @@
 
 mod manifest;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 use jetty_core::{
     connectors::{
-        AssetType as JettyAssetType,
-        {
-            self,
-            nodes::{Asset as JettyAsset, ConnectorData},
-        },
+        self,
+        nodes::{Asset as JettyAsset, ConnectorData},
     },
     jetty::{ConnectorConfig, CredentialsBlob},
     Connector,
@@ -48,10 +45,6 @@ impl DbtConnector {
             manifest: Box::new(manifest),
         }))
     }
-
-    fn get_data_from_manifest(&self, manifeset: &impl DbtProjectManifest) {
-        // manifest.get_tables();
-    }
 }
 
 #[async_trait]
@@ -74,13 +67,19 @@ impl Connector for DbtConnector {
         true
     }
 
-    async fn get_data(&self) -> ConnectorData {
+    async fn get_data(&mut self) -> ConnectorData {
+        self.manifest.init(&None).unwrap();
         let all_nodes_as_assets: Vec<JettyAsset> = self
             .manifest
             .get_nodes()
+            .unwrap()
             .iter()
             .map(|node| {
-                let node_dependencies = self.manifest.get_dependencies(&node.name).unwrap();
+                let node_dependencies = self
+                    .manifest
+                    .get_dependencies(&node.name)
+                    .unwrap()
+                    .unwrap_or_else(HashSet::new);
                 let asset = JettyAsset::new(
                     node.name.to_owned(),
                     node.materialized_as,
@@ -119,8 +118,9 @@ impl Connector for DbtConnector {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use manifest::MockDbtProjectManifest;
-    use std::collections::HashSet;
+    use jetty_core::connectors::{nodes::Asset, AssetType};
+    use manifest::{DbtNode, MockDbtProjectManifest};
+    use std::collections::{HashMap, HashSet};
 
     #[test]
     fn creating_connector_works() -> Result<()> {
@@ -159,11 +159,13 @@ mod tests {
         // Create mocked manifest
         let mut manifest_mock = MockDbtProjectManifest::new();
 
+        manifest_mock.expect_init().times(1).returning(|_| Ok(()));
         manifest_mock
             .expect_get_nodes()
             .times(1)
-            .returning(HashSet::new);
-        let connector = DbtConnector::new_with_manifest(
+            .returning(|| Ok(HashSet::new()));
+
+        let mut connector = DbtConnector::new_with_manifest(
             &ConnectorConfig::default(),
             &CredentialsBlob::from([("project_dir".to_owned(), "/not/a/dir".to_owned())]),
             Some(connectors::ConnectorClient::Test),
@@ -172,6 +174,49 @@ mod tests {
         .context("creating connector")?;
         let data = connector.get_data().await;
         assert_eq!(data, ConnectorData::default());
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn change_me() -> Result<()> {
+        // Create mocked manifest
+        let mut manifest_mock = MockDbtProjectManifest::new();
+
+        manifest_mock.expect_init().times(1).returning(|_| Ok(()));
+        manifest_mock
+            .expect_get_dependencies()
+            .times(1)
+            .returning(|_| Ok(None));
+        manifest_mock
+            .expect_get_nodes()
+            .times(1)
+            .returning(|| Ok(HashSet::from([DbtNode::default()])));
+        let mut connector = DbtConnector::new_with_manifest(
+            &ConnectorConfig::default(),
+            &CredentialsBlob::from([("project_dir".to_owned(), "/not/a/dir".to_owned())]),
+            Some(connectors::ConnectorClient::Test),
+            manifest_mock,
+        )
+        .context("creating connector")?;
+
+        let data = connector.get_data().await;
+        assert_eq!(
+            data,
+            ConnectorData {
+                assets: vec![Asset {
+                    name: "".to_owned(),
+                    asset_type: AssetType::Other,
+                    metadata: HashMap::from([("enabled".to_owned(), "false".to_owned())]),
+                    governed_by: HashSet::new(),
+                    child_of: HashSet::from([".".to_owned()]),
+                    parent_of: HashSet::new(),
+                    derived_from: HashSet::new(),
+                    derived_to: HashSet::new(),
+                    tagged_as: HashSet::new()
+                }],
+                ..Default::default()
+            }
+        );
         Ok(())
     }
 }

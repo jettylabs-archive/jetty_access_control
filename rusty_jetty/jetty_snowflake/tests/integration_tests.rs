@@ -263,7 +263,7 @@ async fn input_produces_correct_results() {
     };
 
     // Create the simulated client.
-    let harness = construct_connector_from(&input).await;
+    let mut harness = construct_connector_from(&input).await;
 
     // Query the Snowflake connector
     let data: nodes::ConnectorData = harness.connector.get_data().await;

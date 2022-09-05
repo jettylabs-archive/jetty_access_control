@@ -86,7 +86,7 @@ impl Connector for TableauConnector {
         todo!()
     }
 
-    async fn get_data(&self) -> ConnectorData {
+    async fn get_data(&mut self) -> ConnectorData {
         todo!()
     }
 }

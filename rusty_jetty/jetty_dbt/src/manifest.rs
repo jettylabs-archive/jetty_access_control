@@ -1,13 +1,13 @@
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use jetty_core::connectors::AssetType;
 use mockall::automock;
 use serde::Deserialize;
 use std::fs::read_to_string;
 
 use std::collections::{HashMap, HashSet};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash, Default)]
 pub(crate) struct DbtNode {
     pub(crate) name: String,
     pub(crate) enabled: bool,
@@ -29,16 +29,17 @@ impl DbtNode {
 /// Trait to make mocking behavior easier.
 #[automock]
 pub(crate) trait DbtProjectManifest {
-    fn init(&mut self, file_path: &Path) -> Result<()>;
+    fn init(&mut self, file_path: &Option<PathBuf>) -> Result<()>;
     /// List all nodes
-    fn get_nodes(&self) -> HashSet<DbtNode>;
+    fn get_nodes(&self) -> Result<HashSet<DbtNode>>;
     /// List all nodes that the given node depends on.
-    fn get_dependencies(&self, node_name: &str) -> Option<HashSet<String>>;
+    fn get_dependencies(&self, node_name: &str) -> Result<Option<HashSet<String>>>;
 }
 
 #[derive(Default)]
 pub(crate) struct DbtManifest {
-    // /Users/jk/jetty/vendor/jaffle_shop/target/manifest.json
+    initialized: bool,
+    project_dir: String,
     /// All models
     nodes: HashSet<DbtNode>,
     /// Map of model relationships from node name to dependents' names
@@ -48,15 +49,31 @@ pub(crate) struct DbtManifest {
 impl DbtManifest {
     pub(crate) fn new(project_dir: &str) -> Result<Self> {
         let mut manifest = DbtManifest::default();
-        manifest
-            .init(&Path::new(project_dir).join(Path::new("target/manifest.json")))
-            .context("initializing manifest")?;
+        manifest.project_dir = project_dir.to_owned();
         Ok(manifest)
+    }
+
+    #[inline(always)]
+    fn path(&self) -> PathBuf {
+        Path::new(&self.project_dir).join(Path::new("target/manifest.json"))
+    }
+
+    fn check_initialized(&self) -> Result<()> {
+        if !self.initialized {
+            bail!("manifest was not initialized")
+        }
+        Ok(())
     }
 }
 
 impl DbtProjectManifest for DbtManifest {
-    fn init(&mut self, file_path: &Path) -> Result<()> {
+    fn init(&mut self, file_path: &Option<PathBuf>) -> Result<()> {
+        if self.initialized {
+            return Ok(());
+        }
+
+        let manifest_path = file_path.clone().unwrap_or_else(|| self.path());
+
         #[derive(Deserialize)]
         struct DependsOn {
             nodes: HashSet<String>,
@@ -82,7 +99,7 @@ impl DbtProjectManifest for DbtManifest {
         }
 
         let contents =
-            read_to_string(file_path).context(format!("reading file {:?}", file_path))?;
+            read_to_string(manifest_path).context(format!("reading file {:?}", file_path))?;
         let json_manifest: DbtManifestJson =
             serde_json::from_str(&contents).context("deserializing json")?;
         for (node_name, node) in json_manifest.nodes {
@@ -116,14 +133,17 @@ impl DbtProjectManifest for DbtManifest {
                 self.dependencies.insert(node_name, node.depends_on.nodes);
             }
         }
+        self.initialized = true;
         Ok(())
     }
 
-    fn get_nodes(&self) -> HashSet<DbtNode> {
-        self.nodes.clone()
+    fn get_nodes(&self) -> Result<HashSet<DbtNode>> {
+        self.check_initialized()?;
+        Ok(self.nodes.clone())
     }
 
-    fn get_dependencies(&self, node_name: &str) -> Option<HashSet<String>> {
-        self.dependencies.get(node_name).cloned()
+    fn get_dependencies(&self, node_name: &str) -> Result<Option<HashSet<String>>> {
+        self.check_initialized()?;
+        Ok(self.dependencies.get(node_name).cloned())
     }
 }

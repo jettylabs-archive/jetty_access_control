@@ -24,7 +24,7 @@ async fn main() -> Result<()> {
     // };
     // AccessGraph::new(vec![pcd])?;
 
-    let dbt = jetty_dbt::DbtConnector::new(
+    let mut dbt = jetty_dbt::DbtConnector::new(
         &jetty.config.connectors[1],
         &creds["dbt"],
         Some(ConnectorClient::Core),
