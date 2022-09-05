@@ -36,9 +36,6 @@ pub struct DbtConnector {
 impl DbtConnector {
     /// Enhanced new method to inject a DbtManifest into the connector.
     fn new_with_manifest(
-        config: &ConnectorConfig,
-        credentials: &CredentialsBlob,
-        client: Option<connectors::ConnectorClient>,
         manifest: impl DbtProjectManifest + Send + Sync + 'static,
     ) -> Result<Box<Self>> {
         Ok(Box::new(DbtConnector {
@@ -50,16 +47,16 @@ impl DbtConnector {
 #[async_trait]
 impl Connector for DbtConnector {
     fn new(
-        config: &ConnectorConfig,
+        _config: &ConnectorConfig,
         credentials: &CredentialsBlob,
-        client: Option<connectors::ConnectorClient>,
+        _client: Option<connectors::ConnectorClient>,
     ) -> Result<Box<Self>> {
         if !credentials.contains_key("project_dir") {
             bail!("missing project_dir key in connectors.yaml");
         }
         let manifest = DbtManifest::new(&credentials["project_dir"])
             .context("creating dbt manifest object")?;
-        Self::new_with_manifest(config, credentials, client, manifest)
+        Self::new_with_manifest(manifest)
     }
 
     async fn check(&self) -> bool {
@@ -79,8 +76,8 @@ impl Connector for DbtConnector {
                     .manifest
                     .get_dependencies(&node.name)
                     .unwrap()
-                    .unwrap_or_else(HashSet::new);
-                let asset = JettyAsset::new(
+                    .unwrap_or_default();
+                JettyAsset::new(
                     node.name.to_owned(),
                     node.materialized_as,
                     node.get_metadata(),
@@ -97,8 +94,7 @@ impl Connector for DbtConnector {
                     HashSet::new(),
                     // TODO?
                     HashSet::new(),
-                );
-                asset
+                )
             })
             .collect();
         ConnectorData {
@@ -125,13 +121,8 @@ mod tests {
     #[test]
     fn creating_connector_works() -> Result<()> {
         let manifest_mock = MockDbtProjectManifest::new();
-        DbtConnector::new_with_manifest(
-            &ConnectorConfig::default(),
-            &CredentialsBlob::from([("project_dir".to_owned(), "/not/a/dir".to_owned())]),
-            Some(connectors::ConnectorClient::Test),
-            manifest_mock,
-        )
-        .context("creating dbt manifest object in creating_connector_works")?;
+        DbtConnector::new_with_manifest(manifest_mock)
+            .context("creating dbt manifest object in creating_connector_works")?;
         Ok(())
     }
 
@@ -165,20 +156,15 @@ mod tests {
             .times(1)
             .returning(|| Ok(HashSet::new()));
 
-        let mut connector = DbtConnector::new_with_manifest(
-            &ConnectorConfig::default(),
-            &CredentialsBlob::from([("project_dir".to_owned(), "/not/a/dir".to_owned())]),
-            Some(connectors::ConnectorClient::Test),
-            manifest_mock,
-        )
-        .context("creating connector")?;
+        let mut connector =
+            DbtConnector::new_with_manifest(manifest_mock).context("creating connector")?;
         let data = connector.get_data().await;
         assert_eq!(data, ConnectorData::default());
         Ok(())
     }
 
     #[tokio::test]
-    async fn change_me() -> Result<()> {
+    async fn get_data_returns_valid_assets() -> Result<()> {
         // Create mocked manifest
         let mut manifest_mock = MockDbtProjectManifest::new();
 
@@ -191,13 +177,8 @@ mod tests {
             .expect_get_nodes()
             .times(1)
             .returning(|| Ok(HashSet::from([DbtNode::default()])));
-        let mut connector = DbtConnector::new_with_manifest(
-            &ConnectorConfig::default(),
-            &CredentialsBlob::from([("project_dir".to_owned(), "/not/a/dir".to_owned())]),
-            Some(connectors::ConnectorClient::Test),
-            manifest_mock,
-        )
-        .context("creating connector")?;
+        let mut connector =
+            DbtConnector::new_with_manifest(manifest_mock).context("creating connector")?;
 
         let data = connector.get_data().await;
         assert_eq!(

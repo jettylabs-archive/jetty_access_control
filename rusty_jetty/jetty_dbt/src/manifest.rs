@@ -48,8 +48,10 @@ pub(crate) struct DbtManifest {
 
 impl DbtManifest {
     pub(crate) fn new(project_dir: &str) -> Result<Self> {
-        let mut manifest = DbtManifest::default();
-        manifest.project_dir = project_dir.to_owned();
+        let manifest = DbtManifest {
+            project_dir: project_dir.to_owned(),
+            ..Default::default()
+        };
         Ok(manifest)
     }
 
