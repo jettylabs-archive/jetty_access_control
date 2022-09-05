@@ -7,16 +7,10 @@ fn to_node(val: &serde_json::Value) -> Result<super::Project> {
     struct ProjectInfo {
         name: String,
         id: String,
-        owner: AssetOwner,
+        owner: super::IdField,
         parent_project_id: Option<String>,
         controlling_permissions_project_id: Option<String>,
         updated_at: String,
-    }
-
-    #[derive(Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    struct AssetOwner {
-        id: String,
     }
 
     let project_info: ProjectInfo =
@@ -28,6 +22,6 @@ fn to_node(val: &serde_json::Value) -> Result<super::Project> {
         owner_id: project_info.owner.id,
         parent_project_id: project_info.parent_project_id,
         controlling_permissions_project_id: project_info.controlling_permissions_project_id,
-        permissions: Vec::new(),
+        permissions: Default::default(),
     })
 }
