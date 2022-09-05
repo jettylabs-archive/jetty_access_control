@@ -1,3 +1,5 @@
+mod assets;
+
 use anyhow::{bail, Context, Result};
 use jetty_core::connectors::{nodes as jetty_nodes, UserIdentifier};
 use serde::Deserialize;
@@ -9,6 +11,8 @@ pub trait CreateNode {
     fn to_user(&self) -> Result<jetty_nodes::User>;
     fn to_groups(&self) -> Result<Vec<jetty_nodes::Group>>;
     fn to_group(&self) -> Result<jetty_nodes::Group>;
+    fn to_projects(&self) -> Result<Vec<jetty_nodes::Asset>>;
+    fn to_project(&self) -> Result<jetty_nodes::Asset>;
 }
 
 #[derive(Deserialize)]
@@ -122,5 +126,13 @@ impl CreateNode for serde_json::Value {
             metadata,
             ..Default::default()
         })
+    }
+
+    fn to_projects(&self) -> Result<Vec<jetty_nodes::Asset>> {
+        assets::to_projects(self)
+    }
+
+    fn to_project(&self) -> Result<jetty_nodes::Asset> {
+        assets::to_project(self)
     }
 }
