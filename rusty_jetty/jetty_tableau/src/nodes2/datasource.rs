@@ -2,6 +2,18 @@ use super::*;
 use anyhow::{Context, Result};
 use serde::Deserialize;
 
+#[derive(Clone)]
+pub(crate) struct Datasource {
+    pub id: String,
+    pub name: String,
+    pub datasource_type: String,
+    pub updated_at: String,
+    pub project_id: String,
+    pub owner_id: String,
+    pub datasource_connections: Vec<String>,
+    pub permissions: Vec<Permission>,
+}
+
 fn to_node(val: &serde_json::Value) -> Result<super::Datasource> {
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]

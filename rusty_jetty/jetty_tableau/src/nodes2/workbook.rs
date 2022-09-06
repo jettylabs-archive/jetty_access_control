@@ -1,7 +1,19 @@
 use anyhow::{Context, Result};
 use serde::Deserialize;
 
-fn to_node(val: &serde_json::Value) -> Result<super::Workbook> {
+#[derive(Clone, Default)]
+pub(crate) struct Workbook {
+    pub id: String,
+    pub name: String,
+    pub owner_id: String,
+    pub project_id: String,
+    pub datasource_connections: String,
+    pub datasources: Vec<String>,
+    pub updated_at: String,
+    pub permissions: Vec<super::Permission>,
+}
+
+fn to_node(val: &serde_json::Value) -> Result<Workbook> {
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]
     struct WorkbookInfo {
@@ -15,7 +27,7 @@ fn to_node(val: &serde_json::Value) -> Result<super::Workbook> {
     let workbook_info: WorkbookInfo =
         serde_json::from_value(val.to_owned()).context("parsing workbook information")?;
 
-    Ok(super::Workbook {
+    Ok(Workbook {
         id: workbook_info.id,
         name: workbook_info.name,
         owner_id: workbook_info.owner.id,

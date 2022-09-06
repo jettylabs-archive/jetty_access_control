@@ -1,3 +1,4 @@
+mod fetch;
 mod nodes;
 mod nodes2;
 mod rest;

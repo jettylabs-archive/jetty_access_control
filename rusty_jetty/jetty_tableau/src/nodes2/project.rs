@@ -1,5 +1,16 @@
+use super::Permission;
 use anyhow::{Context, Result};
 use serde::Deserialize;
+
+#[derive(Clone)]
+pub(crate) struct Project {
+    pub id: String,
+    pub name: String,
+    pub owner_id: String,
+    pub parent_project_id: Option<String>,
+    pub controlling_permissions_project_id: Option<String>,
+    pub permissions: Vec<Permission>,
+}
 
 fn to_node(val: &serde_json::Value) -> Result<super::Project> {
     #[derive(Deserialize)]
