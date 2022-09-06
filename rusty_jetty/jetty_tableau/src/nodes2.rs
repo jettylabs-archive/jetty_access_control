@@ -63,7 +63,7 @@ struct IdField {
     id: String,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct Permission {
     grantee_user_id: Option<String>,
     grantee_group_id: Option<String>,

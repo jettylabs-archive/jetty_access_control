@@ -1,8 +1,12 @@
+use std::collections::HashMap;
+
 use super::Permission;
+use crate::rest::{self, FetchJson};
+
 use anyhow::{Context, Result};
 use serde::Deserialize;
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub(crate) struct View {
     pub id: String,
     pub name: String,
@@ -37,4 +41,32 @@ fn to_node(val: &serde_json::Value) -> Result<View> {
         workbook_id: asset_info.workbook.id,
         permissions: Default::default(),
     })
+}
+
+pub(crate) async fn get_basic_views(tc: &rest::TableauRestClient) -> Result<HashMap<String, View>> {
+    let node = tc
+        .build_request("views".to_owned(), None, reqwest::Method::GET)
+        .context("fetching views")?
+        .fetch_json_response(Some(vec!["views".to_owned(), "view".to_owned()]))
+        .await?;
+    super::to_asset_map(node, &to_node)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use anyhow::{Context, Result};
+
+    #[tokio::test]
+    async fn test_fetching_views_works() -> Result<()> {
+        let tc = tokio::task::spawn_blocking(|| {
+            crate::connector_setup().context("running tableau connector setup")
+        })
+        .await??;
+        let nodes = get_basic_views(&tc.client).await?;
+        for (_k, v) in nodes {
+            println!("{:#?}", v);
+        }
+        Ok(())
+    }
 }

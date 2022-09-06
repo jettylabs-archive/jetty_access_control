@@ -31,12 +31,12 @@ pub(crate) fn to_node(val: &serde_json::Value) -> Result<Group> {
 pub(crate) async fn get_basic_groups(
     tc: &rest::TableauRestClient,
 ) -> Result<HashMap<String, Group>> {
-    let users = tc
+    let node = tc
         .build_request("groups".to_owned(), None, reqwest::Method::GET)
         .context("fetching groups")?
         .fetch_json_response(Some(vec!["groups".to_owned(), "group".to_owned()]))
         .await?;
-    super::to_asset_map(users, &to_node)
+    super::to_asset_map(node, &to_node)
 }
 
 async fn get_group_users(
