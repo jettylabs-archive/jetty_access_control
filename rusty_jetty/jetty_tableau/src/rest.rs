@@ -110,7 +110,7 @@ impl TableauRestClient {
             )
             .await
             .context("fetching users")?;
-        nodes2::to_asset_map(users, &nodes2::users::to_node)
+        nodes2::to_asset_map(users, &nodes2::user::to_node)
     }
 
     #[allow(dead_code)]

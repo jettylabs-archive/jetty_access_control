@@ -12,7 +12,7 @@ fn to_node(val: &serde_json::Value) -> Result<super::Lens> {
     }
 
     let asset_info: AssetInfo =
-        serde_json::from_value(val.to_owned()).context("parsing view information")?;
+        serde_json::from_value(val.to_owned()).context("parsing lens information")?;
 
     Ok(super::Lens {
         id: asset_info.id,

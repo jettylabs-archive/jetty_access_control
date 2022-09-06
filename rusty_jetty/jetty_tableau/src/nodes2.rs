@@ -2,13 +2,16 @@
 //! represent Tableau's structure as well as the functionality to turn that into
 //! Jetty's node structure.
 
-mod groups;
-mod lenses;
-mod projects;
-mod views;
-mod workbooks;
+mod datasource;
+mod flow;
+mod group;
+mod lense;
+mod metric;
+mod project;
+mod view;
+mod workbook;
 
-pub(crate) mod users;
+pub(crate) mod user;
 
 use std::collections::HashMap;
 
@@ -95,9 +98,9 @@ pub(crate) struct Datasource {
 }
 
 #[derive(Clone)]
-pub(crate) struct DataConnector {
+pub(crate) struct DataConnection {
     pub id: String,
-    pub connector_type: String,
+    pub connection_type: String,
     pub user_name: Option<String>,
     pub derived_from: Vec<String>,
 }
@@ -153,7 +156,7 @@ impl_GetId!(for
     Workbook,
     View,
     Datasource,
-    DataConnector,
+    DataConnection,
     Metric,
     Flow,
     Lens
