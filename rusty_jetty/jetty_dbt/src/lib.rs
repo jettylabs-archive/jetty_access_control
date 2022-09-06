@@ -124,7 +124,6 @@ impl Connector for DbtConnector {
                 }
             })
             .collect();
-        println!("got assets {:#?}", all_nodes_as_assets);
         ConnectorData {
             // No groups in dbt.
             groups: vec![],
@@ -219,7 +218,7 @@ mod tests {
                     asset_type: AssetType::Other,
                     metadata: HashMap::from([("enabled".to_owned(), "false".to_owned())]),
                     governed_by: HashSet::new(),
-                    child_of: HashSet::from([".".to_owned()]),
+                    child_of: HashSet::new(),
                     parent_of: HashSet::new(),
                     derived_from: HashSet::new(),
                     derived_to: HashSet::new(),
