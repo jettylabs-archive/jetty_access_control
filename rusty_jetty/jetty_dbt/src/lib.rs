@@ -11,12 +11,13 @@
 
 mod manifest;
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use jetty_core::{
     connectors::{
         self,
         nodes::{Asset as JettyAsset, ConnectorData},
+        AssetType,
     },
     jetty::{ConnectorConfig, CredentialsBlob},
     Connector,
@@ -24,7 +25,7 @@ use jetty_core::{
 
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
-use manifest::{DbtManifest, DbtProjectManifest};
+use manifest::{node::DbtNode, DbtManifest, DbtProjectManifest};
 
 /// Main connector struct
 /// Used by Jetty to get the data that resides
@@ -72,31 +73,58 @@ impl Connector for DbtConnector {
             .unwrap()
             .iter()
             .map(|node| {
-                let node_dependencies = self
-                    .manifest
-                    .get_dependencies(&node.name)
-                    .unwrap()
-                    .unwrap_or_default();
-                JettyAsset::new(
-                    node.name.to_owned(),
-                    node.materialized_as,
-                    node.get_metadata(),
-                    // No policies in dbt.
-                    HashSet::new(),
-                    // We just put the immediate parent schema here, which will be
-                    // resolved by Jetty with other sources
-                    HashSet::from([node.get_parent()]),
-                    // No children in dbt. Adult only zone.
-                    HashSet::new(),
-                    // This is the lineage!
-                    node_dependencies,
-                    // Handled by the lineage children nodes.
-                    HashSet::new(),
-                    // TODO?
-                    HashSet::new(),
-                )
+                match node {
+                    DbtNode::ModelNode(m_node) => {
+                        let node_dependencies = self
+                            .manifest
+                            .get_dependencies(&m_node.name)
+                            .unwrap()
+                            .unwrap_or_default();
+                        JettyAsset::new(
+                            m_node.name.to_owned(),
+                            m_node.materialized_as,
+                            m_node.get_metadata(),
+                            // No policies in dbt.
+                            HashSet::new(),
+                            // We won't put the schema here, since it originates in Snowflake.
+                            HashSet::new(),
+                            // No children in dbt. Adult only zone.
+                            HashSet::new(),
+                            // Handled by the lineage derived_to nodes.
+                            HashSet::new(),
+                            // This is the lineage!
+                            node_dependencies,
+                            // TODO?
+                            HashSet::new(),
+                        )
+                    }
+                    DbtNode::SourceNode(s_node) => {
+                        let node_dependencies = self
+                            .manifest
+                            .get_dependencies(&s_node.name)
+                            .unwrap()
+                            .unwrap_or_default();
+                        JettyAsset::new(
+                            s_node.name.to_owned(),
+                            AssetType::DBTable,
+                            HashMap::new(),
+                            // No policies in dbt.
+                            HashSet::new(),
+                            // We won't put the schema here, since it originates in Snowflake.
+                            HashSet::new(),
+                            // No children in dbt. Adult only zone.
+                            HashSet::new(),
+                            // No lineage parents here since this is a source.
+                            HashSet::new(),
+                            // Models derived from this source.
+                            node_dependencies,
+                            HashSet::new(),
+                        )
+                    }
+                }
             })
             .collect();
+        println!("got assets {:#?}", all_nodes_as_assets);
         ConnectorData {
             // No groups in dbt.
             groups: vec![],
@@ -113,9 +141,11 @@ impl Connector for DbtConnector {
 
 #[cfg(test)]
 mod tests {
+    use crate::manifest::node::DbtModelNode;
+
     use super::*;
     use jetty_core::connectors::{nodes::Asset, AssetType};
-    use manifest::{DbtNode, MockDbtProjectManifest};
+    use manifest::{node::DbtNode, MockDbtProjectManifest};
     use std::collections::{HashMap, HashSet};
 
     #[test]
@@ -129,7 +159,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn missing_config_fails() {
-        let result = DbtConnector::new(
+        DbtConnector::new(
             &ConnectorConfig::default(),
             &CredentialsBlob::new(),
             Some(connectors::ConnectorClient::Test),
@@ -176,7 +206,7 @@ mod tests {
         manifest_mock
             .expect_get_nodes()
             .times(1)
-            .returning(|| Ok(HashSet::from([DbtNode::default()])));
+            .returning(|| Ok(HashSet::from([DbtNode::ModelNode(DbtModelNode::default())])));
         let mut connector =
             DbtConnector::new_with_manifest(manifest_mock).context("creating connector")?;
 
