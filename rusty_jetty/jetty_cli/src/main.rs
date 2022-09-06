@@ -6,7 +6,6 @@ use jetty_core::{
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
     let jetty = Jetty::new()?;
-    // println!("{:#?}", jetty.config);
     let creds = fetch_credentials()?;
     let snow = jetty_snowflake::SnowflakeConnector::new(
         &jetty.config.connectors[0],
@@ -15,14 +14,6 @@ async fn main() -> Result<()> {
     )?;
     println!("checking for connection...");
     println!("working? {}", snow.check().await);
-
-    // let snow_data = snow.get_data().await;
-    // println!("{:#?}", snow_data);
-    // let pcd = jetty_core::access_graph::ProcessedConnectorData {
-    //     connector: "Snowflake".to_owned(),
-    //     data: snow_data,
-    // };
-    // AccessGraph::new(vec![pcd])?;
 
     let mut dbt = jetty_dbt::DbtConnector::new(
         &jetty.config.connectors[1],
@@ -36,12 +27,6 @@ async fn main() -> Result<()> {
         data: dbt_data,
     };
     AccessGraph::new(vec![pcd])?;
-    // let ag = AccessGraph::new(vec![pcd])?;
-    // let res = ag
-    //     .graph
-    //     .visualize("/tmp/graph.svg".to_owned())
-    //     .context("failed to visualize")?;
-    // println!("{}", res);
 
     Ok(())
 }
