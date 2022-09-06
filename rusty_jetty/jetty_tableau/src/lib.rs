@@ -91,3 +91,16 @@ impl Connector for TableauConnector {
         todo!()
     }
 }
+
+#[cfg(test)]
+pub(crate) fn connector_setup() -> Result<crate::TableauConnector> {
+    use anyhow::Context;
+    use jetty_core::Connector;
+
+    let j = jetty_core::jetty::Jetty::new().context("creating Jetty")?;
+    let creds = jetty_core::jetty::fetch_credentials().context("fetching credentials from file")?;
+    let config = &j.config.connectors[0];
+    let tc = crate::TableauConnector::new(config, &creds["tableau"], None)
+        .context("reading tableau credentials")?;
+    Ok(*tc)
+}

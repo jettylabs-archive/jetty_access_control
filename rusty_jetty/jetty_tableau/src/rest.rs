@@ -101,39 +101,6 @@ impl TableauRestClient {
     }
 
     #[allow(dead_code)]
-    async fn get_users(&self) -> Result<HashMap<String, nodes2::User>> {
-        let users = self
-            .build_request("users".to_owned(), None, reqwest::Method::GET)
-            .context("fetching users")?
-            .fetch_json_response(Some(vec!["users".to_owned(), "user".to_owned()]))
-            .await?;
-        nodes2::to_asset_map(users, &nodes2::user::to_node)
-    }
-
-    #[allow(dead_code)]
-    async fn get_groups(&self) -> Result<HashMap<String, nodes2::Group>> {
-        let group = self
-            .build_request("groups".to_owned(), None, reqwest::Method::GET)
-            .context("fetching groups")?
-            .fetch_json_response(Some(vec!["groups".to_owned(), "group".to_owned()]))
-            .await?;
-        nodes2::to_asset_map(group, &nodes2::group::to_node)
-    }
-
-    #[allow(dead_code)]
-    async fn get_groups_new(&mut self) -> Result<HashMap<String, nodes2::Group>> {
-        let node = self
-            .get_json_response(
-                "groups".to_owned(),
-                None,
-                reqwest::Method::GET,
-                Some(vec!["groups".to_owned(), "group".to_owned()]),
-            )
-            .await?;
-        nodes2::to_asset_map(node, &nodes2::group::to_node)
-    }
-
-    #[allow(dead_code)]
     async fn get_assets(&mut self) -> Result<Vec<jetty_nodes::Asset>> {
         let todo = "implement for additional asset types";
 

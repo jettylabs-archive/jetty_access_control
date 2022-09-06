@@ -79,66 +79,13 @@ impl TableauEnvironment {
 }
 
 #[cfg(test)]
-fn connector_setup() -> Result<crate::TableauConnector> {
-    use jetty_core::Connector;
-
-    let j = jetty_core::jetty::Jetty::new().context("creating Jetty")?;
-    let creds = jetty_core::jetty::fetch_credentials().context("fetching credentials from file")?;
-    let config = &j.config.connectors[0];
-    let tc = crate::TableauConnector::new(config, &creds["tableau"], None)
-        .context("reading tableau credentials")?;
-    Ok(*tc)
-}
-
-#[cfg(ignore)]
 mod tests {
     use super::*;
-    use crate::TableauConnector;
     use anyhow::Context;
-    use jetty_core::jetty;
 
     #[test]
     fn test_fetching_token_works() -> Result<()> {
-        connector_setup().context("running tableau connector setup")?;
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_fetching_users_works() -> Result<()> {
-        let mut tc = tokio::task::spawn_blocking(|| {
-            connector_setup().context("running tableau connector setup")
-        })
-        .await??;
-        let users = get_basic_users(tc).await?;
-        for (_k, v) in users {
-            println!("{}", v.name);
-        }
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_fetching_assets_works() -> Result<()> {
-        let mut tc = tokio::task::spawn_blocking(|| {
-            connector_setup().context("running tableau connector setup")
-        })
-        .await??;
-        let assets = tc.client.get_assets().await?;
-        for a in assets {
-            println!("{:#?}", a);
-        }
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_fetching_groups_works() -> Result<()> {
-        let mut tc = tokio::task::spawn_blocking(|| {
-            connector_setup().context("running tableau connector setup")
-        })
-        .await??;
-        let groups = tc.client.get_groups().await?;
-        for (_k, v) in groups {
-            println!("{:#?}", v);
-        }
+        crate::connector_setup().context("running tableau connector setup")?;
         Ok(())
     }
 }
