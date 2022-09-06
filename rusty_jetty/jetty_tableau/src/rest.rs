@@ -100,7 +100,7 @@ impl TableauRestClient {
     }
 
     #[allow(dead_code)]
-    async fn get_users(&mut self) -> Result<Vec<jetty_nodes::User>> {
+    async fn get_users(&mut self) -> Result<HashMap<String, nodes2::User>> {
         let users = self
             .get_json_response(
                 "users".to_owned(),
@@ -110,7 +110,7 @@ impl TableauRestClient {
             )
             .await
             .context("fetching users")?;
-        users.to_users()
+        nodes2::to_asset_map(users, &nodes2::users::to_node)
     }
 
     #[allow(dead_code)]
@@ -327,8 +327,8 @@ mod tests {
     async fn test_fetching_users_works() -> Result<()> {
         let mut tc = connector_setup().context("running tableau connector setup")?;
         let users = tc.client.get_users().await?;
-        for u in users {
-            println!("{}", u.name);
+        for (k, v) in users {
+            println!("{}", v.name);
         }
         Ok(())
     }
