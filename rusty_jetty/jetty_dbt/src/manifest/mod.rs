@@ -61,7 +61,8 @@ impl DbtProjectManifest for DbtManifest {
             enabled: bool,
             database: Option<String>,
             schema: Option<String>,
-            materialized: String,
+            // TODO: Use this for asset type determination
+            _materialized: String,
         }
 
         #[derive(Deserialize)]

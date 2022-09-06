@@ -27,8 +27,7 @@ async fn main() -> Result<()> {
         data: dbt_data,
     };
     let ag = AccessGraph::new(vec![pcd])?;
-    let res = ag
-        .graph
+    ag.graph
         .visualize("/tmp/graph.svg".to_owned())
         .context("failed to visualize")?;
 
