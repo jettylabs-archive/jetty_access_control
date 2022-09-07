@@ -45,9 +45,9 @@ pub(crate) async fn get_basic_projects(
     tc: &rest::TableauRestClient,
 ) -> Result<HashMap<String, Project>> {
     let node = tc
-        .build_request("views".to_owned(), None, reqwest::Method::GET)
-        .context("fetching views")?
-        .fetch_json_response(Some(vec!["views".to_owned(), "view".to_owned()]))
+        .build_request("projects".to_owned(), None, reqwest::Method::GET)
+        .context("fetching projects")?
+        .fetch_json_response(Some(vec!["projects".to_owned(), "project".to_owned()]))
         .await?;
     super::to_asset_map(node, &to_node)
 }
@@ -58,7 +58,7 @@ mod tests {
     use anyhow::{Context, Result};
 
     #[tokio::test]
-    async fn test_fetching_views_works() -> Result<()> {
+    async fn test_fetching_projects_works() -> Result<()> {
         let tc = tokio::task::spawn_blocking(|| {
             crate::connector_setup().context("running tableau connector setup")
         })

@@ -32,7 +32,7 @@ impl TableauRestClient {
             http_client: reqwest::Client::new(),
             token: None,
             site_id: None,
-            api_version: "3.4".to_owned(),
+            api_version: "3.16".to_owned(),
         };
         tc.fetch_token_and_site_id();
         tc
@@ -337,6 +337,11 @@ impl FetchJson for reqwest::RequestBuilder {
                 info.page_size.parse::<usize>()?,
                 info.total_available.parse::<usize>()?,
             );
+
+            // Early exit if there are no results
+            if total_available == 0 {
+                return Ok(json!([]));
+            }
 
             // Only need to paginate if there are more results than shown on the first page
             let path_to_paginated_iterable = &path_to_paginated_iterable.ok_or(anyhow![
