@@ -9,16 +9,19 @@
 //!
 #![deny(missing_docs)]
 
+mod cual;
 mod manifest;
 
 use std::collections::{HashMap, HashSet};
 
+use jetty_core::cual::Cualable;
 use jetty_core::{
     connectors::{
         self,
         nodes::{Asset as JettyAsset, ConnectorData},
         AssetType,
     },
+    cual::Cual,
     jetty::{ConnectorConfig, CredentialsBlob},
     Connector,
 };
@@ -81,6 +84,7 @@ impl Connector for DbtConnector {
                             .unwrap()
                             .unwrap_or_default();
                         JettyAsset::new(
+                            m_node.cual(),
                             m_node.name.to_owned(),
                             m_node.materialized_as,
                             m_node.get_metadata(),
@@ -105,6 +109,7 @@ impl Connector for DbtConnector {
                             .unwrap()
                             .unwrap_or_default();
                         JettyAsset::new(
+                            s_node.cual(),
                             s_node.name.to_owned(),
                             AssetType::DBTable,
                             HashMap::new(),
@@ -193,7 +198,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn get_data_returns_valid_assets() -> Result<()> {
+    async fn get_data_returns_valid_dbt_assets() -> Result<()> {
         // Create mocked manifest
         let mut manifest_mock = MockDbtProjectManifest::new();
 
@@ -202,10 +207,12 @@ mod tests {
             .expect_get_dependencies()
             .times(1)
             .returning(|_| Ok(None));
-        manifest_mock
-            .expect_get_nodes()
-            .times(1)
-            .returning(|| Ok(HashSet::from([DbtNode::ModelNode(DbtModelNode::default())])));
+        manifest_mock.expect_get_nodes().times(1).returning(|| {
+            Ok(HashSet::from([DbtNode::ModelNode(DbtModelNode {
+                materialized_as: AssetType::DBView,
+                ..Default::default()
+            })]))
+        });
         let mut connector =
             DbtConnector::new_with_manifest(manifest_mock).context("creating connector")?;
 
@@ -214,8 +221,9 @@ mod tests {
             data,
             ConnectorData {
                 assets: vec![Asset {
+                    cual: Cual::new("snowflake:////".to_owned()),
                     name: "".to_owned(),
-                    asset_type: AssetType::Other,
+                    asset_type: AssetType::DBView,
                     metadata: HashMap::from([("enabled".to_owned(), "false".to_owned())]),
                     governed_by: HashSet::new(),
                     child_of: HashSet::new(),

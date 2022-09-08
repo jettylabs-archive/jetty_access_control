@@ -3,6 +3,8 @@ use std::collections::{HashMap, HashSet};
 
 use derivative::Derivative;
 
+use crate::cual::Cual;
+
 /// Container for all node data for a given connector
 #[derive(Debug, Default, PartialEq)]
 pub struct ConnectorData {
@@ -62,6 +64,8 @@ pub struct User {
 /// Struct used to populate asset nodes and edges in the graph
 #[derive(Default, PartialEq, Debug, new)]
 pub struct Asset {
+    /// Connector Universal Asset Locator
+    pub cual: Cual,
     /// Name of asset, fully qualified for the scope of use (connector)
     /// or graph.
     pub name: String,
