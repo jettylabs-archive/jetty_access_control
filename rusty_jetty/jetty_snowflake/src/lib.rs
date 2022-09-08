@@ -71,7 +71,7 @@ impl Connector for SnowflakeConnector {
         };
     }
 
-    async fn get_data(&self) -> nodes::ConnectorData {
+    async fn get_data(&mut self) -> nodes::ConnectorData {
         nodes::ConnectorData {
             groups: self
                 .get_jetty_groups()

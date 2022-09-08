@@ -35,7 +35,7 @@ pub trait Connector {
     /// status (true for connected, false for not).
     async fn check(&self) -> bool;
     /// Get all data in one container for the connector to supply to the graph.
-    async fn get_data(&self) -> ConnectorData;
+    async fn get_data(&mut self) -> ConnectorData;
 }
 
 /// Enum of identifiers used to resolve user identities
@@ -54,7 +54,7 @@ pub enum UserIdentifier {
 
 /// Enum of known asset types
 
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum AssetType {
     /// Database Table
     DBTable,

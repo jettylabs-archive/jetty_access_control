@@ -1,2 +1,8 @@
 [workspace]
-members = ["jetty_core", "jetty_cli", "jetty_snowflake", "jetty_tableau"]
+members = [
+    "jetty_core",
+    "jetty_cli",
+    "jetty_snowflake",
+    "jetty_tableau",
+    "jetty_dbt",
+]
