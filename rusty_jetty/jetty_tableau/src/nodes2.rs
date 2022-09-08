@@ -25,7 +25,7 @@ struct IdField {
 }
 
 #[derive(Clone)]
-struct Permission {
+pub(crate) struct Permission {
     grantee_user_id: Option<String>,
     grantee_group_id: Option<String>,
     capabilities: HashMap<String, String>,
