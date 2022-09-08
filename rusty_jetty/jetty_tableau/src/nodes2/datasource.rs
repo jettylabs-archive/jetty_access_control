@@ -1,8 +1,11 @@
-use super::*;
+use std::collections::HashMap;
+
 use anyhow::{Context, Result};
 use serde::Deserialize;
 
-#[derive(Clone)]
+use crate::rest::{self, FetchJson};
+
+#[derive(Clone, Debug)]
 pub(crate) struct Datasource {
     pub id: String,
     pub name: String,
@@ -11,7 +14,7 @@ pub(crate) struct Datasource {
     pub project_id: String,
     pub owner_id: String,
     pub datasource_connections: Vec<String>,
-    pub permissions: Vec<Permission>,
+    pub permissions: Vec<super::Permission>,
 }
 
 fn to_node(val: &serde_json::Value) -> Result<super::Datasource> {
@@ -23,13 +26,12 @@ fn to_node(val: &serde_json::Value) -> Result<super::Datasource> {
         updated_at: String,
         #[serde(rename = "type")]
         datasource_type: String,
-        owner: IdField,
-        project: IdField,
-        suspended: bool,
+        owner: super::IdField,
+        project: super::IdField,
     }
 
-    let asset_info: AssetInfo =
-        serde_json::from_value(val.to_owned()).context("parsing datasource information")?;
+    let asset_info: AssetInfo = serde_json::from_value(val.to_owned())
+        .context(format!("parsing datasource information"))?;
 
     Ok(super::Datasource {
         id: asset_info.id,
@@ -41,4 +43,36 @@ fn to_node(val: &serde_json::Value) -> Result<super::Datasource> {
         permissions: Default::default(),
         datasource_connections: Default::default(),
     })
+}
+pub(crate) async fn get_basic_datasources(
+    tc: &rest::TableauRestClient,
+) -> Result<HashMap<String, Datasource>> {
+    let node = tc
+        .build_request("datasources".to_owned(), None, reqwest::Method::GET)
+        .context("fetching datasources")?
+        .fetch_json_response(Some(vec![
+            "datasources".to_owned(),
+            "datasource".to_owned(),
+        ]))
+        .await?;
+    super::to_asset_map(node, &to_node)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use anyhow::{Context, Result};
+
+    #[tokio::test]
+    async fn test_fetching_flows_works() -> Result<()> {
+        let tc = tokio::task::spawn_blocking(|| {
+            crate::connector_setup().context("running tableau connector setup")
+        })
+        .await??;
+        let nodes = get_basic_datasources(&tc.client).await?;
+        for (_k, v) in nodes {
+            println!("{:#?}", v);
+        }
+        Ok(())
+    }
 }

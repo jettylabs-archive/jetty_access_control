@@ -34,7 +34,7 @@ impl TableauRestClient {
             site_id: None,
             api_version: "3.16".to_owned(),
         };
-        tc.fetch_token_and_site_id();
+        tc.fetch_token_and_site_id().unwrap();
         tc
     }
 
@@ -272,6 +272,36 @@ impl TableauRestClient {
         Ok(req)
     }
 
+    /// This functions builds a request specifically to fetch ask
+    /// data lenses. The URL is significantly different than those
+    /// used for other asset types
+    pub(crate) fn build_lens_request(
+        &self,
+        endpoint: String,
+        body: Option<serde_json::Value>,
+        method: reqwest::Method,
+    ) -> Result<reqwest::RequestBuilder> {
+        let request_url = format![
+            "https://{}/api/-/{}",
+            self.credentials.server_name.to_owned(),
+            endpoint,
+        ];
+
+        let mut req = self.http_client.request(method, request_url);
+        req = self
+            .add_auth(req)
+            .context("adding auth header")?
+            .header("Accept", "application/json");
+        // remove the PageSize query
+
+        // Add body if exists
+        if let Some(b) = body {
+            req = req.json(&b);
+        }
+
+        Ok(req)
+    }
+
     /// Add authentication header to requests
     fn add_auth(&self, req: reqwest::RequestBuilder) -> Result<reqwest::RequestBuilder> {
         let token = self.get_token().context("getting token")?;
@@ -280,7 +310,10 @@ impl TableauRestClient {
     }
 }
 
-fn get_json_from_path(val: &serde_json::Value, path: &Vec<String>) -> Result<serde_json::Value> {
+pub(crate) fn get_json_from_path(
+    val: &serde_json::Value,
+    path: &Vec<String>,
+) -> Result<serde_json::Value> {
     let mut full_path: String = "Object".to_owned();
     let mut return_val = val;
 

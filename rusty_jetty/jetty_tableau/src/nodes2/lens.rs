@@ -1,7 +1,11 @@
+use std::collections::HashMap;
+
 use anyhow::{Context, Result};
 use serde::Deserialize;
 
-#[derive(Clone)]
+use crate::rest::{self, FetchJson};
+
+#[derive(Clone, Debug)]
 pub(crate) struct Lens {
     pub id: String,
     pub name: String,
@@ -32,4 +36,38 @@ fn to_node(val: &serde_json::Value) -> Result<Lens> {
         datasource_id: asset_info.datasource_id,
         permissions: Default::default(),
     })
+}
+pub(crate) async fn get_basic_lenses(
+    tc: &rest::TableauRestClient,
+) -> Result<HashMap<String, Lens>> {
+    let node = tc
+        .build_lens_request("askdata/lenses".to_owned(), None, reqwest::Method::GET)
+        .context("fetching lenses")?;
+
+    println!("{:#?}", node);
+    let node = node
+        .fetch_json_response(None)
+        .await
+        .context("fetching and parsing response")?;
+    let node = rest::get_json_from_path(&node, &vec!["lenses".to_owned()])?;
+    super::to_asset_map(node, &to_node)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use anyhow::{Context, Result};
+
+    #[tokio::test]
+    async fn test_fetching_lenses_works() -> Result<()> {
+        let tc = tokio::task::spawn_blocking(|| {
+            crate::connector_setup().context("running tableau connector setup")
+        })
+        .await??;
+        let nodes = get_basic_lenses(&tc.client).await?;
+        for (_k, v) in nodes {
+            println!("{:#?}", v);
+        }
+        Ok(())
+    }
 }
