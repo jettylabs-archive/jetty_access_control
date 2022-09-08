@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use jetty_core::{
     access_graph::AccessGraph, connectors::ConnectorClient, fetch_credentials, Connector, Jetty,
 };
@@ -26,7 +26,10 @@ async fn main() -> Result<()> {
         connector: "dbt".to_owned(),
         data: dbt_data,
     };
-    AccessGraph::new(vec![pcd])?;
+    let ag = AccessGraph::new(vec![pcd])?;
+    ag.graph
+        .visualize("/tmp/graph.svg".to_owned())
+        .context("failed to visualize")?;
 
     Ok(())
 }
