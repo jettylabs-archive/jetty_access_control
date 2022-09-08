@@ -1,7 +1,6 @@
 use anyhow::{bail, Context, Result};
 use jetty_core::connectors::nodes as jetty_nodes;
 use serde::Deserialize;
-use serde_json;
 use std::collections::HashMap;
 
 use super::CreateNode;

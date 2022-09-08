@@ -7,7 +7,6 @@ use super::*;
 use anyhow::{bail, Context};
 use async_trait::async_trait;
 use jetty_core::connectors::nodes as jetty_nodes;
-use reqwest;
 
 /// Wrapper struct for http functionality
 #[derive(Default)]
@@ -43,7 +42,7 @@ impl TableauRestClient {
         Ok(self
             .site_id
             .as_ref()
-            .ok_or(anyhow!["unable to find site_id"])?
+            .ok_or_else(|| anyhow!["unable to find site_id"])?
             .to_owned())
     }
 
@@ -52,7 +51,7 @@ impl TableauRestClient {
         Ok(self
             .token
             .as_ref()
-            .ok_or(anyhow!["unable to find token"])?
+            .ok_or_else(|| anyhow!["unable to find token"])?
             .to_owned())
     }
 
@@ -85,24 +84,24 @@ impl TableauRestClient {
 
         let token = get_json_from_path(&resp, &vec!["credentials".to_owned(), "token".to_owned()])?
             .as_str()
-            .ok_or(anyhow!["unable to get token from response"])?
+            .ok_or_else(|| anyhow!["unable to get token from response"])?
             .to_string();
-        self.token = Some(token.to_owned());
+        self.token = Some(token);
 
         let site_id = get_json_from_path(
             &resp,
             &vec!["credentials".to_owned(), "site".to_owned(), "id".to_owned()],
         )?
         .as_str()
-        .ok_or(anyhow!["unable to get token from response"])?
+        .ok_or_else(|| anyhow!["unable to get token from response"])?
         .to_string();
-        self.site_id = Some(site_id.to_owned());
+        self.site_id = Some(site_id);
         Ok(())
     }
 
     #[allow(dead_code)]
     async fn get_assets(&mut self) -> Result<Vec<jetty_nodes::Asset>> {
-        let todo = "implement for additional asset types";
+        let _todo = "implement for additional asset types";
 
         let projects = self
             .get_json_response(
@@ -134,7 +133,7 @@ impl TableauRestClient {
             let group_id = group
                 .metadata
                 .get("group_id")
-                .ok_or(anyhow!("Unable to get group id for {:#?}", group))?;
+                .ok_or_else(|| anyhow!("Unable to get group id for {:#?}", group))?;
             let resp = self
                 .get_json_response(
                     format!("groups/{}/users", group_id),
@@ -162,7 +161,7 @@ impl TableauRestClient {
 
         let resp = req
             .try_clone()
-            .ok_or(anyhow!("unable to clone request"))?
+            .ok_or_else(|| anyhow!("unable to clone request"))?
             .send()
             .await
             .context("making request")?;
@@ -190,9 +189,9 @@ impl TableauRestClient {
             );
 
             // Only need to paginate if there are more results than shown on the first page
-            let path_to_paginated_iterable = &path_to_paginated_iterable.ok_or(anyhow![
-                "cannot use paginated results without path_to_paginated_iterable"
-            ])?;
+            let path_to_paginated_iterable = &path_to_paginated_iterable.ok_or_else(|| {
+                anyhow!["cannot use paginated results without path_to_paginated_iterable"]
+            })?;
 
             let extra_page = if total_available % page_size == 0 {
                 0
@@ -216,7 +215,7 @@ impl TableauRestClient {
             for page_number in 2..total_required_pages + 1 {
                 let paged_resp = req
                     .try_clone()
-                    .ok_or(anyhow!("unable to clone request"))?
+                    .ok_or_else(|| anyhow!("unable to clone request"))?
                     // add a page number to the request
                     .query(&[("pageNumber", page_number.to_string())])
                     .send()
@@ -319,11 +318,13 @@ pub(crate) fn get_json_from_path(
 
     for p in path {
         full_path = format!("{}.{}", full_path, p);
-        return_val = return_val.get(p).ok_or(anyhow!(
-            "unable to parse json - no such path exists: {}\n{}",
-            full_path,
-            val
-        ))?;
+        return_val = return_val.get(p).ok_or_else(|| {
+            anyhow!(
+                "unable to parse json - no such path exists: {}\n{}",
+                full_path,
+                val
+            )
+        })?;
     }
     Ok(return_val.to_owned())
 }
@@ -344,7 +345,7 @@ impl FetchJson for reqwest::RequestBuilder {
     ) -> Result<serde_json::Value> {
         let resp = self
             .try_clone()
-            .ok_or(anyhow!("unable to clone request"))?
+            .ok_or_else(|| anyhow!("unable to clone request"))?
             .send()
             .await
             .context("making request")?;
@@ -377,9 +378,9 @@ impl FetchJson for reqwest::RequestBuilder {
             }
 
             // Only need to paginate if there are more results than shown on the first page
-            let path_to_paginated_iterable = &path_to_paginated_iterable.ok_or(anyhow![
-                "cannot use paginated results without path_to_paginated_iterable"
-            ])?;
+            let path_to_paginated_iterable = &path_to_paginated_iterable.ok_or_else(|| {
+                anyhow!["cannot use paginated results without path_to_paginated_iterable"]
+            })?;
 
             let extra_page = if total_available % page_size == 0 {
                 0
@@ -403,7 +404,7 @@ impl FetchJson for reqwest::RequestBuilder {
             for page_number in 2..total_required_pages + 1 {
                 let paged_resp = &self
                     .try_clone()
-                    .ok_or(anyhow!("unable to clone request"))?
+                    .ok_or_else(|| anyhow!("unable to clone request"))?
                     // add a page number to the request
                     .query(&[("pageNumber", page_number.to_string())])
                     .send()
@@ -415,7 +416,7 @@ impl FetchJson for reqwest::RequestBuilder {
 
                 // get each additional page of results
                 if let serde_json::Value::Array(vals) =
-                    get_json_from_path(&paged_resp, path_to_paginated_iterable)
+                    get_json_from_path(paged_resp, path_to_paginated_iterable)
                         .context("getting target json object")?
                 {
                     results_vec.extend(vals);
