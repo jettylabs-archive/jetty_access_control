@@ -46,6 +46,7 @@ impl Cualable for DbtSourceNode {
     }
 }
 
+#[cfg(test)]
 mod test {
     use crate::manifest::node::DbtModelNode;
 
