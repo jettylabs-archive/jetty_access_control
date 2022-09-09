@@ -5,6 +5,8 @@ use serde::Deserialize;
 
 use crate::rest::{self, FetchJson};
 
+use super::FetchPermissions;
+
 #[derive(Clone, Default, Debug, Deserialize)]
 pub(crate) struct Metric {
     pub id: String,
@@ -56,6 +58,12 @@ pub(crate) async fn get_basic_metrics(
     super::to_asset_map(node, &to_node)
 }
 
+impl FetchPermissions for Metric {
+    fn get_endpoint(&self) -> String {
+        format!("metrics/{}/permissions", self.id)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -68,6 +76,22 @@ mod tests {
         })
         .await??;
         let nodes = get_basic_metrics(&tc.rest_client).await?;
+        for (_k, v) in nodes {
+            println!("{:#?}", v);
+        }
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_fetching_metric_permissions_works() -> Result<()> {
+        let tc = tokio::task::spawn_blocking(|| {
+            crate::connector_setup().context("running tableau connector setup")
+        })
+        .await??;
+        let mut nodes = get_basic_metrics(&tc.rest_client).await?;
+        for (_k, v) in &mut nodes {
+            v.permissions = v.get_permissions(&tc.rest_client).await?;
+        }
         for (_k, v) in nodes {
             println!("{:#?}", v);
         }

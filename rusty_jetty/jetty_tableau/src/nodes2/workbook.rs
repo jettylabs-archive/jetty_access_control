@@ -1,9 +1,11 @@
 use std::collections::HashMap;
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{anyhow, Context, Result};
 use serde::Deserialize;
 
-use crate::rest::{self, get_json_from_path, FetchJson, TableauRestClient};
+use crate::rest::{self, FetchJson};
+
+use super::FetchPermissions;
 
 #[derive(Clone, Default, Debug, Deserialize)]
 pub(crate) struct Workbook {
@@ -17,32 +19,9 @@ pub(crate) struct Workbook {
     pub permissions: Vec<super::Permission>,
 }
 
-impl Workbook {
-    async fn get_permissions(&self, tc: &TableauRestClient) -> Result<Vec<super::Permission>> {
-        let resp = tc
-            .build_request(
-                format!("workbooks/{}/permissions", self.id),
-                None,
-                reqwest::Method::GET,
-            )?
-            .fetch_json_response(None)
-            .await?;
-
-        let permissions_array = get_json_from_path(
-            &resp,
-            &vec!["permissions".to_owned(), "granteeCapabilities".to_owned()],
-        )?;
-
-        if let serde_json::Value::Array(_) = permissions_array {
-            let permissions: Vec<super::SerializedPermission> =
-                serde_json::from_value(permissions_array)?;
-            Ok(permissions
-                .iter()
-                .map(move |p| p.to_owned().to_permission())
-                .collect())
-        } else {
-            bail!("unable to parse permissions")
-        }
+impl FetchPermissions for Workbook {
+    fn get_endpoint(&self) -> String {
+        format!("workbooks/{}/permissions", self.id)
     }
 }
 

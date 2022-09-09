@@ -5,6 +5,8 @@ use serde::Deserialize;
 
 use crate::rest::{self, FetchJson};
 
+use super::FetchPermissions;
+
 #[derive(Clone, Default, Debug, Deserialize)]
 pub(crate) struct Lens {
     pub id: String,
@@ -44,13 +46,18 @@ pub(crate) async fn get_basic_lenses(
         .build_lens_request("askdata/lenses".to_owned(), None, reqwest::Method::GET)
         .context("fetching lenses")?;
 
-    println!("{:#?}", node);
     let node = node
         .fetch_json_response(None)
         .await
         .context("fetching and parsing response")?;
     let node = rest::get_json_from_path(&node, &vec!["lenses".to_owned()])?;
     super::to_asset_map(node, &to_node)
+}
+
+impl FetchPermissions for Lens {
+    fn get_endpoint(&self) -> String {
+        format!("lenses/{}/permissions", self.id)
+    }
 }
 
 #[cfg(test)]
@@ -65,6 +72,22 @@ mod tests {
         })
         .await??;
         let nodes = get_basic_lenses(&tc.rest_client).await?;
+        for (_k, v) in nodes {
+            println!("{:#?}", v);
+        }
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_fetching_lens_permissions_works() -> Result<()> {
+        let tc = tokio::task::spawn_blocking(|| {
+            crate::connector_setup().context("running tableau connector setup")
+        })
+        .await??;
+        let mut nodes = get_basic_lenses(&tc.rest_client).await?;
+        for (_k, v) in &mut nodes {
+            v.permissions = v.get_permissions(&tc.rest_client).await?;
+        }
         for (_k, v) in nodes {
             println!("{:#?}", v);
         }
