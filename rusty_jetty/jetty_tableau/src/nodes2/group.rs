@@ -4,7 +4,7 @@ use crate::rest::{self, FetchJson};
 use anyhow::{Context, Result};
 use serde::Deserialize;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Default, Debug, Deserialize)]
 pub(crate) struct Group {
     pub id: String,
     pub name: String,
@@ -69,7 +69,7 @@ mod tests {
             crate::connector_setup().context("running tableau connector setup")
         })
         .await??;
-        let groups = get_basic_groups(&tc.client).await?;
+        let groups = get_basic_groups(&tc.rest_client).await?;
         for (_k, v) in groups {
             println!("{:#?}", v);
         }
@@ -82,8 +82,8 @@ mod tests {
             crate::connector_setup().context("running tableau connector setup")
         })
         .await??;
-        let mut groups = get_basic_groups(&tc.client).await?;
-        get_group_users(&tc.client, &mut groups).await?;
+        let mut groups = get_basic_groups(&tc.rest_client).await?;
+        get_group_users(&tc.rest_client, &mut groups).await?;
         for (_k, v) in groups {
             println!("{:#?}", v);
         }
