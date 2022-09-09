@@ -74,7 +74,7 @@ pub(crate) fn to_asset_map<T: GetId + Clone>(
     val: serde_json::Value,
     f: &dyn Fn(&serde_json::Value) -> Result<T>,
 ) -> Result<HashMap<String, T>> {
-    let mut node_map = HashMap::new();
+    let node_map: HashMap<String, T>;
     if let serde_json::Value::Array(assets) = val {
         let node_vec = assets.iter().map(|a| f(a)).collect::<Result<Vec<T>>>()?;
 
