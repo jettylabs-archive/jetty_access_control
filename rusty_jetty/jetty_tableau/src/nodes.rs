@@ -3,7 +3,6 @@ mod assets;
 use anyhow::{bail, Context, Result};
 use jetty_core::connectors::{nodes as jetty_nodes, UserIdentifier};
 use serde::Deserialize;
-use serde_json;
 use std::collections::{HashMap, HashSet};
 
 pub trait CreateNode {

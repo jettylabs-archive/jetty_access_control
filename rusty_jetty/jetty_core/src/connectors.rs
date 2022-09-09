@@ -12,7 +12,7 @@ use crate::{
 };
 
 /// Client using the connector
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 pub enum ConnectorClient {
     /// Automated tests
     Test,
