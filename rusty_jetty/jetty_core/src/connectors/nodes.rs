@@ -4,7 +4,7 @@ use std::collections::{HashMap, HashSet};
 use derivative::Derivative;
 
 /// Container for all node data for a given connector
-#[derive(Debug, Default, PartialEq)]
+#[derive(Debug, Default, PartialEq, Eq)]
 pub struct ConnectorData {
     /// All groups in the connector
     pub groups: Vec<Group>,
@@ -19,7 +19,7 @@ pub struct ConnectorData {
 }
 
 /// Group data provided by connectors
-#[derive(Default, Debug, PartialEq, new)]
+#[derive(Default, Debug, PartialEq, Eq, new)]
 pub struct Group {
     /// Group name
     pub name: String,
@@ -37,7 +37,7 @@ pub struct Group {
 }
 
 /// User data provided by connectors
-#[derive(Default, Debug, PartialEq, new)]
+#[derive(Default, Debug, PartialEq, Eq, new)]
 pub struct User {
     /// The name of the user. When coming from a connector, this
     /// should be the name the connector uses to refer to a person.
@@ -60,7 +60,7 @@ pub struct User {
 }
 
 /// Struct used to populate asset nodes and edges in the graph
-#[derive(Default, PartialEq, Debug, new)]
+#[derive(Default, PartialEq, Eq, Debug, new)]
 pub struct Asset {
     /// Name of asset, fully qualified for the scope of use (connector)
     /// or graph.
@@ -86,7 +86,7 @@ pub struct Asset {
 }
 
 /// Struct used to populate tag nodes and edges in the graph
-#[derive(Debug, Derivative, PartialEq)]
+#[derive(Debug, Derivative, PartialEq, Eq)]
 #[derivative(Default)]
 pub struct Tag {
     /// Name of the tag, appropriately namespaced for the
@@ -106,7 +106,7 @@ pub struct Tag {
 }
 
 /// Struct used to populate policy nodes and edges in the graph
-#[derive(Debug, Derivative, Clone, PartialEq, new)]
+#[derive(Debug, Derivative, Clone, PartialEq, Eq, new)]
 #[derivative(Default)]
 pub struct Policy {
     /// ID of the Policy, namespaced for the relevant context

@@ -62,7 +62,7 @@ impl DbtProjectManifest for DbtManifest {
             database: Option<String>,
             schema: Option<String>,
             // TODO: Use this for asset type determination
-            _materialized: String,
+            materialized: String,
         }
 
         #[derive(Deserialize)]
@@ -122,13 +122,15 @@ impl DbtProjectManifest for DbtManifest {
         }
         // Now we'll record the dependencies between nodes.
         for (name, new_deps) in json_manifest.child_map {
-            if name.starts_with("test") || name.starts_with("seed") {
+            // We only ignore test nodes right now.
+            if name.starts_with("test") {
                 continue;
             }
             let new_deps = new_deps
                 .iter()
                 .cloned()
-                .filter(|d| !d.starts_with("test") && !d.starts_with("seed"))
+                // Filter out test nodes.
+                .filter(|d| !d.starts_with("test"))
                 .collect();
             println!("assigning node {:?} deps {:?}", name, new_deps);
             if let Some(deps) = self.dependencies.get_mut(&name) {

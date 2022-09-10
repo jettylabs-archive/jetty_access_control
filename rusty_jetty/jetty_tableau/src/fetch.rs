@@ -14,7 +14,7 @@ use std::collections::HashMap;
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 
-use crate::nodes2::{self, User};
+use crate::nodes2::{self};
 use crate::rest::{self, FetchJson};
 
 #[cfg(test)]

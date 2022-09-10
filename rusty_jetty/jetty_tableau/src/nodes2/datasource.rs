@@ -32,8 +32,8 @@ fn to_node(val: &serde_json::Value) -> Result<super::Datasource> {
         project: super::IdField,
     }
 
-    let asset_info: AssetInfo = serde_json::from_value(val.to_owned())
-        .context(format!("parsing datasource information"))?;
+    let asset_info: AssetInfo =
+        serde_json::from_value(val.to_owned()).context("parsing datasource information")?;
 
     Ok(super::Datasource {
         id: asset_info.id,
