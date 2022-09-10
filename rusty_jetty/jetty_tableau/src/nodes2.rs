@@ -52,7 +52,7 @@ trait FetchPermissions {
             &vec!["permissions".to_owned(), "granteeCapabilities".to_owned()],
         )?;
 
-        if let serde_json::Value::Array(_) = permissions_array {
+        if matches!(permissions_array, serde_json::Value::Array(_)) {
             let permissions: Vec<SerializedPermission> = serde_json::from_value(permissions_array)?;
             Ok(permissions
                 .iter()
@@ -139,8 +139,8 @@ impl SerializedPermission {
     /// when representing the Tableau environment
     pub(crate) fn to_permission(self) -> Permission {
         let mut grantee_value = Grantee::Group { id: "".to_owned() };
-        if let Some(id) = self.group {
-            grantee_value = Grantee::Group { id: id.id }
+        if let Some(IdField { id: id }) = self.group {
+            grantee_value = Grantee::Group { id }
         } else {
             grantee_value = Grantee::User {
                 id: self.user.unwrap().id,
@@ -153,7 +153,7 @@ impl SerializedPermission {
                 .capabilities
                 .capability
                 .iter()
-                .map(|c| (c.name.to_owned(), c.mode.to_owned()))
+                .map(|Capability { name, mode }| (name.to_owned(), mode.to_owned()))
                 .collect(),
         }
     }
