@@ -14,6 +14,7 @@ mod manifest;
 
 use std::collections::{HashMap, HashSet};
 
+use cual::cual_from_dbt_node;
 use jetty_core::cual::Cualable;
 use jetty_core::{
     connectors::{
@@ -28,6 +29,7 @@ use jetty_core::{
 
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
+use manifest::DbtNodeName;
 use manifest::{node::DbtNode, DbtManifest, DbtProjectManifest};
 
 /// Main connector struct
@@ -75,7 +77,7 @@ impl Connector for DbtConnector {
             .get_nodes()
             .unwrap()
             .iter()
-            .map(|node| {
+            .map(|(_, node)| {
                 match node {
                     DbtNode::ModelNode(m_node) => {
                         let node_dependencies = self
@@ -83,6 +85,15 @@ impl Connector for DbtConnector {
                             .get_dependencies(&m_node.name)
                             .unwrap()
                             .unwrap_or_default();
+                        let dependency_cuals = node_dependencies
+                            .iter()
+                            .map(|dep_name| {
+                                self.manifest
+                                    .cual_for_node(dep_name.to_owned())
+                                    .unwrap()
+                                    .uri
+                            })
+                            .collect();
                         JettyAsset::new(
                             m_node.cual(),
                             m_node.name.to_owned(),
@@ -97,7 +108,7 @@ impl Connector for DbtConnector {
                             // Handled by the lineage derived_to nodes.
                             HashSet::new(),
                             // This is the lineage!
-                            node_dependencies,
+                            dependency_cuals,
                             // TODO?
                             HashSet::new(),
                         )
@@ -108,6 +119,15 @@ impl Connector for DbtConnector {
                             .get_dependencies(&s_node.name)
                             .unwrap()
                             .unwrap_or_default();
+                        let dependency_cuals = node_dependencies
+                            .iter()
+                            .map(|dep_name| {
+                                self.manifest
+                                    .cual_for_node(dep_name.to_owned())
+                                    .unwrap()
+                                    .uri
+                            })
+                            .collect();
                         JettyAsset::new(
                             s_node.cual(),
                             s_node.name.to_owned(),
@@ -122,7 +142,7 @@ impl Connector for DbtConnector {
                             // No lineage parents here since this is a source.
                             HashSet::new(),
                             // Models derived from this source.
-                            node_dependencies,
+                            dependency_cuals,
                             HashSet::new(),
                         )
                     }
@@ -188,7 +208,7 @@ mod tests {
         manifest_mock
             .expect_get_nodes()
             .times(1)
-            .returning(|| Ok(HashSet::new()));
+            .returning(|| Ok(HashMap::new()));
 
         let mut connector =
             DbtConnector::new_with_manifest(manifest_mock).context("creating connector")?;
@@ -208,10 +228,13 @@ mod tests {
             .times(1)
             .returning(|_| Ok(None));
         manifest_mock.expect_get_nodes().times(1).returning(|| {
-            Ok(HashSet::from([DbtNode::ModelNode(DbtModelNode {
-                materialized_as: AssetType::DBView,
-                ..Default::default()
-            })]))
+            Ok(HashMap::from([(
+                "".to_owned(),
+                DbtNode::ModelNode(DbtModelNode {
+                    materialized_as: AssetType::DBView,
+                    ..Default::default()
+                }),
+            )]))
         });
         let mut connector =
             DbtConnector::new_with_manifest(manifest_mock).context("creating connector")?;

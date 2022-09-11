@@ -4,45 +4,44 @@ use crate::{Database, Schema, Table, View};
 
 const NAMESPACE: &str = "snowflake";
 
+pub(crate) fn cual_from_snowflake_obj_name(name: &str) -> Cual {
+    let parts: Vec<_> = name.split(".").collect();
+    Cual::new("".to_owned())
+}
 impl Cualable for Table {
     /// Get the CUAL that points to this table or view.
     fn cual(&self) -> Cual {
-        Cual {
-            uri: format!(
-                "{}://{}/{}/{}",
-                NAMESPACE, self.database_name, self.schema_name, self.name
-            ),
-        }
+        Cual::new(format!(
+            "{}://{}/{}/{}",
+            NAMESPACE, self.database_name, self.schema_name, self.name
+        ))
     }
 }
 
 impl Cualable for View {
     /// Get the CUAL that points to this table or view.
     fn cual(&self) -> Cual {
-        Cual {
-            uri: format!(
-                "{}://{}/{}/{}",
-                NAMESPACE, self.database_name, self.schema_name, self.name
-            ),
-        }
+        Cual::new(format!(
+            "{}://{}/{}/{}",
+            NAMESPACE, self.database_name, self.schema_name, self.name
+        ))
     }
 }
 
 impl Cualable for Schema {
     /// Get the CUAL that points to this schema.
     fn cual(&self) -> Cual {
-        Cual {
-            uri: format!("{}://{}/{}", NAMESPACE, self.database_name, self.name),
-        }
+        Cual::new(format!(
+            "{}://{}/{}",
+            NAMESPACE, self.database_name, self.name
+        ))
     }
 }
 
 impl Cualable for Database {
     /// Get the CUAL that points to this database.
     fn cual(&self) -> Cual {
-        Cual {
-            uri: format!("{}://{}", NAMESPACE, self.name),
-        }
+        Cual::new(format!("{}://{}", NAMESPACE, self.name))
     }
 }
 

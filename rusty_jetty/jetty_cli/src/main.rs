@@ -7,7 +7,7 @@ use jetty_core::{
 async fn main() -> Result<()> {
     let jetty = Jetty::new()?;
     let creds = fetch_credentials()?;
-    let snow = jetty_snowflake::SnowflakeConnector::new(
+    let mut snow = jetty_snowflake::SnowflakeConnector::new(
         &jetty.config.connectors[0],
         &creds["snow"],
         Some(ConnectorClient::Core),
@@ -26,7 +26,13 @@ async fn main() -> Result<()> {
         connector: "dbt".to_owned(),
         data: dbt_data,
     };
-    let ag = AccessGraph::new(vec![pcd])?;
+
+    let snow_data = snow.get_data().await;
+    let snow_pcd = jetty_core::access_graph::ProcessedConnectorData {
+        connector: "snowflake".to_owned(),
+        data: snow_data,
+    };
+    let ag = AccessGraph::new(vec![pcd, snow_pcd])?;
     ag.graph
         .visualize("/tmp/graph.svg".to_owned())
         .context("failed to visualize")?;

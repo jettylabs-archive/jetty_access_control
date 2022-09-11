@@ -6,7 +6,35 @@ use jetty_core::{
 use crate::manifest::node::{DbtModelNode, DbtNode, DbtSourceNode};
 
 const SNOW_NAMESPACE: &str = "snowflake";
-const DBT_NAMESPACE: &str = "dbt";
+
+pub(crate) fn cual_from_dbt_node(node: &DbtNode) -> Cual {
+    match node {
+        DbtNode::ModelNode(DbtModelNode {
+            name,
+            enabled: _,
+            database,
+            schema,
+            materialized_as: _,
+        }) => Cual::new(format!(
+            "{}://{}/{}/{}",
+            SNOW_NAMESPACE,
+            database.to_owned(),
+            schema.to_owned(),
+            name.to_owned()
+        )),
+        DbtNode::SourceNode(DbtSourceNode {
+            name,
+            database,
+            schema,
+        }) => Cual::new(format!(
+            "{}://{}/{}/{}",
+            SNOW_NAMESPACE,
+            database.to_owned(),
+            schema.to_owned(),
+            name.to_owned()
+        )),
+    }
+}
 
 impl Cualable for DbtModelNode {
     fn cual(&self) -> Cual {

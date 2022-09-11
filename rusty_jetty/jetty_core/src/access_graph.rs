@@ -224,7 +224,7 @@ impl JettyNode {
     /// wrapped in the appropriate enum.
     fn get_name(&self) -> NodeName {
         match &self {
-            JettyNode::Asset(a) => NodeName::Asset(a.name.to_owned()),
+            JettyNode::Asset(a) => NodeName::Asset(a.cual.uri.to_owned()),
             JettyNode::Group(a) => NodeName::Group(a.name.to_owned()),
             JettyNode::Policy(a) => NodeName::Policy(a.name.to_owned()),
             JettyNode::Tag(a) => NodeName::Tag(a.name.to_owned()),
@@ -310,17 +310,23 @@ impl AccessGraph {
             last_modified: 0,
         };
         for connector_data in data {
-            ag.build_graph(connector_data)?;
+            // ag.build_graph(connector_data)?;
+            ag.add_nodes(&connector_data)?;
+            ag.add_edges()?;
         }
         Ok(ag)
     }
 
-    pub(crate) fn build_graph(&mut self, data: ProcessedConnectorData) -> Result<()> {
+    pub(crate) fn add_nodes(&mut self, data: &ProcessedConnectorData) -> Result<()> {
         self.register_nodes_and_edges(&data.data.groups, &data.connector)?;
         self.register_nodes_and_edges(&data.data.users, &data.connector)?;
         self.register_nodes_and_edges(&data.data.assets, &data.connector)?;
         self.register_nodes_and_edges(&data.data.policies, &data.connector)?;
         self.register_nodes_and_edges(&data.data.tags, &data.connector)?;
+        Ok(())
+    }
+
+    pub(crate) fn add_edges(&mut self) -> Result<()> {
         for edge in &self.edge_cache {
             self.graph
                 .add_edge(edge.to_owned())
