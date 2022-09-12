@@ -1,4 +1,6 @@
-#[derive(Clone)]
+use serde::Deserialize;
+
+#[derive(Clone, Default, Debug, Deserialize)]
 pub(crate) struct DataConnection {
     pub id: String,
     pub connection_type: String,

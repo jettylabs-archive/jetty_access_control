@@ -6,7 +6,7 @@ use crate::rest::{self, FetchJson};
 use anyhow::{Context, Result};
 use serde::Deserialize;
 
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Default, Debug, Deserialize)]
 pub(crate) struct View {
     pub id: String,
     pub name: String,
@@ -63,7 +63,7 @@ mod tests {
             crate::connector_setup().context("running tableau connector setup")
         })
         .await??;
-        let nodes = get_basic_views(&tc.client).await?;
+        let nodes = get_basic_views(&tc.rest_client).await?;
         for (_k, v) in nodes {
             println!("{:#?}", v);
         }

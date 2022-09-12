@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use serde::Deserialize;
 
-use crate::rest::{self, FetchJson};
+use crate::rest::{self, get_json_from_path, FetchJson, TableauRestClient};
 
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Default, Debug, Deserialize)]
 pub(crate) struct Workbook {
     pub id: String,
     pub name: String,
@@ -15,6 +15,35 @@ pub(crate) struct Workbook {
     pub datasources: Vec<String>,
     pub updated_at: String,
     pub permissions: Vec<super::Permission>,
+}
+
+impl Workbook {
+    async fn get_permissions(&self, tc: &TableauRestClient) -> Result<Vec<super::Permission>> {
+        let resp = tc
+            .build_request(
+                format!("workbooks/{}/permissions", self.id),
+                None,
+                reqwest::Method::GET,
+            )?
+            .fetch_json_response(None)
+            .await?;
+
+        let permissions_array = get_json_from_path(
+            &resp,
+            &vec!["permissions".to_owned(), "granteeCapabilities".to_owned()],
+        )?;
+
+        if let serde_json::Value::Array(_) = permissions_array {
+            let permissions: Vec<super::SerializedPermission> =
+                serde_json::from_value(permissions_array)?;
+            Ok(permissions
+                .iter()
+                .map(move |p| p.to_owned().to_permission())
+                .collect())
+        } else {
+            bail!("unable to parse permissions")
+        }
+    }
 }
 
 fn to_node(val: &serde_json::Value) -> Result<Workbook> {
@@ -59,14 +88,32 @@ mod tests {
     use super::*;
     use anyhow::{Context, Result};
 
+    use crate::nodes2::Permission;
+
     #[tokio::test]
-    async fn test_fetching_groups_works() -> Result<()> {
+    async fn test_fetching_workbooks_works() -> Result<()> {
         let tc = tokio::task::spawn_blocking(|| {
             crate::connector_setup().context("running tableau connector setup")
         })
         .await??;
-        let groups = get_basic_workbooks(&tc.client).await?;
+        let groups = get_basic_workbooks(&tc.rest_client).await?;
         for (_k, v) in groups {
+            println!("{:#?}", v);
+        }
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_fetching_workbook_permissions_works() -> Result<()> {
+        let tc = tokio::task::spawn_blocking(|| {
+            crate::connector_setup().context("running tableau connector setup")
+        })
+        .await??;
+        let mut workbooks = get_basic_workbooks(&tc.rest_client).await?;
+        for (_k, v) in &mut workbooks {
+            v.permissions = v.get_permissions(&tc.rest_client).await?;
+        }
+        for (_k, v) in workbooks {
             println!("{:#?}", v);
         }
         Ok(())
