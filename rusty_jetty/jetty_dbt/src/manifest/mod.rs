@@ -93,9 +93,10 @@ impl DbtProjectManifest for DbtManifest {
         let manifest_path = file_path.clone().unwrap_or_else(|| self.path());
 
         let file_contents =
-            read_to_string(manifest_path).context(format!("reading file {:?}", file_path))?;
-        let json_manifest: DbtManifestJson =
-            serde_json::from_str(&file_contents).context("deserializing manifest json")?;
+            read_to_string(&manifest_path).context(format!("reading file {:?}", file_path))?;
+        let json_manifest: DbtManifestJson = serde_json::from_str(&file_contents).context(
+            format!("deserializing manifest json from {:?}", manifest_path),
+        )?;
         // First we will ingest the nodes.
         for (node_name, node) in json_manifest.nodes {
             let asset_type = node.resource_type.try_to_asset_type()?;

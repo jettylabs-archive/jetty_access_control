@@ -14,5 +14,7 @@ pub use connectors::Connector;
 
 pub mod access_graph;
 
+pub mod cual;
+
 #[macro_use]
 extern crate derive_new;
