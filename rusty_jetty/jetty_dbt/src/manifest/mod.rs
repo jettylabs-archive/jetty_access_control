@@ -151,7 +151,7 @@ impl DbtProjectManifest for DbtManifest {
             println!("assigning node {:?} deps {:?}", name, new_deps);
             if let Some(deps) = self.dependencies.get_mut(&name) {
                 // Combine the new deps with the existing ones.
-                *deps = deps.union(&new_deps).map(|i| i.to_owned()).collect();
+                deps.extend(new_deps);
             } else {
                 // Model not yet in map. Add it.
                 self.dependencies.insert(name, new_deps);
