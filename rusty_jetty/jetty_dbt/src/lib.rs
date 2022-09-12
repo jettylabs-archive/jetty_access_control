@@ -91,7 +91,7 @@ impl Connector for DbtConnector {
                                 self.manifest
                                     .cual_for_node(dep_name.to_owned())
                                     .unwrap()
-                                    .uri
+                                    .uri()
                             })
                             .collect();
                         JettyAsset::new(
@@ -125,7 +125,7 @@ impl Connector for DbtConnector {
                                 self.manifest
                                     .cual_for_node(dep_name.to_owned())
                                     .unwrap()
-                                    .uri
+                                    .uri()
                             })
                             .collect();
                         JettyAsset::new(

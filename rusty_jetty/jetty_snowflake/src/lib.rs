@@ -298,7 +298,7 @@ impl SnowflakeConnector {
             privileges.iter().cloned().collect(),
             // Unwrap here is fine since we asserted that the set was not empty above.
             // TODO: make these CUALs
-            HashSet::from([cual.uri]),
+            HashSet::from([cual.uri()]),
             HashSet::new(),
             HashSet::from([role_name.to_owned()]),
             // No direct user grants in Snowflake. Grants must pass through roles.
@@ -414,7 +414,7 @@ impl SnowflakeConnector {
                 HashMap::new(),
                 // Policies applied are handled in get_jetty_policies
                 HashSet::new(),
-                HashSet::from([schema_cual_from(&table.database_name, &table.schema_name).uri]),
+                HashSet::from([schema_cual_from(&table.database_name, &table.schema_name).uri()]),
                 // Handled in child_of for parents.
                 HashSet::new(),
                 // We aren't extracting lineage from Snowflake right now.
@@ -432,7 +432,7 @@ impl SnowflakeConnector {
                 HashMap::new(),
                 // Policies applied are handled in get_jetty_policies
                 HashSet::new(),
-                HashSet::from([schema_cual_from(&view.database_name, &view.schema_name).uri]),
+                HashSet::from([schema_cual_from(&view.database_name, &view.schema_name).uri()]),
                 // Handled in child_of for parents.
                 HashSet::new(),
                 // We aren't extracting lineage from Snowflake right now.
@@ -453,7 +453,7 @@ impl SnowflakeConnector {
                 HashMap::new(),
                 // Policies applied are handled in get_jetty_policies
                 HashSet::new(),
-                HashSet::from([db_cual_from(&schema.database_name).uri]),
+                HashSet::from([db_cual_from(&schema.database_name).uri()]),
                 // Handled in child_of for parents.
                 HashSet::new(),
                 // We aren't extracting lineage from Snowflake right now.

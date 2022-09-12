@@ -122,7 +122,7 @@ impl NodeHelper for nodes::Asset {
         for v in &self.governed_by {
             insert_edge_pair(
                 &mut hs,
-                NodeName::Asset(self.cual.uri.to_owned()),
+                NodeName::Asset(self.cual.uri().to_owned()),
                 NodeName::Policy(v.to_owned()),
                 EdgeType::GovernedBy,
             );
@@ -130,7 +130,7 @@ impl NodeHelper for nodes::Asset {
         for v in &self.child_of {
             insert_edge_pair(
                 &mut hs,
-                NodeName::Asset(self.cual.uri.to_owned()),
+                NodeName::Asset(self.cual.uri().to_owned()),
                 NodeName::Asset(v.to_owned()),
                 EdgeType::ChildOf,
             );
@@ -138,7 +138,7 @@ impl NodeHelper for nodes::Asset {
         for v in &self.parent_of {
             insert_edge_pair(
                 &mut hs,
-                NodeName::Asset(self.cual.uri.to_owned()),
+                NodeName::Asset(self.cual.uri().to_owned()),
                 NodeName::Asset(v.to_owned()),
                 EdgeType::ParentOf,
             );
@@ -146,7 +146,7 @@ impl NodeHelper for nodes::Asset {
         for v in &self.derived_from {
             insert_edge_pair(
                 &mut hs,
-                NodeName::Asset(self.cual.uri.to_owned()),
+                NodeName::Asset(self.cual.uri().to_owned()),
                 NodeName::Asset(v.to_owned()),
                 EdgeType::DerivedFrom,
             );
@@ -154,7 +154,7 @@ impl NodeHelper for nodes::Asset {
         for v in &self.derived_to {
             insert_edge_pair(
                 &mut hs,
-                NodeName::Asset(self.cual.uri.to_owned()),
+                NodeName::Asset(self.cual.uri().to_owned()),
                 NodeName::Asset(v.to_owned()),
                 EdgeType::DerivedTo,
             );
@@ -162,7 +162,7 @@ impl NodeHelper for nodes::Asset {
         for v in &self.tagged_as {
             insert_edge_pair(
                 &mut hs,
-                NodeName::Asset(self.cual.uri.to_owned()),
+                NodeName::Asset(self.cual.uri().to_owned()),
                 NodeName::Tag(v.to_owned()),
                 EdgeType::TaggedAs,
             );
