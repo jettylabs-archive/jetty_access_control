@@ -19,6 +19,7 @@ mod cual;
 mod entry_types;
 mod rest;
 
+use cual::{cual_from_snowflake_obj_name, db_cual_from, schema_cual_from};
 pub use entry_types::*;
 use jetty_core::cual::Cualable;
 use rest::{SnowflakeRequestConfig, SnowflakeRestClient, SnowflakeRestConfig};
@@ -286,6 +287,7 @@ impl SnowflakeConnector {
             return None;
         }
         let privileges: Vec<String> = grants.iter().map(|g| g.privilege.to_owned()).collect();
+        let cual = cual_from_snowflake_obj_name(&grants.iter().next().unwrap().name).unwrap();
         Some(nodes::Policy::new(
             format!(
                 "{}.{}.{}",
@@ -295,7 +297,8 @@ impl SnowflakeConnector {
             ),
             privileges.iter().cloned().collect(),
             // Unwrap here is fine since we asserted that the set was not empty above.
-            HashSet::from([grants.iter().next().unwrap().name.to_owned()]),
+            // TODO: make these CUALs
+            HashSet::from([cual.uri]),
             HashSet::new(),
             HashSet::from([role_name.to_owned()]),
             // No direct user grants in Snowflake. Grants must pass through roles.
@@ -406,15 +409,12 @@ impl SnowflakeConnector {
         for table in self.get_tables().await? {
             res.push(nodes::Asset::new(
                 table.cual(),
-                format!(
-                    "{}.{}.{}",
-                    table.database_name, table.schema_name, table.name
-                ),
+                "".to_owned(),
                 connectors::AssetType::DBTable,
                 HashMap::new(),
                 // Policies applied are handled in get_jetty_policies
                 HashSet::new(),
-                HashSet::from([format!("{}.{}", table.database_name, table.schema_name)]),
+                HashSet::from([schema_cual_from(&table.database_name, &table.schema_name).uri]),
                 // Handled in child_of for parents.
                 HashSet::new(),
                 // We aren't extracting lineage from Snowflake right now.
@@ -432,7 +432,7 @@ impl SnowflakeConnector {
                 HashMap::new(),
                 // Policies applied are handled in get_jetty_policies
                 HashSet::new(),
-                HashSet::from([format!("{}.{}", view.database_name, view.schema_name)]),
+                HashSet::from([schema_cual_from(&view.database_name, &view.schema_name).uri]),
                 // Handled in child_of for parents.
                 HashSet::new(),
                 // We aren't extracting lineage from Snowflake right now.
@@ -453,7 +453,7 @@ impl SnowflakeConnector {
                 HashMap::new(),
                 // Policies applied are handled in get_jetty_policies
                 HashSet::new(),
-                HashSet::from([schema.database_name]),
+                HashSet::from([db_cual_from(&schema.database_name).uri]),
                 // Handled in child_of for parents.
                 HashSet::new(),
                 // We aren't extracting lineage from Snowflake right now.

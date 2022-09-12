@@ -1,13 +1,36 @@
+use anyhow::{bail, Result};
+
 use jetty_core::cual::{Cual, Cualable};
 
 use crate::{Database, Schema, Table, View};
 
 const NAMESPACE: &str = "snowflake";
 
-pub(crate) fn cual_from_snowflake_obj_name(name: &str) -> Cual {
-    let parts: Vec<_> = name.split(".").collect();
-    Cual::new("".to_owned())
+pub(crate) fn cual_from_snowflake_obj_name(name: &str) -> Result<Cual> {
+    let parts: Vec<_> = name.split(".").map(str::to_lowercase).collect();
+
+    if let Some(db) = parts.get(0) {
+        Ok(Cual::new(format!("{}://{}", NAMESPACE, db)))
+    } else if let [db, schema] = &parts[0..1] {
+        Ok(Cual::new(format!("{}://{}/{}", NAMESPACE, db, schema)))
+    } else if let [db, schema, obj_name] = &parts[0..2] {
+        Ok(Cual::new(format!(
+            "{}://{}/{}/{}",
+            NAMESPACE, db, schema, obj_name
+        )))
+    } else {
+        bail!("name {} was not fully qualified", name)
+    }
 }
+
+pub(crate) fn schema_cual_from(db: &str, schema: &str) -> Cual {
+    Cual::new(format!("{}://{}/{}", NAMESPACE, db, schema))
+}
+
+pub(crate) fn db_cual_from(db: &str) -> Cual {
+    Cual::new(format!("{}://{}", NAMESPACE, db))
+}
+
 impl Cualable for Table {
     /// Get the CUAL that points to this table or view.
     fn cual(&self) -> Cual {

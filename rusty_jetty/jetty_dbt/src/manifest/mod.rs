@@ -67,20 +67,22 @@ impl DbtProjectManifest for DbtManifest {
         #[derive(Deserialize)]
         struct Config {
             enabled: bool,
-            database: Option<String>,
-            schema: Option<String>,
             // TODO: Use this for asset type determination
             materialized: String,
         }
 
         #[derive(Deserialize)]
         struct DbtManifestNode {
+            name: String,
             resource_type: String,
             config: Config,
+            database: Option<String>,
+            schema: Option<String>,
         }
 
         #[derive(Deserialize, Debug)]
         struct DbtManifestSourceNode {
+            name: String,
             database: String,
             schema: String,
             unique_id: String,
@@ -112,10 +114,10 @@ impl DbtProjectManifest for DbtManifest {
                 self.nodes.insert(
                     node_name.to_owned(),
                     DbtNode::ModelNode(DbtModelNode {
-                        name: node_name.to_owned(),
+                        name: "".to_owned(),
                         enabled: node.config.enabled.to_owned(),
-                        database: node.config.database.to_owned().unwrap_or_default(),
-                        schema: node.config.schema.to_owned().unwrap_or_default(),
+                        database: node.database.to_owned().unwrap_or_default(),
+                        schema: node.schema.to_owned().unwrap_or_default(),
                         materialized_as: ty,
                     }),
                 );
@@ -130,7 +132,7 @@ impl DbtProjectManifest for DbtManifest {
             self.nodes.insert(
                 source.unique_id.to_owned(),
                 DbtNode::SourceNode(DbtSourceNode {
-                    name: source.unique_id.to_owned(),
+                    name: "".to_owned(),
                     database: source.database,
                     schema: source.schema,
                 }),

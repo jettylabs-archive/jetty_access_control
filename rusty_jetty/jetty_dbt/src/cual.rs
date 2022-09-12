@@ -42,15 +42,13 @@ impl Cualable for DbtModelNode {
         // warehouse-specific CUAL.
         // Otherwise, it gets a dbt CUAL.
         match self.materialized_as {
-            AssetType::DBTable | AssetType::DBView => Cual {
-                uri: format!(
-                    "{}://{}/{}/{}",
-                    SNOW_NAMESPACE,
-                    self.database.to_owned(),
-                    self.schema.to_owned(),
-                    self.name.to_owned()
-                ),
-            },
+            AssetType::DBTable | AssetType::DBView => Cual::new(format!(
+                "{}://{}/{}/{}",
+                SNOW_NAMESPACE,
+                self.database.to_owned(),
+                self.schema.to_owned(),
+                self.name.to_owned()
+            )),
             // Every model that gets passed in here should be materialized
             // as a table or view.
             _ => panic!(
@@ -65,12 +63,10 @@ impl Cualable for DbtSourceNode {
     fn cual(&self) -> Cual {
         // Sources come from the db. Create the CUAL to correspond to
         // the origin datastore.
-        Cual {
-            uri: format!(
-                "snowflake://{}/{}/{}",
-                self.database, self.schema, self.name
-            ),
-        }
+        Cual::new(format!(
+            "snowflake://{}/{}/{}",
+            self.database, self.schema, self.name
+        ))
     }
 }
 

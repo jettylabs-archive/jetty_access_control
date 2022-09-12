@@ -13,7 +13,9 @@ pub struct Cual {
 impl Cual {
     /// Create a new wrapper for the given URI.
     pub fn new(uri: String) -> Self {
-        Self { uri }
+        Self {
+            uri: uri.to_lowercase(),
+        }
     }
 }
 
