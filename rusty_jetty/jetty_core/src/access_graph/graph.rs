@@ -45,10 +45,6 @@ impl Graph {
         println!("adding node with name {:?}", node_name);
         // Check for duplicate
         if let Some(&idx) = self.get_node(&node_name) {
-            println!(
-                "found node potential match - {:?}:{:?}",
-                node_name, self.graph[idx]
-            );
             self.merge_nodes(idx, node)?;
         } else {
             let idx = self.graph.add_node(node.to_owned());

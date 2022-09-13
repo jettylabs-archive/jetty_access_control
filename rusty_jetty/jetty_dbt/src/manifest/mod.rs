@@ -1,7 +1,7 @@
 pub(crate) mod node;
 mod to_asset_type;
 
-use jetty_core::cual::Cual;
+use jetty_core::cual::{Cual, Cualable};
 use node::{DbtModelNode, DbtNode, DbtSourceNode};
 use to_asset_type::ToAssetType;
 
@@ -12,8 +12,6 @@ use std::fs::read_to_string;
 
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
-
-use crate::cual::cual_from_dbt_node;
 
 pub(crate) type DbtNodeName = String;
 
@@ -67,7 +65,8 @@ impl DbtProjectManifest for DbtManifest {
         struct Config {
             enabled: bool,
             // TODO: Use this for asset type determination
-            materialized: String,
+            #[serde(rename = "materialized")]
+            _materialized: String,
         }
 
         #[derive(Deserialize)]
@@ -173,7 +172,7 @@ impl DbtProjectManifest for DbtManifest {
 
     fn cual_for_node(&self, node_name: DbtNodeName) -> Result<Cual> {
         if let Some(node) = self.nodes.get(&node_name) {
-            Ok(cual_from_dbt_node(node))
+            Ok(node.cual())
         } else {
             bail!("couldn't get node for name {}", node_name);
         }

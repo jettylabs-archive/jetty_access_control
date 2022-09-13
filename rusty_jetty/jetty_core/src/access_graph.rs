@@ -310,7 +310,7 @@ impl AccessGraph {
             last_modified: 0,
         };
         for connector_data in data {
-            // ag.build_graph(connector_data)?;
+            // Create all nodes first, then create edges.
             ag.add_nodes(&connector_data)?;
             ag.add_edges()?;
         }

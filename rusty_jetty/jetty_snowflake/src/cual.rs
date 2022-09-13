@@ -1,70 +1,64 @@
 use anyhow::{bail, Result};
 
-use jetty_core::cual::{Cual, Cualable};
+use jetty_core::cual::Cualable;
+// Reexport for convenience.
+pub use jetty_core::cual::Cual;
 
 use crate::{Database, Schema, Table, View};
 
-const NAMESPACE: &str = "snowflake";
+macro_rules! cual {
+    ($db:expr) => {
+        Cual::new(format!("{}://{}", "snowflake", $db))
+    };
+    ($db:expr, $schema:expr) => {
+        Cual::new(format!("{}://{}/{}", "snowflake", $db, $schema))
+    };
+    ($db:expr, $schema:expr, $table:expr) => {
+        Cual::new(format!("{}://{}/{}/{}", "snowflake", $db, $schema, $table))
+    };
+}
+
+pub(crate) use cual;
 
 pub(crate) fn cual_from_snowflake_obj_name(name: &str) -> Result<Cual> {
     let parts: Vec<_> = name.split('.').map(str::to_lowercase).collect();
 
     if let Some(db) = parts.get(0) {
-        Ok(Cual::new(format!("{}://{}", NAMESPACE, db)))
+        Ok(cual!(db))
     } else if let [db, schema] = &parts[0..1] {
-        Ok(Cual::new(format!("{}://{}/{}", NAMESPACE, db, schema)))
+        Ok(cual!(db, schema))
     } else if let [db, schema, obj_name] = &parts[0..2] {
-        Ok(Cual::new(format!(
-            "{}://{}/{}/{}",
-            NAMESPACE, db, schema, obj_name
-        )))
+        Ok(cual!(db, schema, obj_name))
     } else {
         bail!("name {} was not fully qualified", name)
     }
 }
 
-pub(crate) fn schema_cual_from(db: &str, schema: &str) -> Cual {
-    Cual::new(format!("{}://{}/{}", NAMESPACE, db, schema))
-}
-
-pub(crate) fn db_cual_from(db: &str) -> Cual {
-    Cual::new(format!("{}://{}", NAMESPACE, db))
-}
-
 impl Cualable for Table {
     /// Get the CUAL that points to this table or view.
     fn cual(&self) -> Cual {
-        Cual::new(format!(
-            "{}://{}/{}/{}",
-            NAMESPACE, self.database_name, self.schema_name, self.name
-        ))
+        cual!(self.database_name, self.schema_name, self.name)
     }
 }
 
 impl Cualable for View {
     /// Get the CUAL that points to this table or view.
     fn cual(&self) -> Cual {
-        Cual::new(format!(
-            "{}://{}/{}/{}",
-            NAMESPACE, self.database_name, self.schema_name, self.name
-        ))
+        cual!(self.database_name, self.schema_name, self.name)
     }
 }
 
 impl Cualable for Schema {
     /// Get the CUAL that points to this schema.
     fn cual(&self) -> Cual {
-        Cual::new(format!(
-            "{}://{}/{}",
-            NAMESPACE, self.database_name, self.name
-        ))
+        cual!(self.database_name, self.name)
     }
 }
 
 impl Cualable for Database {
     /// Get the CUAL that points to this database.
     fn cual(&self) -> Cual {
-        Cual::new(format!("{}://{}", NAMESPACE, self.name))
+        cual!(self.name)
     }
 }
 

@@ -19,7 +19,7 @@ mod cual;
 mod entry_types;
 mod rest;
 
-use cual::{cual_from_snowflake_obj_name, db_cual_from, schema_cual_from};
+use cual::{cual, cual_from_snowflake_obj_name, Cual};
 pub use entry_types::*;
 use jetty_core::cual::Cualable;
 use rest::{SnowflakeRequestConfig, SnowflakeRestClient, SnowflakeRestConfig};
@@ -414,7 +414,7 @@ impl SnowflakeConnector {
                 HashMap::new(),
                 // Policies applied are handled in get_jetty_policies
                 HashSet::new(),
-                HashSet::from([schema_cual_from(&table.database_name, &table.schema_name).uri()]),
+                HashSet::from([cual!(table.database_name, table.schema_name).uri()]),
                 // Handled in child_of for parents.
                 HashSet::new(),
                 // We aren't extracting lineage from Snowflake right now.
@@ -432,7 +432,7 @@ impl SnowflakeConnector {
                 HashMap::new(),
                 // Policies applied are handled in get_jetty_policies
                 HashSet::new(),
-                HashSet::from([schema_cual_from(&view.database_name, &view.schema_name).uri()]),
+                HashSet::from([cual!(&view.database_name, &view.schema_name).uri()]),
                 // Handled in child_of for parents.
                 HashSet::new(),
                 // We aren't extracting lineage from Snowflake right now.
@@ -453,7 +453,7 @@ impl SnowflakeConnector {
                 HashMap::new(),
                 // Policies applied are handled in get_jetty_policies
                 HashSet::new(),
-                HashSet::from([db_cual_from(&schema.database_name).uri()]),
+                HashSet::from([cual!(schema.database_name).uri()]),
                 // Handled in child_of for parents.
                 HashSet::new(),
                 // We aren't extracting lineage from Snowflake right now.

@@ -12,6 +12,9 @@ pub struct Cual {
 
 impl Cual {
     /// Create a new wrapper for the given URI.
+    ///
+    /// CUALs are case-insensitive. So we coerce all cuals to lowercase
+    /// to apply uniformity across connectors.
     pub fn new(uri: String) -> Self {
         Self {
             uri: uri.to_lowercase(),

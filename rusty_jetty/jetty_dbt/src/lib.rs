@@ -165,7 +165,10 @@ mod tests {
     use crate::manifest::node::DbtModelNode;
 
     use super::*;
-    use jetty_core::connectors::{nodes::Asset, AssetType};
+    use jetty_core::{
+        connectors::{nodes::Asset, AssetType},
+        cual::Cual,
+    };
     use manifest::{node::DbtNode, MockDbtProjectManifest};
     use std::collections::{HashMap, HashSet};
 
