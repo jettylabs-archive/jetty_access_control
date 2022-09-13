@@ -224,7 +224,7 @@ impl JettyNode {
     /// wrapped in the appropriate enum.
     fn get_name(&self) -> NodeName {
         match &self {
-            JettyNode::Asset(a) => NodeName::Asset(a.cual.uri().to_owned()),
+            JettyNode::Asset(a) => NodeName::Asset(a.cual.uri()),
             JettyNode::Group(a) => NodeName::Group(a.name.to_owned()),
             JettyNode::Policy(a) => NodeName::Policy(a.name.to_owned()),
             JettyNode::Tag(a) => NodeName::Tag(a.name.to_owned()),

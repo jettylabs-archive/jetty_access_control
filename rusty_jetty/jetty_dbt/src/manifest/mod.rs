@@ -8,7 +8,6 @@ use to_asset_type::ToAssetType;
 use anyhow::{bail, Context, Result};
 use mockall::automock;
 use serde::Deserialize;
-use std::f32::consts::E;
 use std::fs::read_to_string;
 
 use std::collections::{HashMap, HashSet};
@@ -73,7 +72,6 @@ impl DbtProjectManifest for DbtManifest {
 
         #[derive(Deserialize)]
         struct DbtManifestNode {
-            name: String,
             resource_type: String,
             config: Config,
             database: Option<String>,
@@ -82,7 +80,6 @@ impl DbtProjectManifest for DbtManifest {
 
         #[derive(Deserialize, Debug)]
         struct DbtManifestSourceNode {
-            name: String,
             database: String,
             schema: String,
             unique_id: String,

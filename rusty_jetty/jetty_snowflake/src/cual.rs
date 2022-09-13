@@ -7,7 +7,7 @@ use crate::{Database, Schema, Table, View};
 const NAMESPACE: &str = "snowflake";
 
 pub(crate) fn cual_from_snowflake_obj_name(name: &str) -> Result<Cual> {
-    let parts: Vec<_> = name.split(".").map(str::to_lowercase).collect();
+    let parts: Vec<_> = name.split('.').map(str::to_lowercase).collect();
 
     if let Some(db) = parts.get(0) {
         Ok(Cual::new(format!("{}://{}", NAMESPACE, db)))

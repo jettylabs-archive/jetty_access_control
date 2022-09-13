@@ -14,7 +14,6 @@ mod manifest;
 
 use std::collections::{HashMap, HashSet};
 
-use cual::cual_from_dbt_node;
 use jetty_core::cual::Cualable;
 use jetty_core::{
     connectors::{
@@ -22,14 +21,12 @@ use jetty_core::{
         nodes::{Asset as JettyAsset, ConnectorData},
         AssetType,
     },
-    cual::Cual,
     jetty::{ConnectorConfig, CredentialsBlob},
     Connector,
 };
 
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
-use manifest::DbtNodeName;
 use manifest::{node::DbtNode, DbtManifest, DbtProjectManifest};
 
 /// Main connector struct
