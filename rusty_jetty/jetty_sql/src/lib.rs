@@ -1,47 +1,51 @@
-mod ast;
 mod node;
 
 use std::collections::HashSet;
 
-use anyhow::Result;
-use sqlparser::ast as parser_ast;
+use sqlparser::ast::{self as parser_ast};
 use sqlparser::dialect::GenericDialect;
 use sqlparser::parser::Parser;
 
-trait AstWalker {
-    fn children(&self) -> Vec<parser_ast::Statement>;
+use node::Node;
 
-    // fn descendent(&self) -> Vec<parser_ast::Statement> {
-    //     results = Vec::new();
-    //     if let Some(children) = self.children() {
-    //         for child in children {}
-    //     } else {
-    //         todo!()
-    //     }
-    //     todo!()
-    // }
-
-    fn get_descendent(
-        &self,
-        descendent: &mut Vec<parser_ast::Statement>,
-    ) -> &mut Vec<parser_ast::Statement> {
-        for child in self.children() {
-            descendent.extend(
-                self.get_descendent(descendent)
-                    .iter()
-                    .collect::<Vec<parser_ast::Statement>>(),
-            )
-        }
-        descendent
-    }
-}
-
-fn get_tables(query: &String) -> HashSet<String> {
+/// Parse a SQL query and extract db table names from the query.
+pub fn get_tables(query: &String) -> HashSet<String> {
     let dialect = GenericDialect {}; // or AnsiDialect
 
-    let ast = Parser::parse_sql(&dialect, &query).unwrap();
+    let root = node::Node::Statement(Parser::parse_sql(&dialect, &query).unwrap()[0].to_owned());
 
-    todo!()
+    let mut results: Vec<&Node> = Vec::new();
+
+    // Get query
+    let descendants = root.get_descendants();
+    let query_node = descendants.iter().find(|n| matches!(n, Node::Query(_)));
+
+    if let Some(node::Node::Query(parser_ast::Query { body, .. })) = query_node {
+        let body = Node::SetExpr(*body.to_owned());
+        let descendants = body.get_descendants();
+        let object_names: Vec<parser_ast::ObjectName> = descendants
+            .iter()
+            .filter_map(|n| {
+                if let Node::TableFactor(parser_ast::TableFactor::Table { name, .. }) = n {
+                    Some(name.to_owned())
+                } else {
+                    None
+                }
+            })
+            .collect();
+        let table_names: HashSet<String> = object_names
+            .iter()
+            .map(|o| {
+                o.0.iter()
+                    .map(|i| i.value.to_owned())
+                    .collect::<Vec<String>>()
+                    .join(".")
+            })
+            .collect();
+        table_names
+    } else {
+        HashSet::new()
+    }
 }
 
 #[cfg(test)]
@@ -52,11 +56,12 @@ mod test {
 
     #[test]
     fn get_table_from_simple_query() -> Result<()> {
-        let query = "SELECT * FROM a".to_owned();
-        let desired_result = HashSet::from(["a".to_owned()]);
-        let results = get_tables(&query);
+        let cases = [("SELECT * FROM a.b".to_owned(), ["a.b".to_owned()])];
 
-        assert_eq!(results, desired_result);
+        for case in cases {
+            let results = get_tables(&case.0);
+            assert_eq!(results, HashSet::from(case.1));
+        }
         Ok(())
     }
 }

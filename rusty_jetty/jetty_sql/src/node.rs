@@ -1,6 +1,9 @@
-use sqlparser::{ast, keywords::NO};
+use sqlparser::ast;
 
-enum Node {
+/// A wrapper for sqlparser::ast types that allows them to implement
+/// the Teraversable trait
+#[derive(Clone, Debug)]
+pub(crate) enum Node {
     Array(ast::Array),
     Assignment(ast::Assignment),
     ColumnDef(ast::ColumnDef),
@@ -82,16 +85,70 @@ enum Node {
     Value(ast::Value),
     WindowFrameBound(ast::WindowFrameBound),
     WindowFrameUnits(ast::WindowFrameUnits),
-    Bool(bool),
 }
 
-trait Traversable {
+/// This trait is implemented by AST types and returns child ast nodes.
+/// It does not include terminal nodes (such as boolean or text values)
+pub(crate) trait Traversable {
     fn get_children(&self) -> Vec<Node>;
 }
 
+impl Node {
+    /// This function runs a a depth-first traversal and accumulation of the descendent nodes
+    pub(crate) fn get_descendants(&self) -> Vec<Node> {
+        let mut d = Vec::new();
+        for child in self.get_children() {
+            d.push(child.to_owned());
+            d.extend(child.get_descendants())
+        }
+        d
+    }
+}
+
+/// This Macro implements the Traversable trait for node by matching on
+/// the inner enum types
+macro_rules! impl_traversable_node {
+    ($($t:tt),+) => {
+        impl Traversable for Node {
+            fn get_children(&self) -> Vec<Node> {
+                match self {
+        $(Node::$t(n) => n.get_children(),)*
+        _ => panic!("Not supported. Please insert another quarter."),
+                }
+    }
+}
+    }
+}
+
+impl_traversable_node!(
+    Fetch,
+    Ident,
+    Join,
+    LateralView,
+    ObjectName,
+    Offset,
+    OrderByExpr,
+    Query,
+    Select,
+    SelectInto,
+    TableAlias,
+    TableWithJoins,
+    Top,
+    Values,
+    With,
+    Expr,
+    FunctionArg,
+    LockType,
+    SelectItem,
+    SetExpr,
+    SetOperator,
+    Statement,
+    TableFactor
+);
+
 impl Traversable for ast::Array {
     fn get_children(&self) -> Vec<Node> {
-        self.elem.iter().map(|e| Node::Expr(e.to_owned())).collect()
+        todo!()
     }
 }
 
@@ -138,7 +195,7 @@ impl Traversable for ast::HiveFormat {
 }
 impl Traversable for ast::Ident {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        Vec::new()
     }
 }
 impl Traversable for ast::Join {
@@ -158,7 +215,7 @@ impl Traversable for ast::ListAgg {
 }
 impl Traversable for ast::ObjectName {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        self.0.iter().map(|n| Node::Ident(n.to_owned())).collect()
     }
 }
 impl Traversable for ast::Offset {
@@ -174,7 +231,7 @@ impl Traversable for ast::OrderByExpr {
 impl Traversable for ast::Query {
     fn get_children(&self) -> Vec<Node> {
         let mut children = Vec::new();
-        if let Some(with) = self.with {
+        if let Some(with) = &self.with {
             children.push(Node::With(with.to_owned()))
         }
 
@@ -183,19 +240,19 @@ impl Traversable for ast::Query {
         children.extend(
             self.order_by
                 .iter()
-                .map(|&e| Node::OrderByExpr(e.to_owned())),
+                .map(|e| Node::OrderByExpr(e.to_owned())),
         );
 
-        if let Some(node) = self.limit {
+        if let Some(node) = &self.limit {
             children.push(Node::Expr(node.to_owned()))
         }
-        if let Some(node) = self.offset {
+        if let Some(node) = &self.offset {
             children.push(Node::Offset(node.to_owned()))
         }
-        if let Some(node) = self.fetch {
+        if let Some(node) = &self.fetch {
             children.push(Node::Fetch(node.to_owned()))
         }
-        if let Some(node) = self.lock {
+        if let Some(node) = &self.lock {
             children.push(Node::LockType(node.to_owned()))
         }
         children
@@ -203,9 +260,8 @@ impl Traversable for ast::Query {
 }
 impl Traversable for ast::Select {
     fn get_children(&self) -> Vec<Node> {
-        let children = Vec::new();
-        children.push(Node::Bool(self.distinct.to_owned()));
-        if let Some(top) = self.top {
+        let mut children = Vec::new();
+        if let Some(top) = &self.top {
             children.push(Node::Top(top.to_owned()))
         }
         children.extend(
@@ -213,7 +269,7 @@ impl Traversable for ast::Select {
                 .iter()
                 .map(|n| Node::SelectItem(n.to_owned())),
         );
-        if let Some(n) = self.into {
+        if let Some(n) = &self.into {
             children.push(Node::SelectInto(n.to_owned()))
         };
         children.extend(self.from.iter().map(|n| Node::TableWithJoins(n.to_owned())));
@@ -222,17 +278,17 @@ impl Traversable for ast::Select {
                 .iter()
                 .map(|n| Node::LateralView(n.to_owned())),
         );
-        if let Some(n) = self.selection {
+        if let Some(n) = &self.selection {
             children.push(Node::Expr(n.to_owned()))
         };
         children.extend(self.group_by.iter().map(|n| Node::Expr(n.to_owned())));
         children.extend(self.cluster_by.iter().map(|n| Node::Expr(n.to_owned())));
         children.extend(self.distribute_by.iter().map(|n| Node::Expr(n.to_owned())));
         children.extend(self.sort_by.iter().map(|n| Node::Expr(n.to_owned())));
-        if let Some(n) = self.having {
+        if let Some(n) = &self.having {
             children.push(Node::Expr(n.to_owned()))
         };
-        if let Some(n) = self.qualify {
+        if let Some(n) = &self.qualify {
             children.push(Node::Expr(n.to_owned()))
         };
 
@@ -256,7 +312,7 @@ impl Traversable for ast::TableAlias {
 }
 impl Traversable for ast::TableWithJoins {
     fn get_children(&self) -> Vec<Node> {
-        let mut children = vec![Node::TableFactor(self.relation)];
+        let mut children = vec![Node::TableFactor(self.relation.to_owned())];
         children.extend(self.joins.iter().map(|n| Node::Join(n.to_owned())));
         children
     }
@@ -277,6 +333,11 @@ impl Traversable for ast::WindowFrame {
     }
 }
 impl Traversable for ast::WindowSpec {
+    fn get_children(&self) -> Vec<Node> {
+        todo!()
+    }
+}
+impl Traversable for ast::With {
     fn get_children(&self) -> Vec<Node> {
         todo!()
     }
@@ -496,7 +557,6 @@ impl Traversable for ast::SetExpr {
             } => {
                 vec![
                     Node::SetOperator(op.to_owned()),
-                    Node::Bool(all.to_owned()),
                     Node::SetExpr(*left.to_owned()),
                     Node::SetExpr(*right.to_owned()),
                 ]
@@ -528,7 +588,12 @@ impl Traversable for ast::SqliteOnConflict {
 }
 impl Traversable for ast::Statement {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        match self {
+            ast::Statement::Query(q) => {
+                vec![Node::Query(*q.to_owned())]
+            }
+            _ => todo!(),
+        }
     }
 }
 impl Traversable for ast::TableConstraint {
@@ -550,26 +615,58 @@ impl Traversable for ast::TableFactor {
                     children.push(Node::TableAlias(n.to_owned()))
                 };
                 if let Some(n) = args {
-                    children.extend(args.iter().map(|n| Node::FunctionArg(n.to_owned())));
+                    children.extend(n.iter().map(|n| Node::FunctionArg(n.to_owned())));
                 };
+                children.extend(with_hints.iter().map(|n| Node::Expr(n.to_owned())));
+
                 children
             }
             ast::TableFactor::Derived {
                 lateral,
                 subquery,
                 alias,
-            } => todo!(),
-            ast::TableFactor::TableFunction { expr, alias } => todo!(),
+            } => {
+                let mut children = vec![(Node::Query(*subquery.to_owned()))];
+                if let Some(n) = alias {
+                    children.push(Node::TableAlias(n.to_owned()));
+                };
+                children
+            }
+            ast::TableFactor::TableFunction { expr, alias } => {
+                let mut children = vec![Node::Expr(expr.to_owned())];
+                if let Some(n) = alias {
+                    children.push(Node::TableAlias(n.to_owned()));
+                };
+                children
+            }
+
             ast::TableFactor::UNNEST {
                 alias,
                 array_expr,
                 with_offset,
                 with_offset_alias,
-            } => todo!(),
+            } => {
+                let mut children = Vec::new();
+                if let Some(n) = alias {
+                    children.push(Node::TableAlias(n.to_owned()));
+                };
+                children.push(Node::Expr(*array_expr.to_owned()));
+                if let Some(n) = with_offset_alias {
+                    children.push(Node::Ident(n.to_owned()));
+                };
+
+                children
+            }
             ast::TableFactor::NestedJoin {
                 table_with_joins,
                 alias,
-            } => todo!(),
+            } => {
+                let mut children = vec![Node::TableWithJoins(*table_with_joins.to_owned())];
+                if let Some(n) = alias {
+                    children.push(Node::TableAlias(n.to_owned()));
+                }
+                children
+            }
         }
     }
 }
@@ -611,10 +708,5 @@ impl Traversable for ast::WindowFrameBound {
 impl Traversable for ast::WindowFrameUnits {
     fn get_children(&self) -> Vec<Node> {
         todo!()
-    }
-}
-impl Traversable for bool {
-    fn get_children(&self) -> Vec<Node> {
-        Vec::new()
     }
 }
