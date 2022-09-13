@@ -25,9 +25,12 @@ pub(crate) use user::User;
 pub(crate) use view::View;
 pub(crate) use workbook::Workbook;
 
-use std::collections::HashMap;
+use std::{collections::HashMap, fs::Permissions};
+
+use crate::rest;
 
 use anyhow::{bail, Result};
+use reqwest::Method;
 use serde::Deserialize;
 
 pub(crate) trait GetId {
@@ -58,16 +61,62 @@ impl_GetId!(for
     Lens
 );
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug, Clone)]
 struct IdField {
     id: String,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize)]
 pub(crate) struct Permission {
-    grantee_user_id: Option<String>,
-    grantee_group_id: Option<String>,
+    grantee: Grantee,
     capabilities: HashMap<String, String>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub(crate) struct Capability {
+    name: String,
+    mode: String,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub(crate) enum Grantee {
+    Group { id: String },
+    User { id: String },
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub(crate) struct Capabilities {
+    capability: Vec<Capability>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub(crate) struct SerializedPermission {
+    group: Option<IdField>,
+    user: Option<IdField>,
+    capabilities: Capabilities,
+}
+
+impl SerializedPermission {
+    pub(crate) fn to_permission(self) -> Permission {
+        let mut grantee_value = Grantee::Group { id: "".to_owned() };
+        if let Some(id) = self.group {
+            grantee_value = Grantee::Group { id: id.id }
+        } else {
+            grantee_value = Grantee::User {
+                id: self.user.unwrap().id,
+            }
+        };
+
+        Permission {
+            grantee: grantee_value,
+            capabilities: self
+                .capabilities
+                .capability
+                .iter()
+                .map(|c| (c.name.to_owned(), c.mode.to_owned()))
+                .collect(),
+        }
+    }
 }
 
 pub(crate) fn to_asset_map<T: GetId + Clone>(
