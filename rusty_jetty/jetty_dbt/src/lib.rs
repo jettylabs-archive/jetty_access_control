@@ -74,77 +74,7 @@ impl Connector for DbtConnector {
             .get_nodes()
             .unwrap()
             .iter()
-            .map(|(_, node)| {
-                match node {
-                    DbtNode::ModelNode(m_node) => {
-                        let node_dependencies = self
-                            .manifest
-                            .get_dependencies(&m_node.name)
-                            .unwrap()
-                            .unwrap_or_default();
-                        let dependency_cuals = node_dependencies
-                            .iter()
-                            .map(|dep_name| {
-                                self.manifest
-                                    .cual_for_node(dep_name.to_owned())
-                                    .unwrap()
-                                    .uri()
-                            })
-                            .collect();
-                        JettyAsset::new(
-                            m_node.cual(),
-                            m_node.name.to_owned(),
-                            m_node.materialized_as,
-                            m_node.get_metadata(),
-                            // No policies in dbt.
-                            HashSet::new(),
-                            // We won't put the schema here, since it originates in Snowflake.
-                            HashSet::new(),
-                            // No children in dbt. Adult only zone.
-                            HashSet::new(),
-                            // Handled by the lineage derived_to nodes.
-                            HashSet::new(),
-                            // This is the lineage!
-                            dependency_cuals,
-                            // TODO?
-                            HashSet::new(),
-                        )
-                    }
-                    DbtNode::SourceNode(s_node) => {
-                        let node_dependencies = self
-                            .manifest
-                            .get_dependencies(&s_node.name)
-                            .unwrap()
-                            .unwrap_or_default();
-                        let dependency_cuals = node_dependencies
-                            .iter()
-                            .map(|dep_name| {
-                                self.manifest
-                                    .cual_for_node(dep_name.to_owned())
-                                    .unwrap()
-                                    .uri()
-                            })
-                            .collect();
-                        JettyAsset::new(
-                            s_node.cual(),
-                            s_node.name.to_owned(),
-                            AssetType::DBTable,
-                            HashMap::new(),
-                            // No policies in dbt.
-                            HashSet::new(),
-                            // We won't put the schema here, since it originates in Snowflake.
-                            HashSet::new(),
-                            // No children in dbt. Adult only zone.
-                            HashSet::new(),
-                            // No lineage parents here since this is a source.
-                            HashSet::new(),
-                            // Models derived from this source.
-                            dependency_cuals,
-                            HashSet::new(),
-                        )
-                    }
-                }
-            })
+            .map(|(_, node)| node.to_jetty_asset(&self.manifest))
             .collect();
         ConnectorData {
             // No groups in dbt.
