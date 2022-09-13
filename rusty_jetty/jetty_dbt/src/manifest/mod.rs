@@ -119,7 +119,6 @@ impl DbtProjectManifest for DbtManifest {
                 );
             } else {
                 // Asset type not usable.
-                println!("asset type for {:?} not found", node.resource_type);
                 continue;
             }
         }
