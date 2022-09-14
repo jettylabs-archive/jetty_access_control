@@ -14,9 +14,8 @@ impl ToAssetType for String {
             // Seeds are materialized into tables
             // (https://docs.getdbt.com/docs/building-a-dbt-project/seeds#faqs)
             "table" | "seed" => Ok(Some(AssetType::DBTable)),
-            // TODO make this use the materialized_as field instead
             "model" => Ok(Some(AssetType::DBTable)),
-            // TODO figure out what we want to do with tests
+            // We ignore tests since they aren't materialized.
             "test" => Ok(None),
             x => {
                 println!("unexpected asset type {:?}", x);
