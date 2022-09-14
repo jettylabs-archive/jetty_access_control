@@ -3,22 +3,22 @@ use std::{collections::HashMap, fs, io};
 use anyhow::{Context, Result};
 use serde::Deserialize;
 
-use crate::nodes2;
+use crate::nodes;
 use crate::rest;
 use crate::TableauCredentials;
 
 #[derive(Default, Deserialize)]
 struct TableauAssets {
-    pub users: HashMap<String, nodes2::User>,
-    pub groups: HashMap<String, nodes2::Group>,
-    pub projects: HashMap<String, nodes2::Project>,
-    pub datasources: HashMap<String, nodes2::Datasource>,
-    pub data_connections: HashMap<String, nodes2::DataConnection>,
-    pub flows: HashMap<String, nodes2::Flow>,
-    pub lenses: HashMap<String, nodes2::Lens>,
-    pub metrics: HashMap<String, nodes2::Metric>,
-    pub views: HashMap<String, nodes2::View>,
-    pub workbooks: HashMap<String, nodes2::Workbook>,
+    pub users: HashMap<String, nodes::User>,
+    pub groups: HashMap<String, nodes::Group>,
+    pub projects: HashMap<String, nodes::Project>,
+    pub datasources: HashMap<String, nodes::Datasource>,
+    pub data_connections: HashMap<String, nodes::DataConnection>,
+    pub flows: HashMap<String, nodes::Flow>,
+    pub lenses: HashMap<String, nodes::Lens>,
+    pub metrics: HashMap<String, nodes::Metric>,
+    pub views: HashMap<String, nodes::View>,
+    pub workbooks: HashMap<String, nodes::Workbook>,
 }
 
 #[derive(Default)]

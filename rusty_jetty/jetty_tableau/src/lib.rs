@@ -1,10 +1,9 @@
 mod env;
 mod fetch;
 mod nodes;
-mod nodes2;
 mod rest;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use jetty_core::{
     connectors::{nodes::ConnectorData, ConnectorClient},
