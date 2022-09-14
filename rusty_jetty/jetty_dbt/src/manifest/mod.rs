@@ -64,9 +64,7 @@ impl DbtProjectManifest for DbtManifest {
         #[derive(Deserialize)]
         struct Config {
             enabled: bool,
-            // TODO: Use this for asset type determination
-            #[serde(rename = "materialized")]
-            _materialized: String,
+            materialized: String,
         }
 
         #[derive(Deserialize)]
