@@ -67,15 +67,13 @@ mod tests {
     use super::*;
     use anyhow::{Context, Result};
 
-    use crate::nodes2::Permission;
-
     #[tokio::test]
     async fn test_fetching_workbooks_works() -> Result<()> {
         let tc = tokio::task::spawn_blocking(|| {
             crate::connector_setup().context("running tableau connector setup")
         })
         .await??;
-        let groups = get_basic_workbooks(&tc.rest_client).await?;
+        let groups = get_basic_workbooks(&tc.env.rest_client).await?;
         for (_k, v) in groups {
             println!("{:#?}", v);
         }
@@ -88,9 +86,9 @@ mod tests {
             crate::connector_setup().context("running tableau connector setup")
         })
         .await??;
-        let mut workbooks = get_basic_workbooks(&tc.rest_client).await?;
+        let mut workbooks = get_basic_workbooks(&tc.env.rest_client).await?;
         for (_k, v) in &mut workbooks {
-            v.permissions = v.get_permissions(&tc.rest_client).await?;
+            v.permissions = v.get_permissions(&tc.env.rest_client).await?;
         }
         for (_k, v) in workbooks {
             println!("{:#?}", v);

@@ -39,7 +39,7 @@ mod tests {
             crate::connector_setup().context("running tableau connector setup")
         })
         .await??;
-        let users = get_basic_users(&tc.rest_client).await?;
+        let users = get_basic_users(&tc.env.rest_client).await?;
         for (_k, v) in users {
             println!("{}", v.name);
         }

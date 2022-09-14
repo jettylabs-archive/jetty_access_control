@@ -1,3 +1,4 @@
+mod env;
 mod fetch;
 mod nodes;
 mod nodes2;
@@ -33,26 +34,11 @@ struct TableauCredentials {
     site_name: String,
 }
 
-#[derive(Default, Deserialize)]
-pub(crate) struct TableauEnvironment {
-    pub users: HashMap<String, nodes2::User>,
-    pub groups: HashMap<String, nodes2::Group>,
-    pub projects: HashMap<String, nodes2::Project>,
-    pub datasources: HashMap<String, nodes2::Datasource>,
-    pub data_connections: HashMap<String, nodes2::DataConnection>,
-    pub flows: HashMap<String, nodes2::Flow>,
-    pub lenses: HashMap<String, nodes2::Lens>,
-    pub metrics: HashMap<String, nodes2::Metric>,
-    pub views: HashMap<String, nodes2::View>,
-    pub workbooks: HashMap<String, nodes2::Workbook>,
-}
-
 #[allow(dead_code)]
 #[derive(Default)]
 struct TableauConnector {
-    rest_client: TableauRestClient,
     config: TableauConfig,
-    env: TableauEnvironment,
+    env: env::Environment,
 }
 
 #[async_trait]
@@ -96,8 +82,7 @@ impl Connector for TableauConnector {
 
         let tableau_connector = TableauConnector {
             config: config.config.to_owned(),
-            rest_client: TableauRestClient::new(creds),
-            env: read_env().unwrap_or_default(),
+            env: env::Environment::new(creds),
         };
 
         Ok(Box::new(tableau_connector))
@@ -110,17 +95,6 @@ impl Connector for TableauConnector {
     async fn get_data(&mut self) -> ConnectorData {
         todo!()
     }
-}
-
-fn read_env() -> Result<TableauEnvironment> {
-    // Open the file in read-only mode with buffer.
-    let file = fs::File::open("tableau_env.json").context("opening environment file")?;
-    let reader = io::BufReader::new(file);
-
-    let e = serde_json::from_reader(reader).context("parsing environment")?;
-
-    // Return the `Environment`.
-    Ok(e)
 }
 
 #[cfg(test)]
