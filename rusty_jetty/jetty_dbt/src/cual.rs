@@ -6,7 +6,37 @@ use jetty_core::{
 use crate::manifest::node::{DbtModelNode, DbtNode, DbtSourceNode};
 
 const SNOW_NAMESPACE: &str = "snowflake";
-const DBT_NAMESPACE: &str = "dbt";
+
+impl Cualable for DbtNode {
+    fn cual(&self) -> Cual {
+        match self {
+            DbtNode::ModelNode(DbtModelNode {
+                name,
+                enabled: _,
+                database,
+                schema,
+                materialized_as: _,
+            }) => Cual::new(format!(
+                "{}://{}/{}/{}",
+                SNOW_NAMESPACE,
+                database.to_owned(),
+                schema.to_owned(),
+                name.to_owned()
+            )),
+            DbtNode::SourceNode(DbtSourceNode {
+                name,
+                database,
+                schema,
+            }) => Cual::new(format!(
+                "{}://{}/{}/{}",
+                SNOW_NAMESPACE,
+                database.to_owned(),
+                schema.to_owned(),
+                name.to_owned()
+            )),
+        }
+    }
+}
 
 impl Cualable for DbtModelNode {
     fn cual(&self) -> Cual {
@@ -14,15 +44,13 @@ impl Cualable for DbtModelNode {
         // warehouse-specific CUAL.
         // Otherwise, it gets a dbt CUAL.
         match self.materialized_as {
-            AssetType::DBTable | AssetType::DBView => Cual {
-                uri: format!(
-                    "{}://{}/{}/{}",
-                    SNOW_NAMESPACE,
-                    self.database.to_owned(),
-                    self.schema.to_owned(),
-                    self.name.to_owned()
-                ),
-            },
+            AssetType::DBTable | AssetType::DBView => Cual::new(format!(
+                "{}://{}/{}/{}",
+                SNOW_NAMESPACE,
+                self.database.to_owned(),
+                self.schema.to_owned(),
+                self.name.to_owned()
+            )),
             // Every model that gets passed in here should be materialized
             // as a table or view.
             _ => panic!(
@@ -37,12 +65,10 @@ impl Cualable for DbtSourceNode {
     fn cual(&self) -> Cual {
         // Sources come from the db. Create the CUAL to correspond to
         // the origin datastore.
-        Cual {
-            uri: format!(
-                "snowflake://{}/{}/{}",
-                self.database, self.schema, self.name
-            ),
-        }
+        Cual::new(format!(
+            "snowflake://{}/{}/{}",
+            self.database, self.schema, self.name
+        ))
     }
 }
 

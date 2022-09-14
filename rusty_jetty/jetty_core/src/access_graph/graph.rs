@@ -42,6 +42,7 @@ impl Graph {
     /// Adds a node to the graph and returns the index.
     pub(crate) fn add_node(&mut self, node: &JettyNode) -> Result<()> {
         let node_name = node.get_name();
+        println!("adding node with name {:?}", node_name);
         // Check for duplicate
         if let Some(&idx) = self.get_node(&node_name) {
             self.merge_nodes(idx, node)?;
