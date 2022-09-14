@@ -113,11 +113,11 @@ macro_rules! impl_traversable_node {
         impl Traversable for Node {
             fn get_children(&self) -> Vec<Node> {
                 match self {
-        $(Node::$t(n) => n.get_children(),)*
-        _ => panic!("Not supported. Please insert another quarter."),
+                    $(Node::$t(n) => n.get_children(),)*
+                    _ => panic!("Not supported. Please insert another quarter."),
                 }
-    }
-}
+            }
+        }
     }
 }
 
