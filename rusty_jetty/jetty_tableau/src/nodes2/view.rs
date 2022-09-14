@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use super::Permission;
+use super::{FetchPermissions, Permission};
 use crate::rest::{self, FetchJson};
 
 use anyhow::{Context, Result};
@@ -52,6 +52,12 @@ pub(crate) async fn get_basic_views(tc: &rest::TableauRestClient) -> Result<Hash
     super::to_asset_map(node, &to_node)
 }
 
+impl FetchPermissions for View {
+    fn get_endpoint(&self) -> String {
+        format!("views/{}/permissions", self.id)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -65,6 +71,22 @@ mod tests {
         .await??;
         let nodes = get_basic_views(&tc.rest_client).await?;
         for (_k, v) in nodes {
+            println!("{:#?}", v);
+        }
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_fetching_view_permissions_works() -> Result<()> {
+        let tc = tokio::task::spawn_blocking(|| {
+            crate::connector_setup().context("running tableau connector setup")
+        })
+        .await??;
+        let mut views = get_basic_views(&tc.rest_client).await?;
+        for (_k, v) in &mut views {
+            v.permissions = v.get_permissions(&tc.rest_client).await?;
+        }
+        for (_k, v) in views {
             println!("{:#?}", v);
         }
         Ok(())

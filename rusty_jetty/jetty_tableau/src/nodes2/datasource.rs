@@ -5,6 +5,8 @@ use serde::Deserialize;
 
 use crate::rest::{self, FetchJson};
 
+use super::FetchPermissions;
+
 #[derive(Clone, Default, Debug, Deserialize)]
 pub(crate) struct Datasource {
     pub id: String,
@@ -58,8 +60,15 @@ pub(crate) async fn get_basic_datasources(
     super::to_asset_map(node, &to_node)
 }
 
+impl FetchPermissions for Datasource {
+    fn get_endpoint(&self) -> String {
+        format!("datasources/{}/permissions", self.id)
+    }
+}
+
 #[cfg(test)]
 mod tests {
+
     use super::*;
     use anyhow::{Context, Result};
 
@@ -70,6 +79,22 @@ mod tests {
         })
         .await??;
         let nodes = get_basic_datasources(&tc.rest_client).await?;
+        for (_k, v) in nodes {
+            println!("{:#?}", v);
+        }
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_fetching_datasource_permissions_works() -> Result<()> {
+        let tc = tokio::task::spawn_blocking(|| {
+            crate::connector_setup().context("running tableau connector setup")
+        })
+        .await??;
+        let mut nodes = get_basic_datasources(&tc.rest_client).await?;
+        for (_k, v) in &mut nodes {
+            v.permissions = v.get_permissions(&tc.rest_client).await?;
+        }
         for (_k, v) in nodes {
             println!("{:#?}", v);
         }
