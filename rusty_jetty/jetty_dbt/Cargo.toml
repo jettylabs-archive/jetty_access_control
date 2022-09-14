@@ -12,5 +12,5 @@ jetty_core = { path = "../jetty_core" }
 mockall = "0.11.2"
 serde = { version = "1.0.144", features = ["derive"] }
 serde_json = "1.0.85"
-tokio = "1.21.0"
+tokio = { version = "1.21.0", features = ["macros", "rt"] }
 url = "2.3.1"
