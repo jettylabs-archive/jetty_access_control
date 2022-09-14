@@ -4,7 +4,6 @@
 use super::*;
 use anyhow::{bail, Context};
 use async_trait::async_trait;
-use jetty_core::connectors::nodes as jetty_nodes;
 
 /// Wrapper struct for http functionality
 #[derive(Default)]

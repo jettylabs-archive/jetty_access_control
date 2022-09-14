@@ -26,12 +26,11 @@ pub(crate) use user::User;
 pub(crate) use view::View;
 pub(crate) use workbook::Workbook;
 
-use std::{collections::HashMap, fs::Permissions};
+use std::collections::HashMap;
 
 use crate::rest::{self, FetchJson};
 
 use anyhow::{bail, Result};
-use reqwest::Method;
 use serde::Deserialize;
 
 /// This trait is implemented by permissionable Tableau asset nodes and makes it simpler to

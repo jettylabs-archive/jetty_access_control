@@ -1,5 +1,4 @@
 mod env;
-mod fetch;
 mod nodes;
 mod rest;
 
@@ -13,10 +12,7 @@ use jetty_core::{
 use rest::TableauRestClient;
 use serde::Deserialize;
 use serde_json::json;
-use std::{
-    collections::{HashMap, HashSet},
-    fs, io,
-};
+use std::collections::{HashMap, HashSet};
 
 type TableauConfig = HashMap<String, String>;
 
