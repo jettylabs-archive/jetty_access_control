@@ -67,7 +67,6 @@ impl Connector for TableauConnector {
         credentials: &CredentialsBlob,
         _client: Option<ConnectorClient>,
     ) -> Result<Box<Self>> {
-        dbg!(credentials);
         let mut creds = TableauCredentials::default();
         let mut required_fields = HashSet::from([
             "server_name".to_owned(),
