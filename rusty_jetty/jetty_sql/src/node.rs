@@ -2,6 +2,7 @@ use sqlparser::ast;
 
 /// A wrapper for sqlparser::ast types that allows them to implement
 /// the Teraversable trait
+#[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub(crate) enum Node {
     Array(ast::Array),
@@ -551,7 +552,7 @@ impl Traversable for ast::SetExpr {
             ast::SetExpr::Query(n) => vec![Node::Query(*n.to_owned())],
             ast::SetExpr::SetOperation {
                 op,
-                all,
+                all: _,
                 left,
                 right,
             } => {
@@ -622,7 +623,7 @@ impl Traversable for ast::TableFactor {
                 children
             }
             ast::TableFactor::Derived {
-                lateral,
+                lateral: _,
                 subquery,
                 alias,
             } => {
@@ -643,7 +644,7 @@ impl Traversable for ast::TableFactor {
             ast::TableFactor::UNNEST {
                 alias,
                 array_expr,
-                with_offset,
+                with_offset: _,
                 with_offset_alias,
             } => {
                 let mut children = Vec::new();

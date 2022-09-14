@@ -9,12 +9,10 @@ use sqlparser::parser::Parser;
 use node::Node;
 
 /// Parse a SQL query and extract db table names from the query.
-pub fn get_tables(query: &String) -> HashSet<String> {
+pub fn get_tables(query: &str) -> HashSet<String> {
     let dialect = GenericDialect {}; // or AnsiDialect
 
-    let root = node::Node::Statement(Parser::parse_sql(&dialect, &query).unwrap()[0].to_owned());
-
-    let mut results: Vec<&Node> = Vec::new();
+    let root = node::Node::Statement(Parser::parse_sql(&dialect, query).unwrap()[0].to_owned());
 
     // Get query
     let descendants = root.get_descendants();
