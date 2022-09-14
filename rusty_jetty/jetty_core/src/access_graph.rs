@@ -5,7 +5,7 @@
 pub mod graph;
 mod helpers;
 
-use crate::connectors::AssetType;
+use crate::{connectors::AssetType, cual::Cual};
 
 use self::helpers::NodeHelper;
 pub use self::helpers::ProcessedConnectorData;
@@ -76,6 +76,7 @@ impl GroupAttributes {
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct AssetAttributes {
+    cual: Cual,
     name: String,
     asset_type: AssetType,
     metadata: HashMap<String, String>,
@@ -86,12 +87,15 @@ impl AssetAttributes {
     fn merge_attributes(&self, new_attributes: &AssetAttributes) -> Result<AssetAttributes> {
         let name = merge_matched_field(&self.name, &new_attributes.name)
             .context("field: AssetAttributes.name")?;
+        let cual = merge_matched_field(&self.cual, &new_attributes.cual)
+            .context("field: GroupAttributes.cual")?;
         let asset_type = merge_matched_field(&self.asset_type, &self.asset_type)
             .context("field: AssetAttributes.asset_type")?;
         let metadata = merge_map(&self.metadata, &new_attributes.metadata)
             .context("field: AssetAttributes.metadata")?;
         let connectors = merge_set(&self.connectors, &new_attributes.connectors);
         Ok(AssetAttributes {
+            cual,
             name,
             asset_type,
             metadata,

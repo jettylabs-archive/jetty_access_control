@@ -93,9 +93,10 @@ impl DbtProjectManifest for DbtManifest {
         let manifest_path = file_path.clone().unwrap_or_else(|| self.path());
 
         let file_contents =
-            read_to_string(manifest_path).context(format!("reading file {:?}", file_path))?;
-        let json_manifest: DbtManifestJson =
-            serde_json::from_str(&file_contents).context("deserializing manifest json")?;
+            read_to_string(&manifest_path).context(format!("reading file {:?}", file_path))?;
+        let json_manifest: DbtManifestJson = serde_json::from_str(&file_contents).context(
+            format!("deserializing manifest json from {:?}", manifest_path),
+        )?;
         // First we will ingest the nodes.
         for (node_name, node) in json_manifest.nodes {
             let asset_type = node.resource_type.try_to_asset_type()?;
@@ -135,7 +136,7 @@ impl DbtProjectManifest for DbtManifest {
             println!("assigning node {:?} deps {:?}", name, new_deps);
             if let Some(deps) = self.dependencies.get_mut(&name) {
                 // Combine the new deps with the existing ones.
-                *deps = deps.union(&new_deps).map(|i| i.to_owned()).collect();
+                deps.extend(new_deps);
             } else {
                 // Model not yet in map. Add it.
                 self.dependencies.insert(name, new_deps);

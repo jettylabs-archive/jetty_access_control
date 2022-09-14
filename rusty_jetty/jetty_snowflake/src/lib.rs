@@ -15,10 +15,12 @@
 
 mod consts;
 mod creds;
+mod cual;
 mod entry_types;
 mod rest;
 
 pub use entry_types::*;
+use jetty_core::cual::Cualable;
 use rest::{SnowflakeRequestConfig, SnowflakeRestClient, SnowflakeRestConfig};
 
 use futures::stream::{FuturesUnordered, StreamExt};
@@ -403,6 +405,7 @@ impl SnowflakeConnector {
         let mut res = vec![];
         for table in self.get_tables().await? {
             res.push(nodes::Asset::new(
+                table.cual(),
                 format!(
                     "{}.{}.{}",
                     table.database_name, table.schema_name, table.name
@@ -423,6 +426,7 @@ impl SnowflakeConnector {
 
         for view in self.get_views().await? {
             res.push(nodes::Asset::new(
+                view.cual(),
                 format!("{}.{}.{}", view.database_name, view.schema_name, view.name),
                 connectors::AssetType::DBView,
                 HashMap::new(),
@@ -443,6 +447,7 @@ impl SnowflakeConnector {
         for schema in schemas {
             // TODO: Get subassets
             res.push(nodes::Asset::new(
+                schema.cual(),
                 format!("{}.{}", schema.database_name, schema.name),
                 connectors::AssetType::DBSchema,
                 HashMap::new(),
@@ -461,6 +466,7 @@ impl SnowflakeConnector {
         for db in self.get_databases().await? {
             // TODO: Get subassets
             res.push(nodes::Asset::new(
+                db.cual(),
                 db.name,
                 connectors::AssetType::DBDB,
                 HashMap::new(),
