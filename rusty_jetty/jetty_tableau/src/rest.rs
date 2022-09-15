@@ -4,6 +4,7 @@
 use super::*;
 use anyhow::{bail, Context};
 use async_trait::async_trait;
+use serde::Serialize;
 
 /// Wrapper struct for http functionality
 #[derive(Default)]
@@ -25,7 +26,7 @@ impl TableauRestClient {
     pub fn new(credentials: TableauCredentials) -> Self {
         let mut tc = TableauRestClient {
             credentials,
-            http_client: reqwest::Client::new(),
+            http_client: reqwest::Client::builder().gzip(true).build().unwrap(),
             token: None,
             site_id: None,
             api_version: "3.16".to_owned(),
@@ -189,6 +190,7 @@ impl TableauRestClient {
         }
     }
 
+    /// Builds a request to fetch information from tableau
     pub(crate) fn build_request(
         &self,
         endpoint: String,
@@ -215,6 +217,35 @@ impl TableauRestClient {
         if let Some(b) = body {
             req = req.json(&b);
         }
+
+        Ok(req)
+    }
+
+    /// Build a request to be run against the graphql endpoint.  
+    /// This function does not currently support variables.
+    pub(crate) fn build_graphql_request(&self, query: String) -> Result<reqwest::RequestBuilder> {
+        #[derive(Serialize)]
+        struct GraphQlQuery {
+            query: String,
+            variables: HashMap<String, String>,
+        }
+
+        let query_struct = GraphQlQuery {
+            query,
+            variables: HashMap::new(),
+        };
+
+        let request_url = format![
+            "https://{}/api/metadata/graphql",
+            self.credentials.server_name.to_owned(),
+        ];
+
+        let mut req = self.http_client.request(reqwest::Method::POST, request_url);
+        req = self
+            .add_auth(req)
+            .context("adding auth header")?
+            .header("Accept", "application/json")
+            .json(&query_struct);
 
         Ok(req)
     }

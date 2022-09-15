@@ -22,11 +22,20 @@ pub(crate) struct Workbook {
 #[derive(Clone, Default, Debug, Deserialize)]
 pub(crate) struct EmbeddedSource {
     pub name: String,
-    pub derived_from: Vec<String>,
+    pub derived_from: Option<Vec<String>>,
 }
 
 impl Workbook {
     pub(crate) async fn fetch_datasources(&self) -> Result<Vec<super::Datasource>> {
+        todo!()
+    }
+    pub(crate) async fn update_embedded_datasources(
+        &mut self,
+        client: rest::TableauRestClient,
+    ) -> Result<()> {
+        // download the workbook
+        // get the datasources
+        // yikes...
         todo!()
     }
 }
@@ -37,41 +46,81 @@ impl FetchPermissions for Workbook {
     }
 }
 
-fn to_node(val: &serde_json::Value) -> Result<Workbook> {
+fn to_node_graphql(val: &serde_json::Value) -> Result<Workbook> {
+    #[derive(Deserialize)]
+    struct LuidField {
+        luid: String,
+    }
+
+    #[derive(Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct EmbeddedSourceHelper {
+        name: String,
+    }
+
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]
     struct WorkbookInfo {
         name: String,
-        id: String,
-        owner: super::IdField,
-        project: super::IdField,
+        luid: String,
+        owner: LuidField,
+        project_luid: String,
         updated_at: String,
+        embedded_datasources: Vec<EmbeddedSourceHelper>,
     }
+
+    // Get inner result data
 
     let workbook_info: WorkbookInfo =
         serde_json::from_value(val.to_owned()).context("parsing workbook information")?;
 
     Ok(Workbook {
-        id: workbook_info.id,
+        id: workbook_info.luid,
         name: workbook_info.name,
-        owner_id: workbook_info.owner.id,
-        project_id: workbook_info.project.id,
+        owner_id: workbook_info.owner.luid,
+        project_id: workbook_info.project_luid,
         updated_at: workbook_info.updated_at,
-        embedded_sources: Default::default(),
+        embedded_sources: workbook_info
+            .embedded_datasources
+            .into_iter()
+            .map(|s| EmbeddedSource {
+                name: s.name,
+                derived_from: Default::default(),
+            })
+            .collect(),
         tableau_datasources: Default::default(),
         permissions: Default::default(),
     })
 }
 
+/// Get basic workbook information. This uses a GraphQL query to get the essentials
 pub(crate) async fn get_basic_workbooks(
     tc: &rest::TableauRestClient,
 ) -> Result<HashMap<String, Workbook>> {
+    let query = r#"
+    query workbooks {
+        workbooks {
+          updatedAt
+          name
+          luid
+          owner {
+            luid
+          }
+          projectLuid
+          embeddedDatasources {
+            id
+            name
+          }
+        }
+      }"#
+    .to_owned();
     let node = tc
-        .build_request("workbooks".to_owned(), None, reqwest::Method::GET)
-        .context("fetching groups")?
-        .fetch_json_response(Some(vec!["workbooks".to_owned(), "workbook".to_owned()]))
+        .build_graphql_request(query)
+        .context("fetching workbooks")?
+        .fetch_json_response(None)
         .await?;
-    super::to_asset_map(node, &to_node)
+    let node = rest::get_json_from_path(&node, &vec!["data".to_owned(), "workbooks".to_owned()])?;
+    super::to_asset_map(node, &to_node_graphql)
 }
 
 #[cfg(test)]
