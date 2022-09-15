@@ -2,7 +2,6 @@
 //! represent Tableau's structure as well as the functionality to turn that into
 //! Jetty's node structure.
 
-mod data_connection;
 pub(crate) mod datasource;
 pub(crate) mod flow;
 pub(crate) mod group;
@@ -15,7 +14,6 @@ pub(crate) mod workbook;
 pub(crate) mod user;
 
 use async_trait::async_trait;
-pub(crate) use data_connection::DataConnection;
 pub(crate) use datasource::Datasource;
 pub(crate) use flow::Flow;
 pub(crate) use group::Group;
@@ -86,7 +84,6 @@ impl_GetId!(for
     Workbook,
     View,
     Datasource,
-    DataConnection,
     Metric,
     Flow,
     Lens

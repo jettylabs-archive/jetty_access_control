@@ -17,7 +17,6 @@ struct Environment {
     pub groups: HashMap<String, nodes::Group>,
     pub projects: HashMap<String, nodes::Project>,
     pub datasources: HashMap<String, nodes::Datasource>,
-    pub data_connections: HashMap<String, nodes::DataConnection>,
     pub flows: HashMap<String, nodes::Flow>,
     pub lenses: HashMap<String, nodes::Lens>,
     pub metrics: HashMap<String, nodes::Metric>,
