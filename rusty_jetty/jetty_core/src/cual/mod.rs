@@ -4,6 +4,20 @@
 //!
 
 /// Just a CUAL
+///
+/// CUAL structs should be constructed with `Cual::new()`, not raw.
+/// This is wrong:
+/// ```compile_fail
+/// # use jetty_core::cual::Cual;
+/// Cual{uri:"cual:://use/new/instead"}; // uri is private
+/// ```
+///
+/// This is correct:
+/// ```
+/// # use jetty_core::cual::Cual;
+/// # let cual_str = "jetty_connector://my/custom/cual".to_owned();
+/// Cual::new(cual_str);
+/// ```
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct Cual {
     /// The underlying URI that points to the asset.
