@@ -13,10 +13,22 @@ pub(crate) struct Workbook {
     pub name: String,
     pub owner_id: String,
     pub project_id: String,
-    pub datasource_connections: String,
-    pub datasources: Vec<String>,
+    pub embedded_sources: Vec<EmbeddedSource>,
+    pub tableau_datasources: Vec<String>,
     pub updated_at: String,
     pub permissions: Vec<super::Permission>,
+}
+
+#[derive(Clone, Default, Debug, Deserialize)]
+pub(crate) struct EmbeddedSource {
+    pub name: String,
+    pub derived_from: Vec<String>,
+}
+
+impl Workbook {
+    pub(crate) async fn fetch_datasources(&self) -> Result<Vec<super::Datasource>> {
+        todo!()
+    }
 }
 
 impl FetchPermissions for Workbook {
@@ -45,8 +57,8 @@ fn to_node(val: &serde_json::Value) -> Result<Workbook> {
         owner_id: workbook_info.owner.id,
         project_id: workbook_info.project.id,
         updated_at: workbook_info.updated_at,
-        datasource_connections: Default::default(),
-        datasources: Default::default(),
+        embedded_sources: Default::default(),
+        tableau_datasources: Default::default(),
         permissions: Default::default(),
     })
 }

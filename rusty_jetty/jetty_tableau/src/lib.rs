@@ -1,4 +1,4 @@
-mod env;
+mod coordinator;
 mod nodes;
 mod rest;
 
@@ -19,7 +19,7 @@ type TableauConfig = HashMap<String, String>;
 /// Credentials for authenticating with Tableau.
 ///
 /// The user sets these up by following Jetty documentation
-/// and pasting ther connection info into their connector config.
+/// and pasting their connection info into their connector config.
 #[derive(Deserialize, Debug, Default)]
 struct TableauCredentials {
     username: String,
@@ -33,12 +33,12 @@ struct TableauCredentials {
 #[derive(Default)]
 struct TableauConnector {
     config: TableauConfig,
-    env: env::Environment,
+    env: coordinator::Coordinator,
 }
 
 #[async_trait]
 impl Connector for TableauConnector {
-    /// Validates the configs and bootstraps a Tableu connection.
+    /// Validates the configs and bootstraps a Tableau connection.
     ///
     /// Validates that the required fields are present to authenticate to
     /// Tableau. Stashes the credentials in the struct for use when
@@ -77,7 +77,7 @@ impl Connector for TableauConnector {
 
         let tableau_connector = TableauConnector {
             config: config.config.to_owned(),
-            env: env::Environment::new(creds),
+            env: coordinator::Coordinator::new(creds),
         };
 
         Ok(Box::new(tableau_connector))

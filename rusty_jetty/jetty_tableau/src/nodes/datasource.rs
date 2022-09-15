@@ -17,6 +17,7 @@ pub(crate) struct Datasource {
     pub owner_id: String,
     pub datasource_connections: Vec<String>,
     pub permissions: Vec<super::Permission>,
+    pub derived_from: Vec<String>,
 }
 
 fn to_node(val: &serde_json::Value) -> Result<super::Datasource> {
@@ -44,6 +45,7 @@ fn to_node(val: &serde_json::Value) -> Result<super::Datasource> {
         datasource_type: asset_info.datasource_type,
         permissions: Default::default(),
         datasource_connections: Default::default(),
+        derived_from: Default::default(),
     })
 }
 pub(crate) async fn get_basic_datasources(

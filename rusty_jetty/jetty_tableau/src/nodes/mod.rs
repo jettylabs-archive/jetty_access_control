@@ -3,14 +3,14 @@
 //! Jetty's node structure.
 
 mod data_connection;
-mod datasource;
-mod flow;
+pub(crate) mod datasource;
+pub(crate) mod flow;
 pub(crate) mod group;
-mod lens;
-mod metric;
-mod project;
-mod view;
-mod workbook;
+pub(crate) mod lens;
+pub(crate) mod metric;
+pub(crate) mod project;
+pub(crate) mod view;
+pub(crate) mod workbook;
 
 pub(crate) mod user;
 
