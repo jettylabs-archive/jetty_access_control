@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, bail, Context, Result};
+use jetty_sql;
 use regex::Regex;
 
 #[derive(Debug, Clone)]
@@ -32,7 +33,6 @@ impl SnowflakeTableInfo {
             .get(&self.connection)
             .ok_or(anyhow!["unable to find connection"])?;
 
-        let prefix = format!["snowflake://{}", &conn.server.to_lowercase()];
         let name_parts: Vec<String> = self
             .table
             .trim_matches(|c| c == '[' || c == ']')
@@ -40,21 +40,58 @@ impl SnowflakeTableInfo {
             .map(|s| s.to_owned())
             .collect();
 
-        let cual = if name_parts.len() == 3 {
-            format!(
-                "{}/{}/{}/{}",
-                prefix, name_parts[0], name_parts[1], name_parts[2]
-            )
-        } else if name_parts.len() == 2 {
-            format!("{}/{}/{}/{}", prefix, conn.db, name_parts[0], name_parts[1])
-        } else if name_parts.len() == 1 {
-            format!("{}/{}/{}/{}", prefix, conn.db, conn.schema, name_parts[0])
+        if let Ok(cual) = cual_from_name_parts(&name_parts, &conn) {
+            Ok(vec![cual])
         } else {
-            bail!("unable to build cual")
-        };
-
-        Ok(vec![cual])
+            println!("Unable to print create qual from {:#?}", name_parts);
+            Ok(vec![])
+        }
     }
+}
+
+impl SnowflakeQueryInfo {
+    pub(super) fn to_cuals(
+        &self,
+        connections: &HashMap<String, super::NamedConnection>,
+    ) -> Result<Vec<String>> {
+        let super::NamedConnection::Snowflake(conn) = connections
+            .get(&self.connection)
+            .ok_or(anyhow!["unable to find connection"])?;
+
+        let relations = jetty_sql::get_tables(&self.query, jetty_sql::DbType::Snowflake)
+            .context("parsing query")?;
+
+        let mut cuals = Vec::new();
+        for name_parts in relations {
+            if let Ok(cual) = cual_from_name_parts(&name_parts, &conn) {
+                cuals.push(cual);
+            } else {
+                println!("Unable to print create qual from {:#?}", name_parts)
+            }
+        }
+
+        Ok(cuals)
+    }
+}
+
+fn cual_from_name_parts(
+    name_parts: &Vec<String>,
+    conn: &SnowflakeConnectionInfo,
+) -> Result<String> {
+    let prefix = format!["snowflake://{}", &conn.server.to_lowercase()];
+    let cual = if name_parts.len() == 3 {
+        format!(
+            "{}/{}/{}/{}",
+            prefix, name_parts[0], name_parts[1], name_parts[2]
+        )
+    } else if name_parts.len() == 2 {
+        format!("{}/{}/{}/{}", prefix, conn.db, name_parts[0], name_parts[1])
+    } else if name_parts.len() == 1 {
+        format!("{}/{}/{}/{}", prefix, conn.db, conn.schema, name_parts[0])
+    } else {
+        bail!("unable to build cual")
+    };
+    Ok(cual)
 }
 
 // NamedConnection comes in

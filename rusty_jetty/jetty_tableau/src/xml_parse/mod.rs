@@ -14,27 +14,27 @@ enum Relation {
     SnowflakeQuery(snowflake::SnowflakeQueryInfo),
 }
 
-impl Relation {
-    fn to_cual(&self, connections: &HashMap<String, NamedConnection>) -> String {
-        todo!()
+/// This Macro implements to_cuals for Relation by matching on
+/// the inner enum types
+macro_rules! impl_to_cuals {
+    ($($t:tt),+) => {
+        impl Relation {
+            fn to_cuals(&self, connections: &HashMap<String, NamedConnection>) -> Result<Vec<String>> {
+                match self {
+                    $(Relation::$t(n) => n.to_cuals(connections),)*
+                    _ => panic!("Not supported. Please insert another quarter."),
+                }
+            }
+        }
     }
 }
+
+impl_to_cuals!(SnowflakeTable, SnowflakeQuery);
+
 // Impl to_cual on Relation
 // Also, convert a bunch of this to methods
 
-pub(crate) fn parse_tds_sources() {
-    todo!()
-}
-
-pub(crate) fn parse_twb_sources() {
-    todo!()
-}
-
-pub(crate) fn parse_flow_sources() {
-    todo!()
-}
-
-fn parse_standard_datasource(data: &str) -> Result<()> {
+fn get_cuals_from_datasource(data: &str) -> Result<Vec<String>> {
     let doc = roxmltree::Document::parse(data).unwrap();
 
     // filter the doc down to the connection info
@@ -49,12 +49,17 @@ fn parse_standard_datasource(data: &str) -> Result<()> {
     // pull out the relations
     let relations = get_relations(connection_info);
 
-    let cuals: Vec<String> = relations
-        .into_iter()
-        .map(|r| r.to_cual(&named_connections))
-        .collect();
+    let mut cuals = vec![];
+    for r in relations {
+        let c = r.to_cuals(&named_connections).unwrap_or_else(|e| {
+            println!("unable to create qual from {:#?}", r);
+            vec![]
+        });
 
-    todo!()
+        cuals.extend(c);
+    }
+
+    Ok(cuals)
 }
 
 /// Given a node, look at the children and pull out named connection information.
@@ -105,4 +110,20 @@ fn get_relations(node: roxmltree::Node) -> HashSet<Relation> {
     }
 
     relations
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+
+    use super::*;
+    use anyhow::{Context, Result};
+
+    #[test]
+    fn parse_tables_from_tds_works() -> Result<()> {
+        let data = fs::read_to_string("test_data/test1.xml").expect("unable to read file");
+        let x = get_cuals_from_datasource(&data);
+        dbg!(x);
+        Ok(())
+    }
 }
