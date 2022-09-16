@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+
+use anyhow::{anyhow, bail, Result};
 use regex::Regex;
 
 #[derive(Debug, Clone)]
@@ -18,6 +21,40 @@ pub(crate) struct SnowflakeTableInfo {
 pub(crate) struct SnowflakeQueryInfo {
     pub query: String,
     pub connection: String,
+}
+
+impl SnowflakeTableInfo {
+    pub(super) fn to_cuals(
+        &self,
+        connections: &HashMap<String, super::NamedConnection>,
+    ) -> Result<Vec<String>> {
+        let super::NamedConnection::Snowflake(conn) = connections
+            .get(&self.connection)
+            .ok_or(anyhow!["unable to find connection"])?;
+
+        let prefix = format!["snowflake://{}", &conn.server.to_lowercase()];
+        let name_parts: Vec<String> = self
+            .table
+            .trim_matches(|c| c == '[' || c == ']')
+            .split("].[")
+            .map(|s| s.to_owned())
+            .collect();
+
+        let cual = if name_parts.len() == 3 {
+            format!(
+                "{}/{}/{}/{}",
+                prefix, name_parts[0], name_parts[1], name_parts[2]
+            )
+        } else if name_parts.len() == 2 {
+            format!("{}/{}/{}/{}", prefix, conn.db, name_parts[0], name_parts[1])
+        } else if name_parts.len() == 1 {
+            format!("{}/{}/{}/{}", prefix, conn.db, conn.schema, name_parts[0])
+        } else {
+            bail!("unable to build cual")
+        };
+
+        Ok(vec![cual])
+    }
 }
 
 // NamedConnection comes in
@@ -65,4 +102,37 @@ pub(super) fn try_snowflake_table(node: &roxmltree::Node) -> Option<SnowflakeTab
         table: node.attribute("table")?.replace("[", "").replace("]", ""),
         connection: connection.to_string(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use anyhow::Result;
+
+    #[test]
+    fn table_to_cuals_correctly() -> Result<()> {
+        let connections = HashMap::from([(
+            "connection_name".to_owned(),
+            crate::xml_parse::NamedConnection::Snowflake(super::SnowflakeConnectionInfo {
+                name: "connection_name".to_owned(),
+                db: "MY_DB".to_owned(),
+                server: "HereSaTest.snowflakecomputing.com".to_owned(),
+                schema: "MY_SCHEMA".to_owned(),
+            }),
+        )]);
+
+        let table_info = SnowflakeTableInfo {
+            table: "[MY_SCHEMA].[MY_TABLE]".to_owned(),
+            connection: "connection_name".to_owned(),
+        };
+
+        let cuals = table_info.to_cuals(&connections)?;
+
+        assert_eq!(
+            cuals,
+            vec!["snowflake://heresatest.snowflakecomputing.com/MY_DB/MY_SCHEMA/MY_TABLE"]
+        );
+
+        Ok(())
+    }
 }
