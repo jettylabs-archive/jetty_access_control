@@ -24,7 +24,6 @@ macro_rules! impl_to_cuals {
             fn to_cuals(&self, connections: &HashMap<String, NamedConnection>) -> Result<Vec<String>> {
                 match self {
                     $(Relation::$t(n) => n.to_cuals(connections),)*
-                    _ => panic!("Not supported. Please insert another quarter."),
                 }
             }
         }
@@ -35,6 +34,7 @@ impl_to_cuals!(SnowflakeTable, SnowflakeQuery);
 
 /// Gets cuals from an xml file by parsing the file, pulling out the relevant relations,
 /// and building an identifier from it.
+#[allow(unused)]
 fn get_cuals_from_datasource(data: &str) -> Result<HashSet<String>> {
     let doc = roxmltree::Document::parse(data).unwrap();
 
@@ -120,13 +120,13 @@ mod tests {
     use std::fs;
 
     use super::*;
-    use anyhow::{Context, Result};
+    use anyhow::Result;
 
     /// A very basic test to make sure that things don't panic or fail
     #[test]
     fn parse_tables_from_tds_works() -> Result<()> {
         let data = fs::read_to_string("test_data/test1.xml").expect("unable to read file");
-        let x = get_cuals_from_datasource(&data);
+        let x = get_cuals_from_datasource(&data)?;
         dbg!(x);
         Ok(())
     }
