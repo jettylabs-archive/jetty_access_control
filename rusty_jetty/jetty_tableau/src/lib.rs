@@ -1,6 +1,7 @@
 mod coordinator;
 mod nodes;
 mod rest;
+mod xml_parse;
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
