@@ -4,10 +4,12 @@ use std::collections::{HashMap, HashSet};
 
 use anyhow::Result;
 
+/// Named connection information from the tableau files
 enum NamedConnection {
     Snowflake(snowflake::SnowflakeConnectionInfo),
 }
 
+/// Represents the different types of relations that we can parse
 #[derive(Hash, PartialEq, Eq, Debug)]
 enum Relation {
     SnowflakeTable(snowflake::SnowflakeTableInfo),
@@ -31,10 +33,9 @@ macro_rules! impl_to_cuals {
 
 impl_to_cuals!(SnowflakeTable, SnowflakeQuery);
 
-// Impl to_cual on Relation
-// Also, convert a bunch of this to methods
-
-fn get_cuals_from_datasource(data: &str) -> Result<Vec<String>> {
+/// Gets cuals from an xml file by parsing the file, pulling out the relevant relations,
+/// and building an identifier from it.
+fn get_cuals_from_datasource(data: &str) -> Result<HashSet<String>> {
     let doc = roxmltree::Document::parse(data).unwrap();
 
     // filter the doc down to the connection info
@@ -49,7 +50,7 @@ fn get_cuals_from_datasource(data: &str) -> Result<Vec<String>> {
     // pull out the relations
     let relations = get_relations(connection_info);
 
-    let mut cuals = vec![];
+    let mut cuals = HashSet::new();
     for r in relations {
         let c = r.to_cuals(&named_connections).unwrap_or_else(|e| {
             println!("unable to create qual from {:#?}", r);
@@ -77,6 +78,8 @@ fn get_named_conections(node: roxmltree::Node) -> HashMap<String, NamedConnectio
     named_connections
 }
 
+/// Given an XML node, find the embedded relations. It takes multiple passes over the descendants
+/// of `node`, but this is generally fast enough not to cause any major issues.
 fn get_relations(node: roxmltree::Node) -> HashSet<Relation> {
     let mut relations = HashSet::new();
     // start with queries
@@ -119,6 +122,7 @@ mod tests {
     use super::*;
     use anyhow::{Context, Result};
 
+    /// A very basic test to make sure that things don't panic or fail
     #[test]
     fn parse_tables_from_tds_works() -> Result<()> {
         let data = fs::read_to_string("test_data/test1.xml").expect("unable to read file");
