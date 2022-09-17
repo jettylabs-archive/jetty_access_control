@@ -12,7 +12,7 @@ use crate::rest;
 use crate::TableauCredentials;
 
 #[derive(Default, Deserialize)]
-struct Environment {
+pub(crate) struct Environment {
     pub users: HashMap<String, nodes::User>,
     pub groups: HashMap<String, nodes::Group>,
     pub projects: HashMap<String, nodes::Project>,
@@ -26,7 +26,7 @@ struct Environment {
 
 #[derive(Default)]
 pub(crate) struct Coordinator {
-    env: Environment,
+    pub(crate) env: Environment,
     pub(crate) rest_client: rest::TableauRestClient,
 }
 

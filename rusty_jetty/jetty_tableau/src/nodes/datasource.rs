@@ -20,6 +20,12 @@ pub(crate) struct Datasource {
     pub derived_from: Vec<String>,
 }
 
+impl Datasource {
+    pub(crate) fn cual_suffix(&self) -> String {
+        format!("/datasource/{}", &self.id)
+    }
+}
+
 fn to_node(val: &serde_json::Value) -> Result<super::Datasource> {
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]

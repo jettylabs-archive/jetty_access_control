@@ -1,8 +1,10 @@
 use std::collections::HashMap;
 
 use anyhow::{anyhow, bail, Context, Result};
-use jetty_sql;
 use regex::Regex;
+use urlencoding;
+
+use jetty_sql;
 
 #[derive(Debug, Clone)]
 pub(crate) struct SnowflakeConnectionInfo {
@@ -33,12 +35,7 @@ impl SnowflakeTableInfo {
             .get(&self.connection)
             .ok_or(anyhow!["unable to find connection"])?;
 
-        let name_parts: Vec<String> = self
-            .table
-            .trim_matches(|c| c == '[' || c == ']')
-            .split("].[")
-            .map(|s| s.to_owned())
-            .collect();
+        let name_parts = self.get_table_name_parts();
 
         if let Ok(cual) = cual_from_name_parts(&name_parts, &conn) {
             Ok(vec![cual])
@@ -46,6 +43,14 @@ impl SnowflakeTableInfo {
             println!("Unable to print create qual from {:#?}", name_parts);
             Ok(vec![])
         }
+    }
+
+    fn get_table_name_parts(&self) -> Vec<String> {
+        self.table
+            .trim_matches(|c| c == '[' || c == ']')
+            .split("].[")
+            .map(|s| s.to_owned())
+            .collect()
     }
 }
 
@@ -78,7 +83,13 @@ fn cual_from_name_parts(
     name_parts: &Vec<String>,
     conn: &SnowflakeConnectionInfo,
 ) -> Result<String> {
-    let prefix = format!["snowflake://{}", &conn.server.to_lowercase()];
+    let name_parts: Vec<std::borrow::Cow<str>> =
+        name_parts.iter().map(|p| urlencoding::encode(p)).collect();
+
+    let prefix = format![
+        "snowflake://{}",
+        urlencoding::encode(&conn.server.to_lowercase())
+    ];
     let cual = if name_parts.len() == 3 {
         format!(
             "{}/{}/{}/{}",
@@ -145,6 +156,7 @@ pub(super) fn try_snowflake_table(node: &roxmltree::Node) -> Option<SnowflakeTab
 mod tests {
     use super::*;
     use anyhow::Result;
+    use std::fs;
 
     #[test]
     fn table_to_cuals_correctly() -> Result<()> {

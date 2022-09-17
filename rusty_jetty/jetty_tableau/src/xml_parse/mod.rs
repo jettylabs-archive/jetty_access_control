@@ -1,3 +1,4 @@
+mod flow;
 mod snowflake;
 
 use std::collections::{HashMap, HashSet};

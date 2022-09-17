@@ -34,6 +34,12 @@ impl TableauRestClient {
         tc.fetch_token_and_site_id().unwrap();
         tc
     }
+    pub(crate) fn get_cual_prefix(&self) -> String {
+        format!(
+            "tableau://{}/{}/",
+            &self.credentials.server_name, &self.credentials.site_name
+        )
+    }
 
     /// Get site_id token from the TableauRestClient.
     fn get_site_id(&self) -> Result<String> {
