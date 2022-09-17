@@ -46,12 +46,12 @@ impl FlowDoc {
                         dbg!(self.handle_load_sql(node));
                     }
                     ".v2019_3_1.LoadSqlProxy" => {
-                        println!("-----------------------------------");
                         dbg!(self.handle_load_sql_proxy(node, &coord.env, &coord.rest_client));
-                        println!("-----------------------------------");
                     }
                     // Output nodes
-                    ".v1.PublishExtract" => println!("publish extract"),
+                    ".v1.PublishExtract" => {
+                        dbg!(self.handle_publish_extract(node, &coord.env, &coord.rest_client));
+                    }
                     ".v2020_3_1.WriteToDatabase" => println!("write to db"),
                     o => println!("got another type {}", o),
                 }
@@ -77,110 +77,6 @@ impl FlowDoc {
         } else {
             bail!("unable to get connection class");
         }
-    }
-
-    #[cfg(ignore)]
-    fn get_input_cuals(
-        &self,
-        env: &crate::coordinator::Environment,
-        client: &TableauRestClient,
-    ) -> HashSet<String> {
-        let mut cuals = HashSet::new();
-        // first, get the cuals from datasources
-        if let Ok(new_cuals) = self.handle_load_sql_proxy(env, client) {
-            cuals.extend(new_cuals);
-        } else {
-            println!("Error fetching Flow -> Datasource connections");
-        }
-
-        // next add table cuals
-        let table_nodes = self.get_sql_table_nodes();
-        for (_, node) in table_nodes {
-            if let Ok(class) = self.get_node_connection_class(node) {
-                match &class[..] {
-                    "snowflake" => {
-                        if let Ok(new_cuals) = snowflake::get_table_cuals(self, node) {
-                            cuals.extend(new_cuals);
-                        } else {
-                            println!("Error fetching Flow -> Table connections")
-                        }
-                    }
-                    c => println!("unsupported node class <{}>", c),
-                }
-            } else {
-                println!("unable to get datasource class")
-            }
-        }
-
-        // finally, add query cuals
-        let table_nodes = self.get_custom_sql_nodes();
-        for (_, node) in table_nodes {
-            if let Ok(class) = self.get_node_connection_class(node) {
-                match &class[..] {
-                    "snowflake" => {
-                        if let Ok(new_cuals) = snowflake::get_query_cuals(self, node) {
-                            cuals.extend(new_cuals);
-                        } else {
-                            println!("Error fetching Flow -> Table connections")
-                        }
-                    }
-                    c => println!("unsupported node class <{}>", c),
-                }
-            } else {
-                println!("unable to get datasource class")
-            }
-        }
-
-        cuals
-    }
-
-    fn get_input_nodes(&self) -> HashMap<String, &serde_json::Value> {
-        self.nodes
-            .iter()
-            .filter(|(k, v)| {
-                v.get("baseType") == Some(&serde_json::Value::String("input".to_owned()))
-            })
-            .map(|(k, v)| (k.to_owned(), v))
-            .collect()
-    }
-
-    fn get_sql_nodes(&self) -> HashMap<String, &serde_json::Value> {
-        self.get_input_nodes()
-            .iter()
-            .filter(|(k, v)| {
-                v.get("nodeType").unwrap_or(&serde_json::Value::default())
-                    == &serde_json::Value::String(".v1.LoadSql".to_owned())
-            })
-            .map(|(k, v)| (k.to_owned(), *v))
-            .collect()
-    }
-
-    fn get_custom_sql_nodes(&self) -> HashMap<String, &serde_json::Value> {
-        self.get_sql_nodes()
-            .iter()
-            .filter(|(k, v)| {
-                v.get("relation")
-                    .unwrap_or(&serde_json::Value::default())
-                    .get("type")
-                    .unwrap_or(&serde_json::Value::default())
-                    == &serde_json::Value::String("query".to_owned())
-            })
-            .map(|(k, v)| (k.to_owned(), *v))
-            .collect()
-    }
-
-    fn get_sql_table_nodes(&self) -> HashMap<String, &serde_json::Value> {
-        self.get_sql_nodes()
-            .iter()
-            .filter(|(k, v)| {
-                v.get("relation")
-                    .unwrap_or(&serde_json::Value::default())
-                    .get("type")
-                    .unwrap_or(&serde_json::Value::default())
-                    == &serde_json::Value::String("table".to_owned())
-            })
-            .map(|(k, v)| (k.to_owned(), *v))
-            .collect()
     }
 
     fn handle_load_sql_proxy(
@@ -224,7 +120,7 @@ impl FlowDoc {
             .collect();
 
         if correct_datasource.len() != 1 {
-            bail!("unable to find linked datasource; this may happen if the flow has not run");
+            bail!("unable to find linked datasource");
         }
 
         cuals.insert(format!(
@@ -236,20 +132,11 @@ impl FlowDoc {
         Ok(cuals)
     }
 
-    fn get_output_nodes(&self) -> HashMap<String, &serde_json::Value> {
-        self.nodes
-            .iter()
-            .filter(|(k, v)| {
-                v.get("baseType") == Some(&serde_json::Value::String("output".to_owned()))
-            })
-            .map(|(k, v)| (k.to_owned(), v))
-            .collect()
-    }
-
-    fn get_datasource_output_cuals(
+    fn handle_publish_extract(
         &self,
-        env: crate::coordinator::Environment,
-        client: TableauRestClient,
+        node: &serde_json::Value,
+        env: &crate::coordinator::Environment,
+        client: &TableauRestClient,
     ) -> Result<HashSet<String>> {
         #[derive(Deserialize)]
         #[serde(rename_all = "camelCase")]
@@ -258,64 +145,26 @@ impl FlowDoc {
             project_luid: String,
         }
 
-        // Get the relevant nodes
-        let nodes: Vec<_> = self
-            .get_output_nodes()
+        let conn: ConnectionAttributes = serde_json::from_value(node.to_owned())?;
+
+        let correct_datasource: Vec<_> = env
+            .datasources
             .iter()
-            .filter(|(k, v)| {
-                v.get("nodeType")
-                    == Some(&serde_json::Value::String(".v1.PublishExtract".to_owned()))
+            .filter(|(_, v)| {
+                v.project_id.to_owned() == conn.project_luid && v.name == conn.datasource_name
             })
-            .map(|(k, v)| *v)
+            .map(|(_, v)| v)
             .collect();
 
-        let mut cuals = HashSet::new();
-        // Iterate through the nodes and link them to the relevant datasources
-        for node in nodes {
-            let conn: ConnectionAttributes = serde_json::from_value(node.to_owned())?;
-
-            let correct_datasource: Vec<_> = env
-                .datasources
-                .iter()
-                .filter(|(_, v)| {
-                    v.project_id.to_owned() == conn.project_luid && v.name == conn.datasource_name
-                })
-                .map(|(_, v)| v)
-                .collect();
-
-            if correct_datasource.len() != 1 {
-                bail!("unable to find linked datasource");
-            }
-
-            cuals.insert(format!(
-                "{}{}",
-                client.get_cual_prefix(),
-                correct_datasource[0].cual_suffix()
-            ));
+        if correct_datasource.len() != 1 {
+            bail!("unable to find linked datasource; this can happen if the flow has not run");
         }
 
-        Ok(cuals)
-    }
-
-    fn get_database_output_nodes(&self) -> HashMap<String, &serde_json::Value> {
-        #[derive(Deserialize)]
-        #[serde(rename_all = "camelCase")]
-        struct ConnectionAttributes {
-            datasource_name: String,
-            project_luid: String,
-        }
-
-        // Get the relevant nodes
-        self.get_output_nodes()
-            .iter()
-            .filter(|(k, v)| {
-                v.get("nodeType")
-                    == Some(&serde_json::Value::String(
-                        ".v2020_3_1.WriteToDatabase".to_owned(),
-                    ))
-            })
-            .map(|(k, v)| (k.to_owned(), *v))
-            .collect()
+        Ok(HashSet::from([format!(
+            "{}{}",
+            client.get_cual_prefix(),
+            correct_datasource[0].cual_suffix()
+        )]))
     }
 
     fn get_node_connection_class(&self, node: &serde_json::Value) -> Result<String> {
@@ -510,38 +359,13 @@ mod test {
 
     use anyhow::Result;
 
-    #[cfg(ignore)]
-    #[test]
-    fn parse_flow_works() -> Result<()> {
-        let data = fs::read_to_string("test_data/flow2".to_owned()).unwrap();
-
-        let coord = crate::coordinator::Coordinator::new(crate::TableauCredentials {
-            username: "isaac@get-jetty.com".to_owned(),
-            password: "hQqbYg227%q4".to_owned(),
-            server_name: "10ax.online.tableau.com".to_owned(),
-            site_name: "jettydev".to_owned(),
-        });
-
-        use std::time::Instant;
-        let now = Instant::now();
-
-        let doc = super::FlowDoc::new(data).unwrap();
-        let cuals = doc.get_input_cuals(&coord.env, &coord.rest_client);
-
-        let elapsed = now.elapsed();
-        println!("Elapsed: {:.2?}", elapsed);
-        dbg!(cuals);
-
-        Ok(())
-    }
-
     #[tokio::test]
     async fn new_parse_flow_works() -> Result<()> {
         let data = fs::read_to_string("test_data/flow2".to_owned()).unwrap();
 
         let mut coord = crate::coordinator::Coordinator::new(crate::TableauCredentials {
             username: "isaac@get-jetty.com".to_owned(),
-            password: "<I changed it after committing it like a noob>".to_owned(),
+            password: "c38EAF&&VwKF".to_owned(),
             server_name: "10ax.online.tableau.com".to_owned(),
             site_name: "jettydev".to_owned(),
         })
