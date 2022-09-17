@@ -2,7 +2,6 @@ use std::collections::{HashMap, HashSet};
 
 use anyhow::{anyhow, bail, Context, Result};
 use serde::Deserialize;
-use serde_json::Value;
 
 use crate::{coordinator::Coordinator, rest::TableauRestClient};
 
@@ -365,7 +364,7 @@ mod test {
 
         let mut coord = crate::coordinator::Coordinator::new(crate::TableauCredentials {
             username: "isaac@get-jetty.com".to_owned(),
-            password: "c38EAF&&VwKF".to_owned(),
+            password: "<dang. committed it again...>".to_owned(),
             server_name: "10ax.online.tableau.com".to_owned(),
             site_name: "jettydev".to_owned(),
         })
