@@ -15,7 +15,7 @@ enum LoadSqlType {
     Query,
     Table,
 }
-fn get_sql_type(node: &serde_json::Value) -> Result<LoadSqlType> {
+fn get_relation_type(node: &serde_json::Value) -> Result<LoadSqlType> {
     let sql_type = node
         .get("relation")
         .and_then(|n| n.get("type"))
@@ -51,7 +51,9 @@ impl FlowDoc {
                     ".v1.PublishExtract" => {
                         dbg!(self.handle_publish_extract(node, &coord.env, &coord.rest_client));
                     }
-                    ".v2020_3_1.WriteToDatabase" => println!("write to db"),
+                    ".v2020_3_1.WriteToDatabase" => {
+                        dbg!(self.handle_write_to_database(node));
+                    }
                     o => println!("got another type {}", o),
                 }
             } else {
@@ -65,9 +67,9 @@ impl FlowDoc {
         // From there, fetch the cuals
         if let Ok(class) = self.get_node_connection_class(node) {
             let cuals = match &class[..] {
-                "snowflake" => match get_sql_type(node)? {
-                    LoadSqlType::Query => snowflake::get_query_cuals(self, node),
-                    LoadSqlType::Table => snowflake::get_table_cuals(self, node),
+                "snowflake" => match get_relation_type(node)? {
+                    LoadSqlType::Query => snowflake::get_input_query_cuals(self, node),
+                    LoadSqlType::Table => snowflake::get_input_table_cuals(self, node),
                 }?,
                 o => bail!("we don't currently support {}", o),
             };
@@ -129,6 +131,21 @@ impl FlowDoc {
         ));
 
         Ok(cuals)
+    }
+
+    fn handle_write_to_database(&self, node: &serde_json::Value) -> Result<HashSet<String>> {
+        // First check the class or type of database, and then the type of sql object.
+        // From there, fetch the cuals
+        if let Ok(class) = self.get_node_connection_class(node) {
+            let cuals = match &class[..] {
+                "snowflake" => snowflake::get_output_table_cuals(self, node)?,
+                o => bail!("we don't currently support {}", o),
+            };
+
+            Ok(cuals)
+        } else {
+            bail!("unable to get connection class");
+        }
     }
 
     fn handle_publish_extract(
@@ -207,7 +224,7 @@ mod snowflake {
             .to_owned())
     }
 
-    pub(super) fn get_table_cuals(
+    pub(super) fn get_input_table_cuals(
         doc: &FlowDoc,
         node: &serde_json::Value,
     ) -> Result<HashSet<String>> {
@@ -249,9 +266,9 @@ mod snowflake {
         Ok(cuals)
     }
 
-    fn get_sql_output_cuals(
+    pub(super) fn get_output_table_cuals(
         doc: &FlowDoc,
-        nodes: HashMap<String, serde_json::Value>,
+        node: &serde_json::Value,
     ) -> Result<HashSet<String>> {
         #[derive(Deserialize)]
         struct OutputDbAttributes {
@@ -270,45 +287,45 @@ mod snowflake {
 
         let mut relations = HashSet::new();
 
-        for (_, v) in nodes {
-            let table_info: TableInfo = serde_json::from_value(v.to_owned())?;
-            let server = get_server_info(doc, &table_info.connection_id)?;
+        let table_info: TableInfo = serde_json::from_value(node.to_owned())?;
+        let server = get_server_info(doc, &table_info.connection_id)?;
 
-            let table = table_info.attributes.tablename;
-            // Fix up the table name:
-            if table.starts_with('"') {
-                let table = table.trim_matches('"');
-            } else if table.starts_with("'") {
-                let table = table.trim_matches('\'');
-            } else if table.starts_with('[') {
-                let table = table.trim_matches('[');
-                let table = table.trim_matches(']');
-            } else if table.starts_with('`') {
-                let table = table.trim_matches('`');
-            }
-
-            let snowflake_table = crate::xml_parse::snowflake::SnowflakeTableInfo {
-                table,
-                connection: table_info.connection_id.to_owned(),
-            };
-            let connections = HashMap::from([(
-                table_info.connection_id.to_owned(),
-                crate::xml_parse::NamedConnection::Snowflake(
-                    crate::xml_parse::snowflake::SnowflakeConnectionInfo {
-                        name: table_info.connection_id,
-                        db: table_info.attributes.dbname,
-                        server,
-                        schema: table_info.attributes.schema,
-                    },
-                ),
-            )]);
-
-            relations.extend(snowflake_table.to_cuals(&connections)?);
+        let mut table = table_info.attributes.tablename;
+        // Fix up the table name:
+        if table.starts_with('"') {
+            println!("got here - quotes");
+            table = table.trim_matches('"').to_owned();
+        } else if table.starts_with("'") {
+            table = table.trim_matches('\'').to_owned();
+        } else if table.starts_with('[') {
+            table = table.trim_matches('[').to_owned();
+            table = table.trim_matches(']').to_owned();
+        } else if table.starts_with('`') {
+            table = table.trim_matches('`').to_owned();
         }
+
+        let snowflake_table = crate::xml_parse::snowflake::SnowflakeTableInfo {
+            table,
+            connection: table_info.connection_id.to_owned(),
+        };
+        let connections = HashMap::from([(
+            table_info.connection_id.to_owned(),
+            crate::xml_parse::NamedConnection::Snowflake(
+                crate::xml_parse::snowflake::SnowflakeConnectionInfo {
+                    name: table_info.connection_id,
+                    db: table_info.attributes.dbname,
+                    server,
+                    schema: table_info.attributes.schema,
+                },
+            ),
+        )]);
+
+        relations.extend(snowflake_table.to_cuals(&connections)?);
+
         Ok(relations)
     }
 
-    pub(super) fn get_query_cuals(
+    pub(super) fn get_input_query_cuals(
         doc: &FlowDoc,
         node: &serde_json::Value,
     ) -> Result<HashSet<String>> {

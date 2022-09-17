@@ -36,7 +36,7 @@ impl TableauRestClient {
     }
     pub(crate) fn get_cual_prefix(&self) -> String {
         format!(
-            "tableau://{}/{}/",
+            "tableau://{}/{}",
             &self.credentials.server_name, &self.credentials.site_name
         )
     }
