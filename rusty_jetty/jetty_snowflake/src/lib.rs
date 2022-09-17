@@ -24,7 +24,6 @@ pub use entry_types::*;
 use jetty_core::cual::Cualable;
 use rest::{SnowflakeRequestConfig, SnowflakeRestClient, SnowflakeRestConfig};
 
-use futures::stream::{FuturesUnordered, StreamExt};
 use std::collections::{HashMap, HashSet};
 use std::iter::zip;
 
@@ -166,18 +165,44 @@ impl SnowflakeConnector {
     }
 
     /// Get all grants to a role – the privileges and "children" roles.
-    pub async fn get_grants_to_role(&self, role_name: &str) -> Result<Vec<Grant>> {
-        self.query_to_obj::<Grant>(&format!("SHOW GRANTS TO ROLE {}", role_name))
+    pub async fn get_grants_to_role(&self, role_name: &str) -> Result<Vec<StandardGrant>> {
+        self.query_to_obj::<StandardGrant>(&format!("SHOW GRANTS TO ROLE {}", role_name))
             .await
             .context("failed to get grants to role")
     }
 
     /// Get all grants on a role – the "parent" roles.
+    #[cfg(ignore)]
     pub async fn get_grants_on_role(&self, role_name: &str) -> Result<Vec<Grant>> {
         self.query_to_obj::<Grant>(&format!("SHOW GRANTS ON ROLE {}", role_name))
             .await
             .context("failed to get grants on role")
     }
+
+    pub async fn get_future_grants_on_schema(
+        &self,
+        database_name: &str,
+        schema_name: &str,
+    ) -> Result<Vec<FutureGrant>> {
+        self.query_to_obj(&format!(
+            "SHOW FUTURE GRANTS IN SCHEMA {}.{}",
+            database_name, schema_name
+        ))
+        .await
+        .context(format!(
+            "failed to get future grants on schema {}",
+            schema_name
+        ))
+    }
+
+    pub async fn get_future_grants_on_db(&self, db_name: &str) -> Result<Vec<FutureGrant>> {
+        let query = format!("SHOW FUTURE GRANTS IN DATABASE {}", db_name);
+        self.query_to_obj(&query).await.context(format!(
+            "failed to get future grants on db {} for query {}",
+            db_name, query
+        ))
+    }
+
     /// Get all users.
     pub async fn get_users(&self) -> Result<Vec<User>> {
         self.query_to_obj::<User>("SHOW USERS")
@@ -208,7 +233,7 @@ impl SnowflakeConnector {
 
     /// Get all schemas.
     pub async fn get_schemas(&self) -> Result<Vec<Schema>> {
-        self.query_to_obj::<Schema>("SHOW SCHEMAS")
+        self.query_to_obj::<Schema>("SHOW SCHEMAS IN ACCOUNT")
             .await
             .context("failed to get schemas")
     }
@@ -262,7 +287,7 @@ impl SnowflakeConnector {
         let fields_intermediate: Vec<SnowflakeField> =
             serde_json::from_value(rows_value["resultSetMetaData"]["rowType"].clone())
                 .context("failed to deserialize fields")?;
-        let fields: Vec<String> = fields_intermediate.iter().map(|i| i.name.clone()).collect();
+        let mut fields: Vec<String> = fields_intermediate.iter().map(|i| i.name.clone()).collect();
         Ok(rows
             .iter()
             .map(|i| {
@@ -277,24 +302,22 @@ impl SnowflakeConnector {
     /// When we read, a policy will get created for each unique
     /// role/user, asset combination. All privileges will be bunched together
     /// for that combination.
-    async fn grant_to_policy(
-        &self,
-        role_name: &str,
-        grants: &HashSet<Grant>,
-    ) -> Option<nodes::Policy> {
+    fn grant_to_policy<T>(&self, asset_name: &str, grants: &HashSet<T>) -> Option<nodes::Policy>
+    where
+        T: Grant,
+    {
         if grants.is_empty() {
             // No privileges.
             return None;
         }
-        let privileges: Vec<String> = grants.iter().map(|g| g.privilege.to_owned()).collect();
-        let cual = cual_from_snowflake_obj_name(&grants.iter().next().unwrap().name).unwrap();
+        let privileges: Vec<String> = grants.iter().map(|g| g.privilege().to_owned()).collect();
+        // The role should be the same for all elements, so just grab t from
+        // the first one.
+        let role_name = grants.clone().iter().next().unwrap().role_name();
+        let cual =
+            cual_from_snowflake_obj_name(&grants.iter().next().unwrap().granted_on_name()).unwrap();
         Some(nodes::Policy::new(
-            format!(
-                "{}.{}.{}",
-                role_name.to_owned(),
-                privileges.join("."),
-                role_name,
-            ),
+            format!("snowflake.{}.{}", privileges.join("."), role_name,),
             privileges.iter().cloned().collect(),
             // Unwrap here is fine since we asserted that the set was not empty above.
             // TODO: make these CUALs
@@ -309,37 +332,62 @@ impl SnowflakeConnector {
         ))
     }
 
+    async fn grants_to_policies(&self, grants: &Vec<GrantType>) -> Vec<Option<nodes::Policy>> {
+        grants
+            .iter()
+            .filter(|g| consts::ASSET_TYPES.contains(&g.granted_on()))
+            // Collect roles by asset name so the policy:asset ratio is 1:1.
+            .fold(
+                HashMap::new(),
+                |mut asset_map: HashMap<String, HashSet<GrantType>>, g| {
+                    if let Some(asset_privileges) = asset_map.get_mut(g.granted_on_name()) {
+                        asset_privileges.insert(g.clone());
+                    } else {
+                        asset_map
+                            .insert(g.granted_on_name().to_owned(), HashSet::from([g.clone()]));
+                    }
+                    asset_map
+                },
+            )
+            .iter()
+            .map(|(asset_name, grants)| self.grant_to_policy(&asset_name, grants))
+            .collect::<Vec<_>>()
+    }
+
     async fn get_jetty_policies(&self) -> Result<Vec<nodes::Policy>> {
         let mut res = vec![];
         // Role grants
         for role in self.get_roles().await? {
-            let mut grants_to_role = self
+            let grants_to_role = self
                 .get_grants_to_role(&role.name)
                 .await?
                 .iter()
-                // Ignored types here:
-                // ACCOUNT, FUNCTION, WAREHOUSE: These are TODOs for a future iteration.
-                // ROLE: We don't need children groups. Those relationships will be taken care of
-                // as parent roles.
-                .filter(|g| consts::ASSET_TYPES.contains(&g.granted_on.as_str()))
-                // Collect roles by asset name so the policy:asset ratio is 1:1.
-                .fold(
-                    HashMap::new(),
-                    |mut asset_map: HashMap<String, HashSet<Grant>>, g| {
-                        if let Some(asset_privileges) = asset_map.get_mut(&g.name) {
-                            asset_privileges.insert(g.clone());
-                        } else {
-                            asset_map.insert(g.name.to_owned(), HashSet::from([g.clone()]));
-                        }
-                        asset_map
-                    },
-                )
+                .map(|g| GrantType::Standard(g.clone()))
+                .collect();
+            let mut policies_for_role = self.grants_to_policies(&grants_to_role).await;
+            res.append(&mut policies_for_role)
+        }
+        // Future grants on databases
+        for db in self.get_databases().await? {
+            let grants_to_db: Vec<GrantType> = self
+                .get_future_grants_on_db(&db.name)
+                .await?
                 .iter()
-                .map(|(_asset_name, grants)| self.grant_to_policy(&role.name, grants))
-                .collect::<FuturesUnordered<_>>()
-                .collect::<Vec<_>>()
-                .await;
-            res.append(&mut grants_to_role)
+                .map(|g| GrantType::Future(g.clone()))
+                .collect();
+            let mut policies_for_db = self.grants_to_policies(&grants_to_db).await;
+            res.append(&mut policies_for_db);
+        }
+        // Future grants on schemas
+        for schema in self.get_schemas().await? {
+            let grants_to_schema: Vec<GrantType> = self
+                .get_future_grants_on_schema(&schema.database_name, &schema.name)
+                .await?
+                .iter()
+                .map(|g| GrantType::Future(g.clone()))
+                .collect();
+            let mut policies_for_schema = self.grants_to_policies(&grants_to_schema).await;
+            res.append(&mut policies_for_schema);
         }
         let res = res
             .iter()
