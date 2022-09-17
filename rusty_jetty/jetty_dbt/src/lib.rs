@@ -49,7 +49,7 @@ impl DbtConnector {
 
 #[async_trait]
 impl Connector for DbtConnector {
-    fn new(
+    async fn new(
         _config: &ConnectorConfig,
         credentials: &CredentialsBlob,
         _client: Option<connectors::ConnectorClient>,
@@ -110,14 +110,15 @@ mod tests {
         Ok(())
     }
 
-    #[test]
+    #[tokio::test]
     #[should_panic]
-    fn missing_config_fails() {
+    async fn missing_config_fails() {
         DbtConnector::new(
             &ConnectorConfig::default(),
             &CredentialsBlob::new(),
             Some(connectors::ConnectorClient::Test),
         )
+        .await
         .unwrap();
     }
 

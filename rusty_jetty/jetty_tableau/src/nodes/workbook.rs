@@ -27,6 +27,7 @@ pub(crate) struct EmbeddedSource {
 
 impl Workbook {
     pub(crate) async fn fetch_datasources(&self) -> Result<Vec<super::Datasource>> {
+        return Ok(vec![]);
         todo!()
     }
     pub(crate) async fn update_embedded_datasources(
@@ -130,10 +131,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_fetching_workbooks_works() -> Result<()> {
-        let tc = tokio::task::spawn_blocking(|| {
-            crate::connector_setup().context("running tableau connector setup")
-        })
-        .await??;
+        let tc = crate::connector_setup()
+            .await
+            .context("running tableau connector setup")?;
         let groups = get_basic_workbooks(&tc.env.rest_client).await?;
         for (_k, v) in groups {
             println!("{:#?}", v);
@@ -143,10 +143,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_fetching_workbook_permissions_works() -> Result<()> {
-        let tc = tokio::task::spawn_blocking(|| {
-            crate::connector_setup().context("running tableau connector setup")
-        })
-        .await??;
+        let tc = crate::connector_setup()
+            .await
+            .context("running tableau connector setup")?;
         let mut workbooks = get_basic_workbooks(&tc.env.rest_client).await?;
         for (_k, v) in &mut workbooks {
             v.permissions = v.get_permissions(&tc.env.rest_client).await?;

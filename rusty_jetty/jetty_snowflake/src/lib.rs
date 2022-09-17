@@ -109,7 +109,7 @@ impl Connector for SnowflakeConnector {
     /// Validates that the required fields are present to authenticate to
     /// Snowflake. Stashes the credentials in the struct for use when
     /// connecting.
-    fn new(
+    async fn new(
         _config: &ConnectorConfig,
         credentials: &CredentialsBlob,
         connector_client: Option<connectors::ConnectorClient>,

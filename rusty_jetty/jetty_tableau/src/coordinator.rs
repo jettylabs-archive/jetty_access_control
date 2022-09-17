@@ -33,15 +33,22 @@ pub(crate) struct Coordinator {
 impl Coordinator {
     /// Create a new Environment object with data read from a saved
     /// environment (if available) and a new rest client.
-    pub(crate) fn new(creds: TableauCredentials) -> Self {
+    pub(crate) async fn new(creds: TableauCredentials) -> Self {
         Coordinator {
             env: read_environment_assets().unwrap_or_default(),
-            rest_client: rest::TableauRestClient::new(creds),
+            rest_client: rest::TableauRestClient::new(creds).await,
         }
     }
 
     pub(crate) async fn update_env(&mut self) -> Result<()> {
         let datasources = nodes::datasource::get_basic_datasources(&self.rest_client).await?;
+
+        let projects = nodes::project::get_basic_projects(&self.rest_client).await?;
+        dbg!(&projects);
+
+        // just for testing
+        self.env.datasources = datasources;
+        self.env.projects = projects;
 
         // Get workbook basics
         let mut workbooks = nodes::workbook::get_basic_workbooks(&self.rest_client).await?;
@@ -50,7 +57,7 @@ impl Coordinator {
         let fetches = futures::stream::iter(
             workbooks
                 .iter_mut()
-                .map(|(id, w)| self.get_workbook_datasources(w)),
+                .map(|(_, w)| self.get_workbook_datasources(w)),
         )
         .buffer_unordered(30)
         .collect::<Vec<_>>();
@@ -64,7 +71,7 @@ impl Coordinator {
         }
 
         // now update datasources as needed
-
+        return Ok(());
         todo!()
     }
 

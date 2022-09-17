@@ -44,7 +44,7 @@ impl Connector for TableauConnector {
     /// Validates that the required fields are present to authenticate to
     /// Tableau. Stashes the credentials in the struct for use when
     /// connecting.
-    fn new(
+    async fn new(
         config: &ConnectorConfig,
         credentials: &CredentialsBlob,
         _client: Option<ConnectorClient>,
@@ -78,7 +78,7 @@ impl Connector for TableauConnector {
 
         let tableau_connector = TableauConnector {
             config: config.config.to_owned(),
-            env: coordinator::Coordinator::new(creds),
+            env: coordinator::Coordinator::new(creds).await,
         };
 
         Ok(Box::new(tableau_connector))
@@ -94,7 +94,7 @@ impl Connector for TableauConnector {
 }
 
 #[cfg(test)]
-pub(crate) fn connector_setup() -> Result<crate::TableauConnector> {
+pub(crate) async fn connector_setup() -> Result<crate::TableauConnector> {
     use anyhow::Context;
     use jetty_core::Connector;
 
@@ -102,6 +102,7 @@ pub(crate) fn connector_setup() -> Result<crate::TableauConnector> {
     let creds = jetty_core::jetty::fetch_credentials().context("fetching credentials from file")?;
     let config = &j.config.connectors[0];
     let tc = crate::TableauConnector::new(config, &creds["tableau"], None)
+        .await
         .context("reading tableau credentials")?;
     Ok(*tc)
 }

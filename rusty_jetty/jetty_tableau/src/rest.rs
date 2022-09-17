@@ -23,7 +23,7 @@ impl TableauRestClient {
     ///  # Panics
     /// ------
     /// Will panic if run in an asynchronous context
-    pub fn new(credentials: TableauCredentials) -> Self {
+    pub async fn new(credentials: TableauCredentials) -> Self {
         let mut tc = TableauRestClient {
             credentials,
             http_client: reqwest::Client::builder().gzip(true).build().unwrap(),
@@ -31,7 +31,7 @@ impl TableauRestClient {
             site_id: None,
             api_version: "3.16".to_owned(),
         };
-        tc.fetch_token_and_site_id().unwrap();
+        tc.fetch_token_and_site_id().await.unwrap();
         tc
     }
     pub(crate) fn get_cual_prefix(&self) -> String {
@@ -64,7 +64,7 @@ impl TableauRestClient {
     /// # Panics
     /// ------
     /// Will panic if run in an asynchronous context
-    fn fetch_token_and_site_id(&mut self) -> Result<()> {
+    async fn fetch_token_and_site_id(&mut self) -> Result<()> {
         // Set up the request body to get a request token
         let request_body = json!({
             "credentials": {
@@ -76,15 +76,17 @@ impl TableauRestClient {
             }
         });
 
-        let resp = reqwest::blocking::Client::new()
+        let resp = reqwest::Client::new()
             .post(format![
                 "https://{}/api/{}/auth/signin",
                 &self.credentials.server_name, &self.api_version
             ])
             .json(&request_body)
             .header("Accept".to_owned(), "application/json".to_owned())
-            .send()?
-            .json::<serde_json::Value>()?;
+            .send()
+            .await?
+            .json::<serde_json::Value>()
+            .await?;
 
         let token = get_json_from_path(&resp, &vec!["credentials".to_owned(), "token".to_owned()])?
             .as_str()

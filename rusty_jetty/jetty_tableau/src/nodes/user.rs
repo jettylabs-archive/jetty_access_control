@@ -35,10 +35,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_fetching_users_works() -> Result<()> {
-        let mut tc = tokio::task::spawn_blocking(|| {
-            crate::connector_setup().context("running tableau connector setup")
-        })
-        .await??;
+        let tc = crate::connector_setup()
+            .await
+            .context("running tableau connector setup")?;
         let users = get_basic_users(&tc.env.rest_client).await?;
         for (_k, v) in users {
             println!("{}", v.name);

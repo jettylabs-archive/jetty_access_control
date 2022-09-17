@@ -71,10 +71,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_fetching_metrics_works() -> Result<()> {
-        let tc = tokio::task::spawn_blocking(|| {
-            crate::connector_setup().context("running tableau connector setup")
-        })
-        .await??;
+        let tc = crate::connector_setup()
+            .await
+            .context("running tableau connector setup")?;
         let nodes = get_basic_metrics(&tc.env.rest_client).await?;
         for (_k, v) in nodes {
             println!("{:#?}", v);
@@ -84,10 +83,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_fetching_metric_permissions_works() -> Result<()> {
-        let tc = tokio::task::spawn_blocking(|| {
-            crate::connector_setup().context("running tableau connector setup")
-        })
-        .await??;
+        let tc = crate::connector_setup()
+            .await
+            .context("running tableau connector setup")?;
         let mut nodes = get_basic_metrics(&tc.env.rest_client).await?;
         for (_k, v) in &mut nodes {
             v.permissions = v.get_permissions(&tc.env.rest_client).await?;
