@@ -1,5 +1,5 @@
 mod flow;
-mod snowflake;
+mod snowflake_common;
 
 use std::collections::{HashMap, HashSet};
 
@@ -7,14 +7,14 @@ use anyhow::Result;
 
 /// Named connection information from the tableau files
 enum NamedConnection {
-    Snowflake(snowflake::SnowflakeConnectionInfo),
+    Snowflake(snowflake_common::SnowflakeConnectionInfo),
 }
 
 /// Represents the different types of relations that we can parse
 #[derive(Hash, PartialEq, Eq, Debug)]
 enum Relation {
-    SnowflakeTable(snowflake::SnowflakeTableInfo),
-    SnowflakeQuery(snowflake::SnowflakeQueryInfo),
+    SnowflakeTable(snowflake_common::SnowflakeTableInfo),
+    SnowflakeQuery(snowflake_common::SnowflakeQueryInfo),
 }
 
 /// This Macro implements to_cuals for Relation by matching on
@@ -70,7 +70,7 @@ fn get_named_conections(node: roxmltree::Node) -> HashMap<String, NamedConnectio
     let mut named_connections = HashMap::new();
     for n in node.descendants() {
         if n.is_element() && n.has_tag_name("named-connection") {
-            if let Some(c) = snowflake::try_snowflake_named_conn(&n) {
+            if let Some(c) = snowflake_common::try_snowflake_named_conn(&n) {
                 named_connections
                     .insert(c.name.to_owned(), NamedConnection::Snowflake(c.to_owned()));
             }
@@ -93,7 +93,7 @@ fn get_relations(node: roxmltree::Node) -> HashSet<Relation> {
         .collect();
 
     for query in queries {
-        if let Some(q) = snowflake::try_snowflake_query(&query) {
+        if let Some(q) = snowflake_common::try_snowflake_query(&query) {
             relations.insert(Relation::SnowflakeQuery(q));
         };
     }
@@ -108,7 +108,7 @@ fn get_relations(node: roxmltree::Node) -> HashSet<Relation> {
         .collect();
 
     for table in tables {
-        if let Some(t) = snowflake::try_snowflake_table(&table) {
+        if let Some(t) = snowflake_common::try_snowflake_table(&table) {
             relations.insert(Relation::SnowflakeTable(t));
         };
     }
