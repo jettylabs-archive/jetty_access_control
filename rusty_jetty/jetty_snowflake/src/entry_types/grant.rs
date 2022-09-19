@@ -99,7 +99,7 @@ impl Into<nodes::Policy> for StandardGrant {
             // No direct user grants in Snowflake. Grants must pass through roles.
             HashSet::new(),
             // Defaults here for data read from Snowflake should be false.
-            true,
+            false,
             false,
         )
     }
