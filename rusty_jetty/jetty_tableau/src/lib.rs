@@ -1,3 +1,5 @@
+#![allow(dead_code, unused)]
+
 mod coordinator;
 mod file_parse;
 mod nodes;
