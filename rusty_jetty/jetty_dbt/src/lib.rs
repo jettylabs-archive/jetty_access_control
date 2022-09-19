@@ -92,7 +92,7 @@ impl Connector for DbtConnector {
 
 #[cfg(test)]
 mod tests {
-    use crate::manifest::node::DbtModelNode;
+    use crate::manifest::node::{DbtModelNode, DbtSourceNode};
 
     use super::*;
     use jetty_core::{
@@ -188,6 +188,98 @@ mod tests {
                 }],
                 ..Default::default()
             }
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn get_data_returns_valid_dbt_assets_and_lineage() -> Result<()> {
+        // Create mocked manifest
+        let mut manifest_mock = MockDbtProjectManifest::new();
+
+        manifest_mock.expect_init().times(1).returning(|_| Ok(()));
+        manifest_mock
+            .expect_get_dependencies()
+            .times(3)
+            .returning(|_| Ok(Some(HashSet::from(["test".to_owned()]))));
+        manifest_mock
+            .expect_cual_for_node()
+            .times(3)
+            .returning(|_| Ok(Cual::new("cual".to_owned())));
+        manifest_mock.expect_get_nodes().times(1).returning(|| {
+            Ok(HashMap::from([
+                (
+                    "".to_owned(),
+                    DbtNode::ModelNode(DbtModelNode {
+                        materialized_as: AssetType::DBView,
+                        ..Default::default()
+                    }),
+                ),
+                (
+                    "test".to_owned(),
+                    DbtNode::ModelNode(DbtModelNode {
+                        materialized_as: AssetType::DBView,
+                        name: "test".to_owned(),
+                        ..Default::default()
+                    }),
+                ),
+                (
+                    "test2".to_owned(),
+                    DbtNode::SourceNode(DbtSourceNode {
+                        name: "test2".to_owned(),
+                        database: "test2db".to_owned(),
+                        schema: "test2schema".to_owned(),
+                        ..Default::default()
+                    }),
+                ),
+            ]))
+        });
+        let mut connector =
+            DbtConnector::new_with_manifest(manifest_mock).context("creating connector")?;
+
+        let mut assets = connector.get_data().await.assets;
+        dbg!(&assets);
+        assert_eq!(
+            assets.sort(),
+            vec![
+                Asset {
+                    cual: Cual::new("snowflake:////".to_owned()),
+                    name: "".to_owned(),
+                    asset_type: AssetType::DBView,
+                    metadata: HashMap::from([("enabled".to_owned(), "false".to_owned())]),
+                    governed_by: HashSet::new(),
+                    child_of: HashSet::new(),
+                    parent_of: HashSet::new(),
+                    derived_from: HashSet::new(),
+                    derived_to: HashSet::from(["".to_owned()]),
+                    tagged_as: HashSet::new()
+                },
+                Asset {
+                    cual: Cual::new("snowflake:////test".to_owned()),
+                    name: "test".to_owned(),
+                    asset_type: AssetType::DBView,
+                    metadata: HashMap::from([("enabled".to_owned(), "false".to_owned())]),
+                    governed_by: HashSet::new(),
+                    child_of: HashSet::new(),
+                    parent_of: HashSet::new(),
+                    derived_from: HashSet::new(),
+                    derived_to: HashSet::from(["".to_owned()]),
+                    tagged_as: HashSet::new()
+                },
+                Asset {
+                    cual: Cual::new("snowflake://test2db/test2schema/test2".to_owned()),
+                    name: "test2".to_owned(),
+                    asset_type: AssetType::DBView,
+                    metadata: HashMap::from([("enabled".to_owned(), "false".to_owned())]),
+                    governed_by: HashSet::new(),
+                    child_of: HashSet::new(),
+                    parent_of: HashSet::new(),
+                    derived_from: HashSet::new(),
+                    derived_to: HashSet::from(["".to_owned()]),
+                    tagged_as: HashSet::new()
+                },
+            ]
+            .sort(),
         );
         Ok(())
     }

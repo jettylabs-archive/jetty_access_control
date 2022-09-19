@@ -7,6 +7,18 @@ use crate::manifest::node::{DbtModelNode, DbtNode, DbtSourceNode};
 
 const SNOW_NAMESPACE: &str = "snowflake";
 
+macro_rules! cual {
+    ($db:expr) => {
+        Cual::new(format!("{}://{}", "snowflake", $db))
+    };
+    ($db:expr, $schema:expr) => {
+        Cual::new(format!("{}://{}/{}", "snowflake", $db, $schema))
+    };
+    ($db:expr, $schema:expr, $table:expr) => {
+        Cual::new(format!("{}://{}/{}/{}", "snowflake", $db, $schema, $table))
+    };
+}
+
 impl Cualable for DbtNode {
     fn cual(&self) -> Cual {
         match self {
@@ -16,24 +28,12 @@ impl Cualable for DbtNode {
                 database,
                 schema,
                 materialized_as: _,
-            }) => Cual::new(format!(
-                "{}://{}/{}/{}",
-                SNOW_NAMESPACE,
-                database.to_owned(),
-                schema.to_owned(),
-                name.to_owned()
-            )),
+            }) => cual!(database.to_owned(), schema.to_owned(), name.to_owned()),
             DbtNode::SourceNode(DbtSourceNode {
                 name,
                 database,
                 schema,
-            }) => Cual::new(format!(
-                "{}://{}/{}/{}",
-                SNOW_NAMESPACE,
-                database.to_owned(),
-                schema.to_owned(),
-                name.to_owned()
-            )),
+            }) => cual!(database.to_owned(), schema.to_owned(), name.to_owned()),
         }
     }
 }
@@ -44,13 +44,11 @@ impl Cualable for DbtModelNode {
         // warehouse-specific CUAL.
         // Otherwise, it gets a dbt CUAL.
         match self.materialized_as {
-            AssetType::DBTable | AssetType::DBView => Cual::new(format!(
-                "{}://{}/{}/{}",
-                SNOW_NAMESPACE,
+            AssetType::DBTable | AssetType::DBView => cual!(
                 self.database.to_owned(),
                 self.schema.to_owned(),
                 self.name.to_owned()
-            )),
+            ),
             // Every model that gets passed in here should be materialized
             // as a table or view.
             _ => panic!(
@@ -65,10 +63,7 @@ impl Cualable for DbtSourceNode {
     fn cual(&self) -> Cual {
         // Sources come from the db. Create the CUAL to correspond to
         // the origin datastore.
-        Cual::new(format!(
-            "snowflake://{}/{}/{}",
-            self.database, self.schema, self.name
-        ))
+        cual!(self.database, self.schema, self.name)
     }
 }
 
