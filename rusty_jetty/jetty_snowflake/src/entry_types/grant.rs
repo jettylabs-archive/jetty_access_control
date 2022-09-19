@@ -40,7 +40,7 @@ impl Grant for GrantType {
     fn privilege<'a>(&'a self) -> &'a str {
         match self {
             GrantType::Standard(s) => s.privilege(),
-            GrantType::Future(f) => f.role_name(),
+            GrantType::Future(f) => f.privilege(),
         }
     }
 
