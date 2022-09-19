@@ -31,10 +31,12 @@ fn get_relation_type(node: &serde_json::Value) -> Result<LoadSqlType> {
 }
 
 impl FlowDoc {
+    #[allow(dead_code)]
     fn new(data: String) -> Result<Self> {
         serde_json::from_str::<FlowDoc>(&data).context("parsing flow document")
     }
 
+    #[allow(dead_code)]
     fn parse(&self, coord: &Coordinator) -> (HashSet<String>, HashSet<String>) {
         let mut input_cuals: HashSet<String> = HashSet::new();
         let mut output_cuals: HashSet<String> = HashSet::new();

@@ -1,7 +1,4 @@
-use std::{
-    collections::{HashMap},
-    fs, io,
-};
+use std::{collections::HashMap, fs, io};
 
 use anyhow::{Context, Result};
 use futures::StreamExt;
@@ -47,11 +44,11 @@ impl Coordinator {
         }
     }
 
+    #[allow(dead_code)]
     pub(crate) async fn update_env(&mut self) -> Result<()> {
         let datasources = nodes::datasource::get_basic_datasources(&self.rest_client).await?;
 
         let projects = nodes::project::get_basic_projects(&self.rest_client).await?;
-        dbg!(&projects);
 
         // just for testing
         self.env.datasources = datasources;
@@ -78,8 +75,14 @@ impl Coordinator {
         }
 
         // now update datasources as needed
-        return Ok(());
-        todo!()
+
+        nodes::view::get_basic_views(&self.rest_client).await?;
+        nodes::user::get_basic_users(&self.rest_client).await?;
+        nodes::metric::get_basic_metrics(&self.rest_client).await?;
+        nodes::lens::get_basic_lenses(&self.rest_client).await?;
+        nodes::flow::get_basic_flows(&self.rest_client).await?;
+
+        todo!();
     }
 
     /// Get datasources for a single workbook by pulling from the saved environment or
@@ -128,7 +131,10 @@ impl Coordinator {
     }
 
     /// If we already have up-to-date datasource info saved, get that.
-    fn get_datasource_from_env(&self, _datasource: &nodes::Datasource) -> Option<nodes::Datasource> {
+    fn get_datasource_from_env(
+        &self,
+        _datasource: &nodes::Datasource,
+    ) -> Option<nodes::Datasource> {
         todo!()
     }
 
