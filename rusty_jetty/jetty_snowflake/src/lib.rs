@@ -299,39 +299,6 @@ impl SnowflakeConnector {
             .collect())
     }
 
-    /// When we read, a policy will get created for each unique
-    /// role/user, asset combination. All privileges will be bunched together
-    /// for that combination.
-    fn grant_to_policy<T>(&self, asset_name: &str, grants: &HashSet<T>) -> Option<nodes::Policy>
-    where
-        T: Grant,
-    {
-        if grants.is_empty() {
-            // No privileges.
-            return None;
-        }
-        let privileges: Vec<String> = grants.iter().map(|g| g.privilege().to_owned()).collect();
-        // The role should be the same for all elements, so just grab t from
-        // the first one.
-        let role_name = grants.clone().iter().next().unwrap().role_name();
-        let cual =
-            cual_from_snowflake_obj_name(&grants.iter().next().unwrap().granted_on_name()).unwrap();
-        Some(nodes::Policy::new(
-            format!("snowflake.{}.{}", privileges.join("."), role_name,),
-            privileges.iter().cloned().collect(),
-            // Unwrap here is fine since we asserted that the set was not empty above.
-            // TODO: make these CUALs
-            HashSet::from([cual.uri()]),
-            HashSet::new(),
-            HashSet::from([role_name.to_owned()]),
-            // No direct user grants in Snowflake. Grants must pass through roles.
-            HashSet::new(),
-            // Defaults here for data read from Snowflake should be false.
-            false,
-            false,
-        ))
-    }
-
     async fn grants_to_policies(&self, grants: &Vec<GrantType>) -> Vec<Option<nodes::Policy>> {
         grants
             .iter()
@@ -350,7 +317,23 @@ impl SnowflakeConnector {
                 },
             )
             .iter()
-            .map(|(asset_name, grants)| self.grant_to_policy(&asset_name, grants))
+            .map(|(_asset_name, grants)| {
+                // When we read, a policy will get created for each unique
+                // role/user, asset combination. All privileges will be bunched together
+                // for that combination.
+                if grants.is_empty() {
+                    // No privileges.
+                    return None;
+                }
+                // Each set of grants should be exactly the same except for privileges.
+                // We will take the first one...
+                let final_grant = grants.iter().cloned().next().unwrap();
+                // ...and now we'll combine all of the privileges from the
+                // grants into one policy.
+                let privileges: HashSet<String> =
+                    grants.iter().map(|g| g.privilege().to_owned()).collect();
+                Some(final_grant.into_policy(privileges))
+            })
             .collect::<Vec<_>>()
     }
 
