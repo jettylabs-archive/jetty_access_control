@@ -1,5 +1,8 @@
 //! Nodes to be recieved from connectors
-use std::collections::{HashMap, HashSet};
+use std::{
+    cmp::Ordering,
+    collections::{HashMap, HashSet},
+};
 
 use derivative::Derivative;
 
@@ -87,6 +90,18 @@ pub struct Asset {
     pub derived_to: HashSet<String>,
     /// IDs of tags associated with this asset
     pub tagged_as: HashSet<String>,
+}
+
+impl Ord for Asset {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.cual.uri().cmp(&other.cual.uri())
+    }
+}
+
+impl PartialOrd for Asset {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 /// Struct used to populate tag nodes and edges in the graph

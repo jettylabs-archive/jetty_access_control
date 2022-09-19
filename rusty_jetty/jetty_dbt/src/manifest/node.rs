@@ -16,7 +16,7 @@ pub(crate) enum DbtNode {
 }
 
 /// A node within Dbt that represents a data source.
-#[derive(Clone, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Default, Clone, Deserialize, PartialEq, Eq, Hash)]
 pub(crate) struct DbtSourceNode {
     pub(crate) name: String,
     pub(crate) database: String,
