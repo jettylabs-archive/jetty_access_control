@@ -32,7 +32,7 @@ impl Workbook {
     }
     pub(crate) async fn update_embedded_datasources(
         &mut self,
-        client: rest::TableauRestClient,
+        _client: rest::TableauRestClient,
     ) -> Result<()> {
         // download the workbook
         // get the datasources

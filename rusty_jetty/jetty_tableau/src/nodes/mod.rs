@@ -135,7 +135,7 @@ impl SerializedPermission {
     /// when representing the Tableau environment
     pub(crate) fn to_permission(self) -> Permission {
         let mut grantee_value = Grantee::Group { id: "".to_owned() };
-        if let Some(IdField { id: id }) = self.group {
+        if let Some(IdField { id }) = self.group {
             grantee_value = Grantee::Group { id }
         } else {
             grantee_value = Grantee::User {

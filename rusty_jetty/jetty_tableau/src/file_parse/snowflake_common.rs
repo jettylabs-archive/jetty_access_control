@@ -156,7 +156,7 @@ pub(super) fn try_snowflake_table(node: &roxmltree::Node) -> Option<SnowflakeTab
 mod tests {
     use super::*;
     use anyhow::Result;
-    use std::fs;
+    
 
     #[test]
     fn table_to_cuals_correctly() -> Result<()> {

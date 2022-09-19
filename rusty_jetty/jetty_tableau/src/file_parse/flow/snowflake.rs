@@ -1,10 +1,10 @@
 use std::collections::{HashMap, HashSet};
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result};
 use serde::Deserialize;
 
 use super::FlowDoc;
-use crate::file_parse::snowflake_common;
+
 
 #[derive(Deserialize)]
 struct ConnectionAttributes {

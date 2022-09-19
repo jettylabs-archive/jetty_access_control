@@ -36,7 +36,7 @@ impl TableauRestClient {
     }
 
     pub(crate) fn new_dummy() -> Self {
-        let mut tc = TableauRestClient {
+        let tc = TableauRestClient {
             credentials: TableauCredentials {
                 server_name: "dummy-server".to_owned(),
                 site_name: "dummy-site".to_owned(),

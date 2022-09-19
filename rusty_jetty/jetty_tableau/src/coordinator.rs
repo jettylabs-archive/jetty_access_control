@@ -1,13 +1,13 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{HashMap},
     fs, io,
 };
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 use futures::StreamExt;
 use serde::Deserialize;
 
-use crate::nodes::{self, datasource};
+use crate::nodes::{self};
 use crate::rest;
 use crate::TableauCredentials;
 
@@ -128,14 +128,14 @@ impl Coordinator {
     }
 
     /// If we already have up-to-date datasource info saved, get that.
-    fn get_datasource_from_env(&self, datasource: &nodes::Datasource) -> Option<nodes::Datasource> {
+    fn get_datasource_from_env(&self, _datasource: &nodes::Datasource) -> Option<nodes::Datasource> {
         todo!()
     }
 
     /// Get up-to-date datasource info
     async fn get_datasource_details(
         &self,
-        datasource: nodes::Datasource,
+        _datasource: nodes::Datasource,
     ) -> Result<nodes::Datasource> {
         todo!()
     }
