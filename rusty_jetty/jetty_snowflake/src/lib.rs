@@ -198,7 +198,7 @@ impl SnowflakeConnector {
     pub async fn get_future_grants_on_db(&self, db_name: &str) -> Result<Vec<FutureGrant>> {
         let query = format!("SHOW FUTURE GRANTS IN DATABASE {}", db_name);
         self.query_to_obj(&query).await.context(format!(
-            "failed to get future grants on db {} for query {}",
+            "failed to get future grants on db {}; query: {}",
             db_name, query
         ))
     }
@@ -303,7 +303,7 @@ impl SnowflakeConnector {
         grants
             .iter()
             .filter(|g| consts::ASSET_TYPES.contains(&g.granted_on()))
-            // Collect roles by asset name so the policy:asset ratio is 1:1.
+            // Collect roles by asset name so the role:asset ratio is 1:1.
             .fold(
                 HashMap::new(),
                 |mut asset_map: HashMap<String, HashSet<GrantType>>, g| {
@@ -375,8 +375,7 @@ impl SnowflakeConnector {
         let res = res
             .iter()
             // TODO: This is disgusting, we should fix it.
-            .filter(|x| x.is_some())
-            .map(|x| x.as_ref().unwrap())
+            .filter_map(|x| x.as_ref())
             .cloned()
             .collect();
         Ok(res)

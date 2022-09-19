@@ -46,7 +46,7 @@ impl Grant for GrantType {
     fn privilege<'a>(&'a self) -> &'a str {
         match self {
             GrantType::Standard(s) => s.privilege(),
-            GrantType::Future(f) => f.role_name(),
+            GrantType::Future(f) => f.privilege(),
         }
     }
 
@@ -113,7 +113,7 @@ impl Grant for StandardGrant {
             // No direct user grants in Snowflake. Grants must pass through roles.
             HashSet::new(),
             // Defaults here for data read from Snowflake should be false.
-            true,
+            false,
             false,
         )
     }
