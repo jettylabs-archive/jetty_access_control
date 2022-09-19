@@ -162,7 +162,7 @@ mod tests {
     fn table_to_cuals_correctly() -> Result<()> {
         let connections = HashMap::from([(
             "connection_name".to_owned(),
-            crate::xml_parse::NamedConnection::Snowflake(super::SnowflakeConnectionInfo {
+            crate::file_parse::NamedConnection::Snowflake(super::SnowflakeConnectionInfo {
                 name: "connection_name".to_owned(),
                 db: "MY_DB".to_owned(),
                 server: "HereSaTest.snowflakecomputing.com".to_owned(),

@@ -281,14 +281,14 @@ mod snowflake {
         let table_info: TableInfo = serde_json::from_value(node.to_owned())?;
         let server = get_server_info(doc, &table_info.connection_id)?;
 
-        let snowflake_table = crate::xml_parse::snowflake::SnowflakeTableInfo {
+        let snowflake_table = crate::file_parse::snowflake::SnowflakeTableInfo {
             table: table_info.relation.table,
             connection: table_info.connection_id.to_owned(),
         };
         let connections = HashMap::from([(
             table_info.connection_id.to_owned(),
-            crate::xml_parse::NamedConnection::Snowflake(
-                crate::xml_parse::snowflake::SnowflakeConnectionInfo {
+            crate::file_parse::NamedConnection::Snowflake(
+                crate::file_parse::snowflake::SnowflakeConnectionInfo {
                     name: table_info.connection_id,
                     db: table_info.connection_attributes.dbname,
                     server,
@@ -339,14 +339,14 @@ mod snowflake {
             table = table.trim_matches('`').to_owned();
         }
 
-        let snowflake_table = crate::xml_parse::snowflake::SnowflakeTableInfo {
+        let snowflake_table = crate::file_parse::snowflake::SnowflakeTableInfo {
             table,
             connection: table_info.connection_id.to_owned(),
         };
         let connections = HashMap::from([(
             table_info.connection_id.to_owned(),
-            crate::xml_parse::NamedConnection::Snowflake(
-                crate::xml_parse::snowflake::SnowflakeConnectionInfo {
+            crate::file_parse::NamedConnection::Snowflake(
+                crate::file_parse::snowflake::SnowflakeConnectionInfo {
                     name: table_info.connection_id,
                     db: table_info.attributes.dbname,
                     server,
@@ -383,14 +383,14 @@ mod snowflake {
         let table_info: QueryInfo = serde_json::from_value(node.to_owned())?;
         let server = get_server_info(doc, &table_info.connection_id)?;
 
-        let snowflake_table = crate::xml_parse::snowflake::SnowflakeQueryInfo {
+        let snowflake_table = crate::file_parse::snowflake::SnowflakeQueryInfo {
             query: table_info.relation.query,
             connection: table_info.connection_id.to_owned(),
         };
         let connections = HashMap::from([(
             table_info.connection_id.to_owned(),
-            crate::xml_parse::NamedConnection::Snowflake(
-                crate::xml_parse::snowflake::SnowflakeConnectionInfo {
+            crate::file_parse::NamedConnection::Snowflake(
+                crate::file_parse::snowflake::SnowflakeConnectionInfo {
                     name: table_info.connection_id,
                     db: table_info.connection_attributes.dbname,
                     server,
