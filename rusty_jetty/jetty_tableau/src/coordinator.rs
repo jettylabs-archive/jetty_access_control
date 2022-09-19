@@ -40,6 +40,13 @@ impl Coordinator {
         }
     }
 
+    pub(crate) fn new_dummy() -> Self {
+        Coordinator {
+            env: read_environment_assets().unwrap_or_default(),
+            rest_client: rest::TableauRestClient::new_dummy(),
+        }
+    }
+
     pub(crate) async fn update_env(&mut self) -> Result<()> {
         let datasources = nodes::datasource::get_basic_datasources(&self.rest_client).await?;
 

@@ -34,6 +34,22 @@ impl TableauRestClient {
         tc.fetch_token_and_site_id().await.unwrap();
         tc
     }
+
+    pub(crate) fn new_dummy() -> Self {
+        let mut tc = TableauRestClient {
+            credentials: TableauCredentials {
+                server_name: "dummy-server".to_owned(),
+                site_name: "dummy-site".to_owned(),
+                ..Default::default()
+            },
+            http_client: reqwest::Client::builder().gzip(true).build().unwrap(),
+            token: None,
+            site_id: None,
+            api_version: "3.16".to_owned(),
+        };
+        tc
+    }
+
     pub(crate) fn get_cual_prefix(&self) -> String {
         format!(
             "tableau://{}/{}",

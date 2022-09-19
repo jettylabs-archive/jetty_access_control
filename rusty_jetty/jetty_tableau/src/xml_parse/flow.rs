@@ -33,33 +33,69 @@ impl FlowDoc {
         serde_json::from_str::<FlowDoc>(&data).context("parsing flow document")
     }
 
-    fn parse(&self, coord: &Coordinator) {
-        let input_cuals: HashSet<String> = HashSet::new();
-        let output_cuals: HashSet<String> = HashSet::new();
+    fn parse(&self, coord: &Coordinator) -> (HashSet<String>, HashSet<String>) {
+        let mut input_cuals: HashSet<String> = HashSet::new();
+        let mut output_cuals: HashSet<String> = HashSet::new();
 
         for (_, node) in &self.nodes {
             if let Some(node_type) = node.get("nodeType").and_then(|v| v.as_str()) {
                 match node_type {
                     // Input nodes
                     ".v1.LoadSql" => {
-                        dbg!(self.handle_load_sql(node));
+                        self.handle_load_sql(node).map_or_else(
+                            |e| {
+                                println!(
+                                    "skipping data input source of type: {}\nerror: {}",
+                                    node_type, e
+                                )
+                            },
+                            |v| input_cuals.extend(v),
+                        );
                     }
                     ".v2019_3_1.LoadSqlProxy" => {
-                        dbg!(self.handle_load_sql_proxy(node, &coord.env, &coord.rest_client));
+                        self.handle_load_sql_proxy(node, &coord.env, &coord.rest_client)
+                            .map_or_else(
+                                |e| {
+                                    println!(
+                                        "skipping data input source of type: {}\nerror: {}",
+                                        node_type, e
+                                    )
+                                },
+                                |v| input_cuals.extend(v),
+                            );
                     }
                     // Output nodes
                     ".v1.PublishExtract" => {
-                        dbg!(self.handle_publish_extract(node, &coord.env, &coord.rest_client));
+                        self.handle_publish_extract(node, &coord.env, &coord.rest_client)
+                            .map_or_else(
+                                |e| {
+                                    println!(
+                                        "skipping data output destination of type: {}\nerror: {}",
+                                        node_type, e
+                                    )
+                                },
+                                |v| output_cuals.extend(v),
+                            );
                     }
                     ".v2020_3_1.WriteToDatabase" => {
-                        dbg!(self.handle_write_to_database(node));
+                        self.handle_write_to_database(node).map_or_else(
+                            |e| {
+                                println!(
+                                    "skipping data output destination of type: {}\nerror: {}",
+                                    node_type, e
+                                )
+                            },
+                            |v| output_cuals.extend(v),
+                        );
                     }
-                    o => println!("got another type {}", o),
+                    o => println!("ignoring node of type: {}", o),
                 }
             } else {
                 println!("unable to get nodeType for a node")
             }
         }
+
+        (input_cuals, output_cuals)
     }
 
     fn handle_load_sql(&self, node: &serde_json::Value) -> Result<HashSet<String>> {
@@ -293,7 +329,6 @@ mod snowflake {
         let mut table = table_info.attributes.tablename;
         // Fix up the table name:
         if table.starts_with('"') {
-            println!("got here - quotes");
             table = table.trim_matches('"').to_owned();
         } else if table.starts_with("'") {
             table = table.trim_matches('\'').to_owned();
@@ -371,26 +406,135 @@ mod snowflake {
 
 #[cfg(test)]
 mod test {
-    use std::fs;
+    use std::{
+        collections::{HashMap, HashSet},
+        fs,
+    };
 
     use anyhow::Result;
 
-    #[tokio::test]
-    async fn new_parse_flow_works() -> Result<()> {
+    use crate::nodes::{Datasource, Project};
+
+    #[test]
+    fn new_parse_flow_works() -> Result<()> {
         let data = fs::read_to_string("test_data/flow2".to_owned()).unwrap();
 
-        let mut coord = crate::coordinator::Coordinator::new(crate::TableauCredentials {
-            username: "isaac@get-jetty.com".to_owned(),
-            password: "<dang. committed it again...>".to_owned(),
-            server_name: "10ax.online.tableau.com".to_owned(),
-            site_name: "jettydev".to_owned(),
-        })
-        .await;
+        let mut coord = crate::coordinator::Coordinator::new_dummy();
 
-        coord.update_env().await?;
+        coord.env.projects = HashMap::from([
+            (
+                "81db10c8-1c14-462f-996f-4bff60f982fa".to_owned(),
+                Project {
+                    id: "81db10c8-1c14-462f-996f-4bff60f982fa".to_owned(),
+                    name: "Isaac's Project".to_owned(),
+                    ..Default::default()
+                },
+            ),
+            (
+                "c585b0f7-fc43-4d0a-8942-12adf443ee98".to_owned(),
+                Project {
+                    id: "c585b0f7-fc43-4d0a-8942-12adf443ee98".to_owned(),
+                    name: "Isaac's Project".to_owned(),
+                    ..Default::default()
+                },
+            ),
+            (
+                "c9726ebd-9c86-4169-83de-5872354edc8c".to_owned(),
+                Project {
+                    id: "c9726ebd-9c86-4169-83de-5872354edc8c".to_owned(),
+                    name: "Samples".to_owned(),
+                    ..Default::default()
+                },
+            ),
+        ]);
+
+        coord.env.datasources = HashMap::from([
+            (
+                "a27d260d-9ff9-4707-82fd-e66cda23275d".to_owned(),
+                Datasource {
+                    id: "a27d260d-9ff9-4707-82fd-e66cda23275d".to_owned(),
+                    name: "Output With Custom Query".to_owned(),
+                    project_id: "c585b0f7-fc43-4d0a-8942-12adf443ee98".to_owned(),
+                    ..Default::default()
+                },
+            ),
+            (
+                "5f6df88d-aeb2-4551-a4c1-e326a45f4b91".to_owned(),
+                Datasource {
+                    id: "5f6df88d-aeb2-4551-a4c1-e326a45f4b91".to_owned(),
+                    name: "Just sql - different db".to_owned(),
+                    project_id: "c585b0f7-fc43-4d0a-8942-12adf443ee98".to_owned(),
+                    ..Default::default()
+                },
+            ),
+            (
+                "d99c9c85-a525-4cce-beaa-7ebcda1ea577".to_owned(),
+                Datasource {
+                    id: "d99c9c85-a525-4cce-beaa-7ebcda1ea577".to_owned(),
+                    name: "multi-connection".to_owned(),
+                    project_id: "c585b0f7-fc43-4d0a-8942-12adf443ee98".to_owned(),
+                    ..Default::default()
+                },
+            ),
+            (
+                "6df04a18-19a6-4012-8a83-c2b33a8d1907".to_owned(),
+                Datasource {
+                    id: "6df04a18-19a6-4012-8a83-c2b33a8d1907".to_owned(),
+                    name: "Test Flow Output".to_owned(),
+                    project_id: "c585b0f7-fc43-4d0a-8942-12adf443ee98".to_owned(),
+                    ..Default::default()
+                },
+            ),
+            (
+                "de1c1844-2ce6-480d-8016-afc7be49827e".to_owned(),
+                Datasource {
+                    id: "de1c1844-2ce6-480d-8016-afc7be49827e".to_owned(),
+                    name: "Output 4 - Table".to_owned(),
+                    project_id: "c585b0f7-fc43-4d0a-8942-12adf443ee98".to_owned(),
+                    ..Default::default()
+                },
+            ),
+            (
+                "91dae170-0191-4dba-8cef-5eda957bf122".to_owned(),
+                Datasource {
+                    id: "91dae170-0191-4dba-8cef-5eda957bf122".to_owned(),
+                    name: "Output 3".to_owned(),
+                    project_id: "c585b0f7-fc43-4d0a-8942-12adf443ee98".to_owned(),
+                    ..Default::default()
+                },
+            ),
+        ]);
 
         let doc = super::FlowDoc::new(data).unwrap();
-        doc.parse(&coord);
+        let (input_cuals, output_cuals) = doc.parse(&coord);
+        assert_eq!(input_cuals,
+            [
+                "tableau://dummy-server/dummy-site/datasource/d99c9c85-a525-4cce-beaa-7ebcda1ea577".to_owned(),
+                "snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/GOLD/IRIS_JOINED_TABLE".to_owned(),
+                "snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/SILVER/SILVER_ADULT_AGGREGATED_VIEW".to_owned(),
+                "snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/GOLD/ADULT_AGGREGATED_VIEW".to_owned(),
+                "tableau://dummy-server/dummy-site/datasource/5f6df88d-aeb2-4551-a4c1-e326a45f4b91".to_owned(),
+                "snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/GOLD/IRIS_JOINED_VIEW".to_owned(),
+                "snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/GOLD/ADULT_AGGREGATED_TABLE".to_owned(),
+            ]
+        .into_iter()
+        .map(|v| v.to_owned())
+        .collect::<HashSet<String>>());
+
+        assert_eq!(
+            output_cuals,
+            [
+                "tableau://dummy-server/dummy-site/datasource/6df04a18-19a6-4012-8a83-c2b33a8d1907",
+                "tableau://dummy-server/dummy-site/datasource/91dae170-0191-4dba-8cef-5eda957bf122",
+                "tableau://dummy-server/dummy-site/datasource/de1c1844-2ce6-480d-8016-afc7be49827e",
+                "snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/GOLD/tableau_special",
+                "snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/RAW/Special%20Name",
+                "tableau://dummy-server/dummy-site/datasource/a27d260d-9ff9-4707-82fd-e66cda23275d",
+            ]
+            .into_iter()
+            .map(|v| v.to_owned())
+            .collect::<HashSet<String>>()
+        );
 
         Ok(())
     }
