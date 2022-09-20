@@ -1,6 +1,10 @@
+use std::collections::HashSet;
+use std::ops::IndexMut;
 use std::{collections::HashMap, fs, io};
 
 use anyhow::{Context, Result};
+use async_trait::async_trait;
+use futures::join;
 use futures::StreamExt;
 use serde::Deserialize;
 
@@ -21,6 +25,18 @@ pub(crate) struct Environment {
     pub workbooks: HashMap<String, nodes::Workbook>,
 }
 
+#[async_trait]
+pub(crate) trait HasSources {
+    fn id(&self) -> &String;
+    fn name(&self) -> &String;
+    fn updated_at(&self) -> &String;
+    fn sources(&self) -> (HashSet<String>, HashSet<String>);
+    async fn fetch_sources(
+        &self,
+        client: &rest::TableauRestClient,
+    ) -> Result<(HashSet<String>, HashSet<String>)>;
+    fn set_sources(&mut self, sources: (HashSet<String>, HashSet<String>));
+}
 #[derive(Default)]
 pub(crate) struct Coordinator {
     pub(crate) env: Environment,
@@ -47,98 +63,109 @@ impl Coordinator {
 
     #[allow(dead_code)]
     pub(crate) async fn update_env(&mut self) -> Result<()> {
-        let datasources = nodes::datasource::get_basic_datasources(&self.rest_client).await?;
+        // Fetch all the basic resources. Make them into an iterable to make it easier to run concurrently
+        let resources = join!(
+            nodes::datasource::get_basic_datasources(&self.rest_client),
+            nodes::project::get_basic_projects(&self.rest_client),
+            nodes::workbook::get_basic_workbooks(&self.rest_client),
+            nodes::view::get_basic_views(&self.rest_client),
+            nodes::user::get_basic_users(&self.rest_client),
+            nodes::group::get_basic_groups(&self.rest_client),
+            nodes::metric::get_basic_metrics(&self.rest_client),
+            nodes::lens::get_basic_lenses(&self.rest_client),
+            nodes::flow::get_basic_flows(&self.rest_client),
+        );
 
-        let projects = nodes::project::get_basic_projects(&self.rest_client).await?;
+        let mut new_env = Environment {
+            users: resources.4.unwrap_or_else(|e| {
+                println!("unable to fetch users: {}", e);
+                Default::default()
+            }),
+            projects: resources.1.unwrap_or_else(|e| {
+                println!("unable to fetch projects: {}", e);
+                Default::default()
+            }),
+            datasources: resources.0.unwrap_or_else(|e| {
+                println!("unable to fetch datasources: {}", e);
+                Default::default()
+            }),
+            flows: resources.8.unwrap_or_else(|e| {
+                println!("unable to fetch flows: {}", e);
+                Default::default()
+            }),
+            lenses: resources.7.unwrap_or_else(|e| {
+                println!("unable to fetch lenses: {}", e);
+                Default::default()
+            }),
+            metrics: resources.6.unwrap_or_else(|e| {
+                println!("unable to fetch metrics: {}", e);
+                Default::default()
+            }),
+            views: resources.3.unwrap_or_else(|e| {
+                println!("unable to fetch views: {}", e);
+                Default::default()
+            }),
+            workbooks: resources.2.unwrap_or_else(|e| {
+                println!("unable to fetch workbooks: {}", e);
+                Default::default()
+            }),
+            groups: resources.5.unwrap_or_else(|e| {
+                println!("unable to fetch groups: {}", e);
+                Default::default()
+            }),
+        };
 
-        // just for testing
-        self.env.datasources = datasources;
-        self.env.projects = projects;
+        // Now, make sure that assets sources are all up to date
+        // Datasources
+        let mut datasources_vec = new_env.datasources.values_mut().collect::<Vec<_>>();
 
-        // Get workbook basics
-        let mut workbooks = nodes::workbook::get_basic_workbooks(&self.rest_client).await?;
-
-        // for each workbook, get the datasources
         let fetches = futures::stream::iter(
-            workbooks
+            datasources_vec
                 .iter_mut()
-                .map(|(_, w)| self.get_workbook_datasources(w)),
+                .map(|d| self.get_sources(&self.env.datasources, d)),
         )
         .buffer_unordered(30)
         .collect::<Vec<_>>();
-        let datasource_vectors = fetches.await.into_iter().collect::<Result<Vec<_>>>()?;
 
-        // update datasources with datasources from workbooks
-        for v in datasource_vectors {
-            for d in v {
-                self.env.datasources.entry(d.id.to_owned()).or_insert(d);
+        let datasource_sources = fetches.await;
+
+        Self::update_sources(&mut datasources_vec, datasource_sources);
+
+        // Workbooks
+
+        Ok(())
+    }
+
+    fn update_sources<T: HasSources>(
+        env_assets: &mut Vec<&mut T>,
+        new_sources: Vec<Result<(HashSet<String>, HashSet<String>)>>,
+    ) {
+        for i in 0..env_assets.len() {
+            match &new_sources[i] {
+                Ok(sources) => {
+                    env_assets.index_mut(i).set_sources(sources.to_owned());
+                }
+                Err(e) => println!(
+                    "unable to get sources for datasource {}: {}",
+                    env_assets[i].name(),
+                    e
+                ),
             }
         }
-
-        // now update datasources as needed
-
-        nodes::view::get_basic_views(&self.rest_client).await?;
-        nodes::user::get_basic_users(&self.rest_client).await?;
-        nodes::metric::get_basic_metrics(&self.rest_client).await?;
-        nodes::lens::get_basic_lenses(&self.rest_client).await?;
-        nodes::flow::get_basic_flows(&self.rest_client).await?;
-
-        todo!();
     }
 
-    /// Get datasources for a single workbook by pulling from the saved environment or
-    /// fetching from Tableau (if necessary). Returns an result wrapping an updated
-    /// vector of datasources.
-    async fn get_workbook_datasources(
+    async fn get_sources<T: HasSources>(
         &self,
-        wbook: &mut nodes::Workbook,
-    ) -> Result<Vec<nodes::Datasource>> {
-        if let Some(datasources) = self.get_workbook_datasources_from_env(wbook) {
-            wbook.tableau_datasources = datasources.iter().map(|d| d.id.to_owned()).collect();
-            Ok(datasources)
-        } else {
-            let datasources = wbook.fetch_datasources().await?;
-            wbook.tableau_datasources = datasources.iter().map(|d| d.id.to_owned()).collect();
-            Ok(datasources)
+        env_assets: &HashMap<String, T>,
+        new_asset: &T,
+    ) -> Result<(HashSet<String>, HashSet<String>)> {
+        match env_assets.get(new_asset.id()) {
+            Some(old_asset) if old_asset.updated_at() == new_asset.updated_at() => Ok((
+                old_asset.sources().0.to_owned(),
+                old_asset.sources().0.to_owned(),
+            )),
+            _ => new_asset.fetch_sources(&self.rest_client).await,
         }
-    }
-
-    /// Get datasources for a single workbook from the saved environment, if appropriate,
-    /// else, return None.
-    fn get_workbook_datasources_from_env(
-        &self,
-        wbook: &nodes::Workbook,
-    ) -> Option<Vec<nodes::Datasource>> {
-        // If the workbook exists in the env and hasn't been modified, just
-        // use the datasources already defined. Otherwise, return None.
-
-        self.env.workbooks.get(&wbook.id).and_then(|env_wbook| {
-            if env_wbook.updated_at != wbook.updated_at {
-                None
-            } else {
-                env_wbook
-                    .tableau_datasources
-                    .iter()
-                    .map(|id| self.env.datasources.get(id).cloned())
-                    .collect::<Option<Vec<_>>>()
-            }
-        })
-    }
-
-    /// If we already have up-to-date datasource info saved, get that.
-    fn get_datasource_from_env(
-        &self,
-        _datasource: &nodes::Datasource,
-    ) -> Option<nodes::Datasource> {
-        todo!()
-    }
-
-    /// Get up-to-date datasource info
-    async fn get_datasource_details(
-        &self,
-        _datasource: nodes::Datasource,
-    ) -> Result<nodes::Datasource> {
-        todo!()
     }
 }
 

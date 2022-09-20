@@ -68,7 +68,7 @@ mod tests {
         let tc = crate::connector_setup()
             .await
             .context("running tableau connector setup")?;
-        let groups = get_basic_groups(&tc.env.rest_client).await?;
+        let groups = get_basic_groups(&tc.coordinator.rest_client).await?;
         for (_k, v) in groups {
             println!("{:#?}", v);
         }
@@ -80,8 +80,8 @@ mod tests {
         let tc = crate::connector_setup()
             .await
             .context("running tableau connector setup")?;
-        let mut groups = get_basic_groups(&tc.env.rest_client).await?;
-        get_group_users(&tc.env.rest_client, &mut groups).await?;
+        let mut groups = get_basic_groups(&tc.coordinator.rest_client).await?;
+        get_group_users(&tc.coordinator.rest_client, &mut groups).await?;
         for (_k, v) in groups {
             println!("{:#?}", v);
         }

@@ -30,7 +30,7 @@ impl_to_cuals!(SnowflakeTable, SnowflakeQuery);
 /// Gets cuals from an xml file by parsing the file, pulling out the relevant relations,
 /// and building an identifier from it.
 #[allow(unused)]
-pub(super) fn get_cuals_from_datasource(data: &str) -> Result<HashSet<String>> {
+pub(crate) fn parse(data: &str) -> Result<HashSet<String>> {
     let doc = roxmltree::Document::parse(data).unwrap();
 
     // filter the doc down to the connection info

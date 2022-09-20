@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use anyhow::{Context, Result};
 use serde::Deserialize;
@@ -13,16 +13,10 @@ pub(crate) struct Workbook {
     pub name: String,
     pub owner_id: String,
     pub project_id: String,
-    pub embedded_sources: Vec<EmbeddedSource>,
-    pub tableau_datasources: Vec<String>,
+    pub has_embedded_sources: bool,
+    pub sources: HashSet<String>,
     pub updated_at: String,
     pub permissions: Vec<super::Permission>,
-}
-
-#[derive(Clone, Default, Debug, Deserialize)]
-pub(crate) struct EmbeddedSource {
-    pub name: String,
-    pub derived_from: Option<Vec<String>>,
 }
 
 impl Workbook {
@@ -44,6 +38,10 @@ impl Workbook {
 impl Downloadable for Workbook {
     fn get_path(&self) -> String {
         format!("/workbooks/{}/content", &self.id)
+    }
+
+    fn match_file(name: &str) -> bool {
+        name.ends_with(".twb")
     }
 }
 
@@ -87,15 +85,8 @@ fn to_node_graphql(val: &serde_json::Value) -> Result<Workbook> {
         owner_id: workbook_info.owner.luid,
         project_id: workbook_info.project_luid,
         updated_at: workbook_info.updated_at,
-        embedded_sources: workbook_info
-            .embedded_datasources
-            .into_iter()
-            .map(|s| EmbeddedSource {
-                name: s.name,
-                derived_from: Default::default(),
-            })
-            .collect(),
-        tableau_datasources: Default::default(),
+        has_embedded_sources: workbook_info.embedded_datasources.len() > 0,
+        sources: Default::default(),
         permissions: Default::default(),
     })
 }
@@ -140,7 +131,7 @@ mod tests {
         let tc = crate::connector_setup()
             .await
             .context("running tableau connector setup")?;
-        let groups = get_basic_workbooks(&tc.env.rest_client).await?;
+        let groups = get_basic_workbooks(&tc.coordinator.rest_client).await?;
         for (_k, v) in groups {
             println!("{:#?}", v);
         }
@@ -152,10 +143,14 @@ mod tests {
         let tc = crate::connector_setup()
             .await
             .context("running tableau connector setup")?;
-        let workbooks = get_basic_workbooks(&tc.env.rest_client).await?;
+        let workbooks = get_basic_workbooks(&tc.coordinator.rest_client).await?;
 
         let test_workbook = workbooks.values().next().unwrap();
-        let x = tc.env.rest_client.download(test_workbook, true).await?;
+        let x = tc
+            .coordinator
+            .rest_client
+            .download(test_workbook, true)
+            .await?;
         println!("Downloaded {} bytes", x.len());
         Ok(())
     }
@@ -165,9 +160,9 @@ mod tests {
         let tc = crate::connector_setup()
             .await
             .context("running tableau connector setup")?;
-        let mut workbooks = get_basic_workbooks(&tc.env.rest_client).await?;
+        let mut workbooks = get_basic_workbooks(&tc.coordinator.rest_client).await?;
         for (_k, v) in &mut workbooks {
-            v.permissions = v.get_permissions(&tc.env.rest_client).await?;
+            v.permissions = v.get_permissions(&tc.coordinator.rest_client).await?;
         }
         for (_k, v) in workbooks {
             println!("{:#?}", v);

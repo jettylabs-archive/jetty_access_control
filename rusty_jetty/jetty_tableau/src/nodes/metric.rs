@@ -74,7 +74,7 @@ mod tests {
         let tc = crate::connector_setup()
             .await
             .context("running tableau connector setup")?;
-        let nodes = get_basic_metrics(&tc.env.rest_client).await?;
+        let nodes = get_basic_metrics(&tc.coordinator.rest_client).await?;
         for (_k, v) in nodes {
             println!("{:#?}", v);
         }
@@ -86,9 +86,9 @@ mod tests {
         let tc = crate::connector_setup()
             .await
             .context("running tableau connector setup")?;
-        let mut nodes = get_basic_metrics(&tc.env.rest_client).await?;
+        let mut nodes = get_basic_metrics(&tc.coordinator.rest_client).await?;
         for (_k, v) in &mut nodes {
-            v.permissions = v.get_permissions(&tc.env.rest_client).await?;
+            v.permissions = v.get_permissions(&tc.coordinator.rest_client).await?;
         }
         for (_k, v) in nodes {
             println!("{:#?}", v);
