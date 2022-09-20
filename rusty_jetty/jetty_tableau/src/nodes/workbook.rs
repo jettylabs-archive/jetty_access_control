@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use anyhow::{Context, Result};
 use serde::Deserialize;
 
-use crate::rest::{self, FetchJson};
+use crate::rest::{self, Downloadable, FetchJson};
 
 use super::FetchPermissions;
 
@@ -38,6 +38,12 @@ impl Workbook {
         // get the datasources
         // yikes...
         todo!()
+    }
+}
+
+impl Downloadable for Workbook {
+    fn get_path(&self) -> String {
+        format!("/workbooks/{}/content", &self.id)
     }
 }
 
@@ -127,7 +133,7 @@ pub(crate) async fn get_basic_workbooks(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use anyhow::{Context, Result};
+    use anyhow::{Context, Ok, Result};
 
     #[tokio::test]
     async fn test_fetching_workbooks_works() -> Result<()> {
@@ -138,6 +144,19 @@ mod tests {
         for (_k, v) in groups {
             println!("{:#?}", v);
         }
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_downloading_workbook_works() -> Result<()> {
+        let tc = crate::connector_setup()
+            .await
+            .context("running tableau connector setup")?;
+        let workbooks = get_basic_workbooks(&tc.env.rest_client).await?;
+
+        let test_workbook = workbooks.values().next().unwrap();
+        let x = tc.env.rest_client.download(test_workbook, true).await?;
+        println!("Downloaded {} bytes", x.len());
         Ok(())
     }
 

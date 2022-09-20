@@ -4,12 +4,16 @@
 use super::*;
 use anyhow::{bail, Context};
 use async_trait::async_trait;
+use bytes::Bytes;
 use serde::Serialize;
 
+pub(crate) trait Downloadable {
+    fn get_path(&self) -> String;
+}
 /// Wrapper struct for http functionality
 #[derive(Default)]
+/// The credentials used to authenticate into Snowflake.
 pub(crate) struct TableauRestClient {
-    /// The credentials used to authenticate into Snowflake.
     credentials: TableauCredentials,
     http_client: reqwest::Client,
     token: Option<String>,
@@ -33,6 +37,22 @@ impl TableauRestClient {
         };
         tc.fetch_token_and_site_id().await.unwrap();
         tc
+    }
+
+    pub(crate) async fn download<T: Downloadable>(
+        &self,
+        asset: &T,
+        exclude_extracts: bool,
+    ) -> Result<Bytes> {
+        let mut req = self
+            .build_request(asset.get_path(), None, reqwest::Method::GET)?
+            .header("Accept", "application/zip, application/octet-stream");
+
+        if exclude_extracts {
+            req = req.query(&[("includeExtract", "False")]);
+        }
+
+        req.send().await?.bytes().await.context("downloading file")
     }
 
     #[cfg(test)]
