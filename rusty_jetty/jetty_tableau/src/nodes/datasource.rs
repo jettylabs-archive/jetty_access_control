@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use anyhow::{Context, Result};
 use serde::Deserialize;
 
-use crate::rest::{self, FetchJson};
+use crate::rest::{self, Downloadable, FetchJson};
 
 use super::FetchPermissions;
 
@@ -23,6 +23,12 @@ pub(crate) struct Datasource {
 impl Datasource {
     pub(crate) fn cual_suffix(&self) -> String {
         format!("/datasource/{}", &self.id)
+    }
+}
+
+impl Downloadable for Datasource {
+    fn get_path(&self) -> String {
+        format!("/datasources/{}/content", &self.id)
     }
 }
 
@@ -86,7 +92,7 @@ mod tests {
             .await
             .context("running tableau connector setup")?;
         let nodes = get_basic_datasources(&tc.env.rest_client).await?;
-        for (_k, v) in nodes {
+        for (_, v) in nodes {
             println!("{:#?}", v);
         }
         Ok(())
@@ -98,12 +104,25 @@ mod tests {
             .await
             .context("running tableau connector setup")?;
         let mut nodes = get_basic_datasources(&tc.env.rest_client).await?;
-        for (_k, v) in &mut nodes {
+        for (_, v) in &mut nodes {
             v.permissions = v.get_permissions(&tc.env.rest_client).await?;
         }
-        for (_k, v) in nodes {
+        for (_, v) in nodes {
             println!("{:#?}", v);
         }
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_downloading_datasource_works() -> Result<()> {
+        let tc = crate::connector_setup()
+            .await
+            .context("running tableau connector setup")?;
+        let datasources = get_basic_datasources(&tc.env.rest_client).await?;
+
+        let test_datasource = datasources.values().next().unwrap();
+        let x = tc.env.rest_client.download(test_datasource, true).await?;
+        println!("Downloaded {} bytes", x.len());
         Ok(())
     }
 }

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use anyhow::{Context, Result};
 use serde::Deserialize;
 
-use crate::rest::{self, FetchJson};
+use crate::rest::{self, Downloadable, FetchJson};
 
 use super::FetchPermissions;
 
@@ -16,6 +16,12 @@ pub(crate) struct Flow {
     pub updated_at: String,
     pub datasource_connections: Vec<String>,
     pub permissions: Vec<super::Permission>,
+}
+
+impl Downloadable for Flow {
+    fn get_path(&self) -> String {
+        format!("/flows/{}/content", &self.id)
+    }
 }
 
 fn to_node(val: &serde_json::Value) -> Result<Flow> {
@@ -87,6 +93,20 @@ mod tests {
         for (_k, v) in nodes {
             println!("{:#?}", v);
         }
+        Ok(())
+    }
+
+
+    #[tokio::test]
+    async fn test_downloading_flow_works() -> Result<()> {
+        let tc = crate::connector_setup()
+            .await
+            .context("running tableau connector setup")?;
+        let flows = get_basic_flows(&tc.env.rest_client).await?;
+
+        let test_flow = flows.values().next().unwrap();
+        let x = tc.env.rest_client.download(test_flow, true).await?;
+        println!("Downloaded {} bytes", x.len());
         Ok(())
     }
 }
