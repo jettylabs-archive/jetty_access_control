@@ -92,7 +92,15 @@ impl FlowDoc {
                             |v| output_cuals.extend(v),
                         );
                     }
-                    o => println!("ignoring node of type: {}", o),
+                    o => {
+                        if let Some(base_type) = node.get("baseType").and_then(|v| v.as_str()) {
+                            match base_type {
+                                "input" => println!("ignoring input node of type: {}", o),
+                                "input" => println!("ignoring output node of type: {}", o),
+                                _ => (),
+                            }
+                        }
+                    }
                 }
             } else {
                 println!("unable to get nodeType for a node")
@@ -105,19 +113,19 @@ impl FlowDoc {
     fn handle_load_sql(&self, node: &serde_json::Value) -> Result<HashSet<String>> {
         // First check the class or type of database, and then the type of sql object.
         // From there, fetch the cuals
-        if let Ok(class) = self.get_node_connection_class(node) {
-            let cuals = match &class[..] {
-                "snowflake" => match get_relation_type(node)? {
-                    LoadSqlType::Query => snowflake::get_input_query_cuals(self, node),
-                    LoadSqlType::Table => snowflake::get_input_table_cuals(self, node),
-                }?,
-                o => bail!("we don't currently support {}", o),
-            };
+        let class = self
+            .get_node_connection_class(node)
+            .context("unable to get connection class")?;
 
-            Ok(cuals)
-        } else {
-            bail!("unable to get connection class");
-        }
+        let cuals = match &class[..] {
+            "snowflake" => match get_relation_type(node)? {
+                LoadSqlType::Query => snowflake::get_input_query_cuals(self, node),
+                LoadSqlType::Table => snowflake::get_input_table_cuals(self, node),
+            }?,
+            o => bail!("we don't currently support {}", o),
+        };
+
+        Ok(cuals)
     }
 
     fn handle_load_sql_proxy(
@@ -161,7 +169,10 @@ impl FlowDoc {
             .collect();
 
         if correct_datasource.len() != 1 {
-            bail!("unable to find linked datasource");
+            bail!(
+                "unable to find linked datasource; found {} possible matches.",
+                correct_datasource.len()
+            );
         }
 
         cuals.insert(format!(
@@ -206,9 +217,7 @@ impl FlowDoc {
         let correct_datasource: Vec<_> = env
             .datasources
             .iter()
-            .filter(|(_, v)| {
-                v.project_id.to_owned() == conn.project_luid && v.name == conn.datasource_name
-            })
+            .filter(|(_, v)| &v.project_id == &conn.project_luid && v.name == conn.datasource_name)
             .map(|(_, v)| v)
             .collect();
 

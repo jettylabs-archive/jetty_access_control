@@ -37,12 +37,13 @@ impl SnowflakeTableInfo {
 
         let name_parts = self.get_table_name_parts();
 
-        if let Ok(cual) = cual_from_name_parts(&name_parts, &conn) {
-            Ok(vec![cual])
-        } else {
-            println!("Unable to print create qual from {:#?}", name_parts);
-            Ok(vec![])
-        }
+        Ok(cual_from_name_parts(&name_parts, &conn).map_or_else(
+            |_| {
+                println!("Unable to print create qual from {:#?}", name_parts);
+                vec![]
+            },
+            |cual| vec![cual],
+        ))
     }
 
     fn get_table_name_parts(&self) -> Vec<String> {
@@ -68,11 +69,12 @@ impl SnowflakeQueryInfo {
 
         let mut cuals = Vec::new();
         for name_parts in relations {
-            if let Ok(cual) = cual_from_name_parts(&name_parts, &conn) {
-                cuals.push(cual);
-            } else {
-                println!("Unable to print create qual from {:#?}", name_parts)
-            }
+            cual_from_name_parts(&name_parts, &conn).map_or_else(
+                |_| {
+                    println!("Unable to print create qual from {:#?}", name_parts);
+                },
+                |cual| cuals.push(cual),
+            )
         }
 
         Ok(cuals)
@@ -90,17 +92,15 @@ fn cual_from_name_parts(
         "snowflake://{}",
         urlencoding::encode(&conn.server.to_lowercase())
     ];
-    let cual = if name_parts.len() == 3 {
-        format!(
+
+    let cual = match name_parts.len() {
+        3 => format!(
             "{}/{}/{}/{}",
             prefix, name_parts[0], name_parts[1], name_parts[2]
-        )
-    } else if name_parts.len() == 2 {
-        format!("{}/{}/{}/{}", prefix, conn.db, name_parts[0], name_parts[1])
-    } else if name_parts.len() == 1 {
-        format!("{}/{}/{}/{}", prefix, conn.db, conn.schema, name_parts[0])
-    } else {
-        bail!("unable to build cual")
+        ),
+        2 => format!("{}/{}/{}/{}", prefix, conn.db, name_parts[0], name_parts[1]),
+        1 => format!("{}/{}/{}/{}", prefix, conn.db, conn.schema, name_parts[0]),
+        _ => bail!("unable to build cual"),
     };
     Ok(cual)
 }
@@ -112,6 +112,7 @@ pub(super) fn try_snowflake_named_conn(node: &roxmltree::Node) -> Option<Snowfla
             return None;
         }
     } else {
+        // A node without the "name" attribute isn't a valid NamedConnection
         return None;
     }
     let connection_node = node.children().find(|n| n.has_tag_name("connection"))?;
@@ -156,7 +157,6 @@ pub(super) fn try_snowflake_table(node: &roxmltree::Node) -> Option<SnowflakeTab
 mod tests {
     use super::*;
     use anyhow::Result;
-    
 
     #[test]
     fn table_to_cuals_correctly() -> Result<()> {

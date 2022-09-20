@@ -35,6 +35,7 @@ impl TableauRestClient {
         tc
     }
 
+    #[cfg(test)]
     pub(crate) fn new_dummy() -> Self {
         let tc = TableauRestClient {
             credentials: TableauCredentials {

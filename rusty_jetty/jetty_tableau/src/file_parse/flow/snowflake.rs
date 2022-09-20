@@ -1,10 +1,9 @@
 use std::collections::{HashMap, HashSet};
 
-use anyhow::{Result};
+use anyhow::Result;
 use serde::Deserialize;
 
 use super::FlowDoc;
-
 
 #[derive(Deserialize)]
 struct ConnectionAttributes {
@@ -57,10 +56,10 @@ pub(super) fn get_input_table_cuals(
             },
         ),
     )]);
-    let mut cuals = HashSet::new();
-    cuals.extend(snowflake_table.to_cuals(&connections)?);
 
-    Ok(cuals)
+    Ok(HashSet::from_iter(
+        snowflake_table.to_cuals(&connections)?.iter().cloned(),
+    ))
 }
 
 pub(super) fn get_output_table_cuals(
@@ -81,8 +80,6 @@ pub(super) fn get_output_table_cuals(
         #[serde(rename = "connectionId")]
         connection_id: String,
     }
-
-    let mut relations = HashSet::new();
 
     let table_info: TableInfo = serde_json::from_value(node.to_owned())?;
     let server = get_server_info(doc, &table_info.connection_id)?;
@@ -116,9 +113,9 @@ pub(super) fn get_output_table_cuals(
         ),
     )]);
 
-    relations.extend(snowflake_table.to_cuals(&connections)?);
-
-    Ok(relations)
+    Ok(HashSet::from_iter(
+        snowflake_table.to_cuals(&connections)?.iter().cloned(),
+    ))
 }
 
 pub(super) fn get_input_query_cuals(

@@ -37,6 +37,7 @@ impl Coordinator {
         }
     }
 
+    #[cfg(test)]
     pub(crate) fn new_dummy() -> Self {
         Coordinator {
             env: read_environment_assets().unwrap_or_default(),
@@ -86,7 +87,8 @@ impl Coordinator {
     }
 
     /// Get datasources for a single workbook by pulling from the saved environment or
-    /// fetching from Tableau (if necessary). Returns an updated
+    /// fetching from Tableau (if necessary). Returns an result wrapping an updated
+    /// vector of datasources.
     async fn get_workbook_datasources(
         &self,
         wbook: &mut nodes::Workbook,
@@ -102,32 +104,25 @@ impl Coordinator {
     }
 
     /// Get datasources for a single workbook from the saved environment, if appropriate,
-    /// else, return None
+    /// else, return None.
     fn get_workbook_datasources_from_env(
         &self,
         wbook: &nodes::Workbook,
     ) -> Option<Vec<nodes::Datasource>> {
         // If the workbook exists in the env and hasn't been modified, just
         // use the datasources already defined. Otherwise, return None.
-        if let Some(env_wbook) = self.env.workbooks.get(&wbook.id) {
+
+        self.env.workbooks.get(&wbook.id).and_then(|env_wbook| {
             if env_wbook.updated_at != wbook.updated_at {
                 None
             } else {
                 env_wbook
                     .tableau_datasources
                     .iter()
-                    .map(|id| {
-                        if let Some(datasource) = self.env.datasources.get(id) {
-                            Some(datasource.to_owned())
-                        } else {
-                            None
-                        }
-                    })
+                    .map(|id| self.env.datasources.get(id).cloned())
                     .collect::<Option<Vec<_>>>()
             }
-        } else {
-            None
-        }
+        })
     }
 
     /// If we already have up-to-date datasource info saved, get that.

@@ -40,7 +40,7 @@ pub(super) fn get_cuals_from_datasource(data: &str) -> Result<HashSet<String>> {
         .unwrap();
 
     // pull out the named connections - we'll use these later to get info needed down the road.
-    let named_connections = get_named_conections(connection_info);
+    let named_connections = get_named_connections(connection_info);
 
     // pull out the relations
     let relations = get_relations(connection_info);
@@ -60,7 +60,7 @@ pub(super) fn get_cuals_from_datasource(data: &str) -> Result<HashSet<String>> {
 
 /// Given a node, look at the children and pull out named connection information.
 /// Currently only looks for Snowflake connections.
-fn get_named_conections(node: roxmltree::Node) -> HashMap<String, NamedConnection> {
+fn get_named_connections(node: roxmltree::Node) -> HashMap<String, NamedConnection> {
     let mut named_connections = HashMap::new();
     for n in node.descendants() {
         if n.is_element() && n.has_tag_name("named-connection") {
@@ -78,19 +78,13 @@ fn get_named_conections(node: roxmltree::Node) -> HashMap<String, NamedConnectio
 fn get_relations(node: roxmltree::Node) -> HashSet<Relation> {
     let mut relations = HashSet::new();
     // start with queries
-    let queries: HashSet<_> = node
-        .descendants()
+    node.descendants()
         .filter(|n| {
             n.has_tag_name("relation")
                 && n.attribute("name").unwrap_or_else(|| "false") == "Custom SQL Query".to_owned()
         })
-        .collect();
-
-    for query in queries {
-        if let Some(q) = snowflake_common::try_snowflake_query(&query) {
-            relations.insert(Relation::SnowflakeQuery(q));
-        };
-    }
+        .filter_map(|n| snowflake_common::try_snowflake_query(&n))
+        .map(|q| relations.insert(Relation::SnowflakeQuery(q)));
 
     // now get tables
     let tables: HashSet<_> = node

@@ -15,7 +15,8 @@ pub enum DbType {
     Generic,
 }
 
-/// Parse a SQL query and extract db table names from the query.
+/// Parse a SQL query and extract db table names from the query. Returns a vector of
+/// fully-qualified path components, eg: ["db_name", "schema_name", "table_name"]
 pub fn get_tables(query: &str, db: DbType) -> Result<HashSet<Vec<String>>> {
     let dialect: Box<dyn Dialect> = match db {
         DbType::Snowflake => Box::new(dialect::SnowflakeDialect {}),
@@ -91,7 +92,7 @@ mod test {
                 [vec!["A".to_owned(), "B".to_owned()]],
             ),
             (
-                "SELECT * FROM \"test\".B".to_owned(),
+                r#"SELECT * FROM "test".B"#.to_owned(),
                 [vec!["test".to_owned(), "B".to_owned()]],
             ),
         ];
