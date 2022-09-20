@@ -58,7 +58,9 @@ impl Grant for FutureGrant {
         let mut joined_privileges: Vec<_> = all_privileges.iter().cloned().collect();
         joined_privileges.sort();
         nodes::Policy::new(
-            format!("snowflake.{}.{}", self.role_name(), stripped_name),
+            // We add the `.future` to differentiate this policy from
+            // non-heirarchical ones
+            format!("snowflake.future.{}.{}", self.role_name(), stripped_name),
             all_privileges,
             // Unwrap here is fine since we asserted that the set was not empty above.
             HashSet::from([cual.uri()]),
@@ -69,6 +71,14 @@ impl Grant for FutureGrant {
             // Defaults here for data read from Snowflake should be false.
             true,
             false,
+        )
+    }
+
+    fn jetty_name(&self) -> String {
+        format!(
+            "snowflake.future.{}.{}",
+            self.role_name(),
+            self.granted_on_name()
         )
     }
 }
@@ -87,7 +97,7 @@ mod tests {
             grant_on: "TABLE".to_owned(),
             grantee_name: "my_table".to_owned(),
         };
-        assert_eq!(g.jetty_name(), "snowflake.my_table.db".to_owned());
+        assert_eq!(g.jetty_name(), "snowflake.future.my_table.db".to_owned());
     }
 
     #[test]
@@ -102,7 +112,7 @@ mod tests {
         assert_eq!(
             p,
             nodes::Policy::new(
-                "snowflake.grantee_name.db".to_owned(),
+                "snowflake.future.grantee_name.db".to_owned(),
                 HashSet::from(["priv".to_owned()]),
                 HashSet::from([cual!("db").uri()]),
                 HashSet::new(),
@@ -125,7 +135,7 @@ mod tests {
         let p: nodes::Policy = g.clone().into_policy(HashSet::from(["priv".to_owned()]));
         let p2: nodes::Policy = g.clone().into_policy(HashSet::from(["priv".to_owned()]));
         let p3: nodes::Policy = g.into_policy(HashSet::from(["priv".to_owned()]));
-        assert_eq!(p.name, "snowflake.grantee_name.db");
+        assert_eq!(p.name, "snowflake.future.grantee_name.db");
         assert_eq!(p2.name, p.name);
         assert_eq!(p3.name, p2.name);
     }
@@ -140,7 +150,7 @@ mod tests {
         };
         let p: nodes::Policy =
             g.into_policy(HashSet::from(["priv".to_owned(), "priv2".to_owned()]));
-        assert_eq!(p.name, "snowflake.grantee_name.db");
+        assert_eq!(p.name, "snowflake.future.grantee_name.db");
         assert_eq!(
             p.privileges,
             HashSet::from(["priv".to_owned(), "priv2".to_owned()])
@@ -159,7 +169,7 @@ mod tests {
         assert_eq!(
             p,
             nodes::Policy::new(
-                "snowflake.grantee_name.db.schema".to_owned(),
+                "snowflake.future.grantee_name.db.schema".to_owned(),
                 HashSet::from(["priv".to_owned()]),
                 HashSet::from([cual!("db").uri()]),
                 HashSet::new(),
@@ -175,6 +185,7 @@ mod tests {
     #[should_panic]
     fn grant_into_policy_with_unstrippable_name_panics() {
         let g = FutureGrant {
+            // Doesn't have the <TABLE> piece... not a valid future grant
             name: "db.".to_owned(),
             privilege: "priv".to_owned(),
             grant_on: "grant_on".to_owned(),
