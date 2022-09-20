@@ -26,7 +26,7 @@ pub enum ConnectorClient {
 #[async_trait]
 pub trait Connector {
     /// Instantiate a Connector from configuration.
-    fn new(
+    async fn new(
         config: &ConnectorConfig,
         credentials: &CredentialsBlob,
         client: Option<ConnectorClient>,

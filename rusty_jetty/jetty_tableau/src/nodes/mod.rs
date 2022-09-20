@@ -2,20 +2,18 @@
 //! represent Tableau's structure as well as the functionality to turn that into
 //! Jetty's node structure.
 
-mod data_connection;
-mod datasource;
-mod flow;
+pub(crate) mod datasource;
+pub(crate) mod flow;
 pub(crate) mod group;
-mod lens;
-mod metric;
-mod project;
-mod view;
-mod workbook;
+pub(crate) mod lens;
+pub(crate) mod metric;
+pub(crate) mod project;
+pub(crate) mod view;
+pub(crate) mod workbook;
 
 pub(crate) mod user;
 
 use async_trait::async_trait;
-pub(crate) use data_connection::DataConnection;
 pub(crate) use datasource::Datasource;
 pub(crate) use flow::Flow;
 pub(crate) use group::Group;
@@ -26,12 +24,11 @@ pub(crate) use user::User;
 pub(crate) use view::View;
 pub(crate) use workbook::Workbook;
 
-use std::{collections::HashMap, fs::Permissions};
+use std::collections::HashMap;
 
 use crate::rest::{self, FetchJson};
 
 use anyhow::{bail, Result};
-use reqwest::Method;
 use serde::Deserialize;
 
 /// This trait is implemented by permissionable Tableau asset nodes and makes it simpler to
@@ -87,7 +84,6 @@ impl_GetId!(for
     Workbook,
     View,
     Datasource,
-    DataConnection,
     Metric,
     Flow,
     Lens
@@ -139,7 +135,7 @@ impl SerializedPermission {
     /// when representing the Tableau environment
     pub(crate) fn to_permission(self) -> Permission {
         let mut grantee_value = Grantee::Group { id: "".to_owned() };
-        if let Some(IdField { id: id }) = self.group {
+        if let Some(IdField { id }) = self.group {
             grantee_value = Grantee::Group { id }
         } else {
             grantee_value = Grantee::User {

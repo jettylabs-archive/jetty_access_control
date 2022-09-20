@@ -11,7 +11,8 @@ async fn main() -> Result<()> {
         &jetty.config.connectors[0],
         &creds["snow"],
         Some(ConnectorClient::Core),
-    )?;
+    )
+    .await?;
     println!("checking for connection...");
     println!("working? {}", snow.check().await);
 
@@ -19,7 +20,8 @@ async fn main() -> Result<()> {
         &jetty.config.connectors[1],
         &creds["dbt"],
         Some(ConnectorClient::Core),
-    )?;
+    )
+    .await?;
     let dbt_data = dbt.get_data().await;
     println!("dbt data: {:#?}", dbt_data);
     let pcd = jetty_core::access_graph::ProcessedConnectorData {
