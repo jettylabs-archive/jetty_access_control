@@ -1,6 +1,7 @@
 mod asset;
 mod database;
 mod entry;
+mod future_grant;
 mod grant;
 mod role;
 mod role_grant;
@@ -13,7 +14,8 @@ mod warehouse;
 pub use asset::Asset;
 pub use database::Database;
 pub use entry::Entry;
-pub use grant::Grant;
+pub use grant::GrantType;
+pub(crate) use grant::{FutureGrant, Grant, StandardGrant};
 pub use role::Role;
 pub use role_grant::RoleGrant;
 pub use schema::Schema;
