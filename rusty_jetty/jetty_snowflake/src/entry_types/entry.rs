@@ -7,5 +7,5 @@ pub enum Entry {
     Role(crate::Role),
     User(crate::User),
     Asset(crate::Asset),
-    Grant(crate::Grant),
+    Grant(crate::GrantType),
 }
