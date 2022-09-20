@@ -220,6 +220,7 @@ async fn construct_connector_from(input: &TestInput) -> TestHarness<SnowflakeCon
             &creds,
             Some(ConnectorClient::Test),
         )
+        .await
         .unwrap(),
     }
 }

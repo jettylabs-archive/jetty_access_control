@@ -1,12 +1,10 @@
 //! TableauRestClient and generic utilities to help with Tableau
 //! API requests
 
-use crate::nodes::CreateNode;
-
 use super::*;
 use anyhow::{bail, Context};
 use async_trait::async_trait;
-use jetty_core::connectors::nodes as jetty_nodes;
+use serde::Serialize;
 
 /// Wrapper struct for http functionality
 #[derive(Default)]
@@ -25,16 +23,39 @@ impl TableauRestClient {
     ///  # Panics
     /// ------
     /// Will panic if run in an asynchronous context
-    pub fn new(credentials: TableauCredentials) -> Self {
+    pub async fn new(credentials: TableauCredentials) -> Self {
         let mut tc = TableauRestClient {
             credentials,
-            http_client: reqwest::Client::new(),
+            http_client: reqwest::Client::builder().gzip(true).build().unwrap(),
             token: None,
             site_id: None,
             api_version: "3.16".to_owned(),
         };
-        tc.fetch_token_and_site_id().unwrap();
+        tc.fetch_token_and_site_id().await.unwrap();
         tc
+    }
+
+    #[cfg(test)]
+    pub(crate) fn new_dummy() -> Self {
+        let tc = TableauRestClient {
+            credentials: TableauCredentials {
+                server_name: "dummy-server".to_owned(),
+                site_name: "dummy-site".to_owned(),
+                ..Default::default()
+            },
+            http_client: reqwest::Client::builder().gzip(true).build().unwrap(),
+            token: None,
+            site_id: None,
+            api_version: "3.16".to_owned(),
+        };
+        tc
+    }
+
+    pub(crate) fn get_cual_prefix(&self) -> String {
+        format!(
+            "tableau://{}/{}",
+            &self.credentials.server_name, &self.credentials.site_name
+        )
     }
 
     /// Get site_id token from the TableauRestClient.
@@ -60,7 +81,7 @@ impl TableauRestClient {
     /// # Panics
     /// ------
     /// Will panic if run in an asynchronous context
-    fn fetch_token_and_site_id(&mut self) -> Result<()> {
+    async fn fetch_token_and_site_id(&mut self) -> Result<()> {
         // Set up the request body to get a request token
         let request_body = json!({
             "credentials": {
@@ -72,15 +93,17 @@ impl TableauRestClient {
             }
         });
 
-        let resp = reqwest::blocking::Client::new()
+        let resp = reqwest::Client::new()
             .post(format![
                 "https://{}/api/{}/auth/signin",
                 &self.credentials.server_name, &self.api_version
             ])
             .json(&request_body)
             .header("Accept".to_owned(), "application/json".to_owned())
-            .send()?
-            .json::<serde_json::Value>()?;
+            .send()
+            .await?
+            .json::<serde_json::Value>()
+            .await?;
 
         let token = get_json_from_path(&resp, &vec!["credentials".to_owned(), "token".to_owned()])?
             .as_str()
@@ -97,55 +120,6 @@ impl TableauRestClient {
         .to_string();
         self.site_id = Some(site_id);
         Ok(())
-    }
-
-    #[allow(dead_code)]
-    async fn get_assets(&mut self) -> Result<Vec<jetty_nodes::Asset>> {
-        let _todo = "implement for additional asset types";
-
-        let projects = self
-            .get_json_response(
-                "projects".to_owned(),
-                None,
-                reqwest::Method::GET,
-                Some(vec!["projects".to_owned(), "project".to_owned()]),
-            )
-            .await
-            .context("fetching projects")?;
-        projects.to_projects()
-    }
-
-    #[allow(dead_code)]
-    async fn get_groups_old(&mut self) -> Result<Vec<jetty_nodes::Group>> {
-        let groups = self
-            .get_json_response(
-                "groups".to_owned(),
-                None,
-                reqwest::Method::GET,
-                Some(vec!["groups".to_owned(), "group".to_owned()]),
-            )
-            .await
-            .context("fetching groups")?;
-        let mut groups = groups.to_groups().context("parse JSON into groups")?;
-
-        // get members of the groups
-        for group in &mut groups {
-            let group_id = group
-                .metadata
-                .get("group_id")
-                .ok_or_else(|| anyhow!("Unable to get group id for {:#?}", group))?;
-            let resp = self
-                .get_json_response(
-                    format!("groups/{}/users", group_id),
-                    None,
-                    reqwest::Method::GET,
-                    Some(vec!["users".to_owned(), "user".to_owned()]),
-                )
-                .await
-                .context(format!("getting users for group {}", group.name))?;
-            group.includes_users = resp.to_users()?.iter().map(|u| u.name.to_owned()).collect();
-        }
-        Ok(groups)
     }
 
     async fn get_json_response(
@@ -241,6 +215,7 @@ impl TableauRestClient {
         }
     }
 
+    /// Builds a request to fetch information from tableau
     pub(crate) fn build_request(
         &self,
         endpoint: String,
@@ -267,6 +242,35 @@ impl TableauRestClient {
         if let Some(b) = body {
             req = req.json(&b);
         }
+
+        Ok(req)
+    }
+
+    /// Build a request to be run against the graphql endpoint.  
+    /// This function does not currently support variables.
+    pub(crate) fn build_graphql_request(&self, query: String) -> Result<reqwest::RequestBuilder> {
+        #[derive(Serialize)]
+        struct GraphQlQuery {
+            query: String,
+            variables: HashMap<String, String>,
+        }
+
+        let query_struct = GraphQlQuery {
+            query,
+            variables: HashMap::new(),
+        };
+
+        let request_url = format![
+            "https://{}/api/metadata/graphql",
+            self.credentials.server_name.to_owned(),
+        ];
+
+        let mut req = self.http_client.request(reqwest::Method::POST, request_url);
+        req = self
+            .add_auth(req)
+            .context("adding auth header")?
+            .header("Accept", "application/json")
+            .json(&query_struct);
 
         Ok(req)
     }

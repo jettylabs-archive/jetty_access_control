@@ -1,0 +1,1492 @@
+{
+    "parameters": {
+        "parameters": {}
+    },
+    "initialNodes": [
+        "09b1d127-adef-4f6a-8544-cc1d75ad2f50",
+        "11bb25c7-76bf-486b-b5fe-51796ed0faea",
+        "65409a9b-02c2-4be2-935c-aab5528ea701",
+        "8faa5aaf-b36a-42b2-8c04-d692a03fa4e4",
+        "2d73cf95-0f79-49ab-a920-1c07b49a2fbf",
+        "efbfe012-d68b-4945-ab97-e8ac97e0713e",
+        "e5013f4e-f18b-420b-bf97-4f5282b4053a",
+        "4a41f0a8-334c-472c-a49f-6824f2fc7eb6",
+        "4093ed0e-bf1c-4dc0-a2a7-20c72ea1da17"
+    ],
+    "nodes": {
+        "09b1d127-adef-4f6a-8544-cc1d75ad2f50": {
+            "nodeType": ".v1.LoadSql",
+            "name": "IRIS_JOINED_VIEW (GOLD.IRIS_JOINED_VIEW)",
+            "id": "09b1d127-adef-4f6a-8544-cc1d75ad2f50",
+            "baseType": "input",
+            "nextNodes": [
+                {
+                    "namespace": "Default",
+                    "nextNodeId": "693f1ee4-42f6-4f40-b16a-f88928f3f831",
+                    "nextNamespace": "Right"
+                }
+            ],
+            "serialize": false,
+            "description": null,
+            "connectionId": "6f9952e6-98b9-4b82-ab4f-775937e89040",
+            "connectionAttributes": {
+                "schema": "GOLD",
+                "dbname": "JETTY_TEST_DB",
+                "warehouse": "MAIN"
+            },
+            "fields": [
+                {
+                    "name": "ID",
+                    "type": "integer",
+                    "collation": null,
+                    "caption": "",
+                    "ordinal": 1
+                },
+                {
+                    "name": "SEPALLENGTHCM",
+                    "type": "real",
+                    "collation": null,
+                    "caption": "",
+                    "ordinal": 2
+                },
+                {
+                    "name": "SEPALWIDTHCM",
+                    "type": "real",
+                    "collation": null,
+                    "caption": "",
+                    "ordinal": 3
+                },
+                {
+                    "name": "PETALLENGTHCM",
+                    "type": "real",
+                    "collation": null,
+                    "caption": "",
+                    "ordinal": 4
+                },
+                {
+                    "name": "PETALWIDTHCM",
+                    "type": "real",
+                    "collation": null,
+                    "caption": "",
+                    "ordinal": 5
+                },
+                {
+                    "name": "SPECIES",
+                    "type": "string",
+                    "collation": "binary",
+                    "caption": "",
+                    "ordinal": 6
+                }
+            ],
+            "actions": [],
+            "debugModeRowLimit": null,
+            "originalDataTypes": {},
+            "randomSampling": null,
+            "updateTimestamp": 1663357451825,
+            "restrictedFields": {},
+            "userRenamedFields": {},
+            "selectedFields": null,
+            "filters": [],
+            "relation": {
+                "type": "table",
+                "table": "[GOLD].[IRIS_JOINED_VIEW]"
+            }
+        },
+        "79c6b504-1168-4784-9520-9b06d5b55298": {
+            "nodeType": ".v1.PublishExtract",
+            "name": "Output 3",
+            "id": "79c6b504-1168-4784-9520-9b06d5b55298",
+            "baseType": "output",
+            "nextNodes": [],
+            "serialize": false,
+            "description": null,
+            "projectName": "Isaac's Project",
+            "projectLuid": "c585b0f7-fc43-4d0a-8942-12adf443ee98",
+            "datasourceName": "Output 4 - Table",
+            "datasourceDescription": "",
+            "serverUrl": "https://10ax.online.tableau.com/#/site/jettydev"
+        },
+        "11bb25c7-76bf-486b-b5fe-51796ed0faea": {
+            "nodeType": ".v1.LoadSql",
+            "name": "Custom SQL",
+            "id": "11bb25c7-76bf-486b-b5fe-51796ed0faea",
+            "baseType": "input",
+            "nextNodes": [
+                {
+                    "namespace": "Default",
+                    "nextNodeId": "910d5559-3d34-4796-802c-4cb6dac035ef",
+                    "nextNamespace": "Default"
+                }
+            ],
+            "serialize": false,
+            "description": null,
+            "connectionId": "6f9952e6-98b9-4b82-ab4f-775937e89040",
+            "connectionAttributes": {
+                "schema": "GOLD",
+                "dbname": "JETTY_TEST_DB",
+                "warehouse": "MAIN"
+            },
+            "fields": [
+                {
+                    "name": "SEX",
+                    "type": "string",
+                    "collation": "binary",
+                    "caption": "",
+                    "ordinal": 1
+                },
+                {
+                    "name": "RACE",
+                    "type": "string",
+                    "collation": "binary",
+                    "caption": "",
+                    "ordinal": 2
+                },
+                {
+                    "name": "INCOME",
+                    "type": "string",
+                    "collation": "binary",
+                    "caption": "",
+                    "ordinal": 3
+                },
+                {
+                    "name": "PERSON_COUNT",
+                    "type": "integer",
+                    "collation": null,
+                    "caption": "",
+                    "ordinal": 4
+                }
+            ],
+            "actions": [],
+            "debugModeRowLimit": null,
+            "originalDataTypes": {},
+            "randomSampling": null,
+            "updateTimestamp": null,
+            "restrictedFields": {},
+            "userRenamedFields": {},
+            "selectedFields": null,
+            "filters": [],
+            "relation": {
+                "type": "query",
+                "query": "select * from silver.silver_adult_aggregated_view"
+            }
+        },
+        "65409a9b-02c2-4be2-935c-aab5528ea701": {
+            "nodeType": ".v1.LoadSql",
+            "name": "ADULT_AGGREGATED_VIEW (GOLD.ADULT_AGGREGATED_VIEW) 2",
+            "id": "65409a9b-02c2-4be2-935c-aab5528ea701",
+            "baseType": "input",
+            "nextNodes": [
+                {
+                    "namespace": "Default",
+                    "nextNodeId": "c73cab94-f1de-43ff-be72-8a87af19d81e",
+                    "nextNamespace": "Union-Namespace-1c003f20-039a-4ad1-b20c-a810dab7ab6a"
+                }
+            ],
+            "serialize": false,
+            "description": null,
+            "connectionId": "6f9952e6-98b9-4b82-ab4f-775937e89040",
+            "connectionAttributes": {
+                "schema": "GOLD",
+                "dbname": "JETTY_TEST_DB",
+                "warehouse": "MAIN"
+            },
+            "fields": [
+                {
+                    "name": "SEX",
+                    "type": "string",
+                    "collation": "binary",
+                    "caption": "",
+                    "ordinal": 1
+                },
+                {
+                    "name": "RACE",
+                    "type": "string",
+                    "collation": "binary",
+                    "caption": "",
+                    "ordinal": 2
+                },
+                {
+                    "name": "INCOME",
+                    "type": "string",
+                    "collation": "binary",
+                    "caption": "",
+                    "ordinal": 3
+                },
+                {
+                    "name": "PERSON_COUNT",
+                    "type": "integer",
+                    "collation": null,
+                    "caption": "",
+                    "ordinal": 4
+                }
+            ],
+            "actions": [],
+            "debugModeRowLimit": null,
+            "originalDataTypes": {},
+            "randomSampling": null,
+            "updateTimestamp": 1663357459347,
+            "restrictedFields": {},
+            "userRenamedFields": {},
+            "selectedFields": null,
+            "filters": [],
+            "relation": {
+                "type": "table",
+                "table": "[GOLD].[ADULT_AGGREGATED_VIEW]"
+            }
+        },
+        "8faa5aaf-b36a-42b2-8c04-d692a03fa4e4": {
+            "nodeType": ".v1.LoadSql",
+            "name": "IRIS_JOINED_TABLE (GOLD.IRIS_JOINED_TABLE)",
+            "id": "8faa5aaf-b36a-42b2-8c04-d692a03fa4e4",
+            "baseType": "input",
+            "nextNodes": [
+                {
+                    "namespace": "Default",
+                    "nextNodeId": "693f1ee4-42f6-4f40-b16a-f88928f3f831",
+                    "nextNamespace": "Left"
+                }
+            ],
+            "serialize": false,
+            "description": null,
+            "connectionId": "6f9952e6-98b9-4b82-ab4f-775937e89040",
+            "connectionAttributes": {
+                "schema": "GOLD",
+                "dbname": "JETTY_TEST_DB",
+                "warehouse": "MAIN"
+            },
+            "fields": [
+                {
+                    "name": "ID",
+                    "type": "integer",
+                    "collation": null,
+                    "caption": "",
+                    "ordinal": 1
+                },
+                {
+                    "name": "SEPALLENGTHCM",
+                    "type": "real",
+                    "collation": null,
+                    "caption": "",
+                    "ordinal": 2
+                },
+                {
+                    "name": "SEPALWIDTHCM",
+                    "type": "real",
+                    "collation": null,
+                    "caption": "",
+                    "ordinal": 3
+                },
+                {
+                    "name": "PETALLENGTHCM",
+                    "type": "real",
+                    "collation": null,
+                    "caption": "",
+                    "ordinal": 4
+                },
+                {
+                    "name": "PETALWIDTHCM",
+                    "type": "real",
+                    "collation": null,
+                    "caption": "",
+                    "ordinal": 5
+                },
+                {
+                    "name": "SPECIES",
+                    "type": "string",
+                    "collation": "binary",
+                    "caption": "",
+                    "ordinal": 6
+                }
+            ],
+            "actions": [],
+            "debugModeRowLimit": null,
+            "originalDataTypes": {},
+            "randomSampling": null,
+            "updateTimestamp": null,
+            "restrictedFields": {},
+            "userRenamedFields": {},
+            "selectedFields": null,
+            "filters": [],
+            "relation": {
+                "type": "table",
+                "table": "[GOLD].[IRIS_JOINED_TABLE]"
+            }
+        },
+        "2d73cf95-0f79-49ab-a920-1c07b49a2fbf": {
+            "nodeType": ".v1.LoadCsv",
+            "name": "adult",
+            "id": "2d73cf95-0f79-49ab-a920-1c07b49a2fbf",
+            "baseType": "input",
+            "nextNodes": [
+                {
+                    "namespace": "Default",
+                    "nextNodeId": "4a733554-c154-45d3-a13c-26ab32657fe7",
+                    "nextNamespace": "Default"
+                }
+            ],
+            "serialize": false,
+            "description": null,
+            "connectionId": "84b55297-350f-4fde-9ff8-869b66edbe8e",
+            "connectionAttributes": {},
+            "fields": [
+                {
+                    "name": "age",
+                    "type": "integer",
+                    "collation": null,
+                    "caption": null,
+                    "ordinal": null
+                },
+                {
+                    "name": "workclass",
+                    "type": "string",
+                    "collation": "LEN_RUS",
+                    "caption": null,
+                    "ordinal": null
+                },
+                {
+                    "name": "fnlwgt",
+                    "type": "integer",
+                    "collation": null,
+                    "caption": null,
+                    "ordinal": null
+                },
+                {
+                    "name": "education",
+                    "type": "string",
+                    "collation": "LEN_RUS",
+                    "caption": null,
+                    "ordinal": null
+                },
+                {
+                    "name": "education.num",
+                    "type": "integer",
+                    "collation": null,
+                    "caption": null,
+                    "ordinal": null
+                },
+                {
+                    "name": "marital.status",
+                    "type": "string",
+                    "collation": "LEN_RUS",
+                    "caption": null,
+                    "ordinal": null
+                },
+                {
+                    "name": "occupation",
+                    "type": "string",
+                    "collation": "LEN_RUS",
+                    "caption": null,
+                    "ordinal": null
+                },
+                {
+                    "name": "relationship",
+                    "type": "string",
+                    "collation": "LEN_RUS",
+                    "caption": null,
+                    "ordinal": null
+                },
+                {
+                    "name": "race",
+                    "type": "string",
+                    "collation": "LEN_RUS",
+                    "caption": null,
+                    "ordinal": null
+                },
+                {
+                    "name": "sex",
+                    "type": "string",
+                    "collation": "LEN_RUS",
+                    "caption": null,
+                    "ordinal": null
+                },
+                {
+                    "name": "capital.gain",
+                    "type": "integer",
+                    "collation": null,
+                    "caption": null,
+                    "ordinal": null
+                },
+                {
+                    "name": "capital.loss",
+                    "type": "integer",
+                    "collation": null,
+                    "caption": null,
+                    "ordinal": null
+                },
+                {
+                    "name": "hours.per.week",
+                    "type": "integer",
+                    "collation": null,
+                    "caption": null,
+                    "ordinal": null
+                },
+                {
+                    "name": "native.country",
+                    "type": "string",
+                    "collation": "LEN_RUS",
+                    "caption": null,
+                    "ordinal": null
+                },
+                {
+                    "name": "income",
+                    "type": "string",
+                    "collation": "LEN_RUS",
+                    "caption": null,
+                    "ordinal": null
+                }
+            ],
+            "actions": [],
+            "debugModeRowLimit": null,
+            "originalDataTypes": {},
+            "randomSampling": null,
+            "updateTimestamp": null,
+            "restrictedFields": {},
+            "userRenamedFields": {},
+            "selectedFields": null,
+            "filters": [],
+            "separator": ",",
+            "locale": "en_US",
+            "charSet": "UTF-8",
+            "containsHeaders": true,
+            "textQualifier": "A"
+        },
+        "d6e93c63-2cbe-4f34-806e-3ac3de985fc3": {
+            "nodeType": ".v2020_3_1.WriteToDatabase",
+            "name": "Output 7",
+            "id": "d6e93c63-2cbe-4f34-806e-3ac3de985fc3",
+            "baseType": "output",
+            "nextNodes": [],
+            "serialize": false,
+            "description": null,
+            "connectionId": "6f9952e6-98b9-4b82-ab4f-775937e89040",
+            "attributes": {
+                "schema": "GOLD",
+                "dbname": "JETTY_TEST_DB",
+                "warehouse": "MAIN",
+                "tablename": "tableau_special"
+            },
+            "preOutputCommands": [],
+            "postOutputCommands": []
+        },
+        "910d5559-3d34-4796-802c-4cb6dac035ef": {
+            "nodeType": ".v1.PublishExtract",
+            "name": "Output 4",
+            "id": "910d5559-3d34-4796-802c-4cb6dac035ef",
+            "baseType": "output",
+            "nextNodes": [],
+            "serialize": false,
+            "description": null,
+            "projectName": "Isaac's Project",
+            "projectLuid": "c585b0f7-fc43-4d0a-8942-12adf443ee98",
+            "datasourceName": "Output With Custom Query",
+            "datasourceDescription": "",
+            "serverUrl": "https://10ax.online.tableau.com/#/site/jettydev"
+        },
+        "9f162e3b-976b-4541-9148-4ba560cd228a": {
+            "nodeType": ".v1.PublishExtract",
+            "name": "Output",
+            "id": "9f162e3b-976b-4541-9148-4ba560cd228a",
+            "baseType": "output",
+            "nextNodes": [],
+            "serialize": false,
+            "description": null,
+            "projectName": "Isaac's Project",
+            "projectLuid": "c585b0f7-fc43-4d0a-8942-12adf443ee98",
+            "datasourceName": "Test Flow Output",
+            "datasourceDescription": "",
+            "serverUrl": "https://10ax.online.tableau.com/#/site/jettydev"
+        },
+        "693f1ee4-42f6-4f40-b16a-f88928f3f831": {
+            "nodeType": ".v2018_2_3.SuperJoin",
+            "name": "Join 1",
+            "id": "693f1ee4-42f6-4f40-b16a-f88928f3f831",
+            "baseType": "superNode",
+            "nextNodes": [
+                {
+                    "namespace": "Default",
+                    "nextNodeId": "3a194c05-4da9-48aa-818a-e64974c72f98",
+                    "nextNamespace": "Default"
+                },
+                {
+                    "namespace": "Default",
+                    "nextNodeId": "d6e93c63-2cbe-4f34-806e-3ac3de985fc3",
+                    "nextNamespace": "Default"
+                },
+                {
+                    "namespace": "Default",
+                    "nextNodeId": "e2fdf0db-39f9-43fe-beb5-833a40c6b021",
+                    "nextNamespace": "Default"
+                }
+            ],
+            "serialize": false,
+            "description": null,
+            "beforeActionAnnotations": [],
+            "afterActionAnnotations": [],
+            "actionNode": {
+                "nodeType": ".v1.SimpleJoin",
+                "name": "Join 1",
+                "id": "039c0504-a199-4a6a-8c71-0cfd979d9eb6",
+                "baseType": "transform",
+                "nextNodes": [],
+                "serialize": false,
+                "description": null,
+                "conditions": [
+                    {
+                        "leftExpression": "[ID]",
+                        "rightExpression": "[ID]",
+                        "comparator": "=="
+                    }
+                ],
+                "joinType": "inner"
+            }
+        },
+        "774fd8d5-14e3-4ae4-a5f9-ae3b3bad09a6": {
+            "nodeType": ".v1.PublishExtract",
+            "name": "Output 5",
+            "id": "774fd8d5-14e3-4ae4-a5f9-ae3b3bad09a6",
+            "baseType": "output",
+            "nextNodes": [],
+            "serialize": false,
+            "description": null,
+            "projectName": "Isaac's Project",
+            "projectLuid": "c585b0f7-fc43-4d0a-8942-12adf443ee98",
+            "datasourceName": "Unioned tables",
+            "datasourceDescription": "",
+            "serverUrl": "https://10ax.online.tableau.com/#/site/jettydev"
+        },
+        "c73cab94-f1de-43ff-be72-8a87af19d81e": {
+            "nodeType": ".v2018_2_3.SuperUnion",
+            "name": "Union 1",
+            "id": "c73cab94-f1de-43ff-be72-8a87af19d81e",
+            "baseType": "superNode",
+            "nextNodes": [
+                {
+                    "namespace": "Default",
+                    "nextNodeId": "774fd8d5-14e3-4ae4-a5f9-ae3b3bad09a6",
+                    "nextNamespace": "Default"
+                }
+            ],
+            "serialize": false,
+            "description": null,
+            "beforeActionAnnotations": [],
+            "afterActionAnnotations": [],
+            "actionNode": {
+                "nodeType": ".v1.SimpleUnion",
+                "name": "Union 1",
+                "id": "7e345fe9-8ca9-4c42-92b6-17e51d74b6a9",
+                "baseType": "transform",
+                "nextNodes": [],
+                "serialize": false,
+                "description": null,
+                "namespaceFieldMappings": [
+                    {
+                        "namespaceName": "Union-Namespace-1c003f20-039a-4ad1-b20c-a810dab7ab6a",
+                        "fieldMappings": {}
+                    },
+                    {
+                        "namespaceName": "Union-Namespace-7445c53d-9602-4320-b5a0-7d7d264488f0",
+                        "fieldMappings": {}
+                    }
+                ]
+            }
+        },
+        "4a733554-c154-45d3-a13c-26ab32657fe7": {
+            "nodeType": ".v2018_2_3.SuperTransform",
+            "name": "drop ? workclass",
+            "id": "4a733554-c154-45d3-a13c-26ab32657fe7",
+            "baseType": "superNode",
+            "nextNodes": [
+                {
+                    "namespace": "Default",
+                    "nextNodeId": "9f162e3b-976b-4541-9148-4ba560cd228a",
+                    "nextNamespace": "Default"
+                }
+            ],
+            "serialize": false,
+            "description": null,
+            "beforeActionAnnotations": [
+                {
+                    "namespace": "Default",
+                    "annotationNode": {
+                        "nodeType": ".v1.ValueFilter",
+                        "name": "Exclude workclass:? 1",
+                        "id": "64d0a615-1976-4246-849b-698c2ba726f6",
+                        "baseType": "transform",
+                        "nextNodes": [],
+                        "serialize": false,
+                        "description": null,
+                        "exclude": true,
+                        "values": {
+                            "workclass": [
+                                "\"?\""
+                            ]
+                        }
+                    }
+                }
+            ],
+            "afterActionAnnotations": [],
+            "actionNode": null
+        },
+        "efbfe012-d68b-4945-ab97-e8ac97e0713e": {
+            "nodeType": ".v2019_3_1.LoadSqlProxy",
+            "name": "Just sql - different db (Isaac's Project)",
+            "id": "efbfe012-d68b-4945-ab97-e8ac97e0713e",
+            "baseType": "input",
+            "nextNodes": [
+                {
+                    "namespace": "Default",
+                    "nextNodeId": "021608b2-086a-4ea4-9dd2-3c3cceb3a30f",
+                    "nextNamespace": "Default"
+                }
+            ],
+            "serialize": false,
+            "description": null,
+            "connectionId": "9c8706e2-0a7d-443b-8cea-b28edd9fc5a6",
+            "connectionAttributes": {
+                "dbname": "Justsql-differentdb",
+                "projectName": "Isaac's Project",
+                "datasourceName": "Just sql - different db"
+            },
+            "fields": [
+                {
+                    "name": "ONE",
+                    "type": "integer",
+                    "collation": null,
+                    "caption": "",
+                    "ordinal": 1
+                }
+            ],
+            "actions": [],
+            "debugModeRowLimit": null,
+            "originalDataTypes": {},
+            "randomSampling": null,
+            "updateTimestamp": null,
+            "restrictedFields": {},
+            "userRenamedFields": {},
+            "selectedFields": null,
+            "filters": [],
+            "relation": {
+                "type": "table",
+                "table": "[sqlproxy]"
+            }
+        },
+        "e5013f4e-f18b-420b-bf97-4f5282b4053a": {
+            "nodeType": ".v1.LoadSql",
+            "name": "ADULT_AGGREGATED_VIEW (GOLD.ADULT_AGGREGATED_VIEW)",
+            "id": "e5013f4e-f18b-420b-bf97-4f5282b4053a",
+            "baseType": "input",
+            "nextNodes": [
+                {
+                    "namespace": "Default",
+                    "nextNodeId": "79c6b504-1168-4784-9520-9b06d5b55298",
+                    "nextNamespace": "Default"
+                }
+            ],
+            "serialize": false,
+            "description": null,
+            "connectionId": "6f9952e6-98b9-4b82-ab4f-775937e89040",
+            "connectionAttributes": {
+                "schema": "GOLD",
+                "dbname": "JETTY_TEST_DB",
+                "warehouse": "MAIN"
+            },
+            "fields": [
+                {
+                    "name": "SEX",
+                    "type": "string",
+                    "collation": "binary",
+                    "caption": "",
+                    "ordinal": 1
+                },
+                {
+                    "name": "RACE",
+                    "type": "string",
+                    "collation": "binary",
+                    "caption": "",
+                    "ordinal": 2
+                },
+                {
+                    "name": "INCOME",
+                    "type": "string",
+                    "collation": "binary",
+                    "caption": "",
+                    "ordinal": 3
+                },
+                {
+                    "name": "PERSON_COUNT",
+                    "type": "integer",
+                    "collation": null,
+                    "caption": "",
+                    "ordinal": 4
+                }
+            ],
+            "actions": [],
+            "debugModeRowLimit": null,
+            "originalDataTypes": {},
+            "randomSampling": null,
+            "updateTimestamp": 1663357461707,
+            "restrictedFields": {},
+            "userRenamedFields": {},
+            "selectedFields": null,
+            "filters": [],
+            "relation": {
+                "type": "table",
+                "table": "[GOLD].[ADULT_AGGREGATED_VIEW]"
+            }
+        },
+        "3a194c05-4da9-48aa-818a-e64974c72f98": {
+            "nodeType": ".v1.PublishExtract",
+            "name": "Output 6",
+            "id": "3a194c05-4da9-48aa-818a-e64974c72f98",
+            "baseType": "output",
+            "nextNodes": [],
+            "serialize": false,
+            "description": null,
+            "projectName": "Isaac's Project",
+            "projectLuid": "c585b0f7-fc43-4d0a-8942-12adf443ee98",
+            "datasourceName": "Joined",
+            "datasourceDescription": "",
+            "serverUrl": "https://10ax.online.tableau.com/#/site/jettydev"
+        },
+        "4a41f0a8-334c-472c-a49f-6824f2fc7eb6": {
+            "nodeType": ".v2019_3_1.LoadSqlProxy",
+            "name": "multi-connection (Isaac's Project)",
+            "id": "4a41f0a8-334c-472c-a49f-6824f2fc7eb6",
+            "baseType": "input",
+            "nextNodes": [],
+            "serialize": false,
+            "description": null,
+            "connectionId": "9c8706e2-0a7d-443b-8cea-b28edd9fc5a6",
+            "connectionAttributes": {
+                "dbname": "multi-connection",
+                "projectName": "Isaac's Project",
+                "datasourceName": "multi-connection"
+            },
+            "fields": [
+                {
+                    "name": "AGE",
+                    "type": "integer",
+                    "collation": null,
+                    "caption": "",
+                    "ordinal": 17
+                },
+                {
+                    "name": "A",
+                    "type": "integer",
+                    "collation": null,
+                    "caption": "",
+                    "ordinal": 16
+                },
+                {
+                    "name": "CAPITAL_GAIN",
+                    "type": "integer",
+                    "collation": null,
+                    "caption": "Capital Gain",
+                    "ordinal": 27
+                },
+                {
+                    "name": "CAPITAL_LOSS",
+                    "type": "integer",
+                    "collation": null,
+                    "caption": "Capital Loss",
+                    "ordinal": 28
+                },
+                {
+                    "name": "EDUCATION",
+                    "type": "string",
+                    "collation": "binary",
+                    "caption": "Education1",
+                    "ordinal": 20
+                },
+                {
+                    "name": "EDUCATION_NUM",
+                    "type": "integer",
+                    "collation": null,
+                    "caption": "Education Num",
+                    "ordinal": 21
+                },
+                {
+                    "name": "FNLWGT",
+                    "type": "integer",
+                    "collation": null,
+                    "caption": "Fnlwgt1",
+                    "ordinal": 19
+                },
+                {
+                    "name": "HOURS_PER_WEEK",
+                    "type": "integer",
+                    "collation": null,
+                    "caption": "Hours Per Week",
+                    "ordinal": 29
+                },
+                {
+                    "name": "INCOME",
+                    "type": "string",
+                    "collation": "binary",
+                    "caption": "Income1",
+                    "ordinal": 31
+                },
+                {
+                    "name": "MARITAL_STATUS",
+                    "type": "string",
+                    "collation": "binary",
+                    "caption": "Marital Status",
+                    "ordinal": 22
+                },
+                {
+                    "name": "NATIVE_COUNTRY",
+                    "type": "string",
+                    "collation": "binary",
+                    "caption": "Native Country",
+                    "ordinal": 30
+                },
+                {
+                    "name": "OCCUPATION",
+                    "type": "string",
+                    "collation": "binary",
+                    "caption": "Occupation1",
+                    "ordinal": 23
+                },
+                {
+                    "name": "RACE",
+                    "type": "string",
+                    "collation": "binary",
+                    "caption": "Race1",
+                    "ordinal": 25
+                },
+                {
+                    "name": "RELATIONSHIP",
+                    "type": "string",
+                    "collation": "binary",
+                    "caption": "Relationship1",
+                    "ordinal": 24
+                },
+                {
+                    "name": "SEX",
+                    "type": "string",
+                    "collation": "binary",
+                    "caption": "",
+                    "ordinal": 26
+                },
+                {
+                    "name": "WORKCLASS",
+                    "type": "string",
+                    "collation": "binary",
+                    "caption": "Workclass1",
+                    "ordinal": 18
+                },
+                {
+                    "name": "age",
+                    "type": "integer",
+                    "collation": null,
+                    "caption": "Age",
+                    "ordinal": 0
+                },
+                {
+                    "name": "capital.gain",
+                    "type": "integer",
+                    "collation": null,
+                    "caption": "Capital.Gain",
+                    "ordinal": 10
+                },
+                {
+                    "name": "capital.loss",
+                    "type": "integer",
+                    "collation": null,
+                    "caption": "Capital.Loss",
+                    "ordinal": 11
+                },
+                {
+                    "name": "education.num",
+                    "type": "integer",
+                    "collation": null,
+                    "caption": "Education.Num",
+                    "ordinal": 4
+                },
+                {
+                    "name": "education",
+                    "type": "string",
+                    "collation": "LEN_RUS",
+                    "caption": "Education",
+                    "ordinal": 3
+                },
+                {
+                    "name": "fnlwgt",
+                    "type": "integer",
+                    "collation": null,
+                    "caption": "Fnlwgt",
+                    "ordinal": 2
+                },
+                {
+                    "name": "hours.per.week",
+                    "type": "integer",
+                    "collation": null,
+                    "caption": "Hours.Per.Week",
+                    "ordinal": 12
+                },
+                {
+                    "name": "income",
+                    "type": "string",
+                    "collation": "LEN_RUS",
+                    "caption": "Income",
+                    "ordinal": 14
+                },
+                {
+                    "name": "marital.status",
+                    "type": "string",
+                    "collation": "LEN_RUS",
+                    "caption": "Marital.Status",
+                    "ordinal": 5
+                },
+                {
+                    "name": "native.country",
+                    "type": "string",
+                    "collation": "LEN_RUS",
+                    "caption": "Native.Country",
+                    "ordinal": 13
+                },
+                {
+                    "name": "occupation",
+                    "type": "string",
+                    "collation": "LEN_RUS",
+                    "caption": "Occupation",
+                    "ordinal": 6
+                },
+                {
+                    "name": "race",
+                    "type": "string",
+                    "collation": "LEN_RUS",
+                    "caption": "Race",
+                    "ordinal": 8
+                },
+                {
+                    "name": "relationship",
+                    "type": "string",
+                    "collation": "LEN_RUS",
+                    "caption": "Relationship",
+                    "ordinal": 7
+                },
+                {
+                    "name": "sex",
+                    "type": "string",
+                    "collation": "LEN_RUS",
+                    "caption": "Sex",
+                    "ordinal": 9
+                },
+                {
+                    "name": "workclass",
+                    "type": "string",
+                    "collation": "LEN_RUS",
+                    "caption": "Workclass",
+                    "ordinal": 1
+                }
+            ],
+            "actions": [
+                {
+                    "nodeType": ".v1.RenameColumn",
+                    "columnName": "CAPITAL_GAIN",
+                    "rename": "Capital Gain",
+                    "name": "renamed CAPITAL_GAIN to Capital Gain 1",
+                    "id": "ef38abf9-4dcb-4b23-88f2-2e82f1e03a69",
+                    "baseType": "transform",
+                    "nextNodes": [],
+                    "serialize": false,
+                    "description": null
+                },
+                {
+                    "nodeType": ".v1.RenameColumn",
+                    "columnName": "CAPITAL_LOSS",
+                    "rename": "Capital Loss",
+                    "name": "renamed CAPITAL_LOSS to Capital Loss 1",
+                    "id": "fd15d555-0126-48cd-8c97-60ff4aa1781c",
+                    "baseType": "transform",
+                    "nextNodes": [],
+                    "serialize": false,
+                    "description": null
+                },
+                {
+                    "nodeType": ".v1.RenameColumn",
+                    "columnName": "EDUCATION",
+                    "rename": "Education1",
+                    "name": "renamed EDUCATION to Education1 1",
+                    "id": "02afde1d-474c-4ead-987a-cd3c3f0b1ceb",
+                    "baseType": "transform",
+                    "nextNodes": [],
+                    "serialize": false,
+                    "description": null
+                },
+                {
+                    "nodeType": ".v1.RenameColumn",
+                    "columnName": "EDUCATION_NUM",
+                    "rename": "Education Num",
+                    "name": "renamed EDUCATION_NUM to Education Num 1",
+                    "id": "6696da36-b99f-4ca8-b38e-b96631c38d5e",
+                    "baseType": "transform",
+                    "nextNodes": [],
+                    "serialize": false,
+                    "description": null
+                },
+                {
+                    "nodeType": ".v1.RenameColumn",
+                    "columnName": "FNLWGT",
+                    "rename": "Fnlwgt1",
+                    "name": "renamed FNLWGT to Fnlwgt1 1",
+                    "id": "5699914f-b637-4c7d-bd51-b6c735246b59",
+                    "baseType": "transform",
+                    "nextNodes": [],
+                    "serialize": false,
+                    "description": null
+                },
+                {
+                    "nodeType": ".v1.RenameColumn",
+                    "columnName": "HOURS_PER_WEEK",
+                    "rename": "Hours Per Week",
+                    "name": "renamed HOURS_PER_WEEK to Hours Per Week 1",
+                    "id": "0c53ef6c-77a0-497c-862a-274cb1534f8d",
+                    "baseType": "transform",
+                    "nextNodes": [],
+                    "serialize": false,
+                    "description": null
+                },
+                {
+                    "nodeType": ".v1.RenameColumn",
+                    "columnName": "INCOME",
+                    "rename": "Income1",
+                    "name": "renamed INCOME to Income1 1",
+                    "id": "b6d2767f-b7f6-4699-b980-504746e6c16c",
+                    "baseType": "transform",
+                    "nextNodes": [],
+                    "serialize": false,
+                    "description": null
+                },
+                {
+                    "nodeType": ".v1.RenameColumn",
+                    "columnName": "MARITAL_STATUS",
+                    "rename": "Marital Status",
+                    "name": "renamed MARITAL_STATUS to Marital Status 1",
+                    "id": "8c612624-5198-4c3f-89a3-a073b2d17947",
+                    "baseType": "transform",
+                    "nextNodes": [],
+                    "serialize": false,
+                    "description": null
+                },
+                {
+                    "nodeType": ".v1.RenameColumn",
+                    "columnName": "NATIVE_COUNTRY",
+                    "rename": "Native Country",
+                    "name": "renamed NATIVE_COUNTRY to Native Country 1",
+                    "id": "ec233922-b3de-4f65-8ba3-ad09f1a8bef4",
+                    "baseType": "transform",
+                    "nextNodes": [],
+                    "serialize": false,
+                    "description": null
+                },
+                {
+                    "nodeType": ".v1.RenameColumn",
+                    "columnName": "OCCUPATION",
+                    "rename": "Occupation1",
+                    "name": "renamed OCCUPATION to Occupation1 1",
+                    "id": "65f14b9f-ec67-4640-b7b9-c49981293720",
+                    "baseType": "transform",
+                    "nextNodes": [],
+                    "serialize": false,
+                    "description": null
+                },
+                {
+                    "nodeType": ".v1.RenameColumn",
+                    "columnName": "RACE",
+                    "rename": "Race1",
+                    "name": "renamed RACE to Race1 1",
+                    "id": "4d46314c-db7b-419b-b372-d54e0e9cd8b0",
+                    "baseType": "transform",
+                    "nextNodes": [],
+                    "serialize": false,
+                    "description": null
+                },
+                {
+                    "nodeType": ".v1.RenameColumn",
+                    "columnName": "RELATIONSHIP",
+                    "rename": "Relationship1",
+                    "name": "renamed RELATIONSHIP to Relationship1 1",
+                    "id": "32ca2d89-eba7-4d72-a4dc-abb88763a522",
+                    "baseType": "transform",
+                    "nextNodes": [],
+                    "serialize": false,
+                    "description": null
+                },
+                {
+                    "nodeType": ".v1.RenameColumn",
+                    "columnName": "WORKCLASS",
+                    "rename": "Workclass1",
+                    "name": "renamed WORKCLASS to Workclass1 1",
+                    "id": "03541fbe-bc58-4b84-99be-17d8b4774cf1",
+                    "baseType": "transform",
+                    "nextNodes": [],
+                    "serialize": false,
+                    "description": null
+                },
+                {
+                    "nodeType": ".v1.RenameColumn",
+                    "columnName": "age",
+                    "rename": "Age",
+                    "name": "renamed age to Age 1",
+                    "id": "9b7f141d-cf1f-4f00-865f-3a1f4de14a3d",
+                    "baseType": "transform",
+                    "nextNodes": [],
+                    "serialize": false,
+                    "description": null
+                },
+                {
+                    "nodeType": ".v1.RenameColumn",
+                    "columnName": "capital.gain",
+                    "rename": "Capital.Gain",
+                    "name": "renamed capital.gain to Capital.Gain 1",
+                    "id": "83600fb2-712c-486d-89c1-9e1342153b0d",
+                    "baseType": "transform",
+                    "nextNodes": [],
+                    "serialize": false,
+                    "description": null
+                },
+                {
+                    "nodeType": ".v1.RenameColumn",
+                    "columnName": "capital.loss",
+                    "rename": "Capital.Loss",
+                    "name": "renamed capital.loss to Capital.Loss 1",
+                    "id": "32da8b2c-54f4-4273-98a3-35afce9801eb",
+                    "baseType": "transform",
+                    "nextNodes": [],
+                    "serialize": false,
+                    "description": null
+                },
+                {
+                    "nodeType": ".v1.RenameColumn",
+                    "columnName": "education.num",
+                    "rename": "Education.Num",
+                    "name": "renamed education.num to Education.Num 1",
+                    "id": "ff4131c6-f9fa-4973-8cff-e9bc7a02bfba",
+                    "baseType": "transform",
+                    "nextNodes": [],
+                    "serialize": false,
+                    "description": null
+                },
+                {
+                    "nodeType": ".v1.RenameColumn",
+                    "columnName": "education",
+                    "rename": "Education",
+                    "name": "renamed education to Education 1",
+                    "id": "6d66a5cf-7e9d-4cfc-a9b3-1e2088d5698a",
+                    "baseType": "transform",
+                    "nextNodes": [],
+                    "serialize": false,
+                    "description": null
+                },
+                {
+                    "nodeType": ".v1.RenameColumn",
+                    "columnName": "fnlwgt",
+                    "rename": "Fnlwgt",
+                    "name": "renamed fnlwgt to Fnlwgt 1",
+                    "id": "38aa7453-1c8f-4d7b-bfc7-236362ad0c2b",
+                    "baseType": "transform",
+                    "nextNodes": [],
+                    "serialize": false,
+                    "description": null
+                },
+                {
+                    "nodeType": ".v1.RenameColumn",
+                    "columnName": "hours.per.week",
+                    "rename": "Hours.Per.Week",
+                    "name": "renamed hours.per.week to Hours.Per.Week 1",
+                    "id": "4c55544a-6049-45ad-9963-a0eee2f4b830",
+                    "baseType": "transform",
+                    "nextNodes": [],
+                    "serialize": false,
+                    "description": null
+                },
+                {
+                    "nodeType": ".v1.RenameColumn",
+                    "columnName": "income",
+                    "rename": "Income",
+                    "name": "renamed income to Income 1",
+                    "id": "f5c98f58-47e9-4ce7-a073-36ae873e17b4",
+                    "baseType": "transform",
+                    "nextNodes": [],
+                    "serialize": false,
+                    "description": null
+                },
+                {
+                    "nodeType": ".v1.RenameColumn",
+                    "columnName": "marital.status",
+                    "rename": "Marital.Status",
+                    "name": "renamed marital.status to Marital.Status 1",
+                    "id": "c5917eb7-8a89-4436-9a77-510ad0941e45",
+                    "baseType": "transform",
+                    "nextNodes": [],
+                    "serialize": false,
+                    "description": null
+                },
+                {
+                    "nodeType": ".v1.RenameColumn",
+                    "columnName": "native.country",
+                    "rename": "Native.Country",
+                    "name": "renamed native.country to Native.Country 1",
+                    "id": "e052edb7-9f82-4448-8eed-775e960fab5e",
+                    "baseType": "transform",
+                    "nextNodes": [],
+                    "serialize": false,
+                    "description": null
+                },
+                {
+                    "nodeType": ".v1.RenameColumn",
+                    "columnName": "occupation",
+                    "rename": "Occupation",
+                    "name": "renamed occupation to Occupation 1",
+                    "id": "b3a10d89-165c-4f6a-a3f8-07eb30ab11f9",
+                    "baseType": "transform",
+                    "nextNodes": [],
+                    "serialize": false,
+                    "description": null
+                },
+                {
+                    "nodeType": ".v1.RenameColumn",
+                    "columnName": "race",
+                    "rename": "Race",
+                    "name": "renamed race to Race 1",
+                    "id": "a829246c-6e98-4d96-a9e2-c703115b4508",
+                    "baseType": "transform",
+                    "nextNodes": [],
+                    "serialize": false,
+                    "description": null
+                },
+                {
+                    "nodeType": ".v1.RenameColumn",
+                    "columnName": "relationship",
+                    "rename": "Relationship",
+                    "name": "renamed relationship to Relationship 1",
+                    "id": "f0254f15-bc79-43f1-b60b-5d0543ee4322",
+                    "baseType": "transform",
+                    "nextNodes": [],
+                    "serialize": false,
+                    "description": null
+                },
+                {
+                    "nodeType": ".v1.RenameColumn",
+                    "columnName": "sex",
+                    "rename": "Sex",
+                    "name": "renamed sex to Sex 1",
+                    "id": "b915eb48-8882-4137-8c50-b4e55143f820",
+                    "baseType": "transform",
+                    "nextNodes": [],
+                    "serialize": false,
+                    "description": null
+                },
+                {
+                    "nodeType": ".v1.RenameColumn",
+                    "columnName": "workclass",
+                    "rename": "Workclass",
+                    "name": "renamed workclass to Workclass 1",
+                    "id": "8c27cf59-92bb-4557-a8a4-6ed979e5dc7f",
+                    "baseType": "transform",
+                    "nextNodes": [],
+                    "serialize": false,
+                    "description": null
+                }
+            ],
+            "debugModeRowLimit": null,
+            "originalDataTypes": {},
+            "randomSampling": null,
+            "updateTimestamp": null,
+            "restrictedFields": {},
+            "userRenamedFields": {},
+            "selectedFields": null,
+            "filters": [],
+            "relation": {
+                "type": "table",
+                "table": "[sqlproxy]"
+            }
+        },
+        "021608b2-086a-4ea4-9dd2-3c3cceb3a30f": {
+            "nodeType": ".v1.PublishExtract",
+            "name": "Output 3",
+            "id": "021608b2-086a-4ea4-9dd2-3c3cceb3a30f",
+            "baseType": "output",
+            "nextNodes": [],
+            "serialize": false,
+            "description": null,
+            "projectName": "Isaac's Project",
+            "projectLuid": "c585b0f7-fc43-4d0a-8942-12adf443ee98",
+            "datasourceName": "Output 3",
+            "datasourceDescription": "",
+            "serverUrl": "https://10ax.online.tableau.com/#/site/jettydev"
+        },
+        "4093ed0e-bf1c-4dc0-a2a7-20c72ea1da17": {
+            "nodeType": ".v1.LoadSql",
+            "name": "ADULT_AGGREGATED_TABLE (GOLD.ADULT_AGGREGATED_TABLE)",
+            "id": "4093ed0e-bf1c-4dc0-a2a7-20c72ea1da17",
+            "baseType": "input",
+            "nextNodes": [
+                {
+                    "namespace": "Default",
+                    "nextNodeId": "c73cab94-f1de-43ff-be72-8a87af19d81e",
+                    "nextNamespace": "Union-Namespace-7445c53d-9602-4320-b5a0-7d7d264488f0"
+                }
+            ],
+            "serialize": false,
+            "description": null,
+            "connectionId": "6f9952e6-98b9-4b82-ab4f-775937e89040",
+            "connectionAttributes": {
+                "schema": "GOLD",
+                "dbname": "JETTY_TEST_DB",
+                "warehouse": "MAIN"
+            },
+            "fields": [
+                {
+                    "name": "SEX",
+                    "type": "string",
+                    "collation": "binary",
+                    "caption": "",
+                    "ordinal": 1
+                },
+                {
+                    "name": "RACE",
+                    "type": "string",
+                    "collation": "binary",
+                    "caption": "",
+                    "ordinal": 2
+                },
+                {
+                    "name": "INCOME",
+                    "type": "string",
+                    "collation": "binary",
+                    "caption": "",
+                    "ordinal": 3
+                },
+                {
+                    "name": "PERSON_COUNT",
+                    "type": "integer",
+                    "collation": null,
+                    "caption": "",
+                    "ordinal": 4
+                }
+            ],
+            "actions": [],
+            "debugModeRowLimit": null,
+            "originalDataTypes": {},
+            "randomSampling": null,
+            "updateTimestamp": null,
+            "restrictedFields": {},
+            "userRenamedFields": {},
+            "selectedFields": null,
+            "filters": [],
+            "relation": {
+                "type": "table",
+                "table": "[GOLD].[ADULT_AGGREGATED_TABLE]"
+            }
+        },
+        "e2fdf0db-39f9-43fe-beb5-833a40c6b021": {
+            "nodeType": ".v2020_3_1.WriteToDatabase",
+            "name": "Output 8",
+            "id": "e2fdf0db-39f9-43fe-beb5-833a40c6b021",
+            "baseType": "output",
+            "nextNodes": [],
+            "serialize": false,
+            "description": null,
+            "connectionId": "6f9952e6-98b9-4b82-ab4f-775937e89040",
+            "attributes": {
+                "schema": "RAW",
+                "dbname": "JETTY_TEST_DB",
+                "warehouse": "MAIN",
+                "tablename": "\"Special Name\""
+            },
+            "preOutputCommands": [],
+            "postOutputCommands": []
+        }
+    },
+    "connections": {
+        "9c8706e2-0a7d-443b-8cea-b28edd9fc5a6": {
+            "connectionType": ".v1.SqlConnection",
+            "id": "9c8706e2-0a7d-443b-8cea-b28edd9fc5a6",
+            "name": "https://10ax.online.tableau.com (jetty-dev)",
+            "isPackaged": false,
+            "connectionAttributes": {
+                "server": "https://10ax.online.tableau.com",
+                "port": "443",
+                "query-category": "Data",
+                "siteUrlName": "jettydev",
+                "channel": "https",
+                "class": "sqlproxy",
+                "directory": "/dataserver",
+                "odbc-native-protocol": "yes"
+            }
+        },
+        "6f9952e6-98b9-4b82-ab4f-775937e89040": {
+            "connectionType": ".v1.SqlConnection",
+            "id": "6f9952e6-98b9-4b82-ab4f-775937e89040",
+            "name": "cea26391.snowflakecomputing.com",
+            "isPackaged": false,
+            "connectionAttributes": {
+                "odbc-connect-string-extras": "",
+                "server": "cea26391.snowflakecomputing.com",
+                "prep-protocol-role": ":prep-protocol-reader",
+                ":flow-name": "Flow1",
+                "workgroup-auth-mode": "",
+                "warehouse": "",
+                "site": "18423",
+                "dbname": "",
+                ":protocol-customizations": "",
+                "service": "accountadmin",
+                "class": "snowflake",
+                "one-time-sql": "",
+                "authentication": "Username Password",
+                "username": "isaac"
+            }
+        },
+        "84b55297-350f-4fde-9ff8-869b66edbe8e": {
+            "connectionType": ".v1.SqlConnection",
+            "id": "84b55297-350f-4fde-9ff8-869b66edbe8e",
+            "name": "adult.csv",
+            "isPackaged": true,
+            "connectionAttributes": {
+                "filename": "adult.csv",
+                "class": "textscan"
+            }
+        }
+    },
+    "connectionIds": [
+        "84b55297-350f-4fde-9ff8-869b66edbe8e",
+        "9c8706e2-0a7d-443b-8cea-b28edd9fc5a6",
+        "6f9952e6-98b9-4b82-ab4f-775937e89040"
+    ],
+    "nodeProperties": {
+        "09b1d127-adef-4f6a-8544-cc1d75ad2f50": {},
+        "11bb25c7-76bf-486b-b5fe-51796ed0faea": {},
+        "65409a9b-02c2-4be2-935c-aab5528ea701": {},
+        "8faa5aaf-b36a-42b2-8c04-d692a03fa4e4": {},
+        "efbfe012-d68b-4945-ab97-e8ac97e0713e": {},
+        "e5013f4e-f18b-420b-bf97-4f5282b4053a": {},
+        "4a41f0a8-334c-472c-a49f-6824f2fc7eb6": {},
+        "2d73cf95-0f79-49ab-a920-1c07b49a2fbf": {},
+        "4093ed0e-bf1c-4dc0-a2a7-20c72ea1da17": {},
+        "d6e93c63-2cbe-4f34-806e-3ac3de985fc3": {
+            "com.tableau.loom.doc.fileformat.v2020_2_1.OutputRefreshOptions": {
+                "nodePropertyType": ".v2020_2_1.OutputRefreshOptions",
+                "outputOperationType": "outputOperationTypeCreate",
+                "incrementalOutputOperationType": "outputOperationTypeAppend",
+                "isIncrementalDefault": false
+            }
+        },
+        "e2fdf0db-39f9-43fe-beb5-833a40c6b021": {
+            "com.tableau.loom.doc.fileformat.v2020_2_1.OutputRefreshOptions": {
+                "nodePropertyType": ".v2020_2_1.OutputRefreshOptions",
+                "outputOperationType": "outputOperationTypeCreate",
+                "incrementalOutputOperationType": "outputOperationTypeAppend",
+                "isIncrementalDefault": false
+            }
+        }
+    },
+    "extensibility": {},
+    "selection": [],
+    "majorVersion": 1,
+    "minorVersion": 7,
+    "documentId": "1b001906-43c4-4259-9546-7929e94a1e87",
+    "obfuscatorId": "217b3fe0-ff54-437f-aa81-43a2b6a2897c"
+}

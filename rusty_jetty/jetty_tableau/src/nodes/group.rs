@@ -65,11 +65,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_fetching_groups_works() -> Result<()> {
-        let tc = tokio::task::spawn_blocking(|| {
-            crate::connector_setup().context("running tableau connector setup")
-        })
-        .await??;
-        let groups = get_basic_groups(&tc.rest_client).await?;
+        let tc = crate::connector_setup()
+            .await
+            .context("running tableau connector setup")?;
+        let groups = get_basic_groups(&tc.env.rest_client).await?;
         for (_k, v) in groups {
             println!("{:#?}", v);
         }
@@ -78,12 +77,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_fetching_groups_with_users_works() -> Result<()> {
-        let tc = tokio::task::spawn_blocking(|| {
-            crate::connector_setup().context("running tableau connector setup")
-        })
-        .await??;
-        let mut groups = get_basic_groups(&tc.rest_client).await?;
-        get_group_users(&tc.rest_client, &mut groups).await?;
+        let tc = crate::connector_setup()
+            .await
+            .context("running tableau connector setup")?;
+        let mut groups = get_basic_groups(&tc.env.rest_client).await?;
+        get_group_users(&tc.env.rest_client, &mut groups).await?;
         for (_k, v) in groups {
             println!("{:#?}", v);
         }
