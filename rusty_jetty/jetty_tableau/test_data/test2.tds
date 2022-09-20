@@ -1,0 +1,413 @@
+<?xml version='1.0' encoding='utf-8' ?>
+
+<!-- build 20223.22.0816.2353                               -->
+<datasource formatted-name='federated.1x3ugp11dgjdq21eyvbi20ltr7fm' inline='true' source-platform='linux' version='18.1' xml:base='http://10ax.online.tableau.com' xmlns:user='http://www.tableausoftware.com/xml/user'>
+  <document-format-change-manifest>
+    <_.fcp.ObjectModelEncapsulateLegacy.true...ObjectModelEncapsulateLegacy />
+    <_.fcp.ObjectModelTableType.true...ObjectModelTableType />
+    <_.fcp.SchemaViewerObjectModel.true...SchemaViewerObjectModel />
+  </document-format-change-manifest>
+  <repository-location derived-from='/datasources/MultiwithcustomSQL?rev=1.0' id='MultiUnion' path='/t/jettydev/datasources' revision='1.0' site='jettydev' />
+  <connection class='federated'>
+    <named-connections>
+      <named-connection caption='cea26391.snowflakecomputing.com' name='snowflake.1y7zshc02cpwwf1fq6hny0iinyh6'>
+        <connection authentication='Username Password' class='snowflake' dbname='JETTY_TEST_DB' odbc-connect-string-extras='' one-time-sql='' schema='RAW' server='cea26391.snowflakecomputing.com' service='ACCOUNTADMIN' username='isaac' warehouse='MAIN' workgroup-auth-mode='' />
+      </named-connection>
+      <named-connection caption='adult' name='textscan.07ddf8w0m04glc17h2kjg1dmxmfp'>
+        <connection class='textscan' directory='Data/07ng9ex0ywzmku17q3kjv1ahlczh' filename='adult.csv' />
+      </named-connection>
+    </named-connections>
+    <_.fcp.ObjectModelEncapsulateLegacy.false...relation connection='snowflake.1y7zshc02cpwwf1fq6hny0iinyh6' name='ADULT' table='[RAW].[ADULT]' type='table' />
+    <_.fcp.ObjectModelEncapsulateLegacy.true...relation type='collection'>
+      <relation connection='snowflake.1y7zshc02cpwwf1fq6hny0iinyh6' name='ADULT' table='[RAW].[ADULT]' type='table' />
+      <relation all='true' name='Union' type='union'>
+        <relation connection='snowflake.1y7zshc02cpwwf1fq6hny0iinyh6' name='IRIS_ONLY_SETOSA' table='[RAW].[IRIS_ONLY_SETOSA]' type='table' />
+        <relation connection='snowflake.1y7zshc02cpwwf1fq6hny0iinyh6' name='IRIS_ONLY_VERSICOLOR' table='[RAW].[IRIS_ONLY_VERSICOLOR]' type='table' />
+      </relation>
+    </_.fcp.ObjectModelEncapsulateLegacy.true...relation>
+    <metadata-records>
+      <metadata-record class='column'>
+        <remote-name>A</remote-name>
+        <remote-type>131</remote-type>
+        <local-name>[A]</local-name>
+        <parent-name>[ADULT]</parent-name>
+        <remote-alias>A</remote-alias>
+        <ordinal>1</ordinal>
+        <local-type>integer</local-type>
+        <aggregation>Sum</aggregation>
+        <precision>38</precision>
+        <scale>0</scale>
+        <contains-null>true</contains-null>
+        <attributes>
+          <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_DECIMAL&quot;</attribute>
+          <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_NUMERIC&quot;</attribute>
+        </attributes>
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[ADULT (RAW.ADULT)_984C1037949F4F6CA8E7464079D52EA7]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>AGE</remote-name>
+        <remote-type>131</remote-type>
+        <local-name>[AGE]</local-name>
+        <parent-name>[ADULT]</parent-name>
+        <remote-alias>AGE</remote-alias>
+        <ordinal>2</ordinal>
+        <local-type>integer</local-type>
+        <aggregation>Sum</aggregation>
+        <precision>38</precision>
+        <scale>0</scale>
+        <contains-null>true</contains-null>
+        <attributes>
+          <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_DECIMAL&quot;</attribute>
+          <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_NUMERIC&quot;</attribute>
+        </attributes>
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[ADULT (RAW.ADULT)_984C1037949F4F6CA8E7464079D52EA7]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>WORKCLASS</remote-name>
+        <remote-type>129</remote-type>
+        <local-name>[WORKCLASS]</local-name>
+        <parent-name>[ADULT]</parent-name>
+        <remote-alias>WORKCLASS</remote-alias>
+        <ordinal>3</ordinal>
+        <local-type>string</local-type>
+        <aggregation>Count</aggregation>
+        <width>16777216</width>
+        <contains-null>true</contains-null>
+        <collation flag='0' name='binary' />
+        <attributes>
+          <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+          <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+          <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+        </attributes>
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[ADULT (RAW.ADULT)_984C1037949F4F6CA8E7464079D52EA7]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>FNLWGT</remote-name>
+        <remote-type>131</remote-type>
+        <local-name>[FNLWGT]</local-name>
+        <parent-name>[ADULT]</parent-name>
+        <remote-alias>FNLWGT</remote-alias>
+        <ordinal>4</ordinal>
+        <local-type>integer</local-type>
+        <aggregation>Sum</aggregation>
+        <precision>38</precision>
+        <scale>0</scale>
+        <contains-null>true</contains-null>
+        <attributes>
+          <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_DECIMAL&quot;</attribute>
+          <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_NUMERIC&quot;</attribute>
+        </attributes>
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[ADULT (RAW.ADULT)_984C1037949F4F6CA8E7464079D52EA7]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>EDUCATION</remote-name>
+        <remote-type>129</remote-type>
+        <local-name>[EDUCATION]</local-name>
+        <parent-name>[ADULT]</parent-name>
+        <remote-alias>EDUCATION</remote-alias>
+        <ordinal>5</ordinal>
+        <local-type>string</local-type>
+        <aggregation>Count</aggregation>
+        <width>16777216</width>
+        <contains-null>true</contains-null>
+        <collation flag='0' name='binary' />
+        <attributes>
+          <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+          <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+          <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+        </attributes>
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[ADULT (RAW.ADULT)_984C1037949F4F6CA8E7464079D52EA7]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>EDUCATION_NUM</remote-name>
+        <remote-type>131</remote-type>
+        <local-name>[EDUCATION_NUM]</local-name>
+        <parent-name>[ADULT]</parent-name>
+        <remote-alias>EDUCATION_NUM</remote-alias>
+        <ordinal>6</ordinal>
+        <local-type>integer</local-type>
+        <aggregation>Sum</aggregation>
+        <precision>38</precision>
+        <scale>0</scale>
+        <contains-null>true</contains-null>
+        <attributes>
+          <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_DECIMAL&quot;</attribute>
+          <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_NUMERIC&quot;</attribute>
+        </attributes>
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[ADULT (RAW.ADULT)_984C1037949F4F6CA8E7464079D52EA7]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>MARITAL_STATUS</remote-name>
+        <remote-type>129</remote-type>
+        <local-name>[MARITAL_STATUS]</local-name>
+        <parent-name>[ADULT]</parent-name>
+        <remote-alias>MARITAL_STATUS</remote-alias>
+        <ordinal>7</ordinal>
+        <local-type>string</local-type>
+        <aggregation>Count</aggregation>
+        <width>16777216</width>
+        <contains-null>true</contains-null>
+        <collation flag='0' name='binary' />
+        <attributes>
+          <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+          <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+          <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+        </attributes>
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[ADULT (RAW.ADULT)_984C1037949F4F6CA8E7464079D52EA7]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>OCCUPATION</remote-name>
+        <remote-type>129</remote-type>
+        <local-name>[OCCUPATION]</local-name>
+        <parent-name>[ADULT]</parent-name>
+        <remote-alias>OCCUPATION</remote-alias>
+        <ordinal>8</ordinal>
+        <local-type>string</local-type>
+        <aggregation>Count</aggregation>
+        <width>16777216</width>
+        <contains-null>true</contains-null>
+        <collation flag='0' name='binary' />
+        <attributes>
+          <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+          <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+          <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+        </attributes>
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[ADULT (RAW.ADULT)_984C1037949F4F6CA8E7464079D52EA7]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>RELATIONSHIP</remote-name>
+        <remote-type>129</remote-type>
+        <local-name>[RELATIONSHIP]</local-name>
+        <parent-name>[ADULT]</parent-name>
+        <remote-alias>RELATIONSHIP</remote-alias>
+        <ordinal>9</ordinal>
+        <local-type>string</local-type>
+        <aggregation>Count</aggregation>
+        <width>16777216</width>
+        <contains-null>true</contains-null>
+        <collation flag='0' name='binary' />
+        <attributes>
+          <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+          <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+          <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+        </attributes>
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[ADULT (RAW.ADULT)_984C1037949F4F6CA8E7464079D52EA7]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>RACE</remote-name>
+        <remote-type>129</remote-type>
+        <local-name>[RACE]</local-name>
+        <parent-name>[ADULT]</parent-name>
+        <remote-alias>RACE</remote-alias>
+        <ordinal>10</ordinal>
+        <local-type>string</local-type>
+        <aggregation>Count</aggregation>
+        <width>16777216</width>
+        <contains-null>true</contains-null>
+        <collation flag='0' name='binary' />
+        <attributes>
+          <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+          <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+          <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+        </attributes>
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[ADULT (RAW.ADULT)_984C1037949F4F6CA8E7464079D52EA7]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>SEX</remote-name>
+        <remote-type>129</remote-type>
+        <local-name>[SEX]</local-name>
+        <parent-name>[ADULT]</parent-name>
+        <remote-alias>SEX</remote-alias>
+        <ordinal>11</ordinal>
+        <local-type>string</local-type>
+        <aggregation>Count</aggregation>
+        <width>16777216</width>
+        <contains-null>true</contains-null>
+        <collation flag='0' name='binary' />
+        <attributes>
+          <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+          <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+          <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+        </attributes>
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[ADULT (RAW.ADULT)_984C1037949F4F6CA8E7464079D52EA7]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>CAPITAL_GAIN</remote-name>
+        <remote-type>131</remote-type>
+        <local-name>[CAPITAL_GAIN]</local-name>
+        <parent-name>[ADULT]</parent-name>
+        <remote-alias>CAPITAL_GAIN</remote-alias>
+        <ordinal>12</ordinal>
+        <local-type>integer</local-type>
+        <aggregation>Sum</aggregation>
+        <precision>38</precision>
+        <scale>0</scale>
+        <contains-null>true</contains-null>
+        <attributes>
+          <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_DECIMAL&quot;</attribute>
+          <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_NUMERIC&quot;</attribute>
+        </attributes>
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[ADULT (RAW.ADULT)_984C1037949F4F6CA8E7464079D52EA7]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>CAPITAL_LOSS</remote-name>
+        <remote-type>131</remote-type>
+        <local-name>[CAPITAL_LOSS]</local-name>
+        <parent-name>[ADULT]</parent-name>
+        <remote-alias>CAPITAL_LOSS</remote-alias>
+        <ordinal>13</ordinal>
+        <local-type>integer</local-type>
+        <aggregation>Sum</aggregation>
+        <precision>38</precision>
+        <scale>0</scale>
+        <contains-null>true</contains-null>
+        <attributes>
+          <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_DECIMAL&quot;</attribute>
+          <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_NUMERIC&quot;</attribute>
+        </attributes>
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[ADULT (RAW.ADULT)_984C1037949F4F6CA8E7464079D52EA7]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>HOURS_PER_WEEK</remote-name>
+        <remote-type>131</remote-type>
+        <local-name>[HOURS_PER_WEEK]</local-name>
+        <parent-name>[ADULT]</parent-name>
+        <remote-alias>HOURS_PER_WEEK</remote-alias>
+        <ordinal>14</ordinal>
+        <local-type>integer</local-type>
+        <aggregation>Sum</aggregation>
+        <precision>38</precision>
+        <scale>0</scale>
+        <contains-null>true</contains-null>
+        <attributes>
+          <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_DECIMAL&quot;</attribute>
+          <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_NUMERIC&quot;</attribute>
+        </attributes>
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[ADULT (RAW.ADULT)_984C1037949F4F6CA8E7464079D52EA7]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>NATIVE_COUNTRY</remote-name>
+        <remote-type>129</remote-type>
+        <local-name>[NATIVE_COUNTRY]</local-name>
+        <parent-name>[ADULT]</parent-name>
+        <remote-alias>NATIVE_COUNTRY</remote-alias>
+        <ordinal>15</ordinal>
+        <local-type>string</local-type>
+        <aggregation>Count</aggregation>
+        <width>16777216</width>
+        <contains-null>true</contains-null>
+        <collation flag='0' name='binary' />
+        <attributes>
+          <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+          <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+          <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+        </attributes>
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[ADULT (RAW.ADULT)_984C1037949F4F6CA8E7464079D52EA7]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>INCOME</remote-name>
+        <remote-type>129</remote-type>
+        <local-name>[INCOME]</local-name>
+        <parent-name>[ADULT]</parent-name>
+        <remote-alias>INCOME</remote-alias>
+        <ordinal>16</ordinal>
+        <local-type>string</local-type>
+        <aggregation>Count</aggregation>
+        <width>16777216</width>
+        <contains-null>true</contains-null>
+        <collation flag='0' name='binary' />
+        <attributes>
+          <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+          <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+          <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+        </attributes>
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[ADULT (RAW.ADULT)_984C1037949F4F6CA8E7464079D52EA7]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>ID</remote-name>
+        <remote-type>131</remote-type>
+        <local-name>[ID]</local-name>
+        <parent-name>[Union]</parent-name>
+        <remote-alias>ID</remote-alias>
+        <ordinal>17</ordinal>
+        <local-type>integer</local-type>
+        <aggregation>Sum</aggregation>
+        <contains-null>true</contains-null>
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[_D2E5E1F145D847E7B97EA253AC4F44D3]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>SPECIES</remote-name>
+        <remote-type>129</remote-type>
+        <local-name>[SPECIES]</local-name>
+        <parent-name>[Union]</parent-name>
+        <remote-alias>SPECIES</remote-alias>
+        <ordinal>18</ordinal>
+        <local-type>string</local-type>
+        <aggregation>Count</aggregation>
+        <contains-null>true</contains-null>
+        <collation flag='0' name='binary' />
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[_D2E5E1F145D847E7B97EA253AC4F44D3]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>Table Name</remote-name>
+        <remote-type>129</remote-type>
+        <local-name>[Table Name]</local-name>
+        <parent-name>[Union]</parent-name>
+        <remote-alias>Table Name</remote-alias>
+        <ordinal>19</ordinal>
+        <local-type>string</local-type>
+        <aggregation>Count</aggregation>
+        <contains-null>true</contains-null>
+        <collation flag='0' name='LEN_RUS' />
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[_D2E5E1F145D847E7B97EA253AC4F44D3]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+    </metadata-records>
+  </connection>
+  <aliases enabled='yes' />
+  <column caption='Capital Gain' datatype='integer' name='[CAPITAL_GAIN]' role='measure' type='quantitative' />
+  <column caption='Capital Loss' datatype='integer' name='[CAPITAL_LOSS]' role='measure' type='quantitative' />
+  <column caption='Education' datatype='string' name='[EDUCATION]' role='dimension' type='nominal' />
+  <column caption='Education Num' datatype='integer' name='[EDUCATION_NUM]' role='dimension' type='ordinal' />
+  <column caption='Fnlwgt' datatype='integer' name='[FNLWGT]' role='measure' type='quantitative' />
+  <column caption='Hours Per Week' datatype='integer' name='[HOURS_PER_WEEK]' role='dimension' type='quantitative' />
+  <column caption='Income' datatype='string' name='[INCOME]' role='dimension' type='nominal' />
+  <column caption='Marital Status' datatype='string' name='[MARITAL_STATUS]' role='dimension' type='nominal' />
+  <column caption='Native Country' datatype='string' name='[NATIVE_COUNTRY]' role='dimension' semantic-role='[Country].[ISO3166_2]' type='nominal' />
+  <column caption='Occupation' datatype='string' name='[OCCUPATION]' role='dimension' type='nominal' />
+  <column caption='Race' datatype='string' name='[RACE]' role='dimension' type='nominal' />
+  <column caption='Relationship' datatype='string' name='[RELATIONSHIP]' role='dimension' type='nominal' />
+  <column caption='Workclass' datatype='string' name='[WORKCLASS]' role='dimension' type='nominal' />
+  <_.fcp.ObjectModelTableType.true...column caption='ADULT' datatype='table' name='[__tableau_internal_object_id__].[ADULT (RAW.ADULT)_984C1037949F4F6CA8E7464079D52EA7]' role='measure' type='quantitative' />
+  <_.fcp.ObjectModelTableType.true...column caption='Union' datatype='table' name='[__tableau_internal_object_id__].[_D2E5E1F145D847E7B97EA253AC4F44D3]' role='measure' type='quantitative' />
+  <layout _.fcp.SchemaViewerObjectModel.false...dim-percentage='0.5' _.fcp.SchemaViewerObjectModel.false...measure-percentage='0.4' dim-ordering='alphabetic' measure-ordering='alphabetic' show-structure='true' />
+  <semantic-values>
+    <semantic-value key='[Country].[Name]' value='&quot;United States&quot;' />
+  </semantic-values>
+  <_.fcp.ObjectModelEncapsulateLegacy.true...object-graph>
+    <objects>
+      <object caption='ADULT' id='ADULT (RAW.ADULT)_984C1037949F4F6CA8E7464079D52EA7'>
+        <properties context=''>
+          <relation connection='snowflake.1y7zshc02cpwwf1fq6hny0iinyh6' name='ADULT' table='[RAW].[ADULT]' type='table' />
+        </properties>
+      </object>
+      <object caption='Union' id='_D2E5E1F145D847E7B97EA253AC4F44D3'>
+        <properties context=''>
+          <relation all='true' name='Union' type='union'>
+            <relation connection='snowflake.1y7zshc02cpwwf1fq6hny0iinyh6' name='IRIS_ONLY_SETOSA' table='[RAW].[IRIS_ONLY_SETOSA]' type='table' />
+            <relation connection='snowflake.1y7zshc02cpwwf1fq6hny0iinyh6' name='IRIS_ONLY_VERSICOLOR' table='[RAW].[IRIS_ONLY_VERSICOLOR]' type='table' />
+          </relation>
+        </properties>
+      </object>
+    </objects>
+    <relationships>
+      <relationship>
+        <expression op='='>
+          <expression op='[AGE]' />
+          <expression op='[ID]' />
+        </expression>
+        <first-end-point object-id='ADULT (RAW.ADULT)_984C1037949F4F6CA8E7464079D52EA7' />
+        <second-end-point object-id='_D2E5E1F145D847E7B97EA253AC4F44D3' />
+      </relationship>
+    </relationships>
+  </_.fcp.ObjectModelEncapsulateLegacy.true...object-graph>
+</datasource>

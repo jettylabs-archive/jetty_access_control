@@ -1,0 +1,660 @@
+<?xml version='1.0' encoding='utf-8' ?>
+
+<!-- build 20223.22.0816.2353                               -->
+<datasource formatted-name='federated.1x3ugp11dgjdq21eyvbi20ltr7fm' inline='true' source-platform='linux' version='18.1' xml:base='http://10ax.online.tableau.com' xmlns:user='http://www.tableausoftware.com/xml/user'>
+  <document-format-change-manifest>
+    <_.fcp.ObjectModelEncapsulateLegacy.true...ObjectModelEncapsulateLegacy />
+    <_.fcp.ObjectModelTableType.true...ObjectModelTableType />
+    <_.fcp.SchemaViewerObjectModel.true...SchemaViewerObjectModel />
+  </document-format-change-manifest>
+  <repository-location derived-from='/datasources/multi-connection?rev=1.0' id='MultiwithcustomSQL' path='/t/jettydev/datasources' revision='1.0' site='jettydev' />
+  <connection class='federated'>
+    <named-connections>
+      <named-connection caption='cea26391.snowflakecomputing.com' name='snowflake.1y7zshc02cpwwf1fq6hny0iinyh6'>
+        <connection authentication='Username Password' class='snowflake' dbname='JETTY_TEST_DB' odbc-connect-string-extras='' one-time-sql='' schema='RAW' server='cea26391.snowflakecomputing.com' service='ACCOUNTADMIN' username='isaac' warehouse='MAIN' workgroup-auth-mode='' />
+      </named-connection>
+      <named-connection caption='adult' name='textscan.07ddf8w0m04glc17h2kjg1dmxmfp'>
+        <connection class='textscan' directory='Data/07ng9ex0ywzmku17q3kjv1ahlczh' filename='adult.csv' />
+      </named-connection>
+    </named-connections>
+    <_.fcp.ObjectModelEncapsulateLegacy.false...relation connection='snowflake.1y7zshc02cpwwf1fq6hny0iinyh6' name='Custom SQL Query' type='text'><![CDATA[Select *, <[Parameters].[Parameter 1]> as parameter from raw.adult]]></_.fcp.ObjectModelEncapsulateLegacy.false...relation>
+    <_.fcp.ObjectModelEncapsulateLegacy.true...relation type='collection'>
+      <relation connection='textscan.07ddf8w0m04glc17h2kjg1dmxmfp' name='adult.csv' table='[adult#csv]' type='table'>
+        <columns character-set='UTF-8' header='yes' locale='en_US' separator=','>
+          <column datatype='integer' name='age' ordinal='0' />
+          <column datatype='string' name='workclass' ordinal='1' />
+          <column datatype='integer' name='fnlwgt' ordinal='2' />
+          <column datatype='string' name='education' ordinal='3' />
+          <column datatype='integer' name='education.num' ordinal='4' />
+          <column datatype='string' name='marital.status' ordinal='5' />
+          <column datatype='string' name='occupation' ordinal='6' />
+          <column datatype='string' name='relationship' ordinal='7' />
+          <column datatype='string' name='race' ordinal='8' />
+          <column datatype='string' name='sex' ordinal='9' />
+          <column datatype='integer' name='capital.gain' ordinal='10' />
+          <column datatype='integer' name='capital.loss' ordinal='11' />
+          <column datatype='integer' name='hours.per.week' ordinal='12' />
+          <column datatype='string' name='native.country' ordinal='13' />
+          <column datatype='string' name='income' ordinal='14' />
+        </columns>
+      </relation>
+      <relation connection='snowflake.1y7zshc02cpwwf1fq6hny0iinyh6' name='Custom SQL Query' type='text'><![CDATA[Select * from raw.adult]]></relation>
+    </_.fcp.ObjectModelEncapsulateLegacy.true...relation>
+    <metadata-records>
+      <metadata-record class='capability'>
+        <remote-name />
+        <remote-type>0</remote-type>
+        <parent-name>[adult.csv]</parent-name>
+        <remote-alias />
+        <aggregation>Count</aggregation>
+        <contains-null>true</contains-null>
+        <attributes>
+          <attribute datatype='string' name='character-set'>&quot;UTF-8&quot;</attribute>
+          <attribute datatype='string' name='collation'>&quot;en_US&quot;</attribute>
+          <attribute datatype='string' name='field-delimiter'>&quot;,&quot;</attribute>
+          <attribute datatype='string' name='header-row'>&quot;true&quot;</attribute>
+          <attribute datatype='string' name='locale'>&quot;en_US&quot;</attribute>
+          <attribute datatype='string' name='single-char'>&quot;&quot;</attribute>
+        </attributes>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>age</remote-name>
+        <remote-type>20</remote-type>
+        <local-name>[age]</local-name>
+        <parent-name>[adult.csv]</parent-name>
+        <remote-alias>age</remote-alias>
+        <ordinal>0</ordinal>
+        <local-type>integer</local-type>
+        <aggregation>Sum</aggregation>
+        <contains-null>true</contains-null>
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[adult.csv_76015BF725BA40A4BB5CF30F3E1EC2A5]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>workclass</remote-name>
+        <remote-type>129</remote-type>
+        <local-name>[workclass]</local-name>
+        <parent-name>[adult.csv]</parent-name>
+        <remote-alias>workclass</remote-alias>
+        <ordinal>1</ordinal>
+        <local-type>string</local-type>
+        <aggregation>Count</aggregation>
+        <scale>1</scale>
+        <width>1073741823</width>
+        <contains-null>true</contains-null>
+        <collation flag='0' name='LEN_RUS' />
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[adult.csv_76015BF725BA40A4BB5CF30F3E1EC2A5]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>fnlwgt</remote-name>
+        <remote-type>20</remote-type>
+        <local-name>[fnlwgt]</local-name>
+        <parent-name>[adult.csv]</parent-name>
+        <remote-alias>fnlwgt</remote-alias>
+        <ordinal>2</ordinal>
+        <local-type>integer</local-type>
+        <aggregation>Sum</aggregation>
+        <contains-null>true</contains-null>
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[adult.csv_76015BF725BA40A4BB5CF30F3E1EC2A5]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>education</remote-name>
+        <remote-type>129</remote-type>
+        <local-name>[education]</local-name>
+        <parent-name>[adult.csv]</parent-name>
+        <remote-alias>education</remote-alias>
+        <ordinal>3</ordinal>
+        <local-type>string</local-type>
+        <aggregation>Count</aggregation>
+        <scale>1</scale>
+        <width>1073741823</width>
+        <contains-null>true</contains-null>
+        <collation flag='0' name='LEN_RUS' />
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[adult.csv_76015BF725BA40A4BB5CF30F3E1EC2A5]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>education.num</remote-name>
+        <remote-type>20</remote-type>
+        <local-name>[education.num]</local-name>
+        <parent-name>[adult.csv]</parent-name>
+        <remote-alias>education.num</remote-alias>
+        <ordinal>4</ordinal>
+        <local-type>integer</local-type>
+        <aggregation>Sum</aggregation>
+        <contains-null>true</contains-null>
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[adult.csv_76015BF725BA40A4BB5CF30F3E1EC2A5]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>marital.status</remote-name>
+        <remote-type>129</remote-type>
+        <local-name>[marital.status]</local-name>
+        <parent-name>[adult.csv]</parent-name>
+        <remote-alias>marital.status</remote-alias>
+        <ordinal>5</ordinal>
+        <local-type>string</local-type>
+        <aggregation>Count</aggregation>
+        <scale>1</scale>
+        <width>1073741823</width>
+        <contains-null>true</contains-null>
+        <collation flag='0' name='LEN_RUS' />
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[adult.csv_76015BF725BA40A4BB5CF30F3E1EC2A5]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>occupation</remote-name>
+        <remote-type>129</remote-type>
+        <local-name>[occupation]</local-name>
+        <parent-name>[adult.csv]</parent-name>
+        <remote-alias>occupation</remote-alias>
+        <ordinal>6</ordinal>
+        <local-type>string</local-type>
+        <aggregation>Count</aggregation>
+        <scale>1</scale>
+        <width>1073741823</width>
+        <contains-null>true</contains-null>
+        <collation flag='0' name='LEN_RUS' />
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[adult.csv_76015BF725BA40A4BB5CF30F3E1EC2A5]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>relationship</remote-name>
+        <remote-type>129</remote-type>
+        <local-name>[relationship]</local-name>
+        <parent-name>[adult.csv]</parent-name>
+        <remote-alias>relationship</remote-alias>
+        <ordinal>7</ordinal>
+        <local-type>string</local-type>
+        <aggregation>Count</aggregation>
+        <scale>1</scale>
+        <width>1073741823</width>
+        <contains-null>true</contains-null>
+        <collation flag='0' name='LEN_RUS' />
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[adult.csv_76015BF725BA40A4BB5CF30F3E1EC2A5]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>race</remote-name>
+        <remote-type>129</remote-type>
+        <local-name>[race]</local-name>
+        <parent-name>[adult.csv]</parent-name>
+        <remote-alias>race</remote-alias>
+        <ordinal>8</ordinal>
+        <local-type>string</local-type>
+        <aggregation>Count</aggregation>
+        <scale>1</scale>
+        <width>1073741823</width>
+        <contains-null>true</contains-null>
+        <collation flag='0' name='LEN_RUS' />
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[adult.csv_76015BF725BA40A4BB5CF30F3E1EC2A5]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>sex</remote-name>
+        <remote-type>129</remote-type>
+        <local-name>[sex]</local-name>
+        <parent-name>[adult.csv]</parent-name>
+        <remote-alias>sex</remote-alias>
+        <ordinal>9</ordinal>
+        <local-type>string</local-type>
+        <aggregation>Count</aggregation>
+        <scale>1</scale>
+        <width>1073741823</width>
+        <contains-null>true</contains-null>
+        <collation flag='0' name='LEN_RUS' />
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[adult.csv_76015BF725BA40A4BB5CF30F3E1EC2A5]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>capital.gain</remote-name>
+        <remote-type>20</remote-type>
+        <local-name>[capital.gain]</local-name>
+        <parent-name>[adult.csv]</parent-name>
+        <remote-alias>capital.gain</remote-alias>
+        <ordinal>10</ordinal>
+        <local-type>integer</local-type>
+        <aggregation>Sum</aggregation>
+        <contains-null>true</contains-null>
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[adult.csv_76015BF725BA40A4BB5CF30F3E1EC2A5]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>capital.loss</remote-name>
+        <remote-type>20</remote-type>
+        <local-name>[capital.loss]</local-name>
+        <parent-name>[adult.csv]</parent-name>
+        <remote-alias>capital.loss</remote-alias>
+        <ordinal>11</ordinal>
+        <local-type>integer</local-type>
+        <aggregation>Sum</aggregation>
+        <contains-null>true</contains-null>
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[adult.csv_76015BF725BA40A4BB5CF30F3E1EC2A5]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>hours.per.week</remote-name>
+        <remote-type>20</remote-type>
+        <local-name>[hours.per.week]</local-name>
+        <parent-name>[adult.csv]</parent-name>
+        <remote-alias>hours.per.week</remote-alias>
+        <ordinal>12</ordinal>
+        <local-type>integer</local-type>
+        <aggregation>Sum</aggregation>
+        <contains-null>true</contains-null>
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[adult.csv_76015BF725BA40A4BB5CF30F3E1EC2A5]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>native.country</remote-name>
+        <remote-type>129</remote-type>
+        <local-name>[native.country]</local-name>
+        <parent-name>[adult.csv]</parent-name>
+        <remote-alias>native.country</remote-alias>
+        <ordinal>13</ordinal>
+        <local-type>string</local-type>
+        <aggregation>Count</aggregation>
+        <scale>1</scale>
+        <width>1073741823</width>
+        <contains-null>true</contains-null>
+        <collation flag='0' name='LEN_RUS' />
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[adult.csv_76015BF725BA40A4BB5CF30F3E1EC2A5]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>income</remote-name>
+        <remote-type>129</remote-type>
+        <local-name>[income]</local-name>
+        <parent-name>[adult.csv]</parent-name>
+        <remote-alias>income</remote-alias>
+        <ordinal>14</ordinal>
+        <local-type>string</local-type>
+        <aggregation>Count</aggregation>
+        <scale>1</scale>
+        <width>1073741823</width>
+        <contains-null>true</contains-null>
+        <collation flag='0' name='LEN_RUS' />
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[adult.csv_76015BF725BA40A4BB5CF30F3E1EC2A5]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>A</remote-name>
+        <remote-type>131</remote-type>
+        <local-name>[A]</local-name>
+        <parent-name>[Custom SQL Query]</parent-name>
+        <remote-alias>A</remote-alias>
+        <ordinal>16</ordinal>
+        <local-type>integer</local-type>
+        <aggregation>Sum</aggregation>
+        <precision>38</precision>
+        <scale>0</scale>
+        <contains-null>true</contains-null>
+        <attributes>
+          <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_DECIMAL&quot;</attribute>
+          <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_NUMERIC&quot;</attribute>
+        </attributes>
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[_0095E54DD3F14A67A052958FD82BE790]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>AGE</remote-name>
+        <remote-type>131</remote-type>
+        <local-name>[AGE]</local-name>
+        <parent-name>[Custom SQL Query]</parent-name>
+        <remote-alias>AGE</remote-alias>
+        <ordinal>17</ordinal>
+        <local-type>integer</local-type>
+        <aggregation>Sum</aggregation>
+        <precision>38</precision>
+        <scale>0</scale>
+        <contains-null>true</contains-null>
+        <attributes>
+          <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_DECIMAL&quot;</attribute>
+          <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_NUMERIC&quot;</attribute>
+        </attributes>
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[_0095E54DD3F14A67A052958FD82BE790]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>WORKCLASS</remote-name>
+        <remote-type>129</remote-type>
+        <local-name>[WORKCLASS]</local-name>
+        <parent-name>[Custom SQL Query]</parent-name>
+        <remote-alias>WORKCLASS</remote-alias>
+        <ordinal>18</ordinal>
+        <local-type>string</local-type>
+        <aggregation>Count</aggregation>
+        <width>16777216</width>
+        <contains-null>true</contains-null>
+        <collation flag='0' name='binary' />
+        <attributes>
+          <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+          <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+          <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+        </attributes>
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[_0095E54DD3F14A67A052958FD82BE790]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>FNLWGT</remote-name>
+        <remote-type>131</remote-type>
+        <local-name>[FNLWGT]</local-name>
+        <parent-name>[Custom SQL Query]</parent-name>
+        <remote-alias>FNLWGT</remote-alias>
+        <ordinal>19</ordinal>
+        <local-type>integer</local-type>
+        <aggregation>Sum</aggregation>
+        <precision>38</precision>
+        <scale>0</scale>
+        <contains-null>true</contains-null>
+        <attributes>
+          <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_DECIMAL&quot;</attribute>
+          <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_NUMERIC&quot;</attribute>
+        </attributes>
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[_0095E54DD3F14A67A052958FD82BE790]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>EDUCATION</remote-name>
+        <remote-type>129</remote-type>
+        <local-name>[EDUCATION]</local-name>
+        <parent-name>[Custom SQL Query]</parent-name>
+        <remote-alias>EDUCATION</remote-alias>
+        <ordinal>20</ordinal>
+        <local-type>string</local-type>
+        <aggregation>Count</aggregation>
+        <width>16777216</width>
+        <contains-null>true</contains-null>
+        <collation flag='0' name='binary' />
+        <attributes>
+          <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+          <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+          <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+        </attributes>
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[_0095E54DD3F14A67A052958FD82BE790]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>EDUCATION_NUM</remote-name>
+        <remote-type>131</remote-type>
+        <local-name>[EDUCATION_NUM]</local-name>
+        <parent-name>[Custom SQL Query]</parent-name>
+        <remote-alias>EDUCATION_NUM</remote-alias>
+        <ordinal>21</ordinal>
+        <local-type>integer</local-type>
+        <aggregation>Sum</aggregation>
+        <precision>38</precision>
+        <scale>0</scale>
+        <contains-null>true</contains-null>
+        <attributes>
+          <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_DECIMAL&quot;</attribute>
+          <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_NUMERIC&quot;</attribute>
+        </attributes>
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[_0095E54DD3F14A67A052958FD82BE790]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>MARITAL_STATUS</remote-name>
+        <remote-type>129</remote-type>
+        <local-name>[MARITAL_STATUS]</local-name>
+        <parent-name>[Custom SQL Query]</parent-name>
+        <remote-alias>MARITAL_STATUS</remote-alias>
+        <ordinal>22</ordinal>
+        <local-type>string</local-type>
+        <aggregation>Count</aggregation>
+        <width>16777216</width>
+        <contains-null>true</contains-null>
+        <collation flag='0' name='binary' />
+        <attributes>
+          <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+          <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+          <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+        </attributes>
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[_0095E54DD3F14A67A052958FD82BE790]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>OCCUPATION</remote-name>
+        <remote-type>129</remote-type>
+        <local-name>[OCCUPATION]</local-name>
+        <parent-name>[Custom SQL Query]</parent-name>
+        <remote-alias>OCCUPATION</remote-alias>
+        <ordinal>23</ordinal>
+        <local-type>string</local-type>
+        <aggregation>Count</aggregation>
+        <width>16777216</width>
+        <contains-null>true</contains-null>
+        <collation flag='0' name='binary' />
+        <attributes>
+          <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+          <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+          <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+        </attributes>
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[_0095E54DD3F14A67A052958FD82BE790]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>RELATIONSHIP</remote-name>
+        <remote-type>129</remote-type>
+        <local-name>[RELATIONSHIP]</local-name>
+        <parent-name>[Custom SQL Query]</parent-name>
+        <remote-alias>RELATIONSHIP</remote-alias>
+        <ordinal>24</ordinal>
+        <local-type>string</local-type>
+        <aggregation>Count</aggregation>
+        <width>16777216</width>
+        <contains-null>true</contains-null>
+        <collation flag='0' name='binary' />
+        <attributes>
+          <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+          <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+          <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+        </attributes>
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[_0095E54DD3F14A67A052958FD82BE790]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>RACE</remote-name>
+        <remote-type>129</remote-type>
+        <local-name>[RACE]</local-name>
+        <parent-name>[Custom SQL Query]</parent-name>
+        <remote-alias>RACE</remote-alias>
+        <ordinal>25</ordinal>
+        <local-type>string</local-type>
+        <aggregation>Count</aggregation>
+        <width>16777216</width>
+        <contains-null>true</contains-null>
+        <collation flag='0' name='binary' />
+        <attributes>
+          <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+          <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+          <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+        </attributes>
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[_0095E54DD3F14A67A052958FD82BE790]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>SEX</remote-name>
+        <remote-type>129</remote-type>
+        <local-name>[SEX]</local-name>
+        <parent-name>[Custom SQL Query]</parent-name>
+        <remote-alias>SEX</remote-alias>
+        <ordinal>26</ordinal>
+        <local-type>string</local-type>
+        <aggregation>Count</aggregation>
+        <width>16777216</width>
+        <contains-null>true</contains-null>
+        <collation flag='0' name='binary' />
+        <attributes>
+          <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+          <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+          <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+        </attributes>
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[_0095E54DD3F14A67A052958FD82BE790]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>CAPITAL_GAIN</remote-name>
+        <remote-type>131</remote-type>
+        <local-name>[CAPITAL_GAIN]</local-name>
+        <parent-name>[Custom SQL Query]</parent-name>
+        <remote-alias>CAPITAL_GAIN</remote-alias>
+        <ordinal>27</ordinal>
+        <local-type>integer</local-type>
+        <aggregation>Sum</aggregation>
+        <precision>38</precision>
+        <scale>0</scale>
+        <contains-null>true</contains-null>
+        <attributes>
+          <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_DECIMAL&quot;</attribute>
+          <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_NUMERIC&quot;</attribute>
+        </attributes>
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[_0095E54DD3F14A67A052958FD82BE790]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>CAPITAL_LOSS</remote-name>
+        <remote-type>131</remote-type>
+        <local-name>[CAPITAL_LOSS]</local-name>
+        <parent-name>[Custom SQL Query]</parent-name>
+        <remote-alias>CAPITAL_LOSS</remote-alias>
+        <ordinal>28</ordinal>
+        <local-type>integer</local-type>
+        <aggregation>Sum</aggregation>
+        <precision>38</precision>
+        <scale>0</scale>
+        <contains-null>true</contains-null>
+        <attributes>
+          <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_DECIMAL&quot;</attribute>
+          <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_NUMERIC&quot;</attribute>
+        </attributes>
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[_0095E54DD3F14A67A052958FD82BE790]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>HOURS_PER_WEEK</remote-name>
+        <remote-type>131</remote-type>
+        <local-name>[HOURS_PER_WEEK]</local-name>
+        <parent-name>[Custom SQL Query]</parent-name>
+        <remote-alias>HOURS_PER_WEEK</remote-alias>
+        <ordinal>29</ordinal>
+        <local-type>integer</local-type>
+        <aggregation>Sum</aggregation>
+        <precision>38</precision>
+        <scale>0</scale>
+        <contains-null>true</contains-null>
+        <attributes>
+          <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_DECIMAL&quot;</attribute>
+          <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_NUMERIC&quot;</attribute>
+        </attributes>
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[_0095E54DD3F14A67A052958FD82BE790]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>NATIVE_COUNTRY</remote-name>
+        <remote-type>129</remote-type>
+        <local-name>[NATIVE_COUNTRY]</local-name>
+        <parent-name>[Custom SQL Query]</parent-name>
+        <remote-alias>NATIVE_COUNTRY</remote-alias>
+        <ordinal>30</ordinal>
+        <local-type>string</local-type>
+        <aggregation>Count</aggregation>
+        <width>16777216</width>
+        <contains-null>true</contains-null>
+        <collation flag='0' name='binary' />
+        <attributes>
+          <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+          <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+          <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+        </attributes>
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[_0095E54DD3F14A67A052958FD82BE790]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>INCOME</remote-name>
+        <remote-type>129</remote-type>
+        <local-name>[INCOME]</local-name>
+        <parent-name>[Custom SQL Query]</parent-name>
+        <remote-alias>INCOME</remote-alias>
+        <ordinal>31</ordinal>
+        <local-type>string</local-type>
+        <aggregation>Count</aggregation>
+        <width>16777216</width>
+        <contains-null>true</contains-null>
+        <collation flag='0' name='binary' />
+        <attributes>
+          <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_VARCHAR&quot;</attribute>
+          <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_CHAR&quot;</attribute>
+          <attribute datatype='string' name='TypeIsVarchar'>&quot;true&quot;</attribute>
+        </attributes>
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[_0095E54DD3F14A67A052958FD82BE790]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+      <metadata-record class='column'>
+        <remote-name>PARAMETER</remote-name>
+        <remote-type>131</remote-type>
+        <local-name>[PARAMETER]</local-name>
+        <parent-name>[Custom SQL Query]</parent-name>
+        <remote-alias>PARAMETER</remote-alias>
+        <ordinal>32</ordinal>
+        <local-type>integer</local-type>
+        <aggregation>Sum</aggregation>
+        <precision>1</precision>
+        <scale>0</scale>
+        <contains-null>false</contains-null>
+        <attributes>
+          <attribute datatype='string' name='DebugRemoteType'>&quot;SQL_DECIMAL&quot;</attribute>
+          <attribute datatype='string' name='DebugWireType'>&quot;SQL_C_NUMERIC&quot;</attribute>
+        </attributes>
+        <_.fcp.ObjectModelEncapsulateLegacy.true...object-id>[_0095E54DD3F14A67A052958FD82BE790]</_.fcp.ObjectModelEncapsulateLegacy.true...object-id>
+      </metadata-record>
+    </metadata-records>
+  </connection>
+  <aliases enabled='yes' />
+  <column datatype='string' name='[NATIVE_COUNTRY]' role='dimension' semantic-role='[Country].[ISO3166_2]' type='nominal' />
+  <_.fcp.ObjectModelTableType.true...column caption='Custom SQL Query' datatype='table' name='[__tableau_internal_object_id__].[_0095E54DD3F14A67A052958FD82BE790]' role='measure' type='quantitative' />
+  <_.fcp.ObjectModelTableType.true...column caption='adult.csv' datatype='table' name='[__tableau_internal_object_id__].[adult.csv_76015BF725BA40A4BB5CF30F3E1EC2A5]' role='measure' type='quantitative' />
+  <column caption='Age' datatype='integer' name='[age]' role='measure' type='quantitative' />
+  <column caption='Capital.Gain' datatype='integer' name='[capital.gain]' role='measure' type='quantitative' />
+  <column caption='Capital.Loss' datatype='integer' name='[capital.loss]' role='measure' type='quantitative' />
+  <column caption='Education.Num' datatype='integer' name='[education.num]' role='dimension' type='ordinal' />
+  <column caption='Education' datatype='string' name='[education]' role='dimension' type='nominal' />
+  <column caption='Fnlwgt' datatype='integer' name='[fnlwgt]' role='measure' type='quantitative' />
+  <column caption='Hours.Per.Week' datatype='integer' name='[hours.per.week]' role='dimension' type='quantitative' />
+  <column caption='Income' datatype='string' name='[income]' role='dimension' type='nominal' />
+  <column caption='Marital.Status' datatype='string' name='[marital.status]' role='dimension' type='nominal' />
+  <column caption='Native.Country' datatype='string' name='[native.country]' role='dimension' semantic-role='[Country].[ISO3166_2]' type='nominal' />
+  <column caption='Occupation' datatype='string' name='[occupation]' role='dimension' type='nominal' />
+  <column caption='Race' datatype='string' name='[race]' role='dimension' type='nominal' />
+  <column caption='Relationship' datatype='string' name='[relationship]' role='dimension' type='nominal' />
+  <column caption='Sex' datatype='string' name='[sex]' role='dimension' type='nominal' />
+  <column caption='Workclass' datatype='string' name='[workclass]' role='dimension' type='nominal' />
+  <layout _.fcp.SchemaViewerObjectModel.false...dim-percentage='0.5' _.fcp.SchemaViewerObjectModel.false...measure-percentage='0.4' dim-ordering='alphabetic' measure-ordering='alphabetic' show-structure='true' />
+  <semantic-values>
+    <semantic-value key='[Country].[Name]' value='&quot;United States&quot;' />
+  </semantic-values>
+  <datasource-dependencies datasource='Parameters'>
+    <column caption='Parameter 1' datatype='real' name='[Parameter 1]' param-domain-type='any' role='measure' type='quantitative' value='1.0'>
+      <calculation class='tableau' formula='1.0' />
+    </column>
+  </datasource-dependencies>
+  <_.fcp.ObjectModelEncapsulateLegacy.true...object-graph>
+    <objects>
+      <object caption='Custom SQL Query' id='_0095E54DD3F14A67A052958FD82BE790'>
+        <properties context=''>
+          <relation connection='snowflake.1y7zshc02cpwwf1fq6hny0iinyh6' name='Custom SQL Query' type='text'><![CDATA[Select *, <[Parameters].[Parameter 1]> as parameter from raw.adult]]></relation>
+        </properties>
+      </object>
+      <object caption='adult.csv' id='adult.csv_76015BF725BA40A4BB5CF30F3E1EC2A5'>
+        <properties context=''>
+          <relation connection='textscan.07ddf8w0m04glc17h2kjg1dmxmfp' name='adult.csv' table='[adult#csv]' type='table'>
+            <columns character-set='UTF-8' header='yes' locale='en_US' separator=','>
+              <column datatype='integer' name='age' ordinal='0' />
+              <column datatype='string' name='workclass' ordinal='1' />
+              <column datatype='integer' name='fnlwgt' ordinal='2' />
+              <column datatype='string' name='education' ordinal='3' />
+              <column datatype='integer' name='education.num' ordinal='4' />
+              <column datatype='string' name='marital.status' ordinal='5' />
+              <column datatype='string' name='occupation' ordinal='6' />
+              <column datatype='string' name='relationship' ordinal='7' />
+              <column datatype='string' name='race' ordinal='8' />
+              <column datatype='string' name='sex' ordinal='9' />
+              <column datatype='integer' name='capital.gain' ordinal='10' />
+              <column datatype='integer' name='capital.loss' ordinal='11' />
+              <column datatype='integer' name='hours.per.week' ordinal='12' />
+              <column datatype='string' name='native.country' ordinal='13' />
+              <column datatype='string' name='income' ordinal='14' />
+            </columns>
+          </relation>
+        </properties>
+      </object>
+    </objects>
+    <relationships>
+      <relationship>
+        <expression op='AND'>
+          <expression op='='>
+            <expression op='[capital.gain]' />
+            <expression op='[CAPITAL_GAIN]' />
+          </expression>
+          <expression op='='>
+            <expression op='[age]' />
+            <expression op='[AGE]' />
+          </expression>
+        </expression>
+        <first-end-point object-id='adult.csv_76015BF725BA40A4BB5CF30F3E1EC2A5' />
+        <second-end-point object-id='_0095E54DD3F14A67A052958FD82BE790' />
+      </relationship>
+    </relationships>
+  </_.fcp.ObjectModelEncapsulateLegacy.true...object-graph>
+</datasource>

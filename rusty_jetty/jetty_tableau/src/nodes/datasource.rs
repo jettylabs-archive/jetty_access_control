@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use anyhow::{Context, Result};
 use serde::Deserialize;
 
-use crate::rest::{self, FetchJson};
+use crate::rest::{self, Downloadable, FetchJson};
 
 use super::FetchPermissions;
 
@@ -17,6 +17,19 @@ pub(crate) struct Datasource {
     pub owner_id: String,
     pub datasource_connections: Vec<String>,
     pub permissions: Vec<super::Permission>,
+    pub derived_from: Vec<String>,
+}
+
+impl Datasource {
+    pub(crate) fn cual_suffix(&self) -> String {
+        format!("/datasource/{}", &self.id)
+    }
+}
+
+impl Downloadable for Datasource {
+    fn get_path(&self) -> String {
+        format!("/datasources/{}/content", &self.id)
+    }
 }
 
 fn to_node(val: &serde_json::Value) -> Result<super::Datasource> {
@@ -44,6 +57,7 @@ fn to_node(val: &serde_json::Value) -> Result<super::Datasource> {
         datasource_type: asset_info.datasource_type,
         permissions: Default::default(),
         datasource_connections: Default::default(),
+        derived_from: Default::default(),
     })
 }
 pub(crate) async fn get_basic_datasources(
@@ -74,12 +88,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_fetching_flows_works() -> Result<()> {
-        let tc = tokio::task::spawn_blocking(|| {
-            crate::connector_setup().context("running tableau connector setup")
-        })
-        .await??;
-        let nodes = get_basic_datasources(&tc.rest_client).await?;
-        for (_k, v) in nodes {
+        let tc = crate::connector_setup()
+            .await
+            .context("running tableau connector setup")?;
+        let nodes = get_basic_datasources(&tc.env.rest_client).await?;
+        for (_, v) in nodes {
             println!("{:#?}", v);
         }
         Ok(())
@@ -87,17 +100,29 @@ mod tests {
 
     #[tokio::test]
     async fn test_fetching_datasource_permissions_works() -> Result<()> {
-        let tc = tokio::task::spawn_blocking(|| {
-            crate::connector_setup().context("running tableau connector setup")
-        })
-        .await??;
-        let mut nodes = get_basic_datasources(&tc.rest_client).await?;
-        for (_k, v) in &mut nodes {
-            v.permissions = v.get_permissions(&tc.rest_client).await?;
+        let tc = crate::connector_setup()
+            .await
+            .context("running tableau connector setup")?;
+        let mut nodes = get_basic_datasources(&tc.env.rest_client).await?;
+        for (_, v) in &mut nodes {
+            v.permissions = v.get_permissions(&tc.env.rest_client).await?;
         }
-        for (_k, v) in nodes {
+        for (_, v) in nodes {
             println!("{:#?}", v);
         }
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_downloading_datasource_works() -> Result<()> {
+        let tc = crate::connector_setup()
+            .await
+            .context("running tableau connector setup")?;
+        let datasources = get_basic_datasources(&tc.env.rest_client).await?;
+
+        let test_datasource = datasources.values().next().unwrap();
+        let x = tc.env.rest_client.download(test_datasource, true).await?;
+        println!("Downloaded {} bytes", x.len());
         Ok(())
     }
 }
