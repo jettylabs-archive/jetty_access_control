@@ -96,12 +96,18 @@ impl From<Workbook> for nodes::Asset {
             val.cual,
             val.name,
             AssetType::Other,
+            // We will add metadata as it's useful.
             HashMap::new(),
-            HashSet::from([val.owner_id]),
+            // Governing policies will be assigned in the policy.
+            HashSet::new(),
+            // Workbooks are children of their projects.
             HashSet::from([val.project_id]),
+            // Children objects will be handled in their respective nodes.
             HashSet::new(),
+            // Workbooks are derived from their source data.
+            val.sources,
             HashSet::new(),
-            HashSet::new(),
+            // No tags at this point.
             HashSet::new(),
         )
     }
