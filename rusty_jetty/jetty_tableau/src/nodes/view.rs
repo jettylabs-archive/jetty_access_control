@@ -98,7 +98,7 @@ impl From<View> for nodes::Asset {
             HashMap::new(),
             // Governing policies will be assigned in the policy.
             HashSet::new(),
-            // Workbooks are children of their projects.
+            // Views are children of their workbooks.
             HashSet::from([val.workbook_id]),
             // Children objects will be handled in their respective nodes.
             HashSet::new(),
