@@ -3,12 +3,17 @@ use std::collections::{HashMap, HashSet};
 use anyhow::{Context, Result};
 use serde::Deserialize;
 
+use super::FetchPermissions;
 use crate::rest::{self, Downloadable, FetchJson};
 
-use super::FetchPermissions;
+use jetty_core::{
+    connectors::{nodes, AssetType},
+    cual::Cual,
+};
 
 #[derive(Clone, Default, Debug, Deserialize)]
 pub(crate) struct Workbook {
+    cual: Cual,
     pub id: String,
     /// Unqualified name of the workbook
     pub name: String,
@@ -25,10 +30,35 @@ pub(crate) struct Workbook {
 }
 
 impl Workbook {
+    pub(crate) fn new(
+        cual: Cual,
+        id: String,
+        name: String,
+        owner_id: String,
+        project_id: String,
+        has_embedded_sources: bool,
+        sources: HashSet<String>,
+        updated_at: String,
+        permissions: Vec<super::Permission>,
+    ) -> Self {
+        Self {
+            cual,
+            id,
+            name,
+            owner_id,
+            project_id,
+            has_embedded_sources,
+            sources,
+            updated_at,
+            permissions,
+        }
+    }
+
     pub(crate) async fn fetch_datasources(&self) -> Result<Vec<super::Datasource>> {
         return Ok(vec![]);
         todo!()
     }
+
     pub(crate) async fn update_embedded_datasources(
         &mut self,
         _client: rest::TableauRestClient,
@@ -37,6 +67,10 @@ impl Workbook {
         // get the datasources
         // yikes...
         todo!()
+    }
+
+    fn cual_suffix(&self) -> String {
+        format!("/workbook/{}", &self.id)
     }
 }
 
@@ -56,7 +90,24 @@ impl FetchPermissions for Workbook {
     }
 }
 
-fn to_node_graphql(val: &serde_json::Value) -> Result<Workbook> {
+impl From<Workbook> for nodes::Asset {
+    fn from(val: Workbook) -> Self {
+        nodes::Asset::new(
+            val.cual,
+            val.name,
+            AssetType::Other,
+            HashMap::new(),
+            HashSet::from([val.owner_id]),
+            HashSet::from([val.project_id]),
+            HashSet::new(),
+            HashSet::new(),
+            HashSet::new(),
+            HashSet::new(),
+        )
+    }
+}
+
+fn to_node_graphql(tc: &rest::TableauRestClient, val: &serde_json::Value) -> Result<Workbook> {
     #[derive(Deserialize)]
     struct LuidField {
         luid: String,
@@ -85,6 +136,11 @@ fn to_node_graphql(val: &serde_json::Value) -> Result<Workbook> {
         serde_json::from_value(val.to_owned()).context("parsing workbook information")?;
 
     Ok(Workbook {
+        cual: Cual::new(format!(
+            "{}/workbook/{}",
+            tc.get_cual_prefix(),
+            workbook_info.luid
+        )),
         id: workbook_info.luid,
         name: workbook_info.name,
         owner_id: workbook_info.owner.luid,
@@ -123,7 +179,7 @@ pub(crate) async fn get_basic_workbooks(
         .fetch_json_response(None)
         .await?;
     let node = rest::get_json_from_path(&node, &vec!["data".to_owned(), "workbooks".to_owned()])?;
-    super::to_asset_map(node, &to_node_graphql)
+    super::to_asset_map(&tc, node, &to_node_graphql)
 }
 
 #[cfg(test)]
@@ -173,5 +229,37 @@ mod tests {
             println!("{:#?}", v);
         }
         Ok(())
+    }
+
+    #[test]
+    fn test_asset_from_workbook_works() {
+        let wb = Workbook::new(
+            Cual::new("".to_owned()),
+            "id".to_owned(),
+            "name".to_owned(),
+            "owner_id".to_owned(),
+            "project_id".to_owned(),
+            false,
+            HashSet::new(),
+            "updated_at".to_owned(),
+            vec![],
+        );
+        nodes::Asset::from(wb);
+    }
+
+    #[test]
+    fn test_workbook_into_asset_works() {
+        let wb = Workbook::new(
+            Cual::new("".to_owned()),
+            "id".to_owned(),
+            "name".to_owned(),
+            "owner_id".to_owned(),
+            "project_id".to_owned(),
+            false,
+            HashSet::new(),
+            "updated_at".to_owned(),
+            vec![],
+        );
+        let a: nodes::Asset = wb.into();
     }
 }

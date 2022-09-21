@@ -78,10 +78,7 @@ impl TableauRestClient {
     }
 
     pub(crate) fn get_cual_prefix(&self) -> String {
-        format!(
-            "tableau://{}/{}",
-            &self.credentials.server_name, &self.credentials.site_name
-        )
+        get_cual_prefix(&self.credentials.server_name, &self.credentials.site_name)
     }
 
     /// Get site_id token from the TableauRestClient.
@@ -482,6 +479,10 @@ impl FetchJson for reqwest::RequestBuilder {
             Ok(parsed_response)
         }
     }
+}
+
+pub(crate) fn get_cual_prefix(server_name: &str, site_name: &str) -> String {
+    format!("tableau://{}/{}", server_name, site_name)
 }
 
 #[cfg(ignore)]

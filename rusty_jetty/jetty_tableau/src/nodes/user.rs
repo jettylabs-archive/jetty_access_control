@@ -15,7 +15,7 @@ pub(crate) struct User {
     pub site_role: String,
 }
 
-pub(crate) fn to_node(val: &serde_json::Value) -> Result<User> {
+pub(crate) fn to_node(tc: &rest::TableauRestClient, val: &serde_json::Value) -> Result<User> {
     serde_json::from_value(val.to_owned()).context("parsing user information")
 }
 
@@ -25,7 +25,7 @@ pub(crate) async fn get_basic_users(tc: &rest::TableauRestClient) -> Result<Hash
         .context("fetching users")?
         .fetch_json_response(Some(vec!["users".to_owned(), "user".to_owned()]))
         .await?;
-    super::to_asset_map(users, &to_node)
+    super::to_asset_map(tc, users, &to_node)
 }
 
 #[cfg(test)]
