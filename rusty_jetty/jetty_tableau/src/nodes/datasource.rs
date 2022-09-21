@@ -187,7 +187,6 @@ mod tests {
         let datasources = get_basic_datasources(&tc.coordinator.rest_client).await?;
 
         for test_datasource in datasources.values() {
-            dbg!(test_datasource);
             let x = test_datasource
                 .fetch_sources(&tc.coordinator.rest_client)
                 .await?;

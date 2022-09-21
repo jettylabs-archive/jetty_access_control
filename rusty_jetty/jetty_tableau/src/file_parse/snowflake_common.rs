@@ -58,7 +58,6 @@ impl SnowflakeQueryInfo {
     pub(super) fn to_cuals(&self) -> Result<Vec<String>> {
         let relations = jetty_sql::get_tables(&self.query, jetty_sql::DbType::Snowflake)
             .context("parsing query")?;
-        dbg!("Parsing stuff");
 
         let mut cuals = Vec::new();
         for name_parts in relations {

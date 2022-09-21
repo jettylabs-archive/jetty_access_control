@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use anyhow::{anyhow, bail, Result};
+use regex::Regex;
 use roxmltree::NodeId;
 
 use super::{
@@ -44,12 +45,12 @@ pub(crate) fn parse(data: &str) -> Result<HashSet<String>> {
         .ok_or_else(|| anyhow!("unable to find connection_info"))?;
 
     // pull out the named connections - we'll use these later to get info needed down the road.
-    let named_connection_nodes = connection_info
+    let named_connection_node = connection_info
         .descendants()
         .find(|n| n.has_tag_name("named-connections"))
         .ok_or_else(|| anyhow!("unable to find connection information"))?;
 
-    let named_connections = get_named_connections(connection_info);
+    let named_connections = get_named_connections(named_connection_node);
 
     // pull out the relations
     let relations = get_relations(connection_info, named_connections);
@@ -68,14 +69,14 @@ pub(crate) fn parse(data: &str) -> Result<HashSet<String>> {
     Ok(cuals)
 }
 
-/// Given a node, look at the children and pull out named connection information.
-/// Currently only looks for Snowflake connections.
+/// Given a <named-connections> node, look at the children and pull out named connection information.
 fn get_named_connections(node: roxmltree::Node) -> HashMap<String, NamedConnection> {
     let mut named_connections = HashMap::new();
 
     let named_connection_nodes = node
         .children()
         .filter(|n| n.is_element() && n.has_tag_name("named-connection"));
+
     for n in named_connection_nodes {
         match get_named_connection(&n) {
             Ok(c) => {
@@ -90,6 +91,7 @@ fn get_named_connections(node: roxmltree::Node) -> HashMap<String, NamedConnecti
     named_connections
 }
 
+/// Given a <named-connection> node return a named connection and its id
 fn get_named_connection(node: &roxmltree::Node) -> Result<(String, NamedConnection)> {
     match get_named_connection_class(&node) {
         Ok(connection_class) => match connection_class.as_str() {
@@ -97,7 +99,7 @@ fn get_named_connection(node: &roxmltree::Node) -> Result<(String, NamedConnecti
                 let c = snowflake_common::build_snowflake_connection_info(&node)?;
                 Ok((c.name.to_owned(), NamedConnection::Snowflake(c.to_owned())))
             }
-            _ => bail!("unsupported connection type {}; skipping", connection_class),
+            _ => bail!("unsupported connection type {}", connection_class),
         },
         Err(e) => bail!("unable to find connection class for connection node: {}", e),
     }
@@ -139,21 +141,29 @@ fn get_relations(
     relations
 }
 
+/// Given a <relation> node it will try to parse the enclosed relation
 fn get_relation(
     node: &roxmltree::Node,
     named_connections: &HashMap<String, NamedConnection>,
 ) -> Result<Relation> {
-    let named_connection = node
-        .attribute("connection")
-        .and_then(|id| named_connections.get(id))
-        .ok_or_else(|| anyhow!("unable to find matching connection"))?;
+    let named_connection = || {
+        node.attribute("connection")
+            .and_then(|id| named_connections.get(id))
+            .ok_or_else(|| anyhow!("skipping relation - unsupported connection"))
+    };
 
     match get_relation_type(node)? {
         RelationType::SqlQuery => {
-            let query = node
-                .text()
-                .ok_or_else(|| anyhow!("unable to find query text"))?;
-            match named_connection {
+            let re = Regex::new(r"(<\[Parameters\].*.>)").unwrap();
+            let query = re
+                .replace_all(
+                    &node
+                        .text()
+                        .ok_or_else(|| anyhow!("unable to find query text"))?,
+                    "__tableau__parameter_value",
+                )
+                .to_string();
+            match named_connection()? {
                 NamedConnection::Snowflake(c) => Ok(Relation::SnowflakeQuery(
                     snowflake_common::SnowflakeQueryInfo {
                         query: query.to_string(),
@@ -168,7 +178,7 @@ fn get_relation(
             let table = node
                 .attribute("table")
                 .ok_or_else(|| anyhow!("unable to find table name"))?;
-            match named_connection {
+            match named_connection()? {
                 NamedConnection::Snowflake(c) => Ok(Relation::SnowflakeTable(
                     snowflake_common::SnowflakeTableInfo {
                         table: table.to_string(),
@@ -193,7 +203,7 @@ fn get_relation_type(node: &roxmltree::Node) -> Result<super::RelationType> {
     match node_type {
         "table" => Ok(RelationType::Table),
         "text" => {
-            if node_type == "Custom SQL Query" {
+            if node_name == "Custom SQL Query" {
                 Ok(RelationType::SqlQuery)
             } else {
                 bail!(
@@ -203,6 +213,28 @@ fn get_relation_type(node: &roxmltree::Node) -> Result<super::RelationType> {
                 )
             }
         }
-        t => bail!("unknown relation type; type: {}", t),
+        t => bail!("unsupported relation type; type: {}", t),
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::parse;
+    use std::{
+        collections::{HashMap, HashSet},
+        fs,
+    };
+
+    use anyhow::Result;
+
+    use crate::nodes::{Datasource, Project};
+
+    #[test]
+    fn new_parse_works() -> Result<()> {
+        let data = fs::read_to_string("test_data/test2.tds".to_owned()).unwrap();
+
+        dbg!(parse(&data));
+
+        Ok(())
     }
 }
