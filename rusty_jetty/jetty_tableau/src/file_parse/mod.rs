@@ -3,8 +3,14 @@ mod snowflake_common;
 pub mod xml_docs;
 
 /// Named connection information from the tableau files
+#[derive(Debug)]
 enum NamedConnection {
     Snowflake(snowflake_common::SnowflakeConnectionInfo),
+}
+
+enum RelationType {
+    SqlQuery,
+    Table,
 }
 
 #[cfg(test)]

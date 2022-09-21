@@ -5,6 +5,7 @@ use std::collections::{HashMap, HashSet};
 use anyhow::{anyhow, bail, Context, Result};
 use serde::Deserialize;
 
+use super::RelationType;
 use crate::{coordinator::Coordinator, rest::TableauRestClient};
 
 #[derive(Deserialize, Debug)]
@@ -13,19 +14,15 @@ struct FlowDoc {
     connections: HashMap<String, serde_json::Value>,
 }
 
-enum LoadSqlType {
-    Query,
-    Table,
-}
-fn get_relation_type(node: &serde_json::Value) -> Result<LoadSqlType> {
+fn get_relation_type(node: &serde_json::Value) -> Result<RelationType> {
     let sql_type = node
         .get("relation")
         .and_then(|n| n.get("type"))
         .and_then(|n| n.as_str())
         .ok_or(anyhow!("unable to get sql type"))?;
     Ok(match sql_type {
-        "query" => LoadSqlType::Query,
-        "table" => LoadSqlType::Table,
+        "query" => RelationType::SqlQuery,
+        "table" => RelationType::Table,
         _ => bail!("unknown sql type"),
     })
 }
@@ -96,7 +93,7 @@ impl FlowDoc {
                         if let Some(base_type) = node.get("baseType").and_then(|v| v.as_str()) {
                             match base_type {
                                 "input" => println!("ignoring input node of type: {}", o),
-                                "input" => println!("ignoring output node of type: {}", o),
+                                "ouput" => println!("ignoring output node of type: {}", o),
                                 _ => (),
                             }
                         }
@@ -119,8 +116,8 @@ impl FlowDoc {
 
         let cuals = match &class[..] {
             "snowflake" => match get_relation_type(node)? {
-                LoadSqlType::Query => snowflake::get_input_query_cuals(self, node),
-                LoadSqlType::Table => snowflake::get_input_table_cuals(self, node),
+                RelationType::SqlQuery => snowflake::get_input_query_cuals(self, node),
+                RelationType::Table => snowflake::get_input_table_cuals(self, node),
             }?,
             o => bail!("we don't currently support {}", o),
         };

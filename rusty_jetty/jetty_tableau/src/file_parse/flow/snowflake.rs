@@ -43,22 +43,13 @@ pub(super) fn get_input_table_cuals(
 
     let snowflake_table = crate::file_parse::snowflake_common::SnowflakeTableInfo {
         table: table_info.relation.table,
-        connection: table_info.connection_id.to_owned(),
+        db: table_info.connection_attributes.dbname,
+        server,
+        schema: table_info.connection_attributes.schema,
     };
-    let connections = HashMap::from([(
-        table_info.connection_id.to_owned(),
-        crate::file_parse::NamedConnection::Snowflake(
-            crate::file_parse::snowflake_common::SnowflakeConnectionInfo {
-                name: table_info.connection_id,
-                db: table_info.connection_attributes.dbname,
-                server,
-                schema: table_info.connection_attributes.schema,
-            },
-        ),
-    )]);
 
     Ok(HashSet::from_iter(
-        snowflake_table.to_cuals(&connections)?.iter().cloned(),
+        snowflake_table.to_cuals()?.iter().cloned(),
     ))
 }
 
@@ -99,22 +90,13 @@ pub(super) fn get_output_table_cuals(
 
     let snowflake_table = crate::file_parse::snowflake_common::SnowflakeTableInfo {
         table,
-        connection: table_info.connection_id.to_owned(),
+        db: table_info.attributes.dbname,
+        server,
+        schema: table_info.attributes.schema,
     };
-    let connections = HashMap::from([(
-        table_info.connection_id.to_owned(),
-        crate::file_parse::NamedConnection::Snowflake(
-            crate::file_parse::snowflake_common::SnowflakeConnectionInfo {
-                name: table_info.connection_id,
-                db: table_info.attributes.dbname,
-                server,
-                schema: table_info.attributes.schema,
-            },
-        ),
-    )]);
 
     Ok(HashSet::from_iter(
-        snowflake_table.to_cuals(&connections)?.iter().cloned(),
+        snowflake_table.to_cuals()?.iter().cloned(),
     ))
 }
 
@@ -143,20 +125,10 @@ pub(super) fn get_input_query_cuals(
 
     let snowflake_table = crate::file_parse::snowflake_common::SnowflakeQueryInfo {
         query: table_info.relation.query,
-        connection: table_info.connection_id.to_owned(),
+        db: table_info.connection_attributes.dbname,
+        server,
+        schema: table_info.connection_attributes.schema,
     };
-    let connections = HashMap::from([(
-        table_info.connection_id.to_owned(),
-        crate::file_parse::NamedConnection::Snowflake(
-            crate::file_parse::snowflake_common::SnowflakeConnectionInfo {
-                name: table_info.connection_id,
-                db: table_info.connection_attributes.dbname,
-                server,
-                schema: table_info.connection_attributes.schema,
-            },
-        ),
-    )]);
-
-    relations.extend(snowflake_table.to_cuals(&connections)?);
+    relations.extend(snowflake_table.to_cuals()?);
     Ok(relations)
 }
