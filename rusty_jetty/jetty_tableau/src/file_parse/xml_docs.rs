@@ -160,7 +160,7 @@ fn get_relation(
                     &node
                         .text()
                         .ok_or_else(|| anyhow!("unable to find query text"))?,
-                    "__tableau__parameter_value",
+                    "tableau__parameter_value",
                 )
                 .to_string();
             match named_connection()? {
@@ -231,7 +231,7 @@ mod test {
 
     #[test]
     fn new_parse_works() -> Result<()> {
-        let data = fs::read_to_string("test_data/test2.tds".to_owned()).unwrap();
+        let data = fs::read_to_string("test_data/Iris Workbook.twb".to_owned()).unwrap();
 
         dbg!(parse(&data));
 

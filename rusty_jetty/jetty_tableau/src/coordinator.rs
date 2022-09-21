@@ -12,7 +12,7 @@ use crate::nodes::{self};
 use crate::rest;
 use crate::TableauCredentials;
 
-#[derive(Default, Deserialize)]
+#[derive(Default, Deserialize, Debug)]
 pub(crate) struct Environment {
     pub users: HashMap<String, nodes::User>,
     pub groups: HashMap<String, nodes::Group>,
@@ -124,7 +124,7 @@ impl Coordinator {
                 .iter_mut()
                 .map(|d| self.get_sources(&self.env.datasources, d)),
         )
-        .buffer_unordered(30)
+        .buffered(30)
         .collect::<Vec<_>>();
 
         let datasource_sources = fetches.await;
@@ -132,6 +132,21 @@ impl Coordinator {
         Self::update_sources(&mut datasources_vec, datasource_sources);
 
         // Workbooks
+        let mut workbooks_vec = new_env.workbooks.values_mut().collect::<Vec<_>>();
+
+        let fetches = futures::stream::iter(
+            workbooks_vec
+                .iter_mut()
+                .map(|d| self.get_sources(&self.env.workbooks, d)),
+        )
+        .buffered(30)
+        .collect::<Vec<_>>();
+
+        let workbook_sources = fetches.await;
+
+        Self::update_sources(&mut workbooks_vec, workbook_sources);
+
+        dbg!(new_env);
 
         Ok(())
     }
@@ -179,4 +194,19 @@ fn read_environment_assets() -> Result<Environment> {
 
     // Return the `Environment`.
     Ok(e)
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_update_env() -> Result<()> {
+        let mut tc = crate::connector_setup()
+            .await
+            .context("running tableau connector setup")?;
+
+        tc.coordinator.update_env().await;
+        Ok(())
+    }
 }

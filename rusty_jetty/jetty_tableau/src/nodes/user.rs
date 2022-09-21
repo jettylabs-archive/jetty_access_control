@@ -4,7 +4,7 @@ use crate::rest::{self, FetchJson};
 use anyhow::{Context, Result};
 use serde::Deserialize;
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct User {
     pub id: String,

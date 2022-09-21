@@ -425,7 +425,117 @@ impl Traversable for ast::DiscardObject {
 }
 impl Traversable for ast::Expr {
     fn get_children(&self) -> Result<Vec<Node>> {
-        todo!()
+        dbg!(&self);
+        Ok(match self {
+            ast::Expr::Identifier(n) => vec![Node::Ident(n.to_owned())],
+            ast::Expr::CompoundIdentifier(_) => todo!(),
+            ast::Expr::JsonAccess {
+                left,
+                operator,
+                right,
+            } => todo!(),
+            ast::Expr::CompositeAccess { expr, key } => todo!(),
+            ast::Expr::IsFalse(_) => todo!(),
+            ast::Expr::IsNotFalse(_) => todo!(),
+            ast::Expr::IsTrue(_) => todo!(),
+            ast::Expr::IsNotTrue(_) => todo!(),
+            ast::Expr::IsNull(_) => todo!(),
+            ast::Expr::IsNotNull(_) => todo!(),
+            ast::Expr::IsUnknown(_) => todo!(),
+            ast::Expr::IsNotUnknown(_) => todo!(),
+            ast::Expr::IsDistinctFrom(_, _) => todo!(),
+            ast::Expr::IsNotDistinctFrom(_, _) => todo!(),
+            ast::Expr::InList {
+                expr,
+                list,
+                negated,
+            } => todo!(),
+            ast::Expr::InSubquery {
+                expr,
+                subquery,
+                negated,
+            } => todo!(),
+            ast::Expr::InUnnest {
+                expr,
+                array_expr,
+                negated,
+            } => todo!(),
+            ast::Expr::Between {
+                expr,
+                negated,
+                low,
+                high,
+            } => todo!(),
+            ast::Expr::BinaryOp { left, op, right } => todo!(),
+            ast::Expr::Like {
+                negated,
+                expr,
+                pattern,
+                escape_char,
+            } => todo!(),
+            ast::Expr::ILike {
+                negated,
+                expr,
+                pattern,
+                escape_char,
+            } => todo!(),
+            ast::Expr::SimilarTo {
+                negated,
+                expr,
+                pattern,
+                escape_char,
+            } => todo!(),
+            ast::Expr::AnyOp(_) => todo!(),
+            ast::Expr::AllOp(_) => todo!(),
+            ast::Expr::UnaryOp { op, expr } => todo!(),
+            ast::Expr::Cast { expr, data_type } => todo!(),
+            ast::Expr::TryCast { expr, data_type } => todo!(),
+            ast::Expr::SafeCast { expr, data_type } => todo!(),
+            ast::Expr::AtTimeZone {
+                timestamp,
+                time_zone,
+            } => todo!(),
+            ast::Expr::Extract { field, expr } => todo!(),
+            ast::Expr::Position { expr, r#in } => todo!(),
+            ast::Expr::Substring {
+                expr,
+                substring_from,
+                substring_for,
+            } => todo!(),
+            ast::Expr::Trim {
+                expr,
+                trim_where,
+                trim_what,
+            } => todo!(),
+            ast::Expr::Overlay {
+                expr,
+                overlay_what,
+                overlay_from,
+                overlay_for,
+            } => todo!(),
+            ast::Expr::Collate { expr, collation } => todo!(),
+            ast::Expr::Nested(_) => todo!(),
+            ast::Expr::Value(_) => todo!(),
+            ast::Expr::TypedString { data_type, value } => todo!(),
+            ast::Expr::MapAccess { column, keys } => todo!(),
+            ast::Expr::Function(_) => todo!(),
+            ast::Expr::Case {
+                operand,
+                conditions,
+                results,
+                else_result,
+            } => todo!(),
+            ast::Expr::Exists { subquery, negated } => todo!(),
+            ast::Expr::Subquery(_) => todo!(),
+            ast::Expr::ArraySubquery(_) => todo!(),
+            ast::Expr::ListAgg(_) => todo!(),
+            ast::Expr::GroupingSets(_) => todo!(),
+            ast::Expr::Cube(_) => todo!(),
+            ast::Expr::Rollup(_) => todo!(),
+            ast::Expr::Tuple(_) => todo!(),
+            ast::Expr::ArrayIndex { obj, indexes } => todo!(),
+            ast::Expr::Array(_) => todo!(),
+        })
     }
 }
 impl Traversable for ast::FetchDirection {

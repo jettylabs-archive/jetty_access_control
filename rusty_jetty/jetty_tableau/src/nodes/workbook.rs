@@ -1,9 +1,14 @@
 use std::collections::{HashMap, HashSet};
 
 use anyhow::{Context, Result};
+use async_trait::async_trait;
 use serde::Deserialize;
 
-use crate::rest::{self, Downloadable, FetchJson};
+use crate::{
+    coordinator::HasSources,
+    file_parse::xml_docs,
+    rest::{self, Downloadable, FetchJson},
+};
 
 use super::FetchPermissions;
 
@@ -53,6 +58,46 @@ impl Downloadable for Workbook {
 impl FetchPermissions for Workbook {
     fn get_endpoint(&self) -> String {
         format!("workbooks/{}/permissions", self.id)
+    }
+}
+
+#[async_trait]
+impl HasSources for Workbook {
+    fn id(&self) -> &String {
+        &self.id
+    }
+
+    fn name(&self) -> &String {
+        &self.name
+    }
+
+    fn updated_at(&self) -> &String {
+        &self.updated_at
+    }
+
+    fn sources(&self) -> (HashSet<String>, HashSet<String>) {
+        (self.sources.to_owned(), HashSet::new())
+    }
+
+    async fn fetch_sources(
+        &self,
+        client: &rest::TableauRestClient,
+    ) -> Result<(HashSet<String>, HashSet<String>)> {
+        // download the source
+        let archive = client.download(self, true).await?;
+        // get the file
+        let file = rest::unzip_text_file(archive, Self::match_file)?;
+        // parse the file
+        let input_sources = xml_docs::parse(&file)?;
+        let output_sources = HashSet::new();
+
+        dbg!(&input_sources);
+
+        Ok((input_sources, output_sources))
+    }
+
+    fn set_sources(&mut self, sources: (HashSet<String>, HashSet<String>)) {
+        self.sources = sources.0;
     }
 }
 
