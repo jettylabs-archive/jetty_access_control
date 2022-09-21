@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use serde::Deserialize;
 
 use crate::{
-    coordinator::HasSources,
+    coordinator::{Coordinator, HasSources},
     file_parse::xml_docs,
     rest::{self, Downloadable, FetchJson},
 };
@@ -81,10 +81,10 @@ impl HasSources for Workbook {
 
     async fn fetch_sources(
         &self,
-        client: &rest::TableauRestClient,
+        coord: &Coordinator,
     ) -> Result<(HashSet<String>, HashSet<String>)> {
         // download the source
-        let archive = client.download(self, true).await?;
+        let archive = coord.rest_client.download(self, true).await?;
         // get the file
         let file = rest::unzip_text_file(archive, Self::match_file)?;
         // parse the file

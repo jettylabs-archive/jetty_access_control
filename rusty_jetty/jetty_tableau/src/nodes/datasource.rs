@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use serde::Deserialize;
 
 use crate::{
-    coordinator::HasSources,
+    coordinator::{Coordinator, HasSources},
     file_parse::xml_docs,
     rest::{self, Downloadable, FetchJson, TableauRestClient},
 };
@@ -62,10 +62,10 @@ impl HasSources for Datasource {
 
     async fn fetch_sources(
         &self,
-        client: &TableauRestClient,
+        coord: &Coordinator,
     ) -> Result<(HashSet<String>, HashSet<String>)> {
         // download the source
-        let archive = client.download(self, true).await?;
+        let archive = coord.rest_client.download(self, true).await?;
         // get the file
         let file = rest::unzip_text_file(archive, Self::match_file)?;
         // parse the file
@@ -188,9 +188,7 @@ mod tests {
         let datasources = get_basic_datasources(&tc.coordinator.rest_client).await?;
 
         for test_datasource in datasources.values() {
-            let x = test_datasource
-                .fetch_sources(&tc.coordinator.rest_client)
-                .await?;
+            let x = test_datasource.fetch_sources(&tc.coordinator).await?;
         }
         Ok(())
     }

@@ -33,7 +33,7 @@ pub(crate) trait HasSources {
     fn sources(&self) -> (HashSet<String>, HashSet<String>);
     async fn fetch_sources(
         &self,
-        client: &rest::TableauRestClient,
+        coord: &Coordinator,
     ) -> Result<(HashSet<String>, HashSet<String>)>;
     fn set_sources(&mut self, sources: (HashSet<String>, HashSet<String>));
 }
@@ -146,7 +146,20 @@ impl Coordinator {
 
         Self::update_sources(&mut workbooks_vec, workbook_sources);
 
-        dbg!(new_env);
+        // Flows
+        let mut flows_vec = new_env.flows.values_mut().collect::<Vec<_>>();
+
+        let fetches = futures::stream::iter(
+            flows_vec
+                .iter_mut()
+                .map(|d| self.get_sources(&self.env.flows, d)),
+        )
+        .buffered(30)
+        .collect::<Vec<_>>();
+
+        let flow_sources = fetches.await;
+
+        Self::update_sources(&mut flows_vec, flow_sources);
 
         Ok(())
     }
@@ -179,7 +192,7 @@ impl Coordinator {
                 old_asset.sources().0.to_owned(),
                 old_asset.sources().0.to_owned(),
             )),
-            _ => new_asset.fetch_sources(&self.rest_client).await,
+            _ => new_asset.fetch_sources(&self).await,
         }
     }
 }

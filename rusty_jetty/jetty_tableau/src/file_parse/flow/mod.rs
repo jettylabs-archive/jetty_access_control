@@ -9,7 +9,7 @@ use super::RelationType;
 use crate::{coordinator::Coordinator, rest::TableauRestClient};
 
 #[derive(Deserialize, Debug)]
-struct FlowDoc {
+pub(crate) struct FlowDoc {
     nodes: HashMap<String, serde_json::Value>,
     connections: HashMap<String, serde_json::Value>,
 }
@@ -28,13 +28,14 @@ fn get_relation_type(node: &serde_json::Value) -> Result<RelationType> {
 }
 
 impl FlowDoc {
-    #[allow(dead_code)]
-    fn new(data: String) -> Result<Self> {
+    /// Create a new FlowDoc
+    pub(crate) fn new(data: String) -> Result<Self> {
         serde_json::from_str::<FlowDoc>(&data).context("parsing flow document")
     }
 
-    #[allow(dead_code)]
-    fn parse(&self, coord: &Coordinator) -> (HashSet<String>, HashSet<String>) {
+    /// Parse a flow document. This MUST be run after projects and datasources have been
+    /// fetched.
+    pub(crate) fn parse(&self, coord: &Coordinator) -> (HashSet<String>, HashSet<String>) {
         let mut input_cuals: HashSet<String> = HashSet::new();
         let mut output_cuals: HashSet<String> = HashSet::new();
 
