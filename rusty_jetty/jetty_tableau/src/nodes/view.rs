@@ -1,13 +1,18 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use super::{FetchPermissions, Permission};
 use crate::rest::{self, FetchJson};
 
 use anyhow::{Context, Result};
+use jetty_core::{
+    connectors::{nodes, AssetType},
+    cual::Cual,
+};
 use serde::Deserialize;
 
 #[derive(Clone, Default, Debug, Deserialize)]
 pub(crate) struct View {
+    cual: Cual,
     pub id: String,
     pub name: String,
     pub workbook_id: String,
@@ -33,6 +38,7 @@ fn to_node(tc: &rest::TableauRestClient, val: &serde_json::Value) -> Result<View
         serde_json::from_value(val.to_owned()).context("parsing view information")?;
 
     Ok(View {
+        cual: Cual::new(format!("{}/view/{}", tc.get_cual_prefix(), asset_info.id)),
         id: asset_info.id,
         name: asset_info.name,
         owner_id: asset_info.owner.id,
@@ -58,6 +64,52 @@ impl FetchPermissions for View {
     }
 }
 
+impl View {
+    pub(crate) fn new(
+        cual: Cual,
+        id: String,
+        name: String,
+        workbook_id: String,
+        owner_id: String,
+        project_id: String,
+        updated_at: String,
+        permissions: Vec<Permission>,
+    ) -> Self {
+        Self {
+            cual,
+            id,
+            name,
+            workbook_id,
+            owner_id,
+            project_id,
+            updated_at,
+            permissions,
+        }
+    }
+}
+
+impl From<View> for nodes::Asset {
+    fn from(val: View) -> Self {
+        nodes::Asset::new(
+            val.cual,
+            val.name,
+            AssetType::Other,
+            // We will add metadata as it's useful.
+            HashMap::new(),
+            // Governing policies will be assigned in the policy.
+            HashSet::new(),
+            // Workbooks are children of their projects.
+            HashSet::from([val.workbook_id]),
+            // Children objects will be handled in their respective nodes.
+            HashSet::new(),
+            // Views are not derived from/to anything.
+            HashSet::new(),
+            HashSet::new(),
+            // No tags at this point.
+            HashSet::new(),
+        )
+    }
+}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -88,5 +140,35 @@ mod tests {
             println!("{:#?}", v);
         }
         Ok(())
+    }
+
+    #[test]
+    fn test_asset_from_view_works() {
+        let wb = View::new(
+            Cual::new("".to_owned()),
+            "id".to_owned(),
+            "name".to_owned(),
+            "workbook_id".to_owned(),
+            "owner_id".to_owned(),
+            "project_id".to_owned(),
+            "updated_at".to_owned(),
+            vec![],
+        );
+        nodes::Asset::from(wb);
+    }
+
+    #[test]
+    fn test_view_into_asset_works() {
+        let wb = View::new(
+            Cual::new("".to_owned()),
+            "id".to_owned(),
+            "name".to_owned(),
+            "workbook_id".to_owned(),
+            "owner_id".to_owned(),
+            "project_id".to_owned(),
+            "updated_at".to_owned(),
+            vec![],
+        );
+        let a: nodes::Asset = wb.into();
     }
 }
