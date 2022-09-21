@@ -12,7 +12,7 @@ use serde::Deserialize;
 
 #[derive(Clone, Default, Debug, Deserialize)]
 pub(crate) struct Project {
-    cual: Cual,
+    pub(crate) cual: Cual,
     pub id: String,
     pub name: String,
     pub owner_id: String,
@@ -92,6 +92,10 @@ impl FetchPermissions for Project {
 
 impl From<Project> for nodes::Asset {
     fn from(val: Project) -> Self {
+        let parents = val
+            .parent_project_id
+            .map(|i| HashSet::from([i]))
+            .unwrap_or_default();
         nodes::Asset::new(
             val.cual,
             val.name,
@@ -100,12 +104,12 @@ impl From<Project> for nodes::Asset {
             HashMap::new(),
             // Governing policies will be assigned in the policy.
             HashSet::new(),
-            // Workbooks are children of their projects.
-            HashSet::from([]),
+            // Projects can be the children of other projects.
+            parents,
             // Children objects will be handled in their respective nodes.
             HashSet::new(),
-            // Workbooks are derived from their source data.
-            val.sources,
+            // Projects aren't derived from/to anything.
+            HashSet::new(),
             HashSet::new(),
             // No tags at this point.
             HashSet::new(),
