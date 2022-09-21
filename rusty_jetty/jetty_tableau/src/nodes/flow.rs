@@ -14,6 +14,7 @@ pub(crate) struct Flow {
     pub project_id: String,
     pub owner_id: String,
     pub updated_at: String,
+    // needs to have input and output sources
     pub datasource_connections: Vec<String>,
     pub permissions: Vec<super::Permission>,
 }

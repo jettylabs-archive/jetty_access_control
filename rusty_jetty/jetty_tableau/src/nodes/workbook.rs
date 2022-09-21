@@ -10,10 +10,15 @@ use super::FetchPermissions;
 #[derive(Clone, Default, Debug, Deserialize)]
 pub(crate) struct Workbook {
     pub id: String,
+    /// Unqualified name of the workbook
     pub name: String,
+    /// Tableau LUID of owner
     pub owner_id: String,
+    /// LUID of project
     pub project_id: String,
+    /// Probably not necessary?
     pub has_embedded_sources: bool,
+    /// HashSet of derived-from cuals
     pub sources: HashSet<String>,
     pub updated_at: String,
     pub permissions: Vec<super::Permission>,

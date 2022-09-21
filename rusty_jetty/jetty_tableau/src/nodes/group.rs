@@ -8,6 +8,7 @@ use serde::Deserialize;
 pub(crate) struct Group {
     pub id: String,
     pub name: String,
+    /// Vec of user uids
     pub includes: Vec<String>,
 }
 

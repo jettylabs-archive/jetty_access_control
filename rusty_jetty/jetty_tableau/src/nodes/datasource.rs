@@ -22,6 +22,7 @@ pub(crate) struct Datasource {
     pub owner_id: String,
     pub sources: HashSet<String>,
     pub permissions: Vec<super::Permission>,
+    /// Vec of origin cuals
     pub derived_from: Vec<String>,
 }
 
