@@ -144,7 +144,7 @@ mod tests {
 
     #[test]
     fn test_asset_from_view_works() {
-        let wb = View::new(
+        let v = View::new(
             Cual::new("".to_owned()),
             "id".to_owned(),
             "name".to_owned(),
@@ -154,12 +154,12 @@ mod tests {
             "updated_at".to_owned(),
             vec![],
         );
-        nodes::Asset::from(wb);
+        nodes::Asset::from(v);
     }
 
     #[test]
     fn test_view_into_asset_works() {
-        let wb = View::new(
+        let v = View::new(
             Cual::new("".to_owned()),
             "id".to_owned(),
             "name".to_owned(),
@@ -169,6 +169,6 @@ mod tests {
             "updated_at".to_owned(),
             vec![],
         );
-        let a: nodes::Asset = wb.into();
+        let a: nodes::Asset = v.into();
     }
 }
