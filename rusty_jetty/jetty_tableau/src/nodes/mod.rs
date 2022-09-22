@@ -34,30 +34,34 @@ use serde::Deserialize;
 /// This trait is implemented by permissionable Tableau asset nodes and makes it simpler to
 /// fetch and parse permissions
 #[async_trait]
-trait FetchPermissions {
+pub(crate) trait Permissionable {
     fn get_endpoint(&self) -> String;
 
+    fn set_permissions(&mut self, permissions: Vec<Permission>);
+
     /// Fetches the permissions for an asset and returns them as a vector of Permissions
-    async fn get_permissions(&self, tc: &crate::TableauRestClient) -> Result<Vec<Permission>> {
-        let resp = tc
-            .build_request(self.get_endpoint(), None, reqwest::Method::GET)?
-            .fetch_json_response(None)
-            .await?;
+    async fn update_permissions(&mut self, tc: &crate::TableauRestClient) -> Result<()> {
+        let req = tc.build_request(self.get_endpoint(), None, reqwest::Method::GET)?;
+
+        let resp = req.fetch_json_response(None).await?;
 
         let permissions_array = rest::get_json_from_path(
             &resp,
             &vec!["permissions".to_owned(), "granteeCapabilities".to_owned()],
         )?;
 
-        if matches!(permissions_array, serde_json::Value::Array(_)) {
+        let final_permissions = if matches!(permissions_array, serde_json::Value::Array(_)) {
             let permissions: Vec<SerializedPermission> = serde_json::from_value(permissions_array)?;
-            Ok(permissions
+            permissions
                 .iter()
                 .map(move |p| p.to_owned().to_permission())
-                .collect())
+                .collect()
         } else {
             bail!("unable to parse permissions")
-        }
+        };
+
+        self.set_permissions(final_permissions);
+        Ok(())
     }
 }
 

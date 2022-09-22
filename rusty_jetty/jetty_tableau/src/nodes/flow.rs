@@ -10,7 +10,7 @@ use crate::{
     rest::{self, Downloadable, FetchJson},
 };
 
-use super::FetchPermissions;
+use super::Permissionable;
 
 #[derive(Clone, Default, Debug, Deserialize)]
 pub(crate) struct Flow {
@@ -106,9 +106,12 @@ pub(crate) async fn get_basic_flows(tc: &rest::TableauRestClient) -> Result<Hash
     super::to_asset_map(node, &to_node)
 }
 
-impl FetchPermissions for Flow {
+impl Permissionable for Flow {
     fn get_endpoint(&self) -> String {
         format!("flows/{}/permissions", self.id)
+    }
+    fn set_permissions(&mut self, permissions: Vec<super::Permission>) {
+        self.permissions = permissions;
     }
 }
 
@@ -136,7 +139,7 @@ mod tests {
             .context("running tableau connector setup")?;
         let mut nodes = get_basic_flows(&tc.coordinator.rest_client).await?;
         for (_k, v) in &mut nodes {
-            v.permissions = v.get_permissions(&tc.coordinator.rest_client).await?;
+            v.update_permissions(&tc.coordinator.rest_client).await;
         }
         for (_k, v) in nodes {
             println!("{:#?}", v);

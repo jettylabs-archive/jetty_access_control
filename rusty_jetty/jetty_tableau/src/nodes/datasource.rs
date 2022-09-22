@@ -10,7 +10,7 @@ use crate::{
     rest::{self, Downloadable, FetchJson, TableauRestClient},
 };
 
-use super::FetchPermissions;
+use super::Permissionable;
 
 #[derive(Clone, Default, Debug, Deserialize)]
 pub(crate) struct Datasource {
@@ -124,9 +124,13 @@ pub(crate) async fn get_basic_datasources(
     super::to_asset_map(node, &to_node)
 }
 
-impl FetchPermissions for Datasource {
+impl Permissionable for Datasource {
     fn get_endpoint(&self) -> String {
         format!("datasources/{}/permissions", self.id)
+    }
+
+    fn set_permissions(&mut self, permissions: Vec<super::Permission>) {
+        self.permissions = permissions;
     }
 }
 
@@ -155,7 +159,7 @@ mod tests {
             .context("running tableau connector setup")?;
         let mut nodes = get_basic_datasources(&tc.coordinator.rest_client).await?;
         for (_, v) in &mut nodes {
-            v.permissions = v.get_permissions(&tc.coordinator.rest_client).await?;
+            v.update_permissions(&tc.coordinator.rest_client).await;
         }
         for (_, v) in nodes {
             println!("{:#?}", v);

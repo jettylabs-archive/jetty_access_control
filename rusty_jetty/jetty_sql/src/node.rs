@@ -115,7 +115,7 @@ macro_rules! impl_traversable_node {
             fn get_children(&self) -> Result<Vec<Node>> {
                 match self {
                     $(Node::$t(n) => n.get_children(),)*
-                    _ => panic!("Not supported. Please insert another quarter."),
+                    _ => panic!("Not supported. Please insert another quarter. {:#?}", &self),
                 }
             }
         }
@@ -145,7 +145,8 @@ impl_traversable_node!(
     SetExpr,
     SetOperator,
     Statement,
-    TableFactor
+    TableFactor,
+    Value
 );
 
 impl Traversable for ast::Array {
@@ -515,7 +516,7 @@ impl Traversable for ast::Expr {
             } => todo!(),
             ast::Expr::Collate { expr, collation } => todo!(),
             ast::Expr::Nested(_) => todo!(),
-            ast::Expr::Value(_) => todo!(),
+            ast::Expr::Value(n) => vec![Node::Value(n.to_owned())],
             ast::Expr::TypedString { data_type, value } => todo!(),
             ast::Expr::MapAccess { column, keys } => todo!(),
             ast::Expr::Function(_) => todo!(),
@@ -811,7 +812,24 @@ impl Traversable for ast::UnaryOperator {
 }
 impl Traversable for ast::Value {
     fn get_children(&self) -> Result<Vec<Node>> {
-        todo!()
+        Ok(match self {
+            ast::Value::Number(_, _) => vec![],
+            ast::Value::SingleQuotedString(_) => todo!(),
+            ast::Value::EscapedStringLiteral(_) => todo!(),
+            ast::Value::NationalStringLiteral(_) => todo!(),
+            ast::Value::HexStringLiteral(_) => todo!(),
+            ast::Value::DoubleQuotedString(_) => todo!(),
+            ast::Value::Boolean(_) => todo!(),
+            ast::Value::Interval {
+                value,
+                leading_field,
+                leading_precision,
+                last_field,
+                fractional_seconds_precision,
+            } => todo!(),
+            ast::Value::Null => todo!(),
+            ast::Value::Placeholder(_) => todo!(),
+        })
     }
 }
 impl Traversable for ast::WindowFrameBound {

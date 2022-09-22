@@ -10,7 +10,7 @@ use crate::{
     rest::{self, Downloadable, FetchJson},
 };
 
-use super::FetchPermissions;
+use super::Permissionable;
 
 #[derive(Clone, Default, Debug, Deserialize)]
 pub(crate) struct Workbook {
@@ -55,9 +55,12 @@ impl Downloadable for Workbook {
     }
 }
 
-impl FetchPermissions for Workbook {
+impl Permissionable for Workbook {
     fn get_endpoint(&self) -> String {
         format!("workbooks/{}/permissions", self.id)
+    }
+    fn set_permissions(&mut self, permissions: Vec<super::Permission>) {
+        self.permissions = permissions;
     }
 }
 
@@ -212,7 +215,7 @@ mod tests {
             .context("running tableau connector setup")?;
         let mut workbooks = get_basic_workbooks(&tc.coordinator.rest_client).await?;
         for (_k, v) in &mut workbooks {
-            v.permissions = v.get_permissions(&tc.coordinator.rest_client).await?;
+            v.update_permissions(&tc.coordinator.rest_client).await;
         }
         for (_k, v) in workbooks {
             println!("{:#?}", v);

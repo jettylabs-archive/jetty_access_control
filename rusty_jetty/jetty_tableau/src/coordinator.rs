@@ -8,7 +8,7 @@ use futures::join;
 use futures::StreamExt;
 use serde::Deserialize;
 
-use crate::nodes::{self};
+use crate::nodes::{self, Permissionable};
 use crate::rest;
 use crate::TableauCredentials;
 
@@ -160,6 +160,20 @@ impl Coordinator {
         let flow_sources = fetches.await;
 
         Self::update_sources(&mut flows_vec, flow_sources);
+
+        // update permissions
+        let fetches = futures::stream::iter(
+            new_env
+                .datasources
+                .iter_mut()
+                .map(|(_, v)| v.update_permissions(&self.rest_client)),
+        )
+        .buffer_unordered(100)
+        .collect::<Vec<_>>()
+        .await;
+
+        // update self.env
+        // serialize as JSON
 
         Ok(())
     }
