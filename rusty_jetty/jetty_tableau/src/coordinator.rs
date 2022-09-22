@@ -147,19 +147,7 @@ impl Coordinator {
         Self::update_sources(&mut workbooks_vec, workbook_sources);
 
         // Flows
-        let mut flows_vec = new_env.flows.values_mut().collect::<Vec<_>>();
-
-        let fetches = futures::stream::iter(
-            flows_vec
-                .iter_mut()
-                .map(|d| self.get_sources(&self.env.flows, d)),
-        )
-        .buffered(30)
-        .collect::<Vec<_>>();
-
-        let flow_sources = fetches.await;
-
-        Self::update_sources(&mut flows_vec, flow_sources);
+        self.update_sources_from_map(&mut new_env.flows, &self.env.flows);
 
         // update permissions
         let fetches = futures::stream::iter(
@@ -194,6 +182,27 @@ impl Coordinator {
                 ),
             }
         }
+    }
+
+    async fn update_sources_from_map<T: HasSources>(
+        &self,
+        new_assets: &mut HashMap<String, T>,
+        old_assets: &HashMap<String, T>,
+    ) {
+        // Flows
+        let mut assets_vec = new_assets.values_mut().collect::<Vec<_>>();
+
+        let fetches = futures::stream::iter(
+            assets_vec
+                .iter_mut()
+                .map(|d| self.get_sources(&old_assets, d)),
+        )
+        .buffered(30)
+        .collect::<Vec<_>>();
+
+        let asset_sources = fetches.await;
+
+        Self::update_sources(&mut assets_vec, asset_sources);
     }
 
     async fn get_sources<T: HasSources>(
