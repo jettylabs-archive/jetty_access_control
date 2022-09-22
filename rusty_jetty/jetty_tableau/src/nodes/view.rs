@@ -6,6 +6,7 @@ use crate::rest::{self, FetchJson};
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
+/// Representation of a Tableau View
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub(crate) struct View {
     pub id: String,
@@ -17,6 +18,7 @@ pub(crate) struct View {
     pub permissions: Vec<Permission>,
 }
 
+/// Create a View from a JSON object
 fn to_node(val: &serde_json::Value) -> Result<View> {
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]
@@ -43,6 +45,7 @@ fn to_node(val: &serde_json::Value) -> Result<View> {
     })
 }
 
+/// Get basic view information (excluding permissions)
 pub(crate) async fn get_basic_views(tc: &rest::TableauRestClient) -> Result<HashMap<String, View>> {
     let node = tc
         .build_request("views".to_owned(), None, reqwest::Method::GET)

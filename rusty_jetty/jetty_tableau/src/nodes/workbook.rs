@@ -12,6 +12,7 @@ use crate::{
 
 use super::Permissionable;
 
+/// Representation of Tableau Workbook
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub(crate) struct Workbook {
     pub id: String,
@@ -93,6 +94,7 @@ impl HasSources for Workbook {
     }
 }
 
+/// Take a JSON object returned from a GraphQL query and turn it into a notebook
 fn to_node_graphql(val: &serde_json::Value) -> Result<Workbook> {
     #[derive(Deserialize)]
     struct LuidField {

@@ -7,6 +7,7 @@ use crate::rest::{self, FetchJson};
 
 use super::Permissionable;
 
+/// Representation of a Tableau Lens
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub(crate) struct Lens {
     pub id: String,
@@ -17,6 +18,7 @@ pub(crate) struct Lens {
     pub permissions: Vec<super::Permission>,
 }
 
+/// Convert JSON to a Lens struct
 fn to_node(val: &serde_json::Value) -> Result<Lens> {
     #[derive(Deserialize)]
     struct AssetInfo {
@@ -39,6 +41,8 @@ fn to_node(val: &serde_json::Value) -> Result<Lens> {
         permissions: Default::default(),
     })
 }
+
+/// Get basic lense information. Excludes permissions.
 pub(crate) async fn get_basic_lenses(
     tc: &rest::TableauRestClient,
 ) -> Result<HashMap<String, Lens>> {

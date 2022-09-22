@@ -4,8 +4,9 @@ use crate::rest::{self, FetchJson};
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
+/// Representation of Tableau user
 #[derive(Deserialize, Clone, Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all(deserialize = "camelCase"))]
 pub(crate) struct User {
     pub id: String,
     pub name: String,
@@ -15,10 +16,12 @@ pub(crate) struct User {
     pub site_role: String,
 }
 
+/// Convert JSON into a User struct
 pub(crate) fn to_node(val: &serde_json::Value) -> Result<User> {
     serde_json::from_value(val.to_owned()).context("parsing user information")
 }
 
+/// Fetch basic user information. This actually includes everything in the user struct!
 pub(crate) async fn get_basic_users(tc: &rest::TableauRestClient) -> Result<HashMap<String, User>> {
     let users = tc
         .build_request("users".to_owned(), None, reqwest::Method::GET)

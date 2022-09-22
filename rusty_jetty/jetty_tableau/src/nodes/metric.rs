@@ -7,6 +7,7 @@ use crate::rest::{self, FetchJson};
 
 use super::Permissionable;
 
+/// Representation of Tableau metric
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub(crate) struct Metric {
     pub id: String,
@@ -16,9 +17,10 @@ pub(crate) struct Metric {
     pub project_id: String,
     pub owner_id: String,
     pub underlying_view_id: String,
-    pub permissions: Vec<super::Permission>, // Not yet sure if this will be possible
+    pub permissions: Vec<super::Permission>,
 }
 
+/// Convert JSON to a Metric struct
 fn to_node(val: &serde_json::Value) -> Result<Metric> {
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]
@@ -47,6 +49,7 @@ fn to_node(val: &serde_json::Value) -> Result<Metric> {
     })
 }
 
+/// Get basic metric info, excluding permissions
 pub(crate) async fn get_basic_metrics(
     tc: &rest::TableauRestClient,
 ) -> Result<HashMap<String, Metric>> {

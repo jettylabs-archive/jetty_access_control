@@ -12,6 +12,7 @@ use crate::{
 
 use super::Permissionable;
 
+/// Representation of a Tableau Flow
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub(crate) struct Flow {
     pub id: String,
@@ -71,6 +72,7 @@ impl HasSources for Flow {
     }
 }
 
+/// Convert JSON into a Flow struct
 fn to_node(val: &serde_json::Value) -> Result<Flow> {
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]
@@ -97,6 +99,7 @@ fn to_node(val: &serde_json::Value) -> Result<Flow> {
     })
 }
 
+/// Get basic information about all flows. Does not include permissions or derived_to and derived_from information.
 pub(crate) async fn get_basic_flows(tc: &rest::TableauRestClient) -> Result<HashMap<String, Flow>> {
     let node = tc
         .build_request("flows".to_owned(), None, reqwest::Method::GET)

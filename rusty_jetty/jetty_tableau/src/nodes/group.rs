@@ -5,6 +5,7 @@ use anyhow::{Context, Result};
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 
+/// Representation of a
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub(crate) struct Group {
     pub id: String,
@@ -14,7 +15,8 @@ pub(crate) struct Group {
 }
 
 impl Group {
-    pub(crate) async fn get_users(&mut self, tc: &rest::TableauRestClient) -> Result<()> {
+    /// Update group membership
+    pub(crate) async fn update_users(&mut self, tc: &rest::TableauRestClient) -> Result<()> {
         let resp = tc
             .build_request(
                 format!("groups/{}/users", self.id),
@@ -33,6 +35,7 @@ impl Group {
     }
 }
 
+/// Convert JSON Value to a Group instance
 pub(crate) fn to_node(val: &serde_json::Value) -> Result<Group> {
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]
@@ -50,6 +53,7 @@ pub(crate) fn to_node(val: &serde_json::Value) -> Result<Group> {
     })
 }
 
+/// Get basic group information. Excludes "includes" (group membership)
 pub(crate) async fn get_basic_groups(
     tc: &rest::TableauRestClient,
 ) -> Result<HashMap<String, Group>> {
@@ -85,7 +89,7 @@ mod tests {
             .context("running tableau connector setup")?;
         let mut groups = get_basic_groups(&tc.coordinator.rest_client).await?;
         for (_k, v) in &mut groups {
-            v.get_users(&tc.coordinator.rest_client);
+            v.update_users(&tc.coordinator.rest_client);
             println!("{:#?}", v);
         }
         Ok(())

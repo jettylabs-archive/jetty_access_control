@@ -6,6 +6,7 @@ use crate::rest::{self, FetchJson};
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
+/// Representation of a Tableau Project
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub(crate) struct Project {
     pub id: String,
@@ -16,6 +17,7 @@ pub(crate) struct Project {
     pub permissions: Vec<Permission>,
 }
 
+/// Convert JSON into a project struct
 fn to_node(val: &serde_json::Value) -> Result<super::Project> {
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]
@@ -41,6 +43,7 @@ fn to_node(val: &serde_json::Value) -> Result<super::Project> {
     })
 }
 
+/// Get basic project information (excluding permissions)
 pub(crate) async fn get_basic_projects(
     tc: &rest::TableauRestClient,
 ) -> Result<HashMap<String, Project>> {

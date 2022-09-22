@@ -211,7 +211,7 @@ impl Coordinator {
         let fetches = futures::stream::iter(
             groups
                 .iter_mut()
-                .map(|(_, v)| v.get_users(&self.rest_client)),
+                .map(|(_, v)| v.update_users(&self.rest_client)),
         )
         .buffer_unordered(CONCURRENT_METADATA_FETCHES)
         .collect::<Vec<_>>()
