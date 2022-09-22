@@ -11,7 +11,7 @@ use serde::Deserialize;
 use crate::{
     coordinator::HasSources,
     file_parse::xml_docs,
-    rest::{self, Downloadable, FetchJson, TableauRestClient},
+    rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType, TableauRestClient},
 };
 
 use super::FetchPermissions;
@@ -84,7 +84,11 @@ impl From<Datasource> for nodes::Asset {
             // Governing policies will be assigned in the policy.
             HashSet::new(),
             // Datasources are children of their projects.
-            HashSet::from([val.project_id]),
+            HashSet::from(
+                [get_tableau_cual(TableauAssetType::Project, &val.project_id)
+                    .expect("Getting parent project for datasource")
+                    .uri()],
+            ),
             // Children objects will be handled in their respective nodes.
             HashSet::new(),
             // Datasources can be derived from other datasources.
@@ -154,11 +158,7 @@ fn to_node(val: &serde_json::Value) -> Result<super::Datasource> {
         serde_json::from_value(val.to_owned()).context("parsing datasource information")?;
 
     Ok(super::Datasource {
-        cual: Cual::new(format!(
-            "{}/datasource/{}",
-            tc.get_cual_prefix(),
-            asset_info.id
-        )),
+        cual: get_tableau_cual(TableauAssetType::Datasource, &asset_info.id)?,
         id: asset_info.id,
         name: asset_info.name,
         owner_id: asset_info.owner.id,
@@ -192,6 +192,8 @@ impl FetchPermissions for Datasource {
 
 #[cfg(test)]
 mod tests {
+
+    use crate::rest::set_cual_prefix;
 
     use super::*;
     use anyhow::{Context, Result};
@@ -257,6 +259,7 @@ mod tests {
 
     #[test]
     fn test_asset_from_datasource_works() {
+        set_cual_prefix("", "");
         let ds = Datasource::new(
             Cual::new("".to_owned()),
             "id".to_owned(),
@@ -274,6 +277,7 @@ mod tests {
 
     #[test]
     fn test_datasource_into_asset_works() {
+        set_cual_prefix("", "");
         let ds = Datasource::new(
             Cual::new("".to_owned()),
             "id".to_owned(),

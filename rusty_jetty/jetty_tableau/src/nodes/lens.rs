@@ -7,7 +7,7 @@ use jetty_core::{
 };
 use serde::Deserialize;
 
-use crate::rest::{self, FetchJson};
+use crate::rest::{self, get_tableau_cual, FetchJson, TableauAssetType};
 
 use super::FetchPermissions;
 
@@ -58,7 +58,7 @@ fn to_node(val: &serde_json::Value) -> Result<Lens> {
         serde_json::from_value(val.to_owned()).context("parsing lens information")?;
 
     Ok(Lens {
-        cual: Cual::new(format!("{}/lens/{}", tc.get_cual_prefix(), asset_info.id)),
+        cual: get_tableau_cual(TableauAssetType::Lens, &asset_info.id)?,
         id: asset_info.id,
         name: asset_info.name,
         owner_id: asset_info.owner_id,
@@ -92,12 +92,20 @@ impl From<Lens> for nodes::Asset {
             HashMap::new(),
             // Governing policies will be assigned in the policy.
             HashSet::new(),
-            // Lenses are children of their projects?
-            HashSet::from([val.project_id]),
+            // Lenses are children of their datasources?
+            HashSet::from([
+                get_tableau_cual(TableauAssetType::Datasource, &val.datasource_id)
+                    .expect("Getting parent datasource CUAL")
+                    .uri(),
+            ]),
             // Children objects will be handled in their respective nodes.
             HashSet::new(),
             // Lenses are derived from their source data.
-            HashSet::from([val.datasource_id]),
+            HashSet::from([
+                get_tableau_cual(TableauAssetType::Datasource, &val.datasource_id)
+                    .expect("Getting parent datasource CUAL")
+                    .uri(),
+            ]),
             HashSet::new(),
             // No tags at this point.
             HashSet::new(),
@@ -114,6 +122,7 @@ impl FetchPermissions for Lens {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::rest::set_cual_prefix;
     use anyhow::{Context, Result};
 
     #[tokio::test]
@@ -145,6 +154,7 @@ mod tests {
 
     #[test]
     fn test_asset_from_lens_works() {
+        set_cual_prefix("", "");
         let l = Lens::new(
             Cual::new("".to_owned()),
             "id".to_owned(),
@@ -159,6 +169,7 @@ mod tests {
 
     #[test]
     fn test_lens_into_asset_works() {
+        set_cual_prefix("", "");
         let l = Lens::new(
             Cual::new("".to_owned()),
             "id".to_owned(),

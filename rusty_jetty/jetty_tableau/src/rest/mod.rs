@@ -9,7 +9,10 @@ use std::{
 };
 
 use super::*;
+#[cfg(not(test))]
 use cual::set_cual_prefix;
+#[cfg(test)]
+pub(crate) use cual::set_cual_prefix;
 pub(crate) use cual::{get_tableau_cual, TableauAssetType};
 
 use anyhow::{bail, Context};
@@ -73,6 +76,7 @@ impl TableauRestClient {
 
     #[cfg(test)]
     pub(crate) fn new_dummy() -> Self {
+        set_cual_prefix("dummy-server", "dummy-site");
         let tc = TableauRestClient {
             credentials: TableauCredentials {
                 server_name: "dummy-server".to_owned(),

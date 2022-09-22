@@ -7,7 +7,7 @@ use jetty_core::{
 };
 use serde::Deserialize;
 
-use crate::rest::{self, Downloadable, FetchJson};
+use crate::rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType};
 
 use super::FetchPermissions;
 
@@ -73,7 +73,7 @@ fn to_node(val: &serde_json::Value) -> Result<Flow> {
         serde_json::from_value(val.to_owned()).context("parsing flow information")?;
 
     Ok(Flow {
-        cual: Cual::new(format!("{}/lens/{}", tc.get_cual_prefix(), asset_info.id)),
+        cual: get_tableau_cual(TableauAssetType::Flow, &asset_info.id)?,
         id: asset_info.id,
         name: asset_info.name,
         owner_id: asset_info.owner.id,
@@ -110,11 +110,19 @@ impl From<Flow> for nodes::Asset {
             // Governing policies will be assigned in the policy.
             HashSet::new(),
             // Flows are children of their projects?
-            HashSet::from([val.project_id]),
+            HashSet::from(
+                [get_tableau_cual(TableauAssetType::Project, &val.project_id)
+                    .expect("Getting parent project CUAL")
+                    .uri()],
+            ),
             // Children objects will be handled in their respective nodes.
             HashSet::new(),
             // Flows are derived from their source data.
-            HashSet::from_iter(val.datasource_connections),
+            HashSet::from_iter(val.datasource_connections.iter().map(|c| {
+                get_tableau_cual(TableauAssetType::Datasource, c)
+                    .expect("Getting datasource CUAL for flow")
+                    .uri()
+            })),
             HashSet::new(),
             // No tags at this point.
             HashSet::new(),
@@ -124,6 +132,8 @@ impl From<Flow> for nodes::Asset {
 
 #[cfg(test)]
 mod tests {
+    use crate::rest::set_cual_prefix;
+
     use super::*;
     use anyhow::{Context, Result};
 
@@ -169,6 +179,7 @@ mod tests {
 
     #[test]
     fn test_asset_from_flow_works() {
+        set_cual_prefix("", "");
         let l = Flow::new(
             Cual::new("".to_owned()),
             "id".to_owned(),
@@ -184,6 +195,7 @@ mod tests {
 
     #[test]
     fn test_flow_into_asset_works() {
+        set_cual_prefix("", "");
         let l = Flow::new(
             Cual::new("".to_owned()),
             "id".to_owned(),
