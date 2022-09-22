@@ -1,8 +1,9 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::rest::{self, FetchJson};
 use anyhow::{Context, Result};
 use futures::StreamExt;
+use jetty_core::connectors::nodes;
 use serde::{Deserialize, Serialize};
 
 /// Representation of a
@@ -36,6 +37,28 @@ impl Group {
 }
 
 /// Convert JSON Value to a Group instance
+impl Group {
+    pub(crate) fn new(id: String, name: String, includes: Vec<String>) -> Self {
+        Self { id, name, includes }
+    }
+}
+
+impl From<Group> for nodes::Group {
+    fn from(val: Group) -> Self {
+        nodes::Group::new(
+            val.name,
+            HashMap::from([("tableau::id".to_owned(), val.id)]),
+            // No nested groups in tableau
+            HashSet::new(),
+            HashSet::from_iter(val.includes),
+            // No nested groups in tableau?
+            HashSet::new(),
+            // Handled in permissions/policies.
+            HashSet::new(),
+        )
+    }
+}
+
 pub(crate) fn to_node(val: &serde_json::Value) -> Result<Group> {
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]
@@ -62,7 +85,7 @@ pub(crate) async fn get_basic_groups(
         .context("fetching groups")?
         .fetch_json_response(Some(vec!["groups".to_owned(), "group".to_owned()]))
         .await?;
-    super::to_asset_map(node, &to_node)
+    super::to_asset_map(tc, node, &to_node)
 }
 
 #[cfg(test)]
@@ -93,5 +116,17 @@ mod tests {
             println!("{:#?}", v);
         }
         Ok(())
+    }
+
+    #[test]
+    fn test_jetty_group_from_group_works() {
+        let g = Group::new("id".to_owned(), "name".to_owned(), vec!["me".to_owned()]);
+        nodes::Group::from(g);
+    }
+
+    #[test]
+    fn test_group_into_jetty_group_works() {
+        let g = Group::new("id".to_owned(), "name".to_owned(), vec!["me".to_owned()]);
+        let a: nodes::Group = g.into();
     }
 }

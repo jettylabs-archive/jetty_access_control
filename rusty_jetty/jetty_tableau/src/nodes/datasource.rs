@@ -2,12 +2,16 @@ use std::collections::{HashMap, HashSet};
 
 use anyhow::{Context, Result};
 use async_trait::async_trait;
+use jetty_core::{
+    connectors::{nodes, AssetType},
+    cual::Cual,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::{
     coordinator::{Coordinator, HasSources},
     file_parse::xml_docs,
-    rest::{self, Downloadable, FetchJson, TableauRestClient},
+    rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType, TableauRestClient},
 };
 
 use super::Permissionable;
@@ -15,6 +19,7 @@ use super::Permissionable;
 /// Representation of a Tableau Datasource
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub(crate) struct Datasource {
+    pub(crate) cual: Cual,
     pub id: String,
     pub name: String,
     pub datasource_type: String,
@@ -23,9 +28,37 @@ pub(crate) struct Datasource {
     pub owner_id: String,
     pub sources: HashSet<String>,
     pub permissions: Vec<super::Permission>,
+    /// Vec of origin cuals
+    pub derived_from: Vec<String>,
 }
 
 impl Datasource {
+    pub(crate) fn new(
+        cual: Cual,
+        id: String,
+        name: String,
+        datasource_type: String,
+        updated_at: String,
+        project_id: String,
+        owner_id: String,
+        sources: HashSet<String>,
+        permissions: Vec<super::Permission>,
+        derived_from: Vec<String>,
+    ) -> Self {
+        Self {
+            cual,
+            id,
+            name,
+            datasource_type,
+            updated_at,
+            project_id,
+            owner_id,
+            sources,
+            permissions,
+            derived_from,
+        }
+    }
+
     /// Get the cual_suffix for Datasources
     pub(crate) fn cual_suffix(&self) -> String {
         format!("/datasource/{}", &self.id)
@@ -41,6 +74,34 @@ impl Downloadable for Datasource {
     /// Function to match the right filenames to extract from downloaded zip
     fn match_file(name: &str) -> bool {
         name.ends_with(".tds")
+    }
+}
+
+impl From<Datasource> for nodes::Asset {
+    fn from(val: Datasource) -> Self {
+        nodes::Asset::new(
+            val.cual,
+            val.name,
+            AssetType::Other,
+            // We will add metadata as it's useful.
+            HashMap::new(),
+            // Governing policies will be assigned in the policy.
+            HashSet::new(),
+            // Datasources are children of their projects.
+            HashSet::from(
+                [get_tableau_cual(TableauAssetType::Project, &val.project_id)
+                    .expect("Getting parent project for datasource")
+                    .uri()],
+            ),
+            // Children objects will be handled in their respective nodes.
+            HashSet::new(),
+            // Datasources can be derived from other datasources.
+            val.sources,
+            // Handled in any child datasources.
+            HashSet::new(),
+            // No tags at this point.
+            HashSet::new(),
+        )
     }
 }
 
@@ -101,6 +162,7 @@ fn to_node(val: &serde_json::Value) -> Result<super::Datasource> {
         serde_json::from_value(val.to_owned()).context("parsing datasource information")?;
 
     Ok(super::Datasource {
+        cual: get_tableau_cual(TableauAssetType::Datasource, &asset_info.id)?,
         id: asset_info.id,
         name: asset_info.name,
         owner_id: asset_info.owner.id,
@@ -109,6 +171,7 @@ fn to_node(val: &serde_json::Value) -> Result<super::Datasource> {
         datasource_type: asset_info.datasource_type,
         permissions: Default::default(),
         sources: Default::default(),
+        derived_from: Default::default(),
     })
 }
 
@@ -125,7 +188,7 @@ pub(crate) async fn get_basic_datasources(
             "datasource".to_owned(),
         ]))
         .await?;
-    super::to_asset_map(node, &to_node)
+    super::to_asset_map(tc, node, &to_node)
 }
 
 impl Permissionable for Datasource {
@@ -142,6 +205,8 @@ impl Permissionable for Datasource {
 
 #[cfg(test)]
 mod tests {
+
+    use crate::rest::set_cual_prefix;
 
     use super::*;
     use anyhow::{Context, Result};
@@ -201,5 +266,41 @@ mod tests {
             let x = test_datasource.fetch_sources(&tc.coordinator).await?;
         }
         Ok(())
+    }
+
+    #[test]
+    fn test_asset_from_datasource_works() {
+        set_cual_prefix("", "");
+        let ds = Datasource::new(
+            Cual::new("".to_owned()),
+            "id".to_owned(),
+            "name".to_owned(),
+            "datasource_type".to_owned(),
+            "updated".to_owned(),
+            "project_id".to_owned(),
+            "owner_id".to_owned(),
+            HashSet::new(),
+            vec![],
+            vec![],
+        );
+        nodes::Asset::from(ds);
+    }
+
+    #[test]
+    fn test_datasource_into_asset_works() {
+        set_cual_prefix("", "");
+        let ds = Datasource::new(
+            Cual::new("".to_owned()),
+            "id".to_owned(),
+            "name".to_owned(),
+            "datasource_type".to_owned(),
+            "updated".to_owned(),
+            "project_id".to_owned(),
+            "owner_id".to_owned(),
+            HashSet::new(),
+            vec![],
+            vec![],
+        );
+        let a: nodes::Asset = ds.into();
     }
 }

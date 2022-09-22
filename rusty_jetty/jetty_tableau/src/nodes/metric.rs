@@ -1,15 +1,20 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use anyhow::{Context, Result};
+use jetty_core::{
+    connectors::{nodes, AssetType},
+    cual::Cual,
+};
 use serde::{Deserialize, Serialize};
 
-use crate::rest::{self, FetchJson};
+use crate::rest::{self, get_tableau_cual, FetchJson, TableauAssetType};
 
 use super::Permissionable;
 
 /// Representation of Tableau metric
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub(crate) struct Metric {
+    pub(crate) cual: Cual,
     pub id: String,
     pub name: String,
     pub updated_at: String,
@@ -38,6 +43,7 @@ fn to_node(val: &serde_json::Value) -> Result<Metric> {
         serde_json::from_value(val.to_owned()).context("parsing metric information")?;
 
     Ok(Metric {
+        cual: get_tableau_cual(TableauAssetType::Metric, &asset_info.id)?,
         id: asset_info.id,
         name: asset_info.name,
         owner_id: asset_info.owner.id,
@@ -58,7 +64,33 @@ pub(crate) async fn get_basic_metrics(
         .context("fetching metrics")?
         .fetch_json_response(Some(vec!["metrics".to_owned(), "metric".to_owned()]))
         .await?;
-    super::to_asset_map(node, &to_node)
+    super::to_asset_map(tc, node, &to_node)
+}
+
+impl Metric {
+    pub(crate) fn new(
+        cual: Cual,
+        id: String,
+        name: String,
+        updated_at: String,
+        suspended: bool,
+        project_id: String,
+        owner_id: String,
+        underlying_view_id: String,
+        permissions: Vec<super::Permission>,
+    ) -> Self {
+        Self {
+            cual,
+            id,
+            name,
+            updated_at,
+            suspended,
+            project_id,
+            owner_id,
+            underlying_view_id,
+            permissions,
+        }
+    }
 }
 
 impl Permissionable for Metric {
@@ -67,6 +99,33 @@ impl Permissionable for Metric {
     }
     fn set_permissions(&mut self, permissions: Vec<super::Permission>) {
         self.permissions = permissions;
+    }
+}
+
+impl From<Metric> for nodes::Asset {
+    fn from(val: Metric) -> Self {
+        nodes::Asset::new(
+            val.cual,
+            val.name,
+            AssetType::Other,
+            // We will add metadata as it's useful.
+            HashMap::new(),
+            // Governing policies will be assigned in the policy.
+            HashSet::new(),
+            // Metrics are children of the underlying view.
+            HashSet::from([
+                get_tableau_cual(TableauAssetType::View, &val.underlying_view_id)
+                    .expect("Getting parent View.")
+                    .uri(),
+            ]),
+            // Children objects will be handled in their respective nodes.
+            HashSet::new(),
+            // Metrics aren't derived from anything
+            HashSet::new(),
+            HashSet::new(),
+            // No tags at this point.
+            HashSet::new(),
+        )
     }
 }
 
@@ -100,5 +159,37 @@ mod tests {
             println!("{:#?}", v);
         }
         Ok(())
+    }
+
+    #[test]
+    fn test_asset_from_metric_works() {
+        let m = Metric::new(
+            Cual::new("".to_owned()),
+            "id".to_owned(),
+            "name".to_owned(),
+            "updated_at".to_owned(),
+            false,
+            "project".to_owned(),
+            "owner".to_owned(),
+            "updated_at".to_owned(),
+            vec![],
+        );
+        nodes::Asset::from(m);
+    }
+
+    #[test]
+    fn test_metric_into_asset_works() {
+        let m = Metric::new(
+            Cual::new("".to_owned()),
+            "id".to_owned(),
+            "name".to_owned(),
+            "updated_at".to_owned(),
+            false,
+            "project".to_owned(),
+            "owner".to_owned(),
+            "updated_at".to_owned(),
+            vec![],
+        );
+        let a: nodes::Asset = m.into();
     }
 }

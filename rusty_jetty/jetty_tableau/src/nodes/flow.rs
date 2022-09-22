@@ -2,12 +2,16 @@ use std::collections::{HashMap, HashSet};
 
 use anyhow::{Context, Result};
 use async_trait::async_trait;
+use jetty_core::{
+    connectors::{nodes, AssetType},
+    cual::Cual,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::{
     coordinator::{Coordinator, HasSources},
     file_parse::{self, flow::FlowDoc},
-    rest::{self, Downloadable, FetchJson},
+    rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType},
 };
 
 use super::Permissionable;
@@ -15,6 +19,7 @@ use super::Permissionable;
 /// Representation of a Tableau Flow
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub(crate) struct Flow {
+    pub(crate) cual: Cual,
     pub id: String,
     pub name: String,
     pub project_id: String,
@@ -23,6 +28,32 @@ pub(crate) struct Flow {
     pub derived_from: HashSet<String>,
     pub derived_to: HashSet<String>,
     pub permissions: Vec<super::Permission>,
+}
+
+impl Flow {
+    pub(crate) fn new(
+        cual: Cual,
+        id: String,
+        name: String,
+        project_id: String,
+        owner_id: String,
+        updated_at: String,
+        derived_from: HashSet<String>,
+        derived_to: HashSet<String>,
+        permissions: Vec<super::Permission>,
+    ) -> Self {
+        Self {
+            cual,
+            id,
+            name,
+            project_id,
+            owner_id,
+            updated_at,
+            derived_from,
+            derived_to,
+            permissions,
+        }
+    }
 }
 
 impl Downloadable for Flow {
@@ -88,6 +119,7 @@ fn to_node(val: &serde_json::Value) -> Result<Flow> {
         serde_json::from_value(val.to_owned()).context("parsing flow information")?;
 
     Ok(Flow {
+        cual: get_tableau_cual(TableauAssetType::Flow, &asset_info.id)?,
         id: asset_info.id,
         name: asset_info.name,
         owner_id: asset_info.owner.id,
@@ -106,7 +138,7 @@ pub(crate) async fn get_basic_flows(tc: &rest::TableauRestClient) -> Result<Hash
         .context("fetching flows")?
         .fetch_json_response(Some(vec!["flows".to_owned(), "flow".to_owned()]))
         .await?;
-    super::to_asset_map(node, &to_node)
+    super::to_asset_map(tc, node, &to_node)
 }
 
 impl Permissionable for Flow {
@@ -118,8 +150,41 @@ impl Permissionable for Flow {
     }
 }
 
+impl From<Flow> for nodes::Asset {
+    fn from(val: Flow) -> Self {
+        nodes::Asset::new(
+            val.cual,
+            val.name,
+            AssetType::Other,
+            // We will add metadata as it's useful.
+            HashMap::new(),
+            // Governing policies will be assigned in the policy.
+            HashSet::new(),
+            // Flows are children of their projects?
+            HashSet::from(
+                [get_tableau_cual(TableauAssetType::Project, &val.project_id)
+                    .expect("Getting parent project CUAL")
+                    .uri()],
+            ),
+            // Children objects will be handled in their respective nodes.
+            HashSet::new(),
+            // Flows are derived from their source data.
+            HashSet::from_iter(val.datasource_connections.iter().map(|c| {
+                get_tableau_cual(TableauAssetType::Datasource, c)
+                    .expect("Getting datasource CUAL for flow")
+                    .uri()
+            })),
+            HashSet::new(),
+            // No tags at this point.
+            HashSet::new(),
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use crate::rest::set_cual_prefix;
+
     use super::*;
     use anyhow::{Context, Result};
 
@@ -161,5 +226,39 @@ mod tests {
         let x = tc.coordinator.rest_client.download(test_flow, true).await?;
         println!("Downloaded {} bytes", x.len());
         Ok(())
+    }
+
+    #[test]
+    fn test_asset_from_flow_works() {
+        set_cual_prefix("", "");
+        let l = Flow::new(
+            Cual::new("".to_owned()),
+            "id".to_owned(),
+            "name".to_owned(),
+            "project_id".to_owned(),
+            "owner_id".to_owned(),
+            "updated".to_owned(),
+            Default::default(),
+            Default::default(),
+            Default::default(),
+        );
+        nodes::Asset::from(l);
+    }
+
+    #[test]
+    fn test_flow_into_asset_works() {
+        set_cual_prefix("", "");
+        let l = Flow::new(
+            Cual::new("".to_owned()),
+            "id".to_owned(),
+            "name".to_owned(),
+            "project_id".to_owned(),
+            "owner_id".to_owned(),
+            "updated".to_owned(),
+            Default::default(),
+            Default::default(),
+            Default::default(),
+        );
+        let a: nodes::Asset = l.into();
     }
 }

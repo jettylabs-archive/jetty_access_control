@@ -7,7 +7,12 @@ use serde::{Deserialize, Serialize};
 use crate::{
     coordinator::{Coordinator, HasSources},
     file_parse::xml_docs,
-    rest::{self, Downloadable, FetchJson},
+    rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType},
+};
+
+use jetty_core::{
+    connectors::{nodes, AssetType},
+    cual::Cual,
 };
 
 use super::Permissionable;
@@ -15,6 +20,7 @@ use super::Permissionable;
 /// Representation of Tableau Workbook
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub(crate) struct Workbook {
+    cual: Cual,
     pub id: String,
     /// Unqualified name of the workbook
     pub name: String,
@@ -31,9 +37,28 @@ pub(crate) struct Workbook {
 }
 
 impl Workbook {
-    pub(crate) async fn fetch_datasources(&self) -> Result<Vec<super::Datasource>> {
-        return Ok(vec![]);
-        todo!()
+    pub(crate) fn new(
+        cual: Cual,
+        id: String,
+        name: String,
+        owner_id: String,
+        project_id: String,
+        has_embedded_sources: bool,
+        sources: HashSet<String>,
+        updated_at: String,
+        permissions: Vec<super::Permission>,
+    ) -> Self {
+        Self {
+            cual,
+            id,
+            name,
+            owner_id,
+            project_id,
+            has_embedded_sources,
+            sources,
+            updated_at,
+            permissions,
+        }
     }
 }
 
@@ -94,6 +119,33 @@ impl HasSources for Workbook {
     }
 }
 
+impl From<Workbook> for nodes::Asset {
+    fn from(val: Workbook) -> Self {
+        nodes::Asset::new(
+            val.cual,
+            val.name,
+            AssetType::Other,
+            // We will add metadata as it's useful.
+            HashMap::new(),
+            // Governing policies will be assigned in the policy.
+            HashSet::new(),
+            // Workbooks are children of their projects.
+            HashSet::from(
+                [get_tableau_cual(TableauAssetType::Project, &val.project_id)
+                    .unwrap()
+                    .uri()],
+            ),
+            // Children objects will be handled in their respective nodes.
+            HashSet::new(),
+            // Workbooks are derived from their source data.
+            val.sources,
+            HashSet::new(),
+            // No tags at this point.
+            HashSet::new(),
+        )
+    }
+}
+
 /// Take a JSON object returned from a GraphQL query and turn it into a notebook
 fn to_node_graphql(val: &serde_json::Value) -> Result<Workbook> {
     #[derive(Deserialize)]
@@ -124,6 +176,7 @@ fn to_node_graphql(val: &serde_json::Value) -> Result<Workbook> {
         serde_json::from_value(val.to_owned()).context("parsing workbook information")?;
 
     Ok(Workbook {
+        cual: get_tableau_cual(TableauAssetType::Workbook, &workbook_info.luid)?,
         id: workbook_info.luid,
         name: workbook_info.name,
         owner_id: workbook_info.owner.luid,
@@ -162,7 +215,7 @@ pub(crate) async fn get_basic_workbooks(
         .fetch_json_response(None)
         .await?;
     let node = rest::get_json_from_path(&node, &vec!["data".to_owned(), "workbooks".to_owned()])?;
-    super::to_asset_map(node, &to_node_graphql)
+    super::to_asset_map(&tc, node, &to_node_graphql)
 }
 
 #[cfg(test)]
@@ -212,5 +265,37 @@ mod tests {
             println!("{:#?}", v);
         }
         Ok(())
+    }
+
+    #[test]
+    fn test_asset_from_workbook_works() {
+        let wb = Workbook::new(
+            Cual::new("".to_owned()),
+            "id".to_owned(),
+            "name".to_owned(),
+            "owner_id".to_owned(),
+            "project_id".to_owned(),
+            false,
+            HashSet::new(),
+            "updated_at".to_owned(),
+            vec![],
+        );
+        nodes::Asset::from(wb);
+    }
+
+    #[test]
+    fn test_workbook_into_asset_works() {
+        let wb = Workbook::new(
+            Cual::new("".to_owned()),
+            "id".to_owned(),
+            "name".to_owned(),
+            "owner_id".to_owned(),
+            "project_id".to_owned(),
+            false,
+            HashSet::new(),
+            "updated_at".to_owned(),
+            vec![],
+        );
+        let a: nodes::Asset = wb.into();
     }
 }
