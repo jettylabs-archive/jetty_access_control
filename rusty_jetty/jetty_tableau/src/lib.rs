@@ -17,7 +17,7 @@ use serde::Deserialize;
 use serde_json::json;
 use std::collections::{HashMap, HashSet};
 
-type TableauConfig = HashMap<String, String>;
+pub type TableauConfig = HashMap<String, String>;
 
 /// Credentials for authenticating with Tableau.
 ///
@@ -34,7 +34,7 @@ struct TableauCredentials {
 
 #[allow(dead_code)]
 #[derive(Default)]
-struct TableauConnector {
+pub struct TableauConnector {
     config: TableauConfig,
     coordinator: coordinator::Coordinator,
 }
@@ -91,6 +91,9 @@ impl Connector for TableauConnector {
     }
 
     async fn get_data(&mut self) -> ConnectorData {
+        // let mut groups: Vec<jetty_core::connectors::nodes::Group> =
+        //     self.coordinator.env.groups.clone().into_values().collect();
+        // ConnectorData::new(groups, vec![], vec![], vec![], vec![])
         todo!()
     }
 }
