@@ -16,7 +16,7 @@ pub(crate) struct Project {
     pub permissions: Vec<Permission>,
 }
 
-fn to_node(tc: &rest::TableauRestClient, val: &serde_json::Value) -> Result<super::Project> {
+fn to_node(val: &serde_json::Value) -> Result<super::Project> {
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]
     struct ProjectInfo {

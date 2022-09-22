@@ -15,7 +15,7 @@ pub(crate) struct User {
     pub site_role: String,
 }
 
-pub(crate) fn to_node(tc: &rest::TableauRestClient, val: &serde_json::Value) -> Result<User> {
+pub(crate) fn to_node(val: &serde_json::Value) -> Result<User> {
     serde_json::from_value(val.to_owned()).context("parsing user information")
 }
 

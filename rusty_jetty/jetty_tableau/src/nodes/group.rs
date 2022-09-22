@@ -12,7 +12,7 @@ pub(crate) struct Group {
     pub includes: Vec<String>,
 }
 
-pub(crate) fn to_node(tc: &rest::TableauRestClient, val: &serde_json::Value) -> Result<Group> {
+pub(crate) fn to_node(val: &serde_json::Value) -> Result<Group> {
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]
     struct GroupInfo {
