@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use super::{FetchPermissions, Permission};
-use crate::rest::{self, FetchJson};
+use crate::rest::{self, get_tableau_cual, FetchJson, TableauAssetType};
 
 use anyhow::{Context, Result};
 use jetty_core::{
@@ -59,11 +59,7 @@ fn to_node(val: &serde_json::Value) -> Result<super::Project> {
         serde_json::from_value(val.to_owned()).context("parsing asset information")?;
 
     Ok(super::Project {
-        cual: Cual::new(format!(
-            "{}/project/{}",
-            tc.get_cual_prefix(),
-            project_info.id
-        )),
+        cual: get_tableau_cual(TableauAssetType::Project, &project_info.id)?,
         id: project_info.id,
         name: project_info.name,
         owner_id: project_info.owner.id,
@@ -94,7 +90,12 @@ impl From<Project> for nodes::Asset {
     fn from(val: Project) -> Self {
         let parents = val
             .parent_project_id
-            .map(|i| HashSet::from([i]))
+            .map(|i| {
+                get_tableau_cual(TableauAssetType::Project, &i)
+                    .expect("Getting Tableau CUAL for project parent.")
+                    .uri()
+            })
+            .map(|c| HashSet::from([c]))
             .unwrap_or_default();
         nodes::Asset::new(
             val.cual,
