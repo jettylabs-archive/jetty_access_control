@@ -37,7 +37,7 @@ pub(crate) async fn get_basic_groups(
         .context("fetching groups")?
         .fetch_json_response(Some(vec!["groups".to_owned(), "group".to_owned()]))
         .await?;
-    super::to_asset_map(node, &to_node)
+    super::to_asset_map(tc, node, &to_node)
 }
 
 async fn get_group_users(

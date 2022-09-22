@@ -49,7 +49,7 @@ pub(crate) async fn get_basic_projects(
         .context("fetching projects")?
         .fetch_json_response(Some(vec!["projects".to_owned(), "project".to_owned()]))
         .await?;
-    super::to_asset_map(node, &to_node)
+    super::to_asset_map(tc, node, &to_node)
 }
 
 impl FetchPermissions for Project {

@@ -1,9 +1,17 @@
 //! TableauRestClient and generic utilities to help with Tableau
 //! API requests
 
-use std::io::{Cursor, Read};
+mod cual;
+
+use std::{
+    io::{Cursor, Read},
+    sync::Once,
+};
 
 use super::*;
+use cual::set_cual_prefix;
+pub(crate) use cual::{get_tableau_cual, TableauAssetType};
+
 use anyhow::{bail, Context};
 use async_trait::async_trait;
 use bytes::{Buf, Bytes};
@@ -34,6 +42,8 @@ impl TableauRestClient {
     /// ------
     /// Will panic if run in an asynchronous context
     pub async fn new(credentials: TableauCredentials) -> Self {
+        // Set the global CUAL prefix for tableau
+        set_cual_prefix(&credentials.server_name, &credentials.site_name);
         let mut tc = TableauRestClient {
             credentials,
             http_client: reqwest::Client::builder().gzip(true).build().unwrap(),
@@ -75,13 +85,6 @@ impl TableauRestClient {
             api_version: "3.16".to_owned(),
         };
         tc
-    }
-
-    pub(crate) fn get_cual_prefix(&self) -> String {
-        format!(
-            "tableau://{}/{}",
-            &self.credentials.server_name, &self.credentials.site_name
-        )
     }
 
     /// Get site_id token from the TableauRestClient.

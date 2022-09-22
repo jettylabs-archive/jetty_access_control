@@ -51,7 +51,7 @@ pub(crate) async fn get_basic_lenses(
         .await
         .context("fetching and parsing response")?;
     let node = rest::get_json_from_path(&node, &vec!["lenses".to_owned()])?;
-    super::to_asset_map(node, &to_node)
+    super::to_asset_map(tc, node, &to_node)
 }
 
 impl FetchPermissions for Lens {

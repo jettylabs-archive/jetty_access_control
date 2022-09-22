@@ -3,6 +3,8 @@
 //! This identifier serves as a standard for cross-connector asset addressing.
 //!
 
+use serde::Deserialize;
+
 /// Just a CUAL
 ///
 /// CUAL structs should be constructed with `Cual::new()`, not raw.
@@ -18,7 +20,7 @@
 /// # let cual_str = "jetty_connector://my/custom/cual".to_owned();
 /// Cual::new(cual_str);
 /// ```
-#[derive(Debug, PartialEq, Eq, Clone, Default)]
+#[derive(Debug, PartialEq, Eq, Clone, Default, Deserialize)]
 pub struct Cual {
     /// The underlying URI that points to the asset.
     uri: String,

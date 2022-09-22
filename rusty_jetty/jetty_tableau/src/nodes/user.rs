@@ -25,7 +25,7 @@ pub(crate) async fn get_basic_users(tc: &rest::TableauRestClient) -> Result<Hash
         .context("fetching users")?
         .fetch_json_response(Some(vec!["users".to_owned(), "user".to_owned()]))
         .await?;
-    super::to_asset_map(users, &to_node)
+    super::to_asset_map(tc, users, &to_node)
 }
 
 #[cfg(test)]
