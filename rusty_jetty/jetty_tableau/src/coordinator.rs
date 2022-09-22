@@ -10,8 +10,9 @@ use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 
 use crate::nodes::{self, Permissionable};
-use crate::rest;
+use crate::rest::TableauRestClient;
 use crate::TableauCredentials;
+use crate::{rest, TableauConnector};
 
 const CONCURRENT_ASSET_DOWNLOADS: usize = 25;
 const CONCURRENT_METADATA_FETCHES: usize = 100;
@@ -41,6 +42,23 @@ pub(crate) trait HasSources {
         coord: &Coordinator,
     ) -> Result<(HashSet<String>, HashSet<String>)>;
     fn set_sources(&mut self, sources: (HashSet<String>, HashSet<String>));
+
+    async fn update_sources<T: HasSources + Sync + Send>(
+        &mut self,
+        coord: &Coordinator,
+        env_assets: &HashMap<String, T>,
+    ) -> Result<()> {
+        let id = self.id().to_owned();
+        match env_assets.get(&id) {
+            Some(old_asset) if old_asset.updated_at() == self.updated_at() => anyhow::Ok(()),
+            _ => {
+                let x = self.fetch_sources(&coord);
+                self.set_sources(x.await?);
+                Ok(())
+            }
+        };
+        Ok(())
+    }
 }
 #[derive(Default)]
 pub(crate) struct Coordinator {
@@ -122,15 +140,19 @@ impl Coordinator {
 
         // Now, make sure that assets sources are all up to date
 
-        self.update_sources_from_map(&mut new_env.flows, &self.env.flows)
-            .await;
-        self.update_sources_from_map(&mut new_env.datasources, &self.env.datasources)
-            .await;
-        self.update_sources_from_map(&mut new_env.workbooks, &self.env.workbooks)
+        let source_futures = vec![
+            self.get_source_futures_from_map(&mut new_env.flows, &self.env.flows),
+            self.get_source_futures_from_map(&mut new_env.datasources, &self.env.datasources),
+            self.get_source_futures_from_map(&mut new_env.workbooks, &self.env.workbooks),
+        ];
+
+        let source_fetches = futures::stream::iter(source_futures.into_iter().flatten())
+            .buffer_unordered(CONCURRENT_ASSET_DOWNLOADS)
+            .collect::<Vec<_>>()
             .await;
 
         // Now update permissions
-        let x = vec![
+        let permission_futures = vec![
             self.get_permission_futures_from_map(&mut new_env.datasources),
             self.get_permission_futures_from_map(&mut new_env.flows),
             self.get_permission_futures_from_map(&mut new_env.lenses),
@@ -140,7 +162,7 @@ impl Coordinator {
             self.get_permission_futures_from_map(&mut new_env.workbooks),
         ];
 
-        let fetches = futures::stream::iter(x.into_iter().flatten())
+        let permissions_fetches = futures::stream::iter(permission_futures.into_iter().flatten())
             .buffer_unordered(CONCURRENT_METADATA_FETCHES)
             .collect::<Vec<_>>()
             .await;
@@ -171,42 +193,24 @@ impl Coordinator {
         .await;
     }
 
-    fn update_sources<T: HasSources>(
-        env_assets: &mut Vec<&mut T>,
-        new_sources: Vec<Result<(HashSet<String>, HashSet<String>)>>,
-    ) {
-        for i in 0..env_assets.len() {
-            match &new_sources[i] {
-                Ok(sources) => {
-                    env_assets.index_mut(i).set_sources(sources.to_owned());
-                }
-                Err(e) => println!(
-                    "unable to get sources for datasource {}: {}",
-                    env_assets[i].name(),
-                    e
-                ),
-            }
-        }
-    }
-
-    async fn update_sources_from_map<T: HasSources>(
-        &self,
-        new_assets: &mut HashMap<String, T>,
-        old_assets: &HashMap<String, T>,
-    ) {
-        let mut assets_vec = new_assets.values_mut().collect::<Vec<_>>();
-
-        let fetches = futures::stream::iter(
-            assets_vec
-                .iter_mut()
-                .map(|d| self.get_sources(&old_assets, d)),
-        )
-        .buffered(CONCURRENT_ASSET_DOWNLOADS)
-        .collect::<Vec<_>>();
-
-        let asset_sources = fetches.await;
-
-        Self::update_sources(&mut assets_vec, asset_sources);
+    fn get_source_futures_from_map<'a, T: HasSources + Send + Sync>(
+        &'a self,
+        new_assets: &'a mut HashMap<String, T>,
+        old_assets: &'a HashMap<String, T>,
+    ) -> Vec<
+        Pin<
+            Box<
+                dyn futures::Future<Output = std::result::Result<(), anyhow::Error>>
+                    + std::marker::Send
+                    + '_,
+            >,
+        >,
+    > {
+        let fetches = new_assets
+            .values_mut()
+            .map(|d| d.update_sources(&self, &old_assets))
+            .collect::<Vec<_>>();
+        fetches
     }
 
     fn get_permission_futures_from_map<'a, T: Permissionable + Send>(
@@ -221,10 +225,10 @@ impl Coordinator {
             >,
         >,
     > {
-        let fetches: Vec<_> = new_assets
-            .iter_mut()
-            .map(|(_, v)| v.update_permissions(&self.rest_client))
-            .collect();
+        let fetches = new_assets
+            .values_mut()
+            .map(|v| v.update_permissions(&self.rest_client))
+            .collect::<Vec<_>>();
         fetches
     }
 
