@@ -1,7 +1,8 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::rest::{self, FetchJson};
 use anyhow::{Context, Result};
+use jetty_core::connectors::nodes;
 use serde::Deserialize;
 
 #[derive(Clone, Default, Debug, Deserialize)]
@@ -10,6 +11,28 @@ pub(crate) struct Group {
     pub name: String,
     /// Vec of user uids
     pub includes: Vec<String>,
+}
+
+impl Group {
+    pub(crate) fn new(id: String, name: String, includes: Vec<String>) -> Self {
+        Self { id, name, includes }
+    }
+}
+
+impl From<Group> for nodes::Group {
+    fn from(val: Group) -> Self {
+        nodes::Group::new(
+            val.name,
+            HashMap::from([("tableau::id".to_owned(), val.id)]),
+            // TODO: No nested groups in tableau?
+            HashSet::new(),
+            HashSet::from_iter(val.includes),
+            // TODO: No nested groups in tableau?
+            HashSet::new(),
+            // Handled in permissions/policies.
+            HashSet::new(),
+        )
+    }
 }
 
 pub(crate) fn to_node(tc: &rest::TableauRestClient, val: &serde_json::Value) -> Result<Group> {
@@ -87,5 +110,17 @@ mod tests {
             println!("{:#?}", v);
         }
         Ok(())
+    }
+
+    #[test]
+    fn test_jetty_group_from_group_works() {
+        let g = Group::new("id".to_owned(), "name".to_owned(), vec!["me".to_owned()]);
+        nodes::Group::from(g);
+    }
+
+    #[test]
+    fn test_group_into_jetty_group_works() {
+        let g = Group::new("id".to_owned(), "name".to_owned(), vec!["me".to_owned()]);
+        let a: nodes::Group = g.into();
     }
 }
