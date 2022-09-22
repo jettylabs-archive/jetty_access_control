@@ -19,7 +19,7 @@ pub(crate) struct Metric {
     pub permissions: Vec<super::Permission>, // Not yet sure if this will be possible
 }
 
-fn to_node(tc: &rest::TableauRestClient, val: &serde_json::Value) -> Result<Metric> {
+fn to_node(val: &serde_json::Value) -> Result<Metric> {
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]
     struct AssetInfo {

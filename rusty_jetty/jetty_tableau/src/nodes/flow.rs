@@ -29,7 +29,7 @@ impl Downloadable for Flow {
     }
 }
 
-fn to_node(tc: &rest::TableauRestClient, val: &serde_json::Value) -> Result<Flow> {
+fn to_node(val: &serde_json::Value) -> Result<Flow> {
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]
     struct AssetInfo {
