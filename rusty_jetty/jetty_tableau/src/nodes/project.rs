@@ -5,7 +5,7 @@ use crate::rest::{self, get_tableau_cual, FetchJson, TableauAssetType};
 
 use anyhow::{Context, Result};
 use jetty_core::{
-    connectors::{nodes, AssetType},
+    connectors::{nodes as jetty_nodes, AssetType},
     cual::Cual,
 };
 use serde::Deserialize;
@@ -86,7 +86,7 @@ impl FetchPermissions for Project {
     }
 }
 
-impl From<Project> for nodes::Asset {
+impl From<Project> for jetty_nodes::Asset {
     fn from(val: Project) -> Self {
         let parents = val
             .parent_project_id
@@ -97,7 +97,7 @@ impl From<Project> for nodes::Asset {
             })
             .map(|c| HashSet::from([c]))
             .unwrap_or_default();
-        nodes::Asset::new(
+        jetty_nodes::Asset::new(
             val.cual,
             val.name,
             AssetType::Other,
@@ -162,7 +162,7 @@ mod tests {
             Some("cp_project_id".to_owned()),
             vec![],
         );
-        nodes::Asset::from(wb);
+        jetty_nodes::Asset::from(wb);
     }
 
     #[test]
@@ -176,6 +176,6 @@ mod tests {
             Some("cp_project_id".to_owned()),
             vec![],
         );
-        let a: nodes::Asset = wb.into();
+        let a: jetty_nodes::Asset = wb.into();
     }
 }

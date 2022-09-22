@@ -7,7 +7,7 @@ use super::FetchPermissions;
 use crate::rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType};
 
 use jetty_core::{
-    connectors::{nodes, AssetType},
+    connectors::{nodes as jetty_nodes, AssetType},
     cual::Cual,
 };
 
@@ -90,9 +90,9 @@ impl FetchPermissions for Workbook {
     }
 }
 
-impl From<Workbook> for nodes::Asset {
+impl From<Workbook> for jetty_nodes::Asset {
     fn from(val: Workbook) -> Self {
-        nodes::Asset::new(
+        jetty_nodes::Asset::new(
             val.cual,
             val.name,
             AssetType::Other,
@@ -250,7 +250,7 @@ mod tests {
             "updated_at".to_owned(),
             vec![],
         );
-        nodes::Asset::from(wb);
+        jetty_nodes::Asset::from(wb);
     }
 
     #[test]
@@ -266,6 +266,6 @@ mod tests {
             "updated_at".to_owned(),
             vec![],
         );
-        let a: nodes::Asset = wb.into();
+        let a: jetty_nodes::Asset = wb.into();
     }
 }

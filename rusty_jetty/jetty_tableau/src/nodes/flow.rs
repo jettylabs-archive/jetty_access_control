@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use anyhow::{Context, Result};
 use jetty_core::{
-    connectors::{nodes, AssetType},
+    connectors::{nodes as jetty_nodes, AssetType},
     cual::Cual,
 };
 use serde::Deserialize;
@@ -99,9 +99,9 @@ impl FetchPermissions for Flow {
     }
 }
 
-impl From<Flow> for nodes::Asset {
+impl From<Flow> for jetty_nodes::Asset {
     fn from(val: Flow) -> Self {
-        nodes::Asset::new(
+        jetty_nodes::Asset::new(
             val.cual,
             val.name,
             AssetType::Other,
@@ -190,7 +190,7 @@ mod tests {
             vec![],
             vec![],
         );
-        nodes::Asset::from(l);
+        jetty_nodes::Asset::from(l);
     }
 
     #[test]
@@ -206,6 +206,6 @@ mod tests {
             vec![],
             vec![],
         );
-        let a: nodes::Asset = l.into();
+        let a: jetty_nodes::Asset = l.into();
     }
 }
