@@ -10,18 +10,6 @@ use jetty_core::{
 static mut CUAL_PREFIX: String = String::new();
 static INIT_CUAL_PREFIX: Once = Once::new();
 
-macro_rules! cual {
-    ($db:expr) => {
-        Cual::new(format!("{}://{}", "snowflake", $db))
-    };
-    ($db:expr, $schema:expr) => {
-        Cual::new(format!("{}://{}/{}", "snowflake", $db, $schema))
-    };
-    ($db:expr, $schema:expr, $table:expr) => {
-        Cual::new(format!("{}://{}/{}/{}", "snowflake", $db, $schema, $table))
-    };
-}
-
 pub(crate) enum TableauAssetType {
     Project,
     Datasource,

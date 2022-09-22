@@ -101,7 +101,6 @@ impl From<Workbook> for nodes::Asset {
             // Governing policies will be assigned in the policy.
             HashSet::new(),
             // Workbooks are children of their projects.
-            // construct the cual
             HashSet::from(
                 [get_tableau_cual(TableauAssetType::Project, &val.project_id)
                     .unwrap()
