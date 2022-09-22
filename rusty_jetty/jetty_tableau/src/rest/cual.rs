@@ -15,6 +15,7 @@ pub(crate) enum TableauAssetType {
     Datasource,
     Flow,
     Workbook,
+    Metric,
     View,
 }
 
@@ -27,6 +28,7 @@ impl TableauAssetType {
             TableauAssetType::Datasource => "datasource",
             TableauAssetType::Flow => "flow",
             TableauAssetType::Workbook => "workbook",
+            TableauAssetType::Metric => "metric",
             TableauAssetType::View => "view",
         }
     }
