@@ -12,6 +12,7 @@ use crate::{
 
 use super::Permissionable;
 
+/// Representation of a Tableau Datasource
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub(crate) struct Datasource {
     pub id: String,
@@ -22,21 +23,22 @@ pub(crate) struct Datasource {
     pub owner_id: String,
     pub sources: HashSet<String>,
     pub permissions: Vec<super::Permission>,
-    /// Vec of origin cuals
-    pub derived_from: Vec<String>,
 }
 
 impl Datasource {
+    /// Get the cual_suffix for Datasources
     pub(crate) fn cual_suffix(&self) -> String {
         format!("/datasource/{}", &self.id)
     }
 }
 
 impl Downloadable for Datasource {
+    /// URI Path for asset download
     fn get_path(&self) -> String {
         format!("/datasources/{}/content", &self.id)
     }
 
+    /// Function to match the right filenames to extract from downloaded zip
     fn match_file(name: &str) -> bool {
         name.ends_with(".tds")
     }
@@ -70,6 +72,7 @@ impl HasSources for Datasource {
         let file = rest::unzip_text_file(archive, Self::match_file)?;
         // parse the file
         let input_sources = xml_docs::parse(&file)?;
+        // datasources don't have output sources (derive_to), so just return an empty set
         let output_sources = HashSet::new();
 
         Ok((input_sources, output_sources))
@@ -80,6 +83,7 @@ impl HasSources for Datasource {
     }
 }
 
+/// Convert a JSON value to a Datasource node
 fn to_node(val: &serde_json::Value) -> Result<super::Datasource> {
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]
@@ -105,9 +109,11 @@ fn to_node(val: &serde_json::Value) -> Result<super::Datasource> {
         datasource_type: asset_info.datasource_type,
         permissions: Default::default(),
         sources: Default::default(),
-        derived_from: Default::default(),
     })
 }
+
+/// Fetch basic datasource information. Doesn't include permissions or sources. Those need
+/// to be fetched seperately
 pub(crate) async fn get_basic_datasources(
     tc: &rest::TableauRestClient,
 ) -> Result<HashMap<String, Datasource>> {
@@ -123,10 +129,12 @@ pub(crate) async fn get_basic_datasources(
 }
 
 impl Permissionable for Datasource {
+    /// URI path to fetch datasource permissions
     fn get_endpoint(&self) -> String {
         format!("datasources/{}/permissions", self.id)
     }
 
+    /// function to set permissions
     fn set_permissions(&mut self, permissions: Vec<super::Permission>) {
         self.permissions = permissions;
     }

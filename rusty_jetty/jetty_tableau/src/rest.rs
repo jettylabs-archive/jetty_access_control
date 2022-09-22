@@ -11,6 +11,7 @@ use serde::Serialize;
 use zip;
 
 pub(crate) trait Downloadable {
+    /// URI path (not including domain, api version, or site id) to download the asset
     fn get_path(&self) -> String;
 
     /// a function the unzipper will use to make sure we return the correct file
@@ -18,8 +19,8 @@ pub(crate) trait Downloadable {
 }
 /// Wrapper struct for http functionality
 #[derive(Default)]
-/// The credentials used to authenticate into Snowflake.
 pub(crate) struct TableauRestClient {
+    /// The credentials used to authenticate into Snowflake.
     credentials: TableauCredentials,
     http_client: reqwest::Client,
     token: Option<String>,
