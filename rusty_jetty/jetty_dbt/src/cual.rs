@@ -5,8 +5,6 @@ use jetty_core::{
 
 use crate::manifest::node::{DbtModelNode, DbtNode, DbtSourceNode};
 
-const SNOW_NAMESPACE: &str = "snowflake";
-
 macro_rules! cual {
     ($db:expr) => {
         Cual::new(format!("{}://{}", "snowflake", $db))
