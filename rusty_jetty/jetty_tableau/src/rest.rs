@@ -1,14 +1,20 @@
 //! TableauRestClient and generic utilities to help with Tableau
 //! API requests
 
+use std::io::{Cursor, Read};
+
 use super::*;
 use anyhow::{bail, Context};
 use async_trait::async_trait;
-use bytes::Bytes;
+use bytes::{Buf, Bytes};
 use serde::Serialize;
+use zip;
 
 pub(crate) trait Downloadable {
     fn get_path(&self) -> String;
+
+    /// a function the unzipper will use to make sure we return the correct file
+    fn match_file(name: &str) -> bool;
 }
 /// Wrapper struct for http functionality
 #[derive(Default)]
@@ -331,6 +337,29 @@ impl TableauRestClient {
         let req = req.header("X-Tableau-Auth", token);
         Ok(req)
     }
+}
+
+/// This function extracts and returns the first file in a zip archive that returns true for name_matcher
+pub(crate) fn unzip_text_file(archive: Bytes, name_matcher: fn(&str) -> bool) -> Result<String> {
+    let archive_cursor = Cursor::new(archive);
+
+    let mut zip_archive = zip::ZipArchive::new(archive_cursor)?;
+
+    let file_names = zip_archive
+        .file_names()
+        .map(|s| s.to_owned())
+        .collect::<Vec<_>>();
+
+    for name in file_names {
+        if name_matcher(&name) {
+            let mut archive_file = zip_archive.by_name(&name)?;
+            let mut data = String::new();
+            archive_file.read_to_string(&mut data)?;
+
+            return Ok(data);
+        }
+    }
+    bail!("unable to find file to parse");
 }
 
 pub(crate) fn get_json_from_path(

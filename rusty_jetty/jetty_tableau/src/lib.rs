@@ -36,7 +36,7 @@ struct TableauCredentials {
 #[derive(Default)]
 struct TableauConnector {
     config: TableauConfig,
-    env: coordinator::Coordinator,
+    coordinator: coordinator::Coordinator,
 }
 
 #[async_trait]
@@ -80,7 +80,7 @@ impl Connector for TableauConnector {
 
         let tableau_connector = TableauConnector {
             config: config.config.to_owned(),
-            env: coordinator::Coordinator::new(creds).await,
+            coordinator: coordinator::Coordinator::new(creds).await,
         };
 
         Ok(Box::new(tableau_connector))

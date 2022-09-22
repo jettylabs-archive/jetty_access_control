@@ -14,6 +14,7 @@ pub(crate) struct Flow {
     pub project_id: String,
     pub owner_id: String,
     pub updated_at: String,
+    // needs to have input and output sources
     pub datasource_connections: Vec<String>,
     pub permissions: Vec<super::Permission>,
 }
@@ -21,6 +22,10 @@ pub(crate) struct Flow {
 impl Downloadable for Flow {
     fn get_path(&self) -> String {
         format!("/flows/{}/content", &self.id)
+    }
+
+    fn match_file(name: &str) -> bool {
+        name == "flow"
     }
 }
 
@@ -74,7 +79,7 @@ mod tests {
         let tc = crate::connector_setup()
             .await
             .context("running tableau connector setup")?;
-        let nodes = get_basic_flows(&tc.env.rest_client).await?;
+        let nodes = get_basic_flows(&tc.coordinator.rest_client).await?;
         for (_k, v) in nodes {
             println!("{:#?}", v);
         }
@@ -86,9 +91,9 @@ mod tests {
         let tc = crate::connector_setup()
             .await
             .context("running tableau connector setup")?;
-        let mut nodes = get_basic_flows(&tc.env.rest_client).await?;
+        let mut nodes = get_basic_flows(&tc.coordinator.rest_client).await?;
         for (_k, v) in &mut nodes {
-            v.permissions = v.get_permissions(&tc.env.rest_client).await?;
+            v.permissions = v.get_permissions(&tc.coordinator.rest_client).await?;
         }
         for (_k, v) in nodes {
             println!("{:#?}", v);
@@ -96,16 +101,15 @@ mod tests {
         Ok(())
     }
 
-
     #[tokio::test]
     async fn test_downloading_flow_works() -> Result<()> {
         let tc = crate::connector_setup()
             .await
             .context("running tableau connector setup")?;
-        let flows = get_basic_flows(&tc.env.rest_client).await?;
+        let flows = get_basic_flows(&tc.coordinator.rest_client).await?;
 
         let test_flow = flows.values().next().unwrap();
-        let x = tc.env.rest_client.download(test_flow, true).await?;
+        let x = tc.coordinator.rest_client.download(test_flow, true).await?;
         println!("Downloaded {} bytes", x.len());
         Ok(())
     }
