@@ -29,10 +29,6 @@ pub(crate) struct TableauRestClient {
 
 impl TableauRestClient {
     /// Initialize a new TableauRestClient
-    ///
-    ///  # Panics
-    /// ------
-    /// Will panic if run in an asynchronous context
     pub async fn new(credentials: TableauCredentials) -> Self {
         let mut tc = TableauRestClient {
             credentials,
@@ -45,6 +41,8 @@ impl TableauRestClient {
         tc
     }
 
+    /// Download a Tableau asset. Most Workbooks and Datasources can have a query parameter to exclude
+    /// extracts. Flows do not have that option, so the bool should be set to false.
     pub(crate) async fn download<T: Downloadable>(
         &self,
         asset: &T,
@@ -61,6 +59,7 @@ impl TableauRestClient {
         req.send().await?.bytes().await.context("downloading file")
     }
 
+    /// Create a dummy client
     #[cfg(test)]
     pub(crate) fn new_dummy() -> Self {
         let tc = TableauRestClient {
@@ -77,6 +76,7 @@ impl TableauRestClient {
         tc
     }
 
+    /// Generate the cual prefix for all Tableau assets
     pub(crate) fn get_cual_prefix(&self) -> String {
         format!(
             "tableau://{}/{}",
@@ -102,11 +102,7 @@ impl TableauRestClient {
             .to_owned())
     }
 
-    /// Make a blocking request to fetch Tableau Site's token and site_id
-    ///
-    /// # Panics
-    /// ------
-    /// Will panic if run in an asynchronous context
+    /// Make a request to fetch Tableau Site's token and site_id
     async fn fetch_token_and_site_id(&mut self) -> Result<()> {
         // Set up the request body to get a request token
         let request_body = json!({
@@ -146,99 +142,6 @@ impl TableauRestClient {
         .to_string();
         self.site_id = Some(site_id);
         Ok(())
-    }
-
-    async fn get_json_response(
-        &mut self,
-        endpoint: String,
-        body: Option<serde_json::Value>,
-        method: reqwest::Method,
-        path_to_paginated_iterable: Option<Vec<String>>,
-    ) -> Result<serde_json::Value> {
-        let req = self
-            .build_request(endpoint, body, method)
-            .context("building request")?;
-
-        let resp = req
-            .try_clone()
-            .ok_or_else(|| anyhow!("unable to clone request"))?
-            .send()
-            .await
-            .context("making request")?;
-
-        let parsed_response = resp
-            .json::<serde_json::Value>()
-            .await
-            .context("parsing json response")?;
-
-        // Check for pagination
-        if let Some(v) = parsed_response.get("pagination") {
-            #[derive(Deserialize)]
-            struct PaginationInfo {
-                #[serde(rename = "pageSize")]
-                page_size: String,
-                #[serde(rename = "totalAvailable")]
-                total_available: String,
-            }
-            let info: PaginationInfo =
-                serde_json::from_value(v.to_owned()).context("parsing pagination information")?;
-
-            let (page_size, total_available) = (
-                info.page_size.parse::<usize>()?,
-                info.total_available.parse::<usize>()?,
-            );
-
-            // Only need to paginate if there are more results than shown on the first page
-            let path_to_paginated_iterable = &path_to_paginated_iterable.ok_or_else(|| {
-                anyhow!["cannot use paginated results without path_to_paginated_iterable"]
-            })?;
-
-            let extra_page = if total_available % page_size == 0 {
-                0
-            } else {
-                1
-            };
-            let total_required_pages = total_available / page_size + extra_page;
-
-            let mut results_vec = vec![];
-
-            // get first page of results
-            if let serde_json::Value::Array(vals) =
-                get_json_from_path(&parsed_response, path_to_paginated_iterable)
-                    .context("getting target json object")?
-            {
-                results_vec.extend(vals);
-            } else {
-                bail!["Unable to find target array"];
-            };
-
-            for page_number in 2..total_required_pages + 1 {
-                let paged_resp = req
-                    .try_clone()
-                    .ok_or_else(|| anyhow!("unable to clone request"))?
-                    // add a page number to the request
-                    .query(&[("pageNumber", page_number.to_string())])
-                    .send()
-                    .await
-                    .context("making request")?
-                    .json::<serde_json::Value>()
-                    .await
-                    .context("parsing json response")?;
-
-                // get each additional page of results
-                if let serde_json::Value::Array(vals) =
-                    get_json_from_path(&paged_resp, path_to_paginated_iterable)
-                        .context("getting target json object")?
-                {
-                    results_vec.extend(vals);
-                } else {
-                    return Err(anyhow!["Unable to find target array"]);
-                };
-            }
-            Ok(serde_json::Value::Array(results_vec))
-        } else {
-            Ok(parsed_response)
-        }
     }
 
     /// Builds a request to fetch information from tableau
@@ -384,6 +287,13 @@ pub(crate) fn get_json_from_path(
 
 #[async_trait]
 pub(crate) trait FetchJson {
+    /// Fetch an optionally paginated Tableau JSON response.
+    /// path_to_paginated_iterable is the path to the iterable that will be used to create
+    /// the final results. For example, for views, they are listed in an array found at views.view.
+    /// In this case, the argument would be `Some(vec!["views".to_owned(), "view".to_owned()]))`
+    ///
+    /// In the case of permissions and graphql requests, this type of pagination is not used.
+    /// permissions responses are not paginated, and graphql, when paginated, uses a different scheme.
     async fn fetch_json_response(
         &self,
         path_to_paginated_iterable: Option<Vec<String>>,
@@ -484,64 +394,17 @@ impl FetchJson for reqwest::RequestBuilder {
     }
 }
 
-#[cfg(ignore)]
 #[cfg(test)]
 mod tests {
     use super::*;
     use anyhow::Context;
     use jetty_core::{connectors::ConnectorClient, jetty};
 
-    #[test]
-    fn test_fetching_token_works() -> Result<()> {
-        connector_setup().context("running tableau connector setup")?;
-        Ok(())
-    }
-
     #[tokio::test]
-    async fn test_fetching_users_works() -> Result<()> {
-        let mut tc = tokio::task::spawn_blocking(|| {
-            connector_setup().context("running tableau connector setup")
-        })
-        .await??;
-        let users = tc.client.get_users().await?;
-        for (_k, v) in users {
-            println!("{}", v.name);
-        }
+    async fn test_fetching_token_works() -> Result<()> {
+        connector_setup()
+            .await
+            .context("running tableau connector setup")?;
         Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_fetching_assets_works() -> Result<()> {
-        let mut tc = tokio::task::spawn_blocking(|| {
-            connector_setup().context("running tableau connector setup")
-        })
-        .await??;
-        let assets = tc.client.get_assets().await?;
-        for a in assets {
-            println!("{:#?}", a);
-        }
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_fetching_groups_works() -> Result<()> {
-        let mut tc = tokio::task::spawn_blocking(|| {
-            connector_setup().context("running tableau connector setup")
-        })
-        .await??;
-        let groups = tc.client.get_groups().await?;
-        for (_k, v) in groups {
-            println!("{:#?}", v);
-        }
-        Ok(())
-    }
-
-    fn connector_setup() -> Result<TableauConnector> {
-        let j = jetty::Jetty::new().context("creating Jetty")?;
-        let creds = jetty::fetch_credentials().context("fetching credentials from file")?;
-        let config = &j.config.connectors[0];
-        let tc = TableauConnector::new(config, &creds["tableau"], Some(ConnectorClient::Test))
-            .context("reading tableau credentials")?;
-        Ok(*tc)
     }
 }
