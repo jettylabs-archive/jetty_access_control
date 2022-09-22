@@ -46,7 +46,7 @@ impl From<User> for nodes::User {
             ]),
             HashSet::from([val.external_auth_user_id, val.site_role]),
             HashMap::new(),
-            // TODO?
+            // Handled in groups.
             HashSet::new(),
             // Handled in permissions/policies.
             HashSet::new(),

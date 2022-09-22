@@ -24,10 +24,10 @@ impl From<Group> for nodes::Group {
         nodes::Group::new(
             val.name,
             HashMap::from([("tableau::id".to_owned(), val.id)]),
-            // TODO: No nested groups in tableau?
+            // No nested groups in tableau
             HashSet::new(),
             HashSet::from_iter(val.includes),
-            // TODO: No nested groups in tableau?
+            // No nested groups in tableau?
             HashSet::new(),
             // Handled in permissions/policies.
             HashSet::new(),
