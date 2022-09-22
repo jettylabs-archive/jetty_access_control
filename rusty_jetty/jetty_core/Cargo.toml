@@ -14,4 +14,3 @@ yaml-peg = { version = "1.0.4", features = ["serde"] }
 graphviz-rust = "0.2.1"
 petgraph = "0.6.2"
 derivative = "2.2.0"
-derive-new = "0.5.9"

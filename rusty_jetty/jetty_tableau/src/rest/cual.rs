@@ -1,6 +1,6 @@
 use std::sync::Once;
 
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Ok, Result};
 
 use jetty_core::{
     connectors::AssetType,
@@ -16,6 +16,8 @@ pub(crate) enum TableauAssetType {
     Flow,
     Workbook,
     Lens,
+    Metric,
+    View,
 }
 
 impl TableauAssetType {
@@ -28,6 +30,8 @@ impl TableauAssetType {
             TableauAssetType::Flow => "flow",
             TableauAssetType::Workbook => "workbook",
             TableauAssetType::Lens => "lens",
+            TableauAssetType::Metric => "metric",
+            TableauAssetType::View => "view",
         }
     }
 }
@@ -39,6 +43,7 @@ pub(crate) fn get_tableau_cual(asset_type: TableauAssetType, id: &str) -> Result
         asset_type.as_str(),
         id
     )))
+    .context("Getting tableau CUAL")
 }
 
 // Accessing a `static mut` is unsafe much of the time, but if we do so
