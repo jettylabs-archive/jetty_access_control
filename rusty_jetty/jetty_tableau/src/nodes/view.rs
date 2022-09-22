@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use super::{FetchPermissions, Permission};
-use crate::rest::{self, FetchJson};
+use crate::rest::{self, get_tableau_cual, FetchJson, TableauAssetType};
 
 use anyhow::{Context, Result};
 use jetty_core::{
@@ -38,7 +38,7 @@ fn to_node(val: &serde_json::Value) -> Result<View> {
         serde_json::from_value(val.to_owned()).context("parsing view information")?;
 
     Ok(View {
-        cual: Cual::new(format!("{}/view/{}", tc.get_cual_prefix(), asset_info.id)),
+        cual: get_tableau_cual(TableauAssetType::View, &asset_info.id)?,
         id: asset_info.id,
         name: asset_info.name,
         owner_id: asset_info.owner.id,
@@ -99,7 +99,11 @@ impl From<View> for nodes::Asset {
             // Governing policies will be assigned in the policy.
             HashSet::new(),
             // Views are children of their workbooks.
-            HashSet::from([val.workbook_id]),
+            HashSet::from([
+                get_tableau_cual(TableauAssetType::Workbook, &val.workbook_id)
+                    .expect("Getting parent workbook CUAL.")
+                    .uri(),
+            ]),
             // Children objects will be handled in their respective nodes.
             HashSet::new(),
             // Views are not derived from/to anything.
