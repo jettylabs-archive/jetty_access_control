@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 use std::ops::IndexMut;
+use std::pin::Pin;
 use std::{collections::HashMap, fs, io};
 
 use anyhow::{Context, Result};
@@ -129,16 +130,19 @@ impl Coordinator {
             .await;
 
         // Now update permissions
+        let x = vec![
+            self.get_permission_futures_from_map(&mut new_env.datasources),
+            self.get_permission_futures_from_map(&mut new_env.flows),
+            self.get_permission_futures_from_map(&mut new_env.lenses),
+            self.get_permission_futures_from_map(&mut new_env.metrics),
+            self.get_permission_futures_from_map(&mut new_env.projects),
+            self.get_permission_futures_from_map(&mut new_env.views),
+            self.get_permission_futures_from_map(&mut new_env.workbooks),
+        ];
 
-        self.update_permissions_from_map(&mut new_env.datasources)
-            .await;
-        self.update_permissions_from_map(&mut new_env.flows).await;
-        self.update_permissions_from_map(&mut new_env.lenses).await;
-        self.update_permissions_from_map(&mut new_env.metrics).await;
-        self.update_permissions_from_map(&mut new_env.projects)
-            .await;
-        self.update_permissions_from_map(&mut new_env.views).await;
-        self.update_permissions_from_map(&mut new_env.workbooks)
+        let fetches = futures::stream::iter(x.into_iter().flatten())
+            .buffer_unordered(CONCURRENT_METADATA_FETCHES)
+            .collect::<Vec<_>>()
             .await;
 
         // get group membership
@@ -205,18 +209,23 @@ impl Coordinator {
         Self::update_sources(&mut assets_vec, asset_sources);
     }
 
-    async fn update_permissions_from_map<T: Permissionable + Send>(
-        &self,
-        new_assets: &mut HashMap<String, T>,
-    ) {
-        let fetches = futures::stream::iter(
-            new_assets
-                .iter_mut()
-                .map(|(_, v)| v.update_permissions(&self.rest_client)),
-        )
-        .buffer_unordered(CONCURRENT_METADATA_FETCHES)
-        .collect::<Vec<_>>()
-        .await;
+    fn get_permission_futures_from_map<'a, T: Permissionable + Send>(
+        &'a self,
+        new_assets: &'a mut HashMap<String, T>,
+    ) -> Vec<
+        Pin<
+            Box<
+                dyn futures::Future<Output = std::result::Result<(), anyhow::Error>>
+                    + std::marker::Send
+                    + '_,
+            >,
+        >,
+    > {
+        let fetches: Vec<_> = new_assets
+            .iter_mut()
+            .map(|(_, v)| v.update_permissions(&self.rest_client))
+            .collect();
+        fetches
     }
 
     async fn get_sources<T: HasSources>(
