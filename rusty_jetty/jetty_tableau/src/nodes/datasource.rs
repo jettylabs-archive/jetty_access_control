@@ -82,7 +82,7 @@ impl HasSources for Datasource {
     }
 }
 
-fn to_node(tc: &rest::TableauRestClient, val: &serde_json::Value) -> Result<super::Datasource> {
+fn to_node(val: &serde_json::Value) -> Result<super::Datasource> {
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]
     struct AssetInfo {
