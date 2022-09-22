@@ -1,6 +1,10 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use anyhow::{Context, Result};
+use jetty_core::{
+    connectors::{nodes, AssetType},
+    cual::Cual,
+};
 use serde::Deserialize;
 
 use crate::rest::{self, Downloadable, FetchJson};
@@ -9,6 +13,7 @@ use super::FetchPermissions;
 
 #[derive(Clone, Default, Debug, Deserialize)]
 pub(crate) struct Flow {
+    pub(crate) cual: Cual,
     pub id: String,
     pub name: String,
     pub project_id: String,
@@ -17,6 +22,30 @@ pub(crate) struct Flow {
     // needs to have input and output sources
     pub datasource_connections: Vec<String>,
     pub permissions: Vec<super::Permission>,
+}
+
+impl Flow {
+    pub(crate) fn new(
+        cual: Cual,
+        id: String,
+        name: String,
+        project_id: String,
+        owner_id: String,
+        updated_at: String,
+        datasource_connections: Vec<String>,
+        permissions: Vec<super::Permission>,
+    ) -> Self {
+        Self {
+            cual,
+            id,
+            name,
+            project_id,
+            owner_id,
+            updated_at,
+            datasource_connections,
+            permissions,
+        }
+    }
 }
 
 impl Downloadable for Flow {
@@ -44,6 +73,7 @@ fn to_node(tc: &rest::TableauRestClient, val: &serde_json::Value) -> Result<Flow
         serde_json::from_value(val.to_owned()).context("parsing flow information")?;
 
     Ok(Flow {
+        cual: Cual::new(format!("{}/lens/{}", tc.get_cual_prefix(), asset_info.id)),
         id: asset_info.id,
         name: asset_info.name,
         owner_id: asset_info.owner.id,
@@ -66,6 +96,29 @@ pub(crate) async fn get_basic_flows(tc: &rest::TableauRestClient) -> Result<Hash
 impl FetchPermissions for Flow {
     fn get_endpoint(&self) -> String {
         format!("flows/{}/permissions", self.id)
+    }
+}
+
+impl From<Flow> for nodes::Asset {
+    fn from(val: Flow) -> Self {
+        nodes::Asset::new(
+            val.cual,
+            val.name,
+            AssetType::Other,
+            // We will add metadata as it's useful.
+            HashMap::new(),
+            // Governing policies will be assigned in the policy.
+            HashSet::new(),
+            // Flows are children of their projects?
+            HashSet::from([val.project_id]),
+            // Children objects will be handled in their respective nodes.
+            HashSet::new(),
+            // Flows are derived from their source data.
+            HashSet::from_iter(val.datasource_connections),
+            HashSet::new(),
+            // No tags at this point.
+            HashSet::new(),
+        )
     }
 }
 
@@ -112,5 +165,35 @@ mod tests {
         let x = tc.coordinator.rest_client.download(test_flow, true).await?;
         println!("Downloaded {} bytes", x.len());
         Ok(())
+    }
+
+    #[test]
+    fn test_asset_from_flow_works() {
+        let l = Flow::new(
+            Cual::new("".to_owned()),
+            "id".to_owned(),
+            "name".to_owned(),
+            "project_id".to_owned(),
+            "owner_id".to_owned(),
+            "updated".to_owned(),
+            vec![],
+            vec![],
+        );
+        nodes::Asset::from(l);
+    }
+
+    #[test]
+    fn test_flow_into_asset_works() {
+        let l = Flow::new(
+            Cual::new("".to_owned()),
+            "id".to_owned(),
+            "name".to_owned(),
+            "project_id".to_owned(),
+            "owner_id".to_owned(),
+            "updated".to_owned(),
+            vec![],
+            vec![],
+        );
+        let a: nodes::Asset = l.into();
     }
 }
