@@ -23,8 +23,8 @@ pub struct ConnectorData {
     pub policies: Vec<Policy>,
 }
 
+#[derive(Default, Debug, PartialEq, Eq)]
 /// Group data provided by connectors
-#[derive(Default, Debug, PartialEq, Eq, new)]
 pub struct Group {
     /// Group name
     pub name: String,
@@ -41,8 +41,29 @@ pub struct Group {
     pub granted_by: HashSet<String>,
 }
 
+impl Group {
+    /// Basic constructor.
+    pub fn new(
+        name: String,
+        metadata: HashMap<String, String>,
+        member_of: HashSet<String>,
+        includes_users: HashSet<String>,
+        includes_groups: HashSet<String>,
+        granted_by: HashSet<String>,
+    ) -> Self {
+        Self {
+            name,
+            metadata,
+            member_of,
+            includes_users,
+            includes_groups,
+            granted_by,
+        }
+    }
+}
+
 /// User data provided by connectors
-#[derive(Default, Debug, PartialEq, Eq, new)]
+#[derive(Default, Debug, PartialEq, Eq)]
 pub struct User {
     /// The name of the user. When coming from a connector, this
     /// should be the name the connector uses to refer to a person.
@@ -64,8 +85,29 @@ pub struct User {
     pub granted_by: HashSet<String>,
 }
 
+impl User {
+    /// Basic constructor.
+    pub fn new(
+        name: String,
+        identifiers: HashMap<super::UserIdentifier, String>,
+        other_identifiers: HashSet<String>,
+        metadata: HashMap<String, String>,
+        member_of: HashSet<String>,
+        granted_by: HashSet<String>,
+    ) -> Self {
+        Self {
+            name,
+            identifiers,
+            other_identifiers,
+            metadata,
+            member_of,
+            granted_by,
+        }
+    }
+}
+
 /// Struct used to populate asset nodes and edges in the graph
-#[derive(Default, PartialEq, Eq, Debug, new)]
+#[derive(Default, PartialEq, Eq, Debug)]
 pub struct Asset {
     /// Connector Universal Asset Locator
     pub cual: Cual,
@@ -90,6 +132,35 @@ pub struct Asset {
     pub derived_to: HashSet<String>,
     /// IDs of tags associated with this asset
     pub tagged_as: HashSet<String>,
+}
+
+impl Asset {
+    /// Basic constructor.
+    pub fn new(
+        cual: Cual,
+        name: String,
+        asset_type: super::AssetType,
+        metadata: HashMap<String, String>,
+        governed_by: HashSet<String>,
+        child_of: HashSet<String>,
+        parent_of: HashSet<String>,
+        derived_from: HashSet<String>,
+        derived_to: HashSet<String>,
+        tagged_as: HashSet<String>,
+    ) -> Self {
+        Self {
+            cual,
+            name,
+            asset_type,
+            metadata,
+            governed_by,
+            child_of,
+            parent_of,
+            derived_from,
+            derived_to,
+            tagged_as,
+        }
+    }
 }
 
 impl Ord for Asset {
@@ -125,7 +196,7 @@ pub struct Tag {
 }
 
 /// Struct used to populate policy nodes and edges in the graph
-#[derive(Debug, Derivative, Clone, PartialEq, Eq, new)]
+#[derive(Debug, Derivative, Clone, PartialEq, Eq)]
 #[derivative(Default)]
 pub struct Policy {
     /// ID of the Policy, namespaced for the relevant context
@@ -146,4 +217,29 @@ pub struct Policy {
     pub pass_through_hierarchy: bool,
     /// Whether the policy also applies to derived assets
     pub pass_through_lineage: bool,
+}
+
+impl Policy {
+    /// Basic constructor.
+    pub fn new(
+        name: String,
+        privileges: HashSet<String>,
+        governs_assets: HashSet<String>,
+        governs_tags: HashSet<String>,
+        granted_to_groups: HashSet<String>,
+        granted_to_users: HashSet<String>,
+        pass_through_hierarchy: bool,
+        pass_through_lineage: bool,
+    ) -> Self {
+        Self {
+            name,
+            privileges,
+            governs_assets,
+            governs_tags,
+            granted_to_groups,
+            granted_to_users,
+            pass_through_hierarchy,
+            pass_through_lineage,
+        }
+    }
 }

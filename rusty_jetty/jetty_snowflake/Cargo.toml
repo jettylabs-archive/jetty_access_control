@@ -22,7 +22,6 @@ petgraph = "0.6.2"
 futures = "0.3.23"
 reqwest-retry = "0.1.5"
 reqwest-middleware = "0.1.6"
-derive-new = "0.5.9"
 serde_tuple = "0.5.0"
 
 [dev-dependencies]
