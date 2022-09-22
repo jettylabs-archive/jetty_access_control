@@ -6,13 +6,17 @@ use anyhow::{Context, Result};
 use async_trait::async_trait;
 use futures::join;
 use futures::StreamExt;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::nodes::{self, Permissionable};
 use crate::rest;
 use crate::TableauCredentials;
 
-#[derive(Default, Deserialize, Debug)]
+const CONCURRENT_ASSET_DOWNLOADS: usize = 25;
+const CONCURRENT_METADATA_FETCHES: usize = 100;
+const SERIALIZED_ENV_PATH: &str = "tableau_env.json";
+
+#[derive(Default, Deserialize, Serialize, Debug)]
 pub(crate) struct Environment {
     pub users: HashMap<String, nodes::User>,
     pub groups: HashMap<String, nodes::Group>,
@@ -116,54 +120,51 @@ impl Coordinator {
         };
 
         // Now, make sure that assets sources are all up to date
-        // Datasources
-        let mut datasources_vec = new_env.datasources.values_mut().collect::<Vec<_>>();
 
-        let fetches = futures::stream::iter(
-            datasources_vec
-                .iter_mut()
-                .map(|d| self.get_sources(&self.env.datasources, d)),
-        )
-        .buffered(30)
-        .collect::<Vec<_>>();
+        self.update_sources_from_map(&mut new_env.flows, &self.env.flows)
+            .await;
+        self.update_sources_from_map(&mut new_env.datasources, &self.env.datasources)
+            .await;
+        self.update_sources_from_map(&mut new_env.workbooks, &self.env.workbooks)
+            .await;
 
-        let datasource_sources = fetches.await;
+        // Now update permissions
 
-        Self::update_sources(&mut datasources_vec, datasource_sources);
+        self.update_permissions_from_map(&mut new_env.datasources)
+            .await;
+        self.update_permissions_from_map(&mut new_env.flows).await;
+        self.update_permissions_from_map(&mut new_env.lenses).await;
+        self.update_permissions_from_map(&mut new_env.metrics).await;
+        self.update_permissions_from_map(&mut new_env.projects)
+            .await;
+        self.update_permissions_from_map(&mut new_env.views).await;
+        self.update_permissions_from_map(&mut new_env.workbooks)
+            .await;
 
-        // Workbooks
-        let mut workbooks_vec = new_env.workbooks.values_mut().collect::<Vec<_>>();
-
-        let fetches = futures::stream::iter(
-            workbooks_vec
-                .iter_mut()
-                .map(|d| self.get_sources(&self.env.workbooks, d)),
-        )
-        .buffered(30)
-        .collect::<Vec<_>>();
-
-        let workbook_sources = fetches.await;
-
-        Self::update_sources(&mut workbooks_vec, workbook_sources);
-
-        // Flows
-        self.update_sources_from_map(&mut new_env.flows, &self.env.flows);
-
-        // update permissions
-        let fetches = futures::stream::iter(
-            new_env
-                .datasources
-                .iter_mut()
-                .map(|(_, v)| v.update_permissions(&self.rest_client)),
-        )
-        .buffer_unordered(100)
-        .collect::<Vec<_>>()
-        .await;
+        // get group membership
+        self.get_groups_users(&mut new_env.groups).await;
 
         // update self.env
+        self.env = new_env;
+
         // serialize as JSON
+        fs::write(
+            SERIALIZED_ENV_PATH,
+            serde_json::to_string_pretty(&self.env).unwrap(),
+        )?;
 
         Ok(())
+    }
+
+    pub(crate) async fn get_groups_users(&self, groups: &mut HashMap<String, nodes::Group>) {
+        let fetches = futures::stream::iter(
+            groups
+                .iter_mut()
+                .map(|(_, v)| v.get_users(&self.rest_client)),
+        )
+        .buffer_unordered(CONCURRENT_METADATA_FETCHES)
+        .collect::<Vec<_>>()
+        .await;
     }
 
     fn update_sources<T: HasSources>(
@@ -189,7 +190,6 @@ impl Coordinator {
         new_assets: &mut HashMap<String, T>,
         old_assets: &HashMap<String, T>,
     ) {
-        // Flows
         let mut assets_vec = new_assets.values_mut().collect::<Vec<_>>();
 
         let fetches = futures::stream::iter(
@@ -197,12 +197,26 @@ impl Coordinator {
                 .iter_mut()
                 .map(|d| self.get_sources(&old_assets, d)),
         )
-        .buffered(30)
+        .buffered(CONCURRENT_ASSET_DOWNLOADS)
         .collect::<Vec<_>>();
 
         let asset_sources = fetches.await;
 
         Self::update_sources(&mut assets_vec, asset_sources);
+    }
+
+    async fn update_permissions_from_map<T: Permissionable + Send>(
+        &self,
+        new_assets: &mut HashMap<String, T>,
+    ) {
+        let fetches = futures::stream::iter(
+            new_assets
+                .iter_mut()
+                .map(|(_, v)| v.update_permissions(&self.rest_client)),
+        )
+        .buffer_unordered(CONCURRENT_METADATA_FETCHES)
+        .collect::<Vec<_>>()
+        .await;
     }
 
     async fn get_sources<T: HasSources>(
@@ -223,7 +237,7 @@ impl Coordinator {
 /// Read and parse the saved Tableau environment asset information
 fn read_environment_assets() -> Result<Environment> {
     // Open the file in read-only mode with buffer.
-    let file = fs::File::open("tableau_env.json").context("opening environment file")?;
+    let file = fs::File::open(SERIALIZED_ENV_PATH).context("opening environment file")?;
     let reader = io::BufReader::new(file);
 
     let e = serde_json::from_reader(reader).context("parsing environment")?;
@@ -243,6 +257,17 @@ mod test {
             .context("running tableau connector setup")?;
 
         tc.coordinator.update_env().await;
+
+        let total_assets = tc.coordinator.env.datasources.len()
+            + tc.coordinator.env.flows.len()
+            + tc.coordinator.env.groups.len()
+            + tc.coordinator.env.lenses.len()
+            + tc.coordinator.env.metrics.len()
+            + tc.coordinator.env.projects.len()
+            + tc.coordinator.env.users.len()
+            + tc.coordinator.env.views.len()
+            + tc.coordinator.env.workbooks.len();
+        dbg!(total_assets);
         Ok(())
     }
 }

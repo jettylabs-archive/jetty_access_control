@@ -29,7 +29,7 @@ use std::collections::HashMap;
 use crate::rest::{self, FetchJson};
 
 use anyhow::{bail, Result};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// This trait is implemented by permissionable Tableau asset nodes and makes it simpler to
 /// fetch and parse permissions
@@ -100,14 +100,14 @@ struct IdField {
 }
 
 /// Representation of Tableau permissions
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub(crate) struct Permission {
     grantee: Grantee,
     capabilities: HashMap<String, String>,
 }
 
 /// Grantee of a Tableau permission
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, Serialize)]
 pub(crate) enum Grantee {
     Group { id: String },
     User { id: String },

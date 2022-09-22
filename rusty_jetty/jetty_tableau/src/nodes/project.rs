@@ -4,9 +4,9 @@ use super::{Permission, Permissionable};
 use crate::rest::{self, FetchJson};
 
 use anyhow::{Context, Result};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Default, Debug, Deserialize)]
+#[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub(crate) struct Project {
     pub id: String,
     pub name: String,

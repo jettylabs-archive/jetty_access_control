@@ -1,13 +1,13 @@
 use std::collections::HashMap;
 
 use anyhow::{Context, Result};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::rest::{self, FetchJson};
 
 use super::Permissionable;
 
-#[derive(Clone, Default, Debug, Deserialize)]
+#[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub(crate) struct Metric {
     pub id: String,
     pub name: String,

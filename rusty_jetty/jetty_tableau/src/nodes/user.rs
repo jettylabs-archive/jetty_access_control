@@ -2,9 +2,9 @@ use std::collections::HashMap;
 
 use crate::rest::{self, FetchJson};
 use anyhow::{Context, Result};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize, Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct User {
     pub id: String,

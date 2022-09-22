@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use anyhow::{Context, Result};
 use async_trait::async_trait;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     coordinator::{Coordinator, HasSources},
@@ -12,7 +12,7 @@ use crate::{
 
 use super::Permissionable;
 
-#[derive(Clone, Default, Debug, Deserialize)]
+#[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub(crate) struct Workbook {
     pub id: String,
     /// Unqualified name of the workbook
@@ -32,15 +32,6 @@ pub(crate) struct Workbook {
 impl Workbook {
     pub(crate) async fn fetch_datasources(&self) -> Result<Vec<super::Datasource>> {
         return Ok(vec![]);
-        todo!()
-    }
-    pub(crate) async fn update_embedded_datasources(
-        &mut self,
-        _client: rest::TableauRestClient,
-    ) -> Result<()> {
-        // download the workbook
-        // get the datasources
-        // yikes...
         todo!()
     }
 }
@@ -93,8 +84,6 @@ impl HasSources for Workbook {
         // parse the file
         let input_sources = xml_docs::parse(&file)?;
         let output_sources = HashSet::new();
-
-        dbg!(&input_sources);
 
         Ok((input_sources, output_sources))
     }

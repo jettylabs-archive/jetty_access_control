@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use anyhow::{Context, Result};
 use async_trait::async_trait;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     coordinator::{Coordinator, HasSources},
@@ -12,7 +12,7 @@ use crate::{
 
 use super::Permissionable;
 
-#[derive(Clone, Default, Debug, Deserialize)]
+#[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub(crate) struct Datasource {
     pub id: String,
     pub name: String,
@@ -71,8 +71,6 @@ impl HasSources for Datasource {
         // parse the file
         let input_sources = xml_docs::parse(&file)?;
         let output_sources = HashSet::new();
-
-        dbg!(&input_sources);
 
         Ok((input_sources, output_sources))
     }
