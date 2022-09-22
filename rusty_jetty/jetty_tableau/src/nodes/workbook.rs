@@ -4,7 +4,7 @@ use anyhow::{Context, Result};
 use serde::Deserialize;
 
 use super::FetchPermissions;
-use crate::rest::{self, Downloadable, FetchJson};
+use crate::rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType};
 
 use jetty_core::{
     connectors::{nodes, AssetType},
@@ -101,7 +101,11 @@ impl From<Workbook> for nodes::Asset {
             // Governing policies will be assigned in the policy.
             HashSet::new(),
             // Workbooks are children of their projects.
-            HashSet::from([val.project_id]),
+            HashSet::from(
+                [get_tableau_cual(TableauAssetType::Project, &val.project_id)
+                    .unwrap()
+                    .uri()],
+            ),
             // Children objects will be handled in their respective nodes.
             HashSet::new(),
             // Workbooks are derived from their source data.
@@ -113,7 +117,7 @@ impl From<Workbook> for nodes::Asset {
     }
 }
 
-fn to_node_graphql(tc: &rest::TableauRestClient, val: &serde_json::Value) -> Result<Workbook> {
+fn to_node_graphql(val: &serde_json::Value) -> Result<Workbook> {
     #[derive(Deserialize)]
     struct LuidField {
         luid: String,
@@ -142,11 +146,7 @@ fn to_node_graphql(tc: &rest::TableauRestClient, val: &serde_json::Value) -> Res
         serde_json::from_value(val.to_owned()).context("parsing workbook information")?;
 
     Ok(Workbook {
-        cual: Cual::new(format!(
-            "{}/workbook/{}",
-            tc.get_cual_prefix(),
-            workbook_info.luid
-        )),
+        cual: get_tableau_cual(TableauAssetType::Workbook, &workbook_info.luid)?,
         id: workbook_info.luid,
         name: workbook_info.name,
         owner_id: workbook_info.owner.luid,

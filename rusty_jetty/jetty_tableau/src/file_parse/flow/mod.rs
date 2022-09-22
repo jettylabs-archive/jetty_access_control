@@ -6,7 +6,10 @@ use anyhow::{anyhow, bail, Context, Result};
 use serde::Deserialize;
 
 use super::RelationType;
-use crate::{coordinator::Coordinator, rest::TableauRestClient};
+use crate::{
+    coordinator::Coordinator,
+    rest::{get_tableau_cual, TableauAssetType, TableauRestClient},
+};
 
 #[derive(Deserialize, Debug)]
 struct FlowDoc {
@@ -172,11 +175,7 @@ impl FlowDoc {
             );
         }
 
-        cuals.insert(format!(
-            "{}{}",
-            client.get_cual_prefix(),
-            correct_datasource[0].cual_suffix()
-        ));
+        cuals.insert(get_tableau_cual(TableauAssetType::Flow, &correct_datasource[0].id)?.uri());
 
         Ok(cuals)
     }
@@ -222,11 +221,11 @@ impl FlowDoc {
             bail!("unable to find linked datasource; this can happen if the flow has not run");
         }
 
-        Ok(HashSet::from([format!(
-            "{}{}",
-            client.get_cual_prefix(),
-            correct_datasource[0].cual_suffix()
-        )]))
+        Ok(HashSet::from([get_tableau_cual(
+            TableauAssetType::Flow,
+            &correct_datasource[0].id,
+        )?
+        .uri()]))
     }
 
     fn get_node_connection_class(&self, node: &serde_json::Value) -> Result<String> {

@@ -64,7 +64,6 @@ impl DbtProjectManifest for DbtManifest {
         #[derive(Deserialize)]
         struct Config {
             enabled: bool,
-            materialized: String,
         }
 
         #[derive(Deserialize)]

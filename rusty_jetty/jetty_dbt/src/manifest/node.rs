@@ -5,7 +5,7 @@ use jetty_core::{connectors::nodes::Asset as JettyAsset, cual::Cualable};
 
 use std::collections::{HashMap, HashSet};
 
-use super::{DbtManifest, DbtProjectManifest};
+use super::DbtProjectManifest;
 
 /// A node within Dbt, representing either a model
 /// or a source.
