@@ -19,7 +19,7 @@ mod cual;
 mod entry_types;
 mod rest;
 
-use cual::{cual, cual_from_snowflake_obj_name, Cual};
+use cual::{cual, Cual};
 pub use entry_types::*;
 use jetty_core::cual::Cualable;
 use rest::{SnowflakeRequestConfig, SnowflakeRestClient, SnowflakeRestConfig};
@@ -287,7 +287,7 @@ impl SnowflakeConnector {
         let fields_intermediate: Vec<SnowflakeField> =
             serde_json::from_value(rows_value["resultSetMetaData"]["rowType"].clone())
                 .context("failed to deserialize fields")?;
-        let mut fields: Vec<String> = fields_intermediate.iter().map(|i| i.name.clone()).collect();
+        let fields: Vec<String> = fields_intermediate.iter().map(|i| i.name.clone()).collect();
         Ok(rows
             .iter()
             .map(|i| {
@@ -299,7 +299,7 @@ impl SnowflakeConnector {
             .collect())
     }
 
-    async fn grants_to_policies(&self, grants: &Vec<GrantType>) -> Vec<Option<nodes::Policy>> {
+    async fn grants_to_policies(&self, grants: &[GrantType]) -> Vec<Option<nodes::Policy>> {
         grants
             .iter()
             .filter(|g| consts::ASSET_TYPES.contains(&g.granted_on()))
@@ -327,7 +327,7 @@ impl SnowflakeConnector {
                 }
                 // Each set of grants should be exactly the same except for privileges.
                 // We will take the first one...
-                let final_grant = grants.iter().cloned().next().unwrap();
+                let final_grant = grants.iter().next().cloned().unwrap();
                 // ...and now we'll combine all of the privileges from the
                 // grants into one policy.
                 let privileges: HashSet<String> =
@@ -341,7 +341,7 @@ impl SnowflakeConnector {
         let mut res = vec![];
         // Role grants
         for role in self.get_roles().await? {
-            let grants_to_role = self
+            let grants_to_role: Vec<_> = self
                 .get_grants_to_role(&role.name)
                 .await?
                 .iter()
