@@ -9,6 +9,8 @@ use std::{
 };
 
 use super::*;
+#[cfg(test)]
+pub(crate) use cual::get_cual_prefix;
 #[cfg(not(test))]
 use cual::set_cual_prefix;
 #[cfg(test)]

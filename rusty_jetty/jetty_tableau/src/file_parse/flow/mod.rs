@@ -176,7 +176,9 @@ impl FlowDoc {
             );
         }
 
-        cuals.insert(get_tableau_cual(TableauAssetType::Flow, &correct_datasource[0].id)?.uri());
+        cuals.insert(
+            get_tableau_cual(TableauAssetType::Datasource, &correct_datasource[0].id)?.uri(),
+        );
 
         Ok(cuals)
     }
@@ -223,7 +225,7 @@ impl FlowDoc {
         }
 
         Ok(HashSet::from([get_tableau_cual(
-            TableauAssetType::Flow,
+            TableauAssetType::Datasource,
             &correct_datasource[0].id,
         )?
         .uri()]))
@@ -256,7 +258,10 @@ mod test {
 
     use anyhow::Result;
 
-    use crate::nodes::{Datasource, Project};
+    use crate::{
+        nodes::{Datasource, Project},
+        rest::{self, get_tableau_cual},
+    };
 
     #[test]
     fn new_parse_flow_works() -> Result<()> {
@@ -348,15 +353,16 @@ mod test {
             ),
         ]);
 
+        let cual_prefix = rest::get_cual_prefix()?;
         let doc = super::FlowDoc::new(data).unwrap();
         let (input_cuals, output_cuals) = doc.parse(&coord);
         assert_eq!(input_cuals,
             [
-                "tableau://dummy-server/dummy-site/datasource/d99c9c85-a525-4cce-beaa-7ebcda1ea577".to_owned(),
+                format!["{}/datasource/d99c9c85-a525-4cce-beaa-7ebcda1ea577", &cual_prefix],
                 "snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/GOLD/IRIS_JOINED_TABLE".to_owned(),
                 "snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/SILVER/SILVER_ADULT_AGGREGATED_VIEW".to_owned(),
                 "snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/GOLD/ADULT_AGGREGATED_VIEW".to_owned(),
-                "tableau://dummy-server/dummy-site/datasource/5f6df88d-aeb2-4551-a4c1-e326a45f4b91".to_owned(),
+                format!["{}/datasource/5f6df88d-aeb2-4551-a4c1-e326a45f4b91", &cual_prefix],
                 "snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/GOLD/IRIS_JOINED_VIEW".to_owned(),
                 "snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/GOLD/ADULT_AGGREGATED_TABLE".to_owned(),
             ]
@@ -367,12 +373,26 @@ mod test {
         assert_eq!(
             output_cuals,
             [
-                "tableau://dummy-server/dummy-site/datasource/6df04a18-19a6-4012-8a83-c2b33a8d1907",
-                "tableau://dummy-server/dummy-site/datasource/91dae170-0191-4dba-8cef-5eda957bf122",
-                "tableau://dummy-server/dummy-site/datasource/de1c1844-2ce6-480d-8016-afc7be49827e",
-                "snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/GOLD/tableau_special",
-                "snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/RAW/Special%20Name",
-                "tableau://dummy-server/dummy-site/datasource/a27d260d-9ff9-4707-82fd-e66cda23275d",
+                format!(
+                    "{}/datasource/6df04a18-19a6-4012-8a83-c2b33a8d1907",
+                    &cual_prefix
+                ),
+                format!(
+                    "{}/datasource/91dae170-0191-4dba-8cef-5eda957bf122",
+                    &cual_prefix
+                ),
+                format!(
+                    "{}/datasource/de1c1844-2ce6-480d-8016-afc7be49827e",
+                    &cual_prefix
+                ),
+                "snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/GOLD/TABLEAU_SPECIAL"
+                    .to_owned(),
+                "snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/RAW/Special%20Name"
+                    .to_owned(),
+                format!(
+                    "{}/datasource/a27d260d-9ff9-4707-82fd-e66cda23275d",
+                    &cual_prefix
+                ),
             ]
             .into_iter()
             .map(|v| v.to_owned())

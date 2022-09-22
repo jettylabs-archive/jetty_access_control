@@ -169,12 +169,17 @@ impl From<Flow> for nodes::Asset {
             // Children objects will be handled in their respective nodes.
             HashSet::new(),
             // Flows are derived from their source data.
-            HashSet::from_iter(val.datasource_connections.iter().map(|c| {
+            HashSet::from_iter(val.derived_from.iter().map(|c| {
                 get_tableau_cual(TableauAssetType::Datasource, c)
                     .expect("Getting datasource CUAL for flow")
                     .uri()
             })),
-            HashSet::new(),
+            // Flows can also be used to create other data assets
+            HashSet::from_iter(val.derived_to.iter().map(|c| {
+                get_tableau_cual(TableauAssetType::Datasource, c)
+                    .expect("Getting datasource CUAL for flow")
+                    .uri()
+            })),
             // No tags at this point.
             HashSet::new(),
         )
