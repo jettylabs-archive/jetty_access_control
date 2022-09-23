@@ -1,5 +1,5 @@
 use anyhow::Result;
-use sqlparser::ast;
+use sqlparser::ast::{self, FunctionArg};
 
 /// A wrapper for sqlparser::ast types that allows them to implement
 /// the Teraversable trait
@@ -123,30 +123,87 @@ macro_rules! impl_traversable_node {
 }
 
 impl_traversable_node!(
+    Array,
+    Assignment,
+    ColumnDef,
+    ColumnOptionDef,
+    Cte,
     Fetch,
+    Function,
+    HiveFormat,
     Ident,
     Join,
     LateralView,
+    ListAgg,
     ObjectName,
     Offset,
     OrderByExpr,
     Query,
     Select,
     SelectInto,
+    SqlOption,
     TableAlias,
     TableWithJoins,
     Top,
     Values,
+    WindowFrame,
+    WindowSpec,
     With,
+    Action,
+    AddDropSync,
+    AlterColumnOperation,
+    AlterTableOperation,
+    BinaryOperator,
+    CloseCursor,
+    ColumnOption,
+    CommentObject,
+    CopyLegacyCsvOption,
+    CopyLegacyOption,
+    CopyOption,
+    CopyTarget,
+    CreateFunctionUsing,
+    DataType,
+    DateTimeField,
+    DiscardObject,
     Expr,
+    FetchDirection,
+    FileFormat,
     FunctionArg,
+    FunctionArgExpr,
+    GrantObjects,
+    HiveDistributionStyle,
+    HiveIOFormat,
+    HiveRowFormat,
+    JoinConstraint,
+    JoinOperator,
+    JsonOperator,
+    KillType,
+    ListAggOnOverflow,
     LockType,
+    MergeClause,
+    ObjectType,
+    OffsetRows,
+    OnCommit,
+    OnInsert,
+    Privileges,
+    ReferentialAction,
     SelectItem,
     SetExpr,
     SetOperator,
+    ShowCreateObject,
+    ShowStatementFilter,
+    SqliteOnConflict,
     Statement,
+    TableConstraint,
     TableFactor,
-    Value
+    TransactionAccessMode,
+    TransactionIsolationLevel,
+    TransactionMode,
+    TrimWhereField,
+    UnaryOperator,
+    Value,
+    WindowFrameBound,
+    WindowFrameUnits
 );
 
 impl Traversable for ast::Array {
@@ -187,27 +244,68 @@ impl Traversable for ast::ColumnDef {
 }
 impl Traversable for ast::ColumnOptionDef {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        [
+            match &self.name {
+                Some(n) => vec![Node::Ident(n.to_owned())],
+                None => vec![],
+            },
+            vec![Node::ColumnOption(self.option.to_owned())],
+        ]
+        .concat()
     }
 }
 impl Traversable for ast::Cte {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        [
+            vec![
+                Node::TableAlias(self.alias.to_owned()),
+                Node::Query(self.query.to_owned()),
+            ],
+            match &self.from {
+                Some(n) => vec![Node::Ident(n.to_owned())],
+                None => vec![],
+            },
+        ]
+        .concat()
     }
 }
 impl Traversable for ast::Fetch {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        match &self.quantity {
+            Some(n) => vec![Node::Expr(n.to_owned())],
+            None => vec![],
+        }
     }
 }
 impl Traversable for ast::Function {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        [
+            vec![Node::ObjectName(self.name.to_owned())],
+            self.args
+                .iter()
+                .map(|n| Node::FunctionArg(n.to_owned()))
+                .collect(),
+            match &self.over {
+                Some(n) => vec![Node::WindowSpec(n.to_owned())],
+                None => vec![],
+            },
+        ]
+        .concat()
     }
 }
 impl Traversable for ast::HiveFormat {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        [
+            match &self.row_format {
+                Some(n) => vec![Node::HiveRowFormat(n.to_owned())],
+                None => vec![],
+            },
+            match &self.storage {
+                Some(n) => vec![Node::HiveIOFormat(n.to_owned())],
+                None => vec![],
+            },
+        ]
+        .concat()
     }
 }
 impl Traversable for ast::Ident {
@@ -217,17 +315,45 @@ impl Traversable for ast::Ident {
 }
 impl Traversable for ast::Join {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        vec![
+            Node::TableFactor(self.relation.to_owned()),
+            Node::JoinOperator(self.join_operator.to_owned()),
+        ]
     }
 }
 impl Traversable for ast::LateralView {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        [
+            vec![
+                Node::Expr(self.lateral_view.to_owned()),
+                Node::ObjectName(self.lateral_view_name.to_owned()),
+            ],
+            self.lateral_col_alias
+                .iter()
+                .map(|n| Node::Ident(n.to_owned()))
+                .collect(),
+        ]
+        .concat()
     }
 }
 impl Traversable for ast::ListAgg {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        [
+            vec![Node::Expr(*self.expr.to_owned())],
+            match &self.separator {
+                Some(n) => vec![Node::Expr(*n.to_owned())],
+                None => vec![],
+            },
+            match &self.on_overflow {
+                Some(n) => vec![Node::ListAggOnOverflow(n.to_owned())],
+                None => vec![],
+            },
+            self.within_group
+                .iter()
+                .map(|n| Node::OrderByExpr(n.to_owned()))
+                .collect(),
+        ]
+        .concat()
     }
 }
 impl Traversable for ast::ObjectName {
