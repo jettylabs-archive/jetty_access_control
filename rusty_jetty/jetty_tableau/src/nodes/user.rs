@@ -1,13 +1,13 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::rest::{self, FetchJson};
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use jetty_core::connectors::{nodes as jetty_nodes, UserIdentifier};
 use serde::{Deserialize, Serialize};
 
 /// Representation of Tableau user
-#[derive(Deserialize, Clone, Debug, Serialize)]
-#[serde(rename_all(deserialize = "camelCase"))]
+#[derive(Deserialize, Serialize, Clone, Default, Debug)]
+#[serde(rename_all = "camelCase")]
 pub(crate) struct User {
     pub id: String,
     pub name: String,

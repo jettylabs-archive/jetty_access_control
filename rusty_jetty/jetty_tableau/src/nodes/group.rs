@@ -1,23 +1,30 @@
 use std::collections::{HashMap, HashSet};
 
+use crate::nodes as tableau_nodes;
 use crate::rest::{self, FetchJson};
+
 use anyhow::{Context, Result};
 use futures::StreamExt;
-use jetty_core::connectors::nodes as jetty_nodes;
 use serde::{Deserialize, Serialize};
 
-/// Representation of a
+use jetty_core::connectors::nodes as jetty_nodes;
+
+/// Representation of a Group
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub(crate) struct Group {
     pub id: String,
     pub name: String,
     /// Vec of user uids
-    pub includes: Vec<String>,
+    pub includes: Vec<tableau_nodes::User>,
 }
 
 impl Group {
     /// Update group membership
-    pub(crate) async fn update_users(&mut self, tc: &rest::TableauRestClient) -> Result<()> {
+    pub(crate) async fn update_users(
+        &mut self,
+        tc: &rest::TableauRestClient,
+        users: &HashMap<String, tableau_nodes::User>,
+    ) -> Result<()> {
         let resp = tc
             .build_request(
                 format!("groups/{}/users", self.id),
@@ -29,16 +36,25 @@ impl Group {
             .await
             .context(format!("getting membership for group {}", self.name))?;
 
-        let user_vec: Vec<super::IdField> =
+        let user_ids: Vec<super::IdField> =
             serde_json::from_value(resp).context("parsing group membership")?;
-        self.includes = user_vec.iter().map(|u| u.id.to_owned()).collect();
+        let group_users = user_ids
+            .iter()
+            .map(|uid| {
+                users
+                    .get(&uid.id)
+                    .expect(&format!("user id {:?} not in tableau users", uid.id))
+            })
+            .cloned()
+            .collect();
+        self.includes = group_users;
         Ok(())
     }
 }
 
 /// Convert JSON Value to a Group instance
 impl Group {
-    pub(crate) fn new(id: String, name: String, includes: Vec<String>) -> Self {
+    pub(crate) fn new(id: String, name: String, includes: Vec<tableau_nodes::User>) -> Self {
         Self { id, name, includes }
     }
 }
@@ -50,7 +66,7 @@ impl From<Group> for jetty_nodes::Group {
             HashMap::from([("tableau::id".to_owned(), val.id)]),
             // No nested groups in tableau
             HashSet::new(),
-            HashSet::from_iter(val.includes),
+            val.includes.iter().map(|u| u.email.to_owned()).collect(),
             // No nested groups in tableau?
             HashSet::new(),
             // Handled in permissions/policies.
@@ -112,7 +128,20 @@ mod tests {
             .context("running tableau connector setup")?;
         let mut groups = get_basic_groups(&tc.coordinator.rest_client).await?;
         for (_k, v) in &mut groups {
-            v.update_users(&tc.coordinator.rest_client);
+            v.update_users(
+                &tc.coordinator.rest_client,
+                &HashMap::from([(
+                    "u".to_owned(),
+                    tableau_nodes::User::new(
+                        "id".to_owned(),
+                        "name".to_owned(),
+                        "email".to_owned(),
+                        "eauid".to_owned(),
+                        "full name".to_owned(),
+                        "role".to_owned(),
+                    ),
+                )]),
+            );
             println!("{:#?}", v);
         }
         Ok(())
@@ -120,13 +149,54 @@ mod tests {
 
     #[test]
     fn test_jetty_group_from_group_works() {
-        let g = Group::new("id".to_owned(), "name".to_owned(), vec!["me".to_owned()]);
+        let g = Group::new(
+            "id".to_owned(),
+            "name".to_owned(),
+            vec![tableau_nodes::User::new(
+                "id".to_owned(),
+                "name".to_owned(),
+                "email".to_owned(),
+                "eauid".to_owned(),
+                "full name".to_owned(),
+                "role".to_owned(),
+            )],
+        );
         jetty_nodes::Group::from(g);
     }
 
     #[test]
     fn test_group_into_jetty_group_works() {
-        let g = Group::new("id".to_owned(), "name".to_owned(), vec!["me".to_owned()]);
+        let g = Group::new(
+            "id".to_owned(),
+            "name".to_owned(),
+            vec![tableau_nodes::User::new(
+                "id".to_owned(),
+                "name".to_owned(),
+                "email".to_owned(),
+                "eauid".to_owned(),
+                "full name".to_owned(),
+                "role".to_owned(),
+            )],
+        );
         let a: jetty_nodes::Group = g.into();
+    }
+
+    #[test]
+    fn test_group_with_users_into_jetty_group_gets_email() {
+        let email = "email@email.email";
+        let g = Group::new(
+            "id".to_owned(),
+            "name".to_owned(),
+            vec![tableau_nodes::User::new(
+                "id".to_owned(),
+                "name".to_owned(),
+                email.to_owned(),
+                "eauid".to_owned(),
+                "full name".to_owned(),
+                "role".to_owned(),
+            )],
+        );
+        let a: jetty_nodes::Group = g.into();
+        assert_eq!(a.includes_users, HashSet::from([email.to_owned()]));
     }
 }
