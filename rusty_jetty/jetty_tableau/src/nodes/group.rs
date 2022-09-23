@@ -7,7 +7,7 @@ use jetty_core::connectors::nodes as jetty_nodes;
 use jetty_core::connectors::nodes;
 use serde::{Deserialize, Serialize};
 
-/// Representation of a
+/// Representation of a Group
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub(crate) struct Group {
     pub id: String,
