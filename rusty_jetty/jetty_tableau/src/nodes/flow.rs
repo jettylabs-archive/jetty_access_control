@@ -94,7 +94,7 @@ impl HasSources for Flow {
         let file = rest::unzip_text_file(archive, Self::match_file)?;
         // parse the file
         let flow_doc = FlowDoc::new(file)?;
-        Ok(flow_doc.parse(&coord))
+        Ok(flow_doc.parse(coord))
     }
 
     fn set_sources(&mut self, sources: (HashSet<String>, HashSet<String>)) {

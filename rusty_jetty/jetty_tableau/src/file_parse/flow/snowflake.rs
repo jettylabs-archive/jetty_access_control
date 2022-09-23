@@ -79,7 +79,7 @@ pub(super) fn get_output_table_cuals(
     // Fix up the table name:
     if table.starts_with('"') {
         table = table.trim_matches('"').to_owned();
-    } else if table.starts_with("'") {
+    } else if table.starts_with('\'') {
         table = table.trim_matches('\'').to_owned();
     } else if table.starts_with('[') {
         table = table.trim_matches('[').to_owned();
