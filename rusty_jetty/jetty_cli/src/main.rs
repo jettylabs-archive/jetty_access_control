@@ -3,7 +3,7 @@ use jetty_core::{
     access_graph::AccessGraph, connectors::ConnectorClient, fetch_credentials, Connector, Jetty,
 };
 
-#[tokio::main(flavor = "current_thread")]
+#[tokio::main]
 async fn main() -> Result<()> {
     let jetty = Jetty::new()?;
     let creds = fetch_credentials()?;

@@ -1,17 +1,24 @@
 use std::collections::{HashMap, HashSet};
 
 use anyhow::{Context, Result};
-use serde::Deserialize;
+use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
 
-use super::FetchPermissions;
-use crate::rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType};
+use crate::{
+    coordinator::{Coordinator, HasSources},
+    file_parse::xml_docs,
+    rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType},
+};
 
 use jetty_core::{
     connectors::{nodes as jetty_nodes, AssetType},
     cual::Cual,
 };
 
-#[derive(Clone, Default, Debug, Deserialize)]
+use super::Permissionable;
+
+/// Representation of Tableau Workbook
+#[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub(crate) struct Workbook {
     cual: Cual,
     pub id: String,
@@ -53,25 +60,6 @@ impl Workbook {
             permissions,
         }
     }
-
-    pub(crate) async fn fetch_datasources(&self) -> Result<Vec<super::Datasource>> {
-        return Ok(vec![]);
-        todo!()
-    }
-
-    pub(crate) async fn update_embedded_datasources(
-        &mut self,
-        _client: rest::TableauRestClient,
-    ) -> Result<()> {
-        // download the workbook
-        // get the datasources
-        // yikes...
-        todo!()
-    }
-
-    fn cual_suffix(&self) -> String {
-        format!("/workbook/{}", &self.id)
-    }
 }
 
 impl Downloadable for Workbook {
@@ -84,9 +72,50 @@ impl Downloadable for Workbook {
     }
 }
 
-impl FetchPermissions for Workbook {
+impl Permissionable for Workbook {
     fn get_endpoint(&self) -> String {
         format!("workbooks/{}/permissions", self.id)
+    }
+    fn set_permissions(&mut self, permissions: Vec<super::Permission>) {
+        self.permissions = permissions;
+    }
+}
+
+#[async_trait]
+impl HasSources for Workbook {
+    fn id(&self) -> &String {
+        &self.id
+    }
+
+    fn name(&self) -> &String {
+        &self.name
+    }
+
+    fn updated_at(&self) -> &String {
+        &self.updated_at
+    }
+
+    fn sources(&self) -> (HashSet<String>, HashSet<String>) {
+        (self.sources.to_owned(), HashSet::new())
+    }
+
+    async fn fetch_sources(
+        &self,
+        coord: &Coordinator,
+    ) -> Result<(HashSet<String>, HashSet<String>)> {
+        // download the source
+        let archive = coord.rest_client.download(self, true).await?;
+        // get the file
+        let file = rest::unzip_text_file(archive, Self::match_file)?;
+        // parse the file
+        let input_sources = xml_docs::parse(&file)?;
+        let output_sources = HashSet::new();
+
+        Ok((input_sources, output_sources))
+    }
+
+    fn set_sources(&mut self, sources: (HashSet<String>, HashSet<String>)) {
+        self.sources = sources.0;
     }
 }
 
@@ -117,6 +146,7 @@ impl From<Workbook> for jetty_nodes::Asset {
     }
 }
 
+/// Take a JSON object returned from a GraphQL query and turn it into a notebook
 fn to_node_graphql(val: &serde_json::Value) -> Result<Workbook> {
     #[derive(Deserialize)]
     struct LuidField {
@@ -229,7 +259,7 @@ mod tests {
             .context("running tableau connector setup")?;
         let mut workbooks = get_basic_workbooks(&tc.coordinator.rest_client).await?;
         for (_k, v) in &mut workbooks {
-            v.permissions = v.get_permissions(&tc.coordinator.rest_client).await?;
+            v.update_permissions(&tc.coordinator.rest_client).await;
         }
         for (_k, v) in workbooks {
             println!("{:#?}", v);

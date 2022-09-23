@@ -4,9 +4,11 @@ use crate::rest::{self, FetchJson};
 use anyhow::{Context, Result};
 use jetty_core::connectors::{nodes as jetty_nodes, UserIdentifier};
 use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
+/// Representation of Tableau user
+#[derive(Deserialize, Clone, Debug, Serialize)]
+#[serde(rename_all(deserialize = "camelCase"))]
 pub(crate) struct User {
     pub id: String,
     pub name: String,
@@ -54,10 +56,12 @@ impl From<User> for jetty_nodes::User {
     }
 }
 
+/// Convert JSON into a User struct
 pub(crate) fn to_node(val: &serde_json::Value) -> Result<User> {
     serde_json::from_value(val.to_owned()).context("parsing user information")
 }
 
+/// Fetch basic user information. This actually includes everything in the user struct!
 pub(crate) async fn get_basic_users(tc: &rest::TableauRestClient) -> Result<HashMap<String, User>> {
     let users = tc
         .build_request("users".to_owned(), None, reqwest::Method::GET)
