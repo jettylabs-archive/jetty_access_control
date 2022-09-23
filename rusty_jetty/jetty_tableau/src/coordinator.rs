@@ -95,7 +95,7 @@ impl Coordinator {
     }
 
     /// Create a dummy coordinator without a working rest client. The environment will be read from
-    /// a file, if a available, but cannot be updated.
+    /// a file, if available, but cannot be updated.
     #[cfg(test)]
     pub(crate) fn new_dummy() -> Self {
         Coordinator {

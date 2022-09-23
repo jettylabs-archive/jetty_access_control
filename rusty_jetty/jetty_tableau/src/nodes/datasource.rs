@@ -58,11 +58,6 @@ impl Datasource {
             derived_from,
         }
     }
-
-    /// Get the cual_suffix for Datasources
-    pub(crate) fn cual_suffix(&self) -> String {
-        format!("/datasource/{}", &self.id)
-    }
 }
 
 impl Downloadable for Datasource {
