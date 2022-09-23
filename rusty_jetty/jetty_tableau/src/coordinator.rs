@@ -188,7 +188,9 @@ impl Coordinator {
             .await;
 
         // get group membership
-        let group_results = self.get_groups_users(&mut new_env.groups).await;
+        let group_results = self
+            .get_groups_users(&mut new_env.groups, &new_env.users)
+            .await;
 
         // update self.env
         self.env = new_env;
@@ -207,11 +209,12 @@ impl Coordinator {
     async fn get_groups_users(
         &self,
         groups: &mut HashMap<String, nodes::Group>,
+        users: &HashMap<String, nodes::User>,
     ) -> Vec<Result<(), anyhow::Error>> {
         let fetches = futures::stream::iter(
             groups
                 .iter_mut()
-                .map(|(_, v)| v.update_users(&self.rest_client)),
+                .map(|(_, v)| v.update_users(&self.rest_client, &users)),
         )
         .buffer_unordered(CONCURRENT_METADATA_FETCHES)
         .collect::<Vec<_>>()
