@@ -24,11 +24,9 @@ pub(crate) use user::User;
 pub(crate) use view::View;
 pub(crate) use workbook::Workbook;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use crate::rest::{self, FetchJson};
-
-use jetty_core::connectors::nodes as jetty_nodes;
 
 use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
@@ -104,31 +102,15 @@ struct IdField {
 /// Representation of Tableau permissions
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub(crate) struct Permission {
-    pub(crate) grantee: Grantee,
+    grantee: Grantee,
     capabilities: HashMap<String, String>,
-}
-
-impl From<Permission> for jetty_nodes::Policy {
-    fn from(val: Permission) -> Self {
-        // TODO: Fill these with the correct vals
-        jetty_nodes::Policy::new(
-            "123".to_owned(),
-            val.capabilities.into_values().collect(),
-            HashSet::new(),
-            HashSet::new(),
-            HashSet::new(),
-            HashSet::new(),
-            false,
-            false,
-        )
-    }
 }
 
 /// Grantee of a Tableau permission
 #[derive(Deserialize, Debug, Clone, Serialize)]
 pub(crate) enum Grantee {
-    Group(Group),
-    User(User),
+    Group { id: String },
+    User { id: String },
 }
 
 /// Deserialization helper for Tableau permissions
@@ -154,22 +136,15 @@ struct SerializedPermission {
 
 impl SerializedPermission {
     /// Converts a Tableau permission response to a Permission struct to use
-    /// when representing the Tableau environment.
-    ///
-    /// This data is incomplete and will be filled in after the users and groups are fetched also.
+    /// when representing the Tableau environment
     pub(crate) fn to_permission(self) -> Permission {
-        let mut grantee_value = Grantee::Group(Group::default());
+        let mut grantee_value = Grantee::Group { id: "".to_owned() };
         if let Some(IdField { id }) = self.group {
-            grantee_value = Grantee::Group(Group::new(id, String::new(), vec![]));
+            grantee_value = Grantee::Group { id }
         } else {
-            grantee_value = Grantee::User(User::new(
-                self.user.unwrap().id,
-                String::new(),
-                String::new(),
-                String::new(),
-                String::new(),
-                String::new(),
-            ))
+            grantee_value = Grantee::User {
+                id: self.user.unwrap().id,
+            }
         };
 
         Permission {

@@ -9,12 +9,9 @@ use futures::join;
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 
+use crate::nodes::{self, Permissionable};
 use crate::rest::TableauRestClient;
 use crate::TableauCredentials;
-use crate::{
-    nodes as tableau_nodes,
-    nodes::{self, Grantee, Permissionable},
-};
 use crate::{rest, TableauConnector};
 
 /// Number of assets to download concurrently
@@ -195,31 +192,6 @@ impl Coordinator {
             .get_groups_users(&mut new_env.groups, &new_env.users)
             .await;
 
-        // get policy grantees
-        let fp = new_env
-            .flows
-            .values()
-            .map(|f| &f.permissions)
-            .flatten()
-            .map(|p| {
-                match &p.grantee {
-                    Grantee::Group(tableau_nodes::Group { id, .. }) => Grantee::Group(
-                        new_env
-                            .groups
-                            .get(id)
-                            .expect("getting tableau group by id")
-                            .clone(),
-                    ),
-                    Grantee::User(tableau_nodes::User { id, .. }) => Grantee::User(
-                        new_env
-                            .users
-                            .get(id)
-                            .expect("getting tableau user by id")
-                            .clone(),
-                    ),
-                };
-            });
-
         // update self.env
         self.env = new_env;
 
@@ -239,6 +211,7 @@ impl Coordinator {
         groups: &mut HashMap<String, nodes::Group>,
         users: &HashMap<String, nodes::User>,
     ) -> Vec<Result<(), anyhow::Error>> {
+        
         futures::stream::iter(
             groups
                 .iter_mut()

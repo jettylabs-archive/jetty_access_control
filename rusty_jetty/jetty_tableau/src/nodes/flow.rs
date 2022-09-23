@@ -150,12 +150,6 @@ impl Permissionable for Flow {
     }
 }
 
-impl From<Flow> for Vec<jetty_nodes::Policy> {
-    fn from(val: Flow) -> Self {
-        val.permissions.into_iter().map(|p| p.into()).collect()
-    }
-}
-
 impl From<Flow> for jetty_nodes::Asset {
     fn from(val: Flow) -> Self {
         jetty_nodes::Asset::new(
