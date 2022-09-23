@@ -6,10 +6,10 @@ use jetty_core::{
         nodes::{self, Group},
         ConnectorClient,
     },
-    jetty::{ConnectorConfig, CredentialsBlob},
+    jetty::{ConnectorConfig},
     Connector,
 };
-use jetty_snowflake::{Asset, SnowflakeConnector};
+use jetty_snowflake::{SnowflakeConnector};
 
 use serde::Serialize;
 use serde_json;

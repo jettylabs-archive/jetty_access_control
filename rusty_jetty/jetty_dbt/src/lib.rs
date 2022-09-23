@@ -12,6 +12,8 @@
 mod cual;
 mod manifest;
 
+use std::path::Path;
+
 use jetty_core::{
     connectors::{
         self,
@@ -60,7 +62,17 @@ impl Connector for DbtConnector {
 
     async fn check(&self) -> bool {
         // Check that the manifest file exists and is valid json
-        true
+        let project_dir = &self.manifest.get_project_dir();
+        let project_path = Path::new(project_dir);
+        let is_file = project_path.is_file();
+        let f = std::fs::File::open(project_path);
+        if f.is_err() {
+            // Problem reading the file
+            return false;
+        }
+        let reader = std::io::BufReader::new(f.unwrap());
+        let valid_json = serde_json::from_reader::<_, serde_json::Value>(reader).is_ok();
+        is_file && valid_json
     }
 
     async fn get_data(&mut self) -> ConnectorData {
@@ -92,7 +104,7 @@ mod tests {
 
     use super::*;
     use jetty_core::{
-        connectors::{nodes::Asset, AssetType},
+        connectors::{nodes::Asset, AssetType, ConnectorClient},
         cual::Cual,
     };
     use manifest::{node::DbtNode, MockDbtProjectManifest};
@@ -118,12 +130,16 @@ mod tests {
         .unwrap();
     }
 
-    #[test]
-    fn check_with_no_manifest_fails() {
-        // Mock manifest file
-        let manifest_mock = MockDbtProjectManifest::new();
-
-        // panic!();
+    #[tokio::test]
+    async fn check_with_no_manifest_fails() {
+        let connector = DbtConnector::new(
+            &ConnectorConfig::default(),
+            &HashMap::from([("project_dir".to_owned(), "something/not/a/path".to_owned())]),
+            Some(ConnectorClient::Test),
+        )
+        .await
+        .unwrap();
+        assert_eq!(connector.check().await, false);
     }
 
     #[tokio::test]

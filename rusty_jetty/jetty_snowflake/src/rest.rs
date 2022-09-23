@@ -277,7 +277,7 @@ mod tests {
     #[tokio::test]
     #[should_panic]
     async fn server_error_panics() {
-        let mut server = (WiremockServer::new());
+        let mut server = WiremockServer::new();
         server.init().await;
         // We will use a custom guard for this one to mock a bad response (500).
         let _guard = Mock::given(method("POST"))
