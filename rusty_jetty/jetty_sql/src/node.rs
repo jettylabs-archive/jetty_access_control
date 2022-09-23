@@ -168,7 +168,21 @@ impl Traversable for ast::Assignment {
 }
 impl Traversable for ast::ColumnDef {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        [
+            vec![
+                Node::Ident(self.name.to_owned()),
+                Node::DataType(self.data_type.to_owned()),
+            ],
+            match &self.collation {
+                Some(n) => vec![Node::ObjectName(n.to_owned())],
+                None => vec![],
+            },
+            self.options
+                .iter()
+                .map(|n| Node::ColumnOptionDef(n.to_owned()))
+                .collect(),
+        ]
+        .concat()
     }
 }
 impl Traversable for ast::ColumnOptionDef {
