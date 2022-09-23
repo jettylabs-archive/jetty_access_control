@@ -5,7 +5,7 @@ use crate::rest::{self, get_tableau_cual, FetchJson, TableauAssetType};
 
 use anyhow::{Context, Result};
 use jetty_core::{
-    connectors::{nodes, AssetType},
+    connectors::{nodes as jetty_nodes, AssetType},
     cual::Cual,
 };
 use serde::{Deserialize, Serialize};
@@ -94,9 +94,9 @@ impl View {
     }
 }
 
-impl From<View> for nodes::Asset {
+impl From<View> for jetty_nodes::Asset {
     fn from(val: View) -> Self {
-        nodes::Asset::new(
+        jetty_nodes::Asset::new(
             val.cual,
             val.name,
             AssetType::Other,
@@ -164,7 +164,7 @@ mod tests {
             "updated_at".to_owned(),
             vec![],
         );
-        nodes::Asset::from(v);
+        jetty_nodes::Asset::from(v);
     }
 
     #[test]
@@ -179,6 +179,6 @@ mod tests {
             "updated_at".to_owned(),
             vec![],
         );
-        let a: nodes::Asset = v.into();
+        let a: jetty_nodes::Asset = v.into();
     }
 }

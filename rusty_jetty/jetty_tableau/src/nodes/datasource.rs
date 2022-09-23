@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use jetty_core::{
-    connectors::{nodes, AssetType},
+    connectors::{nodes as jetty_nodes, AssetType},
     cual::Cual,
 };
 use serde::{Deserialize, Serialize};
@@ -72,9 +72,9 @@ impl Downloadable for Datasource {
     }
 }
 
-impl From<Datasource> for nodes::Asset {
+impl From<Datasource> for jetty_nodes::Asset {
     fn from(val: Datasource) -> Self {
-        nodes::Asset::new(
+        jetty_nodes::Asset::new(
             val.cual,
             val.name,
             AssetType::Other,
@@ -278,7 +278,7 @@ mod tests {
             vec![],
             vec![],
         );
-        nodes::Asset::from(ds);
+        jetty_nodes::Asset::from(ds);
     }
 
     #[test]
@@ -296,6 +296,6 @@ mod tests {
             vec![],
             vec![],
         );
-        let a: nodes::Asset = ds.into();
+        let a: jetty_nodes::Asset = ds.into();
     }
 }

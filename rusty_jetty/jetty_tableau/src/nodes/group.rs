@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use crate::rest::{self, FetchJson};
 use anyhow::{Context, Result};
 use futures::StreamExt;
-use jetty_core::connectors::nodes;
+use jetty_core::connectors::nodes as jetty_nodes;
 use serde::{Deserialize, Serialize};
 
 /// Representation of a
@@ -43,9 +43,9 @@ impl Group {
     }
 }
 
-impl From<Group> for nodes::Group {
+impl From<Group> for jetty_nodes::Group {
     fn from(val: Group) -> Self {
-        nodes::Group::new(
+        jetty_nodes::Group::new(
             val.name,
             HashMap::from([("tableau::id".to_owned(), val.id)]),
             // No nested groups in tableau
@@ -121,12 +121,12 @@ mod tests {
     #[test]
     fn test_jetty_group_from_group_works() {
         let g = Group::new("id".to_owned(), "name".to_owned(), vec!["me".to_owned()]);
-        nodes::Group::from(g);
+        jetty_nodes::Group::from(g);
     }
 
     #[test]
     fn test_group_into_jetty_group_works() {
         let g = Group::new("id".to_owned(), "name".to_owned(), vec!["me".to_owned()]);
-        let a: nodes::Group = g.into();
+        let a: jetty_nodes::Group = g.into();
     }
 }

@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use jetty_core::{
-    connectors::{nodes, AssetType},
+    connectors::{nodes as jetty_nodes, AssetType},
     cual::Cual,
 };
 use serde::{Deserialize, Serialize};
@@ -150,9 +150,9 @@ impl Permissionable for Flow {
     }
 }
 
-impl From<Flow> for nodes::Asset {
+impl From<Flow> for jetty_nodes::Asset {
     fn from(val: Flow) -> Self {
-        nodes::Asset::new(
+        jetty_nodes::Asset::new(
             val.cual,
             val.name,
             AssetType::Other,
@@ -247,7 +247,7 @@ mod tests {
             Default::default(),
             Default::default(),
         );
-        nodes::Asset::from(l);
+        jetty_nodes::Asset::from(l);
     }
 
     #[test]
@@ -264,6 +264,6 @@ mod tests {
             Default::default(),
             Default::default(),
         );
-        let a: nodes::Asset = l.into();
+        let a: jetty_nodes::Asset = l.into();
     }
 }

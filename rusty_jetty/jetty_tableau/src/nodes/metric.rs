@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use anyhow::{Context, Result};
 use jetty_core::{
-    connectors::{nodes, AssetType},
+    connectors::{nodes as jetty_nodes, AssetType},
     cual::Cual,
 };
 use serde::{Deserialize, Serialize};
@@ -102,9 +102,9 @@ impl Permissionable for Metric {
     }
 }
 
-impl From<Metric> for nodes::Asset {
+impl From<Metric> for jetty_nodes::Asset {
     fn from(val: Metric) -> Self {
-        nodes::Asset::new(
+        jetty_nodes::Asset::new(
             val.cual,
             val.name,
             AssetType::Other,
@@ -174,7 +174,7 @@ mod tests {
             "updated_at".to_owned(),
             vec![],
         );
-        nodes::Asset::from(m);
+        jetty_nodes::Asset::from(m);
     }
 
     #[test]
@@ -190,6 +190,6 @@ mod tests {
             "updated_at".to_owned(),
             vec![],
         );
-        let a: nodes::Asset = m.into();
+        let a: jetty_nodes::Asset = m.into();
     }
 }

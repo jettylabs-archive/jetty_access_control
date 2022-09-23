@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use anyhow::{Context, Result};
 use jetty_core::{
-    connectors::{nodes, AssetType},
+    connectors::{nodes as jetty_nodes, AssetType},
     cual::Cual,
 };
 use serde::{Deserialize, Serialize};
@@ -86,9 +86,9 @@ pub(crate) async fn get_basic_lenses(
     super::to_asset_map(tc, node, &to_node)
 }
 
-impl From<Lens> for nodes::Asset {
+impl From<Lens> for jetty_nodes::Asset {
     fn from(val: Lens) -> Self {
-        nodes::Asset::new(
+        jetty_nodes::Asset::new(
             val.cual,
             val.name,
             AssetType::Other,
@@ -171,7 +171,7 @@ mod tests {
             "owner_id".to_owned(),
             vec![],
         );
-        nodes::Asset::from(l);
+        jetty_nodes::Asset::from(l);
     }
 
     #[test]
@@ -186,6 +186,6 @@ mod tests {
             "owner_id".to_owned(),
             vec![],
         );
-        let a: nodes::Asset = l.into();
+        let a: jetty_nodes::Asset = l.into();
     }
 }

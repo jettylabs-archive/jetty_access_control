@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::rest::{self, FetchJson};
 use anyhow::{Context, Result};
-use jetty_core::connectors::{nodes, UserIdentifier};
+use jetty_core::connectors::{nodes as jetty_nodes, UserIdentifier};
 use serde::{Deserialize, Serialize};
 
 /// Representation of Tableau user
@@ -37,9 +37,9 @@ impl User {
     }
 }
 
-impl From<User> for nodes::User {
+impl From<User> for jetty_nodes::User {
     fn from(val: User) -> Self {
-        nodes::User::new(
+        jetty_nodes::User::new(
             val.name,
             HashMap::from([
                 (UserIdentifier::Email, val.email),
@@ -97,7 +97,7 @@ mod tests {
             "full_name".to_owned(),
             "site_role".to_owned(),
         );
-        nodes::User::from(u);
+        jetty_nodes::User::from(u);
     }
 
     #[test]
@@ -110,6 +110,6 @@ mod tests {
             "full_name".to_owned(),
             "site_role".to_owned(),
         );
-        let a: nodes::User = u.into();
+        let a: jetty_nodes::User = u.into();
     }
 }
