@@ -1,11 +1,12 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::rest::{self, FetchJson};
-use anyhow::{Context, Result};
-use jetty_core::connectors::{nodes, UserIdentifier};
-use serde::Deserialize;
+use anyhow::{bail, Context, Result};
+use jetty_core::connectors::{nodes as jetty_nodes, UserIdentifier};
+use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Clone)]
+/// Representation of Tableau user
+#[derive(Deserialize, Serialize, Clone, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct User {
     pub id: String,
@@ -36,9 +37,9 @@ impl User {
     }
 }
 
-impl From<User> for nodes::User {
+impl From<User> for jetty_nodes::User {
     fn from(val: User) -> Self {
-        nodes::User::new(
+        jetty_nodes::User::new(
             val.name,
             HashMap::from([
                 (UserIdentifier::Email, val.email),
@@ -46,7 +47,7 @@ impl From<User> for nodes::User {
             ]),
             HashSet::from([val.external_auth_user_id, val.site_role]),
             HashMap::new(),
-            // TODO?
+            // Handled in groups.
             HashSet::new(),
             // Handled in permissions/policies.
             HashSet::new(),
@@ -54,10 +55,12 @@ impl From<User> for nodes::User {
     }
 }
 
-pub(crate) fn to_node(tc: &rest::TableauRestClient, val: &serde_json::Value) -> Result<User> {
+/// Convert JSON into a User struct
+pub(crate) fn to_node(val: &serde_json::Value) -> Result<User> {
     serde_json::from_value(val.to_owned()).context("parsing user information")
 }
 
+/// Fetch basic user information. This actually includes everything in the user struct!
 pub(crate) async fn get_basic_users(tc: &rest::TableauRestClient) -> Result<HashMap<String, User>> {
     let users = tc
         .build_request("users".to_owned(), None, reqwest::Method::GET)
@@ -94,7 +97,7 @@ mod tests {
             "full_name".to_owned(),
             "site_role".to_owned(),
         );
-        nodes::User::from(u);
+        jetty_nodes::User::from(u);
     }
 
     #[test]
@@ -107,6 +110,6 @@ mod tests {
             "full_name".to_owned(),
             "site_role".to_owned(),
         );
-        let a: nodes::User = u.into();
+        let a: jetty_nodes::User = u.into();
     }
 }

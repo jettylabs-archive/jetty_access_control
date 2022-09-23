@@ -1,13 +1,19 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
-use super::{FetchPermissions, Permission};
-use crate::rest::{self, FetchJson};
+use super::{Permission, Permissionable};
+use crate::rest::{self, get_tableau_cual, FetchJson, TableauAssetType};
 
 use anyhow::{Context, Result};
-use serde::Deserialize;
+use jetty_core::{
+    connectors::{nodes as jetty_nodes, AssetType},
+    cual::Cual,
+};
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Default, Debug, Deserialize)]
+/// Representation of a Tableau View
+#[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub(crate) struct View {
+    cual: Cual,
     pub id: String,
     pub name: String,
     pub workbook_id: String,
@@ -17,7 +23,8 @@ pub(crate) struct View {
     pub permissions: Vec<Permission>,
 }
 
-fn to_node(tc: &rest::TableauRestClient, val: &serde_json::Value) -> Result<View> {
+/// Create a View from a JSON object
+fn to_node(val: &serde_json::Value) -> Result<View> {
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]
     struct AssetInfo {
@@ -33,6 +40,7 @@ fn to_node(tc: &rest::TableauRestClient, val: &serde_json::Value) -> Result<View
         serde_json::from_value(val.to_owned()).context("parsing view information")?;
 
     Ok(View {
+        cual: get_tableau_cual(TableauAssetType::View, &asset_info.id)?,
         id: asset_info.id,
         name: asset_info.name,
         owner_id: asset_info.owner.id,
@@ -43,6 +51,7 @@ fn to_node(tc: &rest::TableauRestClient, val: &serde_json::Value) -> Result<View
     })
 }
 
+/// Get basic view information (excluding permissions)
 pub(crate) async fn get_basic_views(tc: &rest::TableauRestClient) -> Result<HashMap<String, View>> {
     let node = tc
         .build_request("views".to_owned(), None, reqwest::Method::GET)
@@ -52,12 +61,65 @@ pub(crate) async fn get_basic_views(tc: &rest::TableauRestClient) -> Result<Hash
     super::to_asset_map(tc, node, &to_node)
 }
 
-impl FetchPermissions for View {
+impl Permissionable for View {
     fn get_endpoint(&self) -> String {
         format!("views/{}/permissions", self.id)
     }
+    fn set_permissions(&mut self, permissions: Vec<super::Permission>) {
+        self.permissions = permissions;
+    }
 }
 
+impl View {
+    pub(crate) fn new(
+        cual: Cual,
+        id: String,
+        name: String,
+        workbook_id: String,
+        owner_id: String,
+        project_id: String,
+        updated_at: String,
+        permissions: Vec<Permission>,
+    ) -> Self {
+        Self {
+            cual,
+            id,
+            name,
+            workbook_id,
+            owner_id,
+            project_id,
+            updated_at,
+            permissions,
+        }
+    }
+}
+
+impl From<View> for jetty_nodes::Asset {
+    fn from(val: View) -> Self {
+        jetty_nodes::Asset::new(
+            val.cual,
+            val.name,
+            AssetType::Other,
+            // We will add metadata as it's useful.
+            HashMap::new(),
+            // Governing policies will be assigned in the policy.
+            HashSet::new(),
+            // Views are children of their workbooks.
+            HashSet::from([
+                get_tableau_cual(TableauAssetType::Workbook, &val.workbook_id)
+                    .expect("Getting parent workbook CUAL.")
+                    .uri(),
+            ]),
+            // Children objects will be handled in their respective nodes.
+            HashSet::new(),
+            // Views are not derived from/to anything.
+            HashSet::new(),
+            HashSet::new(),
+            // No tags at this point.
+            HashSet::new(),
+        )
+    }
+}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -82,11 +144,41 @@ mod tests {
             .context("running tableau connector setup")?;
         let mut views = get_basic_views(&tc.coordinator.rest_client).await?;
         for (_k, v) in &mut views {
-            v.permissions = v.get_permissions(&tc.coordinator.rest_client).await?;
+            v.update_permissions(&tc.coordinator.rest_client).await;
         }
         for (_k, v) in views {
             println!("{:#?}", v);
         }
         Ok(())
+    }
+
+    #[test]
+    fn test_asset_from_view_works() {
+        let v = View::new(
+            Cual::new("".to_owned()),
+            "id".to_owned(),
+            "name".to_owned(),
+            "workbook_id".to_owned(),
+            "owner_id".to_owned(),
+            "project_id".to_owned(),
+            "updated_at".to_owned(),
+            vec![],
+        );
+        jetty_nodes::Asset::from(v);
+    }
+
+    #[test]
+    fn test_view_into_asset_works() {
+        let v = View::new(
+            Cual::new("".to_owned()),
+            "id".to_owned(),
+            "name".to_owned(),
+            "workbook_id".to_owned(),
+            "owner_id".to_owned(),
+            "project_id".to_owned(),
+            "updated_at".to_owned(),
+            vec![],
+        );
+        let a: jetty_nodes::Asset = v.into();
     }
 }

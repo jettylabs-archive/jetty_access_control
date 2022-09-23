@@ -1,14 +1,20 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use anyhow::{Context, Result};
-use serde::Deserialize;
+use jetty_core::{
+    connectors::{nodes as jetty_nodes, AssetType},
+    cual::Cual,
+};
+use serde::{Deserialize, Serialize};
 
-use crate::rest::{self, FetchJson};
+use crate::rest::{self, get_tableau_cual, FetchJson, TableauAssetType};
 
-use super::FetchPermissions;
+use super::Permissionable;
 
-#[derive(Clone, Default, Debug, Deserialize)]
+/// Representation of a Tableau Lens
+#[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub(crate) struct Lens {
+    pub(crate) cual: Cual,
     pub id: String,
     pub name: String,
     pub datasource_id: String,
@@ -17,7 +23,30 @@ pub(crate) struct Lens {
     pub permissions: Vec<super::Permission>,
 }
 
-fn to_node(tc: &rest::TableauRestClient, val: &serde_json::Value) -> Result<Lens> {
+impl Lens {
+    pub(crate) fn new(
+        cual: Cual,
+        id: String,
+        name: String,
+        datasource_id: String,
+        project_id: String,
+        owner_id: String,
+        permissions: Vec<super::Permission>,
+    ) -> Self {
+        Self {
+            cual,
+            id,
+            name,
+            datasource_id,
+            project_id,
+            owner_id,
+            permissions,
+        }
+    }
+}
+
+/// Convert JSON to a Lens struct
+fn to_node(val: &serde_json::Value) -> Result<Lens> {
     #[derive(Deserialize)]
     struct AssetInfo {
         name: String,
@@ -31,6 +60,7 @@ fn to_node(tc: &rest::TableauRestClient, val: &serde_json::Value) -> Result<Lens
         serde_json::from_value(val.to_owned()).context("parsing lens information")?;
 
     Ok(Lens {
+        cual: get_tableau_cual(TableauAssetType::Lens, &asset_info.id)?,
         id: asset_info.id,
         name: asset_info.name,
         owner_id: asset_info.owner_id,
@@ -39,6 +69,8 @@ fn to_node(tc: &rest::TableauRestClient, val: &serde_json::Value) -> Result<Lens
         permissions: Default::default(),
     })
 }
+
+/// Get basic lense information. Excludes permissions.
 pub(crate) async fn get_basic_lenses(
     tc: &rest::TableauRestClient,
 ) -> Result<HashMap<String, Lens>> {
@@ -54,15 +86,50 @@ pub(crate) async fn get_basic_lenses(
     super::to_asset_map(tc, node, &to_node)
 }
 
-impl FetchPermissions for Lens {
+impl From<Lens> for jetty_nodes::Asset {
+    fn from(val: Lens) -> Self {
+        jetty_nodes::Asset::new(
+            val.cual,
+            val.name,
+            AssetType::Other,
+            // We will add metadata as it's useful.
+            HashMap::new(),
+            // Governing policies will be assigned in the policy.
+            HashSet::new(),
+            // Lenses are children of their datasources?
+            HashSet::from([
+                get_tableau_cual(TableauAssetType::Datasource, &val.datasource_id)
+                    .expect("Getting parent datasource CUAL")
+                    .uri(),
+            ]),
+            // Children objects will be handled in their respective nodes.
+            HashSet::new(),
+            // Lenses are derived from their source data.
+            HashSet::from([
+                get_tableau_cual(TableauAssetType::Datasource, &val.datasource_id)
+                    .expect("Getting parent datasource CUAL")
+                    .uri(),
+            ]),
+            HashSet::new(),
+            // No tags at this point.
+            HashSet::new(),
+        )
+    }
+}
+
+impl Permissionable for Lens {
     fn get_endpoint(&self) -> String {
         format!("lenses/{}/permissions", self.id)
+    }
+    fn set_permissions(&mut self, permissions: Vec<super::Permission>) {
+        self.permissions = permissions;
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::rest::set_cual_prefix;
     use anyhow::{Context, Result};
 
     #[tokio::test]
@@ -84,11 +151,41 @@ mod tests {
             .context("running tableau connector setup")?;
         let mut nodes = get_basic_lenses(&tc.coordinator.rest_client).await?;
         for (_k, v) in &mut nodes {
-            v.permissions = v.get_permissions(&tc.coordinator.rest_client).await?;
+            v.update_permissions(&tc.coordinator.rest_client).await;
         }
         for (_k, v) in nodes {
             println!("{:#?}", v);
         }
         Ok(())
+    }
+
+    #[test]
+    fn test_asset_from_lens_works() {
+        set_cual_prefix("", "");
+        let l = Lens::new(
+            Cual::new("".to_owned()),
+            "id".to_owned(),
+            "name".to_owned(),
+            "datasource_id".to_owned(),
+            "project_id".to_owned(),
+            "owner_id".to_owned(),
+            vec![],
+        );
+        jetty_nodes::Asset::from(l);
+    }
+
+    #[test]
+    fn test_lens_into_asset_works() {
+        set_cual_prefix("", "");
+        let l = Lens::new(
+            Cual::new("".to_owned()),
+            "id".to_owned(),
+            "name".to_owned(),
+            "datasource_id".to_owned(),
+            "project_id".to_owned(),
+            "owner_id".to_owned(),
+            vec![],
+        );
+        let a: jetty_nodes::Asset = l.into();
     }
 }

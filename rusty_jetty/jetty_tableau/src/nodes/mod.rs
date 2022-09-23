@@ -29,35 +29,39 @@ use std::collections::HashMap;
 use crate::rest::{self, FetchJson};
 
 use anyhow::{bail, Result};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// This trait is implemented by permissionable Tableau asset nodes and makes it simpler to
 /// fetch and parse permissions
 #[async_trait]
-trait FetchPermissions {
+pub(crate) trait Permissionable {
     fn get_endpoint(&self) -> String;
 
+    fn set_permissions(&mut self, permissions: Vec<Permission>);
+
     /// Fetches the permissions for an asset and returns them as a vector of Permissions
-    async fn get_permissions(&self, tc: &crate::TableauRestClient) -> Result<Vec<Permission>> {
-        let resp = tc
-            .build_request(self.get_endpoint(), None, reqwest::Method::GET)?
-            .fetch_json_response(None)
-            .await?;
+    async fn update_permissions(&mut self, tc: &crate::TableauRestClient) -> Result<()> {
+        let req = tc.build_request(self.get_endpoint(), None, reqwest::Method::GET)?;
+
+        let resp = req.fetch_json_response(None).await?;
 
         let permissions_array = rest::get_json_from_path(
             &resp,
             &vec!["permissions".to_owned(), "granteeCapabilities".to_owned()],
         )?;
 
-        if matches!(permissions_array, serde_json::Value::Array(_)) {
+        let final_permissions = if matches!(permissions_array, serde_json::Value::Array(_)) {
             let permissions: Vec<SerializedPermission> = serde_json::from_value(permissions_array)?;
-            Ok(permissions
+            permissions
                 .iter()
                 .map(move |p| p.to_owned().to_permission())
-                .collect())
+                .collect()
         } else {
             bail!("unable to parse permissions")
-        }
+        };
+
+        self.set_permissions(final_permissions);
+        Ok(())
     }
 }
 
@@ -96,14 +100,14 @@ struct IdField {
 }
 
 /// Representation of Tableau permissions
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub(crate) struct Permission {
     grantee: Grantee,
     capabilities: HashMap<String, String>,
 }
 
 /// Grantee of a Tableau permission
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, Serialize)]
 pub(crate) enum Grantee {
     Group { id: String },
     User { id: String },
@@ -160,14 +164,11 @@ impl SerializedPermission {
 fn to_asset_map<T: GetId + Clone>(
     tc: &rest::TableauRestClient,
     val: serde_json::Value,
-    f: &dyn Fn(&rest::TableauRestClient, &serde_json::Value) -> Result<T>,
+    f: &dyn Fn(&serde_json::Value) -> Result<T>,
 ) -> Result<HashMap<String, T>> {
     let node_map: HashMap<String, T>;
     if let serde_json::Value::Array(assets) = val {
-        let node_vec = assets
-            .iter()
-            .map(|a| f(&tc, a))
-            .collect::<Result<Vec<T>>>()?;
+        let node_vec = assets.iter().map(|a| f(a)).collect::<Result<Vec<T>>>()?;
 
         node_map = node_vec
             .iter()

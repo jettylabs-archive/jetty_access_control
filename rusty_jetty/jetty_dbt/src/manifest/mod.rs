@@ -19,6 +19,7 @@ pub(crate) type DbtNodeName = String;
 #[automock]
 pub(crate) trait DbtProjectManifest {
     fn init(&mut self, file_path: &Option<PathBuf>) -> Result<()>;
+    fn get_project_dir(&self) -> String;
     /// List all nodes
     fn get_nodes(&self) -> Result<HashMap<String, DbtNode>>;
     /// List all nodes that depend on the given node.
@@ -64,7 +65,6 @@ impl DbtProjectManifest for DbtManifest {
         #[derive(Deserialize)]
         struct Config {
             enabled: bool,
-            materialized: String,
         }
 
         #[derive(Deserialize)]
@@ -173,5 +173,9 @@ impl DbtProjectManifest for DbtManifest {
         } else {
             bail!("couldn't get node for name {}", node_name);
         }
+    }
+
+    fn get_project_dir(&self) -> String {
+        self.project_dir.to_owned()
     }
 }

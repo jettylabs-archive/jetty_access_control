@@ -6,13 +6,13 @@ use jetty_core::{
         nodes::{self, Group},
         ConnectorClient,
     },
-    jetty::{ConnectorConfig, CredentialsBlob},
+    jetty::{ConnectorConfig},
     Connector,
 };
-use jetty_snowflake::{Asset, SnowflakeConnector};
+use jetty_snowflake::{SnowflakeConnector};
 
 use serde::Serialize;
-use serde_json;
+
 use wiremock::matchers::{body_string_contains, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -66,11 +66,11 @@ impl WiremockServer {
         let mock_server = MockServer::start().await;
         self.server = Some(mock_server);
 
-        let roles_body = body_for!(jetty_snowflake::Entry::Role(_), &input, name);
+        let roles_body = body_for!(jetty_snowflake::Entry::Role(_), input, name);
         println!("roles: {}", roles_body);
         let users_body = body_for!(
             jetty_snowflake::Entry::User(_),
-            &input,
+            input,
             name,
             first_name,
             last_name,
@@ -81,14 +81,14 @@ impl WiremockServer {
         );
         let grants_body = body_for!(
             jetty_snowflake::Entry::Grant(_),
-            &input,
+            input,
             name,
             privilege,
             granted_on
         );
         let tables_body = body_for!(
             jetty_snowflake::Entry::Asset(jetty_snowflake::Asset::Table(_)),
-            &input,
+            input,
             name,
             schema_name,
             database_name
@@ -96,7 +96,7 @@ impl WiremockServer {
         // println!("tables body: {}", tables_body);
         let views_body = body_for!(
             jetty_snowflake::Entry::Asset(jetty_snowflake::Asset::View(_)),
-            &input,
+            input,
             name,
             schema_name,
             database_name
@@ -104,14 +104,14 @@ impl WiremockServer {
         // println!("body: {}", tables_body);
         let schemas_body = body_for!(
             jetty_snowflake::Entry::Asset(jetty_snowflake::Asset::Schema(_)),
-            &input,
+            input,
             name,
             database_name
         );
         println!("body: {}", schemas_body);
         let databases_body = body_for!(
             jetty_snowflake::Entry::Asset(jetty_snowflake::Asset::Database(_)),
-            &input,
+            input,
             name
         );
         println!("body: {}", tables_body);
@@ -196,7 +196,7 @@ struct TestInput {
 
 /// Get a mocked-out connector that will ingest the input.
 async fn construct_connector_from(input: &TestInput) -> TestHarness<SnowflakeConnector> {
-    let wiremock_server = WiremockServer::new().init(&input).await;
+    let wiremock_server = WiremockServer::new().init(input).await;
     let creds = HashMap::from([
         ("account".to_owned(), "my_account".to_owned()),
         ("role".to_owned(), "role".to_owned()),

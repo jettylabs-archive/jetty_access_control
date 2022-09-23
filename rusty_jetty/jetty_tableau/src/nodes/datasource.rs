@@ -2,18 +2,24 @@ use std::collections::{HashMap, HashSet};
 
 use anyhow::{Context, Result};
 use async_trait::async_trait;
-use serde::Deserialize;
+use jetty_core::{
+    connectors::{nodes as jetty_nodes, AssetType},
+    cual::Cual,
+};
+use serde::{Deserialize, Serialize};
 
 use crate::{
-    coordinator::HasSources,
+    coordinator::{Coordinator, HasSources},
     file_parse::xml_docs,
-    rest::{self, Downloadable, FetchJson, TableauRestClient},
+    rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType, TableauRestClient},
 };
 
-use super::FetchPermissions;
+use super::Permissionable;
 
-#[derive(Clone, Default, Debug, Deserialize)]
+/// Representation of a Tableau Datasource
+#[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub(crate) struct Datasource {
+    pub(crate) cual: Cual,
     pub id: String,
     pub name: String,
     pub datasource_type: String,
@@ -27,18 +33,70 @@ pub(crate) struct Datasource {
 }
 
 impl Datasource {
-    pub(crate) fn cual_suffix(&self) -> String {
-        format!("/datasource/{}", &self.id)
+    pub(crate) fn new(
+        cual: Cual,
+        id: String,
+        name: String,
+        datasource_type: String,
+        updated_at: String,
+        project_id: String,
+        owner_id: String,
+        sources: HashSet<String>,
+        permissions: Vec<super::Permission>,
+        derived_from: Vec<String>,
+    ) -> Self {
+        Self {
+            cual,
+            id,
+            name,
+            datasource_type,
+            updated_at,
+            project_id,
+            owner_id,
+            sources,
+            permissions,
+            derived_from,
+        }
     }
 }
 
 impl Downloadable for Datasource {
+    /// URI Path for asset download
     fn get_path(&self) -> String {
         format!("/datasources/{}/content", &self.id)
     }
 
+    /// Function to match the right filenames to extract from downloaded zip
     fn match_file(name: &str) -> bool {
         name.ends_with(".tds")
+    }
+}
+
+impl From<Datasource> for jetty_nodes::Asset {
+    fn from(val: Datasource) -> Self {
+        jetty_nodes::Asset::new(
+            val.cual,
+            val.name,
+            AssetType::Other,
+            // We will add metadata as it's useful.
+            HashMap::new(),
+            // Governing policies will be assigned in the policy.
+            HashSet::new(),
+            // Datasources are children of their projects.
+            HashSet::from(
+                [get_tableau_cual(TableauAssetType::Project, &val.project_id)
+                    .expect("Getting parent project for datasource")
+                    .uri()],
+            ),
+            // Children objects will be handled in their respective nodes.
+            HashSet::new(),
+            // Datasources can be derived from other datasources.
+            val.sources,
+            // Handled in any child datasources.
+            HashSet::new(),
+            // No tags at this point.
+            HashSet::new(),
+        )
     }
 }
 
@@ -62,17 +120,16 @@ impl HasSources for Datasource {
 
     async fn fetch_sources(
         &self,
-        client: &TableauRestClient,
+        coord: &Coordinator,
     ) -> Result<(HashSet<String>, HashSet<String>)> {
         // download the source
-        let archive = client.download(self, true).await?;
+        let archive = coord.rest_client.download(self, true).await?;
         // get the file
         let file = rest::unzip_text_file(archive, Self::match_file)?;
         // parse the file
         let input_sources = xml_docs::parse(&file)?;
+        // datasources don't have output sources (derive_to), so just return an empty set
         let output_sources = HashSet::new();
-
-        dbg!(&input_sources);
 
         Ok((input_sources, output_sources))
     }
@@ -82,7 +139,8 @@ impl HasSources for Datasource {
     }
 }
 
-fn to_node(tc: &rest::TableauRestClient, val: &serde_json::Value) -> Result<super::Datasource> {
+/// Convert a JSON value to a Datasource node
+fn to_node(val: &serde_json::Value) -> Result<super::Datasource> {
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]
     struct AssetInfo {
@@ -99,6 +157,7 @@ fn to_node(tc: &rest::TableauRestClient, val: &serde_json::Value) -> Result<supe
         serde_json::from_value(val.to_owned()).context("parsing datasource information")?;
 
     Ok(super::Datasource {
+        cual: get_tableau_cual(TableauAssetType::Datasource, &asset_info.id)?,
         id: asset_info.id,
         name: asset_info.name,
         owner_id: asset_info.owner.id,
@@ -110,6 +169,9 @@ fn to_node(tc: &rest::TableauRestClient, val: &serde_json::Value) -> Result<supe
         derived_from: Default::default(),
     })
 }
+
+/// Fetch basic datasource information. Doesn't include permissions or sources. Those need
+/// to be fetched seperately
 pub(crate) async fn get_basic_datasources(
     tc: &rest::TableauRestClient,
 ) -> Result<HashMap<String, Datasource>> {
@@ -124,14 +186,22 @@ pub(crate) async fn get_basic_datasources(
     super::to_asset_map(tc, node, &to_node)
 }
 
-impl FetchPermissions for Datasource {
+impl Permissionable for Datasource {
+    /// URI path to fetch datasource permissions
     fn get_endpoint(&self) -> String {
         format!("datasources/{}/permissions", self.id)
+    }
+
+    /// function to set permissions
+    fn set_permissions(&mut self, permissions: Vec<super::Permission>) {
+        self.permissions = permissions;
     }
 }
 
 #[cfg(test)]
 mod tests {
+
+    use crate::rest::set_cual_prefix;
 
     use super::*;
     use anyhow::{Context, Result};
@@ -155,7 +225,7 @@ mod tests {
             .context("running tableau connector setup")?;
         let mut nodes = get_basic_datasources(&tc.coordinator.rest_client).await?;
         for (_, v) in &mut nodes {
-            v.permissions = v.get_permissions(&tc.coordinator.rest_client).await?;
+            v.update_permissions(&tc.coordinator.rest_client).await;
         }
         for (_, v) in nodes {
             println!("{:#?}", v);
@@ -188,10 +258,44 @@ mod tests {
         let datasources = get_basic_datasources(&tc.coordinator.rest_client).await?;
 
         for test_datasource in datasources.values() {
-            let x = test_datasource
-                .fetch_sources(&tc.coordinator.rest_client)
-                .await?;
+            let x = test_datasource.fetch_sources(&tc.coordinator).await?;
         }
         Ok(())
+    }
+
+    #[test]
+    fn test_asset_from_datasource_works() {
+        set_cual_prefix("", "");
+        let ds = Datasource::new(
+            Cual::new("".to_owned()),
+            "id".to_owned(),
+            "name".to_owned(),
+            "datasource_type".to_owned(),
+            "updated".to_owned(),
+            "project_id".to_owned(),
+            "owner_id".to_owned(),
+            HashSet::new(),
+            vec![],
+            vec![],
+        );
+        jetty_nodes::Asset::from(ds);
+    }
+
+    #[test]
+    fn test_datasource_into_asset_works() {
+        set_cual_prefix("", "");
+        let ds = Datasource::new(
+            Cual::new("".to_owned()),
+            "id".to_owned(),
+            "name".to_owned(),
+            "datasource_type".to_owned(),
+            "updated".to_owned(),
+            "project_id".to_owned(),
+            "owner_id".to_owned(),
+            HashSet::new(),
+            vec![],
+            vec![],
+        );
+        let a: jetty_nodes::Asset = ds.into();
     }
 }
