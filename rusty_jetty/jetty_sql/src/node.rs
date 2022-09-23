@@ -2,8 +2,25 @@ use std::vec;
 
 use sqlparser::ast::{self};
 
+/// Return a Vec<Node> from the variable and node type
+macro_rules! value_child {
+    ($value:ident, $node_type:tt) => {
+        vec![Node::$node_type($value.to_owned())]
+    };
+}
+
+/// Return a Vec<Node> from a Vec given vac and node type
+macro_rules! vec_child {
+    ($value:ident, $node_type:tt) => {
+        $value
+            .iter()
+            .map(|n| Node::$node_type(n.to_owned()))
+            .collect()
+    };
+}
+
 /// A wrapper for sqlparser::ast types that allows them to implement
-/// the Teraversable trait
+/// the Traversable trait
 #[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub(crate) enum Node {
@@ -534,22 +551,119 @@ impl Traversable for ast::With {
 }
 impl Traversable for ast::Action {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        match &self {
+            ast::Action::Insert { columns } => match columns {
+                Some(n) => n.iter().map(|n| Node::Ident(n.to_owned())).collect(),
+                None => vec![],
+            },
+            ast::Action::References { columns } => match columns {
+                Some(n) => n.iter().map(|n| Node::Ident(n.to_owned())).collect(),
+                None => vec![],
+            },
+            ast::Action::Select { columns } => match columns {
+                Some(n) => n.iter().map(|n| Node::Ident(n.to_owned())).collect(),
+                None => vec![],
+            },
+            ast::Action::Update { columns } => match columns {
+                Some(n) => n.iter().map(|n| Node::Ident(n.to_owned())).collect(),
+                None => vec![],
+            },
+            _ => vec![],
+        }
     }
 }
 impl Traversable for ast::AddDropSync {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        vec![]
     }
 }
 impl Traversable for ast::AlterColumnOperation {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        match &self {
+            ast::AlterColumnOperation::SetDefault { value } => {
+                vec![Node::Expr(value.to_owned())]
+            }
+            ast::AlterColumnOperation::SetDataType { data_type, using } => [
+                vec![Node::DataType(data_type.to_owned())],
+                match using {
+                    Some(n) => vec![Node::Expr(n.to_owned())],
+                    None => vec![],
+                },
+            ]
+            .concat(),
+            _ => vec![],
+        }
     }
 }
 impl Traversable for ast::AlterTableOperation {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        match &self {
+            ast::AlterTableOperation::AddConstraint(n) => {
+                vec![Node::TableConstraint(n.to_owned())]
+            }
+            ast::AlterTableOperation::AddColumn { column_def } => {
+                vec![Node::ColumnDef(column_def.to_owned())]
+            }
+            ast::AlterTableOperation::DropConstraint { name, .. } => {
+                vec![Node::Ident(name.to_owned())]
+            }
+            ast::AlterTableOperation::DropColumn { column_name, .. } => {
+                vec![Node::Ident(column_name.to_owned())]
+            }
+            ast::AlterTableOperation::RenamePartitions {
+                old_partitions,
+                new_partitions,
+            } => [
+                old_partitions
+                    .iter()
+                    .map(|n| Node::Expr(n.to_owned()))
+                    .collect::<Vec<Node>>(),
+                new_partitions
+                    .iter()
+                    .map(|n| Node::Expr(n.to_owned()))
+                    .collect::<Vec<Node>>(),
+            ]
+            .concat(),
+            ast::AlterTableOperation::AddPartitions { new_partitions, .. } => new_partitions
+                .iter()
+                .map(|n| Node::Expr(n.to_owned()))
+                .collect::<Vec<Node>>(),
+            ast::AlterTableOperation::DropPartitions { partitions, .. } => partitions
+                .iter()
+                .map(|n| Node::Expr(n.to_owned()))
+                .collect::<Vec<Node>>(),
+            ast::AlterTableOperation::RenameColumn {
+                old_column_name,
+                new_column_name,
+            } => [
+                value_child!(old_column_name, Ident),
+                value_child!(new_column_name, Ident),
+            ]
+            .concat(),
+            ast::AlterTableOperation::RenameTable { table_name } => {
+                value_child!(table_name, ObjectName)
+            }
+            ast::AlterTableOperation::ChangeColumn {
+                old_name,
+                new_name,
+                data_type,
+                options,
+            } => [
+                value_child!(old_name, Ident),
+                value_child!(new_name, Ident),
+                value_child!(data_type, DataType),
+                vec_child!(options, ColumnOption),
+            ]
+            .concat(),
+            ast::AlterTableOperation::RenameConstraint { old_name, new_name } => {
+                [value_child!(old_name, Ident), value_child!(new_name, Ident)].concat()
+            }
+            ast::AlterTableOperation::AlterColumn { column_name, op } => [
+                value_child!(column_name, Ident),
+                value_child!(op, AlterColumnOperation),
+            ]
+            .concat(),
+        }
     }
 }
 impl Traversable for ast::BinaryOperator {
