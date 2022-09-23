@@ -1,13 +1,25 @@
 use std::time::Instant;
 
 use anyhow::{Context, Result};
+use clap::Parser;
 
 use jetty_core::{
     access_graph::AccessGraph, connectors::ConnectorClient, fetch_credentials, Connector, Jetty,
 };
 
+/// Jetty CLI: Open-source data access control for modern teams
+#[derive(Parser, Debug)]
+#[clap(author, version, about, long_about = None)]
+struct Args {
+    /// Visualize the graph in an SVG file.
+    #[clap(short, long, value_parser, default_value = "false")]
+    visualize: bool,
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
+    let args = Args::parse();
+
     let jetty = Jetty::new()?;
     let creds = fetch_credentials()?;
 
@@ -81,15 +93,19 @@ async fn main() -> Result<()> {
         now.elapsed().as_secs_f32()
     );
 
-    println!("visualizing access graph");
-    let now = Instant::now();
-    ag.graph
-        .visualize("/tmp/graph.svg".to_owned())
-        .context("failed to visualize")?;
-    println!(
-        "access graph creation took {} seconds",
-        now.elapsed().as_secs_f32()
-    );
+    if args.visualize {
+        println!("visualizing access graph");
+        let now = Instant::now();
+        ag.graph
+            .visualize("/tmp/graph.svg".to_owned())
+            .context("failed to visualize")?;
+        println!(
+            "access graph creation took {} seconds",
+            now.elapsed().as_secs_f32()
+        );
+    } else {
+        println!("Skipping visualization.")
+    }
 
     Ok(())
 }
