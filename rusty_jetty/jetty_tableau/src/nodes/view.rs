@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use super::{FetchPermissions, Permission};
+use super::{Permission, Permissionable};
 use crate::rest::{self, get_tableau_cual, FetchJson, TableauAssetType};
 
 use anyhow::{Context, Result};
@@ -8,9 +8,10 @@ use jetty_core::{
     connectors::{nodes as jetty_nodes, AssetType},
     cual::Cual,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Default, Debug, Deserialize)]
+/// Representation of a Tableau View
+#[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub(crate) struct View {
     cual: Cual,
     pub id: String,
@@ -22,6 +23,7 @@ pub(crate) struct View {
     pub permissions: Vec<Permission>,
 }
 
+/// Create a View from a JSON object
 fn to_node(val: &serde_json::Value) -> Result<View> {
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]
@@ -49,6 +51,7 @@ fn to_node(val: &serde_json::Value) -> Result<View> {
     })
 }
 
+/// Get basic view information (excluding permissions)
 pub(crate) async fn get_basic_views(tc: &rest::TableauRestClient) -> Result<HashMap<String, View>> {
     let node = tc
         .build_request("views".to_owned(), None, reqwest::Method::GET)
@@ -58,9 +61,12 @@ pub(crate) async fn get_basic_views(tc: &rest::TableauRestClient) -> Result<Hash
     super::to_asset_map(tc, node, &to_node)
 }
 
-impl FetchPermissions for View {
+impl Permissionable for View {
     fn get_endpoint(&self) -> String {
         format!("views/{}/permissions", self.id)
+    }
+    fn set_permissions(&mut self, permissions: Vec<super::Permission>) {
+        self.permissions = permissions;
     }
 }
 
@@ -138,7 +144,7 @@ mod tests {
             .context("running tableau connector setup")?;
         let mut views = get_basic_views(&tc.coordinator.rest_client).await?;
         for (_k, v) in &mut views {
-            v.permissions = v.get_permissions(&tc.coordinator.rest_client).await?;
+            v.update_permissions(&tc.coordinator.rest_client).await;
         }
         for (_k, v) in views {
             println!("{:#?}", v);

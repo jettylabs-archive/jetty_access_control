@@ -6,17 +6,18 @@ use jetty_core::{
     connectors::{nodes as jetty_nodes, AssetType},
     cual::Cual,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{
-    coordinator::HasSources,
+    coordinator::{Coordinator, HasSources},
     file_parse::xml_docs,
     rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType, TableauRestClient},
 };
 
-use super::FetchPermissions;
+use super::Permissionable;
 
-#[derive(Clone, Default, Debug, Deserialize)]
+/// Representation of a Tableau Datasource
+#[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub(crate) struct Datasource {
     pub(crate) cual: Cual,
     pub id: String,
@@ -57,17 +58,15 @@ impl Datasource {
             derived_from,
         }
     }
-
-    pub(crate) fn cual_suffix(&self) -> String {
-        format!("/datasource/{}", &self.id)
-    }
 }
 
 impl Downloadable for Datasource {
+    /// URI Path for asset download
     fn get_path(&self) -> String {
         format!("/datasources/{}/content", &self.id)
     }
 
+    /// Function to match the right filenames to extract from downloaded zip
     fn match_file(name: &str) -> bool {
         name.ends_with(".tds")
     }
@@ -121,17 +120,16 @@ impl HasSources for Datasource {
 
     async fn fetch_sources(
         &self,
-        client: &TableauRestClient,
+        coord: &Coordinator,
     ) -> Result<(HashSet<String>, HashSet<String>)> {
         // download the source
-        let archive = client.download(self, true).await?;
+        let archive = coord.rest_client.download(self, true).await?;
         // get the file
         let file = rest::unzip_text_file(archive, Self::match_file)?;
         // parse the file
         let input_sources = xml_docs::parse(&file)?;
+        // datasources don't have output sources (derive_to), so just return an empty set
         let output_sources = HashSet::new();
-
-        dbg!(&input_sources);
 
         Ok((input_sources, output_sources))
     }
@@ -141,6 +139,7 @@ impl HasSources for Datasource {
     }
 }
 
+/// Convert a JSON value to a Datasource node
 fn to_node(val: &serde_json::Value) -> Result<super::Datasource> {
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]
@@ -170,6 +169,9 @@ fn to_node(val: &serde_json::Value) -> Result<super::Datasource> {
         derived_from: Default::default(),
     })
 }
+
+/// Fetch basic datasource information. Doesn't include permissions or sources. Those need
+/// to be fetched seperately
 pub(crate) async fn get_basic_datasources(
     tc: &rest::TableauRestClient,
 ) -> Result<HashMap<String, Datasource>> {
@@ -184,9 +186,15 @@ pub(crate) async fn get_basic_datasources(
     super::to_asset_map(tc, node, &to_node)
 }
 
-impl FetchPermissions for Datasource {
+impl Permissionable for Datasource {
+    /// URI path to fetch datasource permissions
     fn get_endpoint(&self) -> String {
         format!("datasources/{}/permissions", self.id)
+    }
+
+    /// function to set permissions
+    fn set_permissions(&mut self, permissions: Vec<super::Permission>) {
+        self.permissions = permissions;
     }
 }
 
@@ -217,7 +225,7 @@ mod tests {
             .context("running tableau connector setup")?;
         let mut nodes = get_basic_datasources(&tc.coordinator.rest_client).await?;
         for (_, v) in &mut nodes {
-            v.permissions = v.get_permissions(&tc.coordinator.rest_client).await?;
+            v.update_permissions(&tc.coordinator.rest_client).await;
         }
         for (_, v) in nodes {
             println!("{:#?}", v);
@@ -250,9 +258,7 @@ mod tests {
         let datasources = get_basic_datasources(&tc.coordinator.rest_client).await?;
 
         for test_datasource in datasources.values() {
-            let x = test_datasource
-                .fetch_sources(&tc.coordinator.rest_client)
-                .await?;
+            let x = test_datasource.fetch_sources(&tc.coordinator).await?;
         }
         Ok(())
     }

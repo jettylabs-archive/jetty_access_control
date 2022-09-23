@@ -1,6 +1,6 @@
-mod flow;
+pub(crate) mod flow;
 mod snowflake_common;
-pub mod xml_docs;
+pub(crate) mod xml_docs;
 
 /// Named connection information from the tableau files
 #[derive(Debug)]

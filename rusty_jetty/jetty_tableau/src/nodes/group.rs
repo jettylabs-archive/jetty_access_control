@@ -2,10 +2,12 @@ use std::collections::{HashMap, HashSet};
 
 use crate::rest::{self, FetchJson};
 use anyhow::{Context, Result};
+use futures::StreamExt;
 use jetty_core::connectors::nodes as jetty_nodes;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Default, Debug, Deserialize)]
+/// Representation of a
+#[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub(crate) struct Group {
     pub id: String,
     pub name: String,
@@ -13,6 +15,28 @@ pub(crate) struct Group {
     pub includes: Vec<String>,
 }
 
+impl Group {
+    /// Update group membership
+    pub(crate) async fn update_users(&mut self, tc: &rest::TableauRestClient) -> Result<()> {
+        let resp = tc
+            .build_request(
+                format!("groups/{}/users", self.id),
+                None,
+                reqwest::Method::GET,
+            )
+            .context("fetching group membership")?
+            .fetch_json_response(Some(vec!["users".to_owned(), "user".to_owned()]))
+            .await
+            .context(format!("getting membership for group {}", self.name))?;
+
+        let user_vec: Vec<super::IdField> =
+            serde_json::from_value(resp).context("parsing group membership")?;
+        self.includes = user_vec.iter().map(|u| u.id.to_owned()).collect();
+        Ok(())
+    }
+}
+
+/// Convert JSON Value to a Group instance
 impl Group {
     pub(crate) fn new(id: String, name: String, includes: Vec<String>) -> Self {
         Self { id, name, includes }
@@ -52,6 +76,7 @@ pub(crate) fn to_node(val: &serde_json::Value) -> Result<Group> {
     })
 }
 
+/// Get basic group information. Excludes "includes" (group membership)
 pub(crate) async fn get_basic_groups(
     tc: &rest::TableauRestClient,
 ) -> Result<HashMap<String, Group>> {
@@ -61,25 +86,6 @@ pub(crate) async fn get_basic_groups(
         .fetch_json_response(Some(vec!["groups".to_owned(), "group".to_owned()]))
         .await?;
     super::to_asset_map(tc, node, &to_node)
-}
-
-async fn get_group_users(
-    tc: &rest::TableauRestClient,
-    groups: &mut HashMap<String, Group>,
-) -> Result<()> {
-    for (id, group) in groups {
-        let resp = tc
-            .build_request(format!("groups/{}/users", id), None, reqwest::Method::GET)
-            .context("fetching group membership")?
-            .fetch_json_response(Some(vec!["users".to_owned(), "user".to_owned()]))
-            .await
-            .context(format!("getting membership for group {}", group.name))?;
-
-        let user_vec: Vec<super::IdField> =
-            serde_json::from_value(resp).context("parsing group membership")?;
-        group.includes = user_vec.iter().map(|u| u.id.to_owned()).collect();
-    }
-    Ok(())
 }
 
 #[cfg(test)]
@@ -105,8 +111,8 @@ mod tests {
             .await
             .context("running tableau connector setup")?;
         let mut groups = get_basic_groups(&tc.coordinator.rest_client).await?;
-        get_group_users(&tc.coordinator.rest_client, &mut groups).await?;
-        for (_k, v) in groups {
+        for (_k, v) in &mut groups {
+            v.update_users(&tc.coordinator.rest_client);
             println!("{:#?}", v);
         }
         Ok(())
