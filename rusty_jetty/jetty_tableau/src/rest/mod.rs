@@ -21,7 +21,7 @@ use anyhow::{bail, Context};
 use async_trait::async_trait;
 use bytes::{Buf, Bytes};
 use serde::Serialize;
-use zip;
+
 
 pub(crate) trait Downloadable {
     /// URI path (not including domain, api version, or site id) to download the asset
@@ -79,7 +79,8 @@ impl TableauRestClient {
     #[cfg(test)]
     pub(crate) fn new_dummy() -> Self {
         set_cual_prefix("dummy-server", "dummy-site");
-        let tc = TableauRestClient {
+        
+        TableauRestClient {
             credentials: TableauCredentials {
                 server_name: "dummy-server".to_owned(),
                 site_name: "dummy-site".to_owned(),
@@ -89,8 +90,7 @@ impl TableauRestClient {
             token: None,
             site_id: None,
             api_version: "3.16".to_owned(),
-        };
-        tc
+        }
     }
 
     /// Get site_id token from the TableauRestClient.

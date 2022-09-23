@@ -93,11 +93,11 @@ fn get_named_connections(node: roxmltree::Node) -> HashMap<String, NamedConnecti
 
 /// Given a <named-connection> node return a named connection and its id
 fn get_named_connection(node: &roxmltree::Node) -> Result<(String, NamedConnection)> {
-    match get_named_connection_class(&node) {
+    match get_named_connection_class(node) {
         Ok(connection_class) => match connection_class.as_str() {
             "snowflake" => {
-                let c = snowflake_common::build_snowflake_connection_info(&node)?;
-                Ok((c.name.to_owned(), NamedConnection::Snowflake(c.to_owned())))
+                let c = snowflake_common::build_snowflake_connection_info(node)?;
+                Ok((c.name.to_owned(), NamedConnection::Snowflake(c)))
             }
             _ => bail!("unsupported connection type {}", connection_class),
         },
@@ -157,7 +157,7 @@ fn get_relation(
             let re = Regex::new(r"(<\[Parameters\].*.>)").unwrap();
             let query = re
                 .replace_all(
-                    &node
+                    node
                         .text()
                         .ok_or_else(|| anyhow!("unable to find query text"))?,
                     "tableau__parameter_value",
@@ -166,7 +166,7 @@ fn get_relation(
             match named_connection()? {
                 NamedConnection::Snowflake(c) => Ok(Relation::SnowflakeQuery(
                     snowflake_common::SnowflakeQueryInfo {
-                        query: query.to_string(),
+                        query,
                         db: c.db.to_owned(),
                         server: c.server.to_owned(),
                         schema: c.schema.to_owned(),
@@ -231,7 +231,7 @@ mod test {
 
     #[test]
     fn new_parse_works() -> Result<()> {
-        let data = fs::read_to_string("test_data/Iris Workbook.twb".to_owned()).unwrap();
+        let data = fs::read_to_string("test_data/Iris Workbook.twb").unwrap();
 
         dbg!(parse(&data));
 

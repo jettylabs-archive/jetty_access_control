@@ -65,7 +65,7 @@ pub(crate) trait HasSources {
         match env_assets.get(&id) {
             Some(old_asset) if old_asset.updated_at() == self.updated_at() => anyhow::Ok(()),
             _ => {
-                let x = self.fetch_sources(&coord);
+                let x = self.fetch_sources(coord);
                 self.set_sources(x.await?);
                 Ok(())
             }
@@ -211,15 +211,15 @@ impl Coordinator {
         groups: &mut HashMap<String, nodes::Group>,
         users: &HashMap<String, nodes::User>,
     ) -> Vec<Result<(), anyhow::Error>> {
-        let fetches = futures::stream::iter(
+        
+        futures::stream::iter(
             groups
                 .iter_mut()
-                .map(|(_, v)| v.update_users(&self.rest_client, &users)),
+                .map(|(_, v)| v.update_users(&self.rest_client, users)),
         )
         .buffer_unordered(CONCURRENT_METADATA_FETCHES)
         .collect::<Vec<_>>()
-        .await;
-        fetches
+        .await
     }
 
     /// Return a Vec of futures (sort of - look at return type) that will fetch futures from
@@ -239,7 +239,7 @@ impl Coordinator {
     > {
         let fetches = new_assets
             .values_mut()
-            .map(|d| d.update_sources(&self, &old_assets))
+            .map(|d| d.update_sources(self, old_assets))
             .collect::<Vec<_>>();
         fetches
     }
