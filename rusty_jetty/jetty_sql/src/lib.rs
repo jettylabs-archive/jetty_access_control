@@ -44,12 +44,12 @@ pub fn get_tables(query: &str, db: DbType) -> Result<HashSet<Vec<String>>> {
         node::Node::Statement(Parser::parse_sql(dialect.deref(), query).unwrap()[0].to_owned());
 
     // Get query
-    let descendants = root.get_descendants()?;
+    let descendants = root.get_descendants();
     let query_node = descendants.iter().find(|n| matches!(n, Node::Query(_)));
 
     if let Some(node::Node::Query(parser_ast::Query { body, .. })) = query_node {
         let body = Node::SetExpr(*body.to_owned());
-        let descendants = body.get_descendants()?;
+        let descendants = body.get_descendants();
         let object_names: Vec<parser_ast::ObjectName> = descendants
             .iter()
             .filter_map(|n| {
