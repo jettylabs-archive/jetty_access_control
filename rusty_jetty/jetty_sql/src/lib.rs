@@ -4,7 +4,7 @@ use std::collections::HashSet;
 use std::ops::Deref;
 
 use anyhow::Result;
-use sqlparser::ast::{self as parser_ast};
+use sqlparser::ast;
 use sqlparser::dialect::{self, Dialect};
 use sqlparser::parser::Parser;
 
@@ -23,7 +23,7 @@ pub fn get_tables(query: &str, db: DbType) -> Result<HashSet<Vec<String>>> {
         DbType::Generic => Box::new(dialect::GenericDialect {}),
     };
 
-    let capitalize_identifiers = |i: &parser_ast::Ident| match db {
+    let capitalize_identifiers = |i: &ast::Ident| match db {
         DbType::Snowflake => {
             if i.quote_style.is_some() {
                 i.value.to_owned()
@@ -47,13 +47,13 @@ pub fn get_tables(query: &str, db: DbType) -> Result<HashSet<Vec<String>>> {
     let descendants = root.get_descendants();
     let query_node = descendants.iter().find(|n| matches!(n, Node::Query(_)));
 
-    if let Some(node::Node::Query(parser_ast::Query { body, .. })) = query_node {
+    if let Some(node::Node::Query(ast::Query { body, .. })) = query_node {
         let body = Node::SetExpr(*body.to_owned());
         let descendants = body.get_descendants();
-        let object_names: Vec<parser_ast::ObjectName> = descendants
+        let object_names: Vec<ast::ObjectName> = descendants
             .iter()
             .filter_map(|n| {
-                if let Node::TableFactor(parser_ast::TableFactor::Table { name, .. }) = n {
+                if let Node::TableFactor(ast::TableFactor::Table { name, .. }) = n {
                     Some(name.to_owned())
                 } else {
                     None

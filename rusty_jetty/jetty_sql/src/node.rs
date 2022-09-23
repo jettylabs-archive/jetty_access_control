@@ -1,6 +1,6 @@
-use std::vec;
+use std::{option, vec};
 
-use sqlparser::ast::{self};
+use sqlparser::ast;
 
 /// Return a Vec<Node> from the variable and node type
 macro_rules! value_child {
@@ -16,6 +16,21 @@ macro_rules! vec_child {
             .iter()
             .map(|n| Node::$node_type(n.to_owned()))
             .collect()
+    };
+}
+
+macro_rules! option_child {
+    ($value:ident, $node_type:tt) => {
+        match $value {
+            Some(n) => vec![Node::$node_type(n.to_owned())],
+            None => vec![],
+        }
+    };
+}
+
+macro_rules! box_child {
+    ($value:ident, $node_type:tt) => {
+        vec![Node::$node_type(*$value.to_owned())]
     };
 }
 
@@ -668,136 +683,181 @@ impl Traversable for ast::AlterTableOperation {
 }
 impl Traversable for ast::BinaryOperator {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        vec![]
     }
 }
 impl Traversable for ast::CloseCursor {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        match &self {
+            ast::CloseCursor::All => vec![],
+            ast::CloseCursor::Specific { name } => value_child!(name, Ident),
+        }
     }
 }
 impl Traversable for ast::ColumnOption {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        match &self {
+            ast::ColumnOption::Default(n) => value_child!(n, Expr),
+            ast::ColumnOption::ForeignKey {
+                foreign_table,
+                referred_columns,
+                on_delete,
+                on_update,
+            } => [
+                value_child!(foreign_table, ObjectName),
+                vec_child!(referred_columns, Ident),
+                option_child!(on_delete, ReferentialAction),
+                option_child!(on_update, ReferentialAction),
+            ]
+            .concat(),
+            ast::ColumnOption::Check(n) => value_child!(n, Expr),
+            ast::ColumnOption::CharacterSet(n) => value_child!(n, ObjectName),
+            _ => vec![],
+        }
     }
 }
 impl Traversable for ast::CommentObject {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        vec![]
     }
 }
 impl Traversable for ast::CopyLegacyCsvOption {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        match &self {
+            ast::CopyLegacyCsvOption::ForceQuote(n) => vec_child!(n, Ident),
+            ast::CopyLegacyCsvOption::ForceNotNull(n) => vec_child!(n, Ident),
+            _ => vec![],
+        }
     }
 }
 impl Traversable for ast::CopyLegacyOption {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        match &self {
+            ast::CopyLegacyOption::Csv(n) => vec_child!(n, CopyLegacyCsvOption),
+            _ => vec![],
+        }
     }
 }
 impl Traversable for ast::CopyOption {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        match self {
+            ast::CopyOption::Format(n) => value_child!(n, Ident),
+            ast::CopyOption::ForceQuote(n) => vec_child!(n, Ident),
+            ast::CopyOption::ForceNotNull(n) => vec_child!(n, Ident),
+            ast::CopyOption::ForceNull(n) => vec_child!(n, Ident),
+            _ => vec![],
+        }
     }
 }
 impl Traversable for ast::CopyTarget {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        vec![]
     }
 }
 impl Traversable for ast::CreateFunctionUsing {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        vec![]
     }
 }
 impl Traversable for ast::DataType {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        match &self {
+            ast::DataType::Custom(n) => value_child!(n, ObjectName),
+            ast::DataType::Array(n) => vec![Node::DataType(*n.to_owned())],
+            _ => vec![],
+        }
     }
 }
 impl Traversable for ast::DateTimeField {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        vec![]
     }
 }
 impl Traversable for ast::DiscardObject {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        vec![]
     }
 }
 impl Traversable for ast::Expr {
     fn get_children(&self) -> Vec<Node> {
         dbg!(&self);
         match self {
-            ast::Expr::Identifier(n) => vec![Node::Ident(n.to_owned())],
-            ast::Expr::CompoundIdentifier(_) => todo!(),
+            ast::Expr::Identifier(n) => value_child!(n, Ident),
+            ast::Expr::CompoundIdentifier(n) => vec_child!(n, Ident),
             ast::Expr::JsonAccess {
                 left,
                 operator,
                 right,
-            } => todo!(),
-            ast::Expr::CompositeAccess { expr, key } => todo!(),
-            ast::Expr::IsFalse(_) => todo!(),
-            ast::Expr::IsNotFalse(_) => todo!(),
-            ast::Expr::IsTrue(_) => todo!(),
-            ast::Expr::IsNotTrue(_) => todo!(),
-            ast::Expr::IsNull(_) => todo!(),
-            ast::Expr::IsNotNull(_) => todo!(),
-            ast::Expr::IsUnknown(_) => todo!(),
-            ast::Expr::IsNotUnknown(_) => todo!(),
-            ast::Expr::IsDistinctFrom(_, _) => todo!(),
-            ast::Expr::IsNotDistinctFrom(_, _) => todo!(),
-            ast::Expr::InList {
-                expr,
-                list,
-                negated,
-            } => todo!(),
-            ast::Expr::InSubquery {
-                expr,
-                subquery,
-                negated,
-            } => todo!(),
+            } => [
+                box_child!(left, Expr),
+                value_child!(operator, JsonOperator),
+                box_child!(right, Expr),
+            ]
+            .concat(),
+            ast::Expr::CompositeAccess { expr, key } => {
+                [box_child!(expr, Expr), value_child!(key, Ident)].concat()
+            }
+            ast::Expr::IsFalse(n) => box_child!(n, Expr),
+            ast::Expr::IsNotFalse(n) => box_child!(n, Expr),
+            ast::Expr::IsTrue(n) => box_child!(n, Expr),
+            ast::Expr::IsNotTrue(n) => box_child!(n, Expr),
+            ast::Expr::IsNull(n) => box_child!(n, Expr),
+            ast::Expr::IsNotNull(n) => box_child!(n, Expr),
+            ast::Expr::IsUnknown(n) => box_child!(n, Expr),
+            ast::Expr::IsNotUnknown(n) => box_child!(n, Expr),
+            ast::Expr::IsDistinctFrom(n1, n2) => {
+                [box_child!(n1, Expr), box_child!(n2, Expr)].concat()
+            }
+            ast::Expr::IsNotDistinctFrom(n1, n2) => {
+                [box_child!(n1, Expr), box_child!(n2, Expr)].concat()
+            }
+            ast::Expr::InList { expr, list, .. } => {
+                [box_child!(expr, Expr), vec_child!(list, Expr)].concat()
+            }
+            ast::Expr::InSubquery { expr, subquery, .. } => {
+                [box_child!(expr, Expr), box_child!(subquery, Query)].concat()
+            }
             ast::Expr::InUnnest {
-                expr,
-                array_expr,
-                negated,
-            } => todo!(),
+                expr, array_expr, ..
+            } => [box_child!(expr, Expr), box_child!(array_expr, Expr)].concat(),
             ast::Expr::Between {
-                expr,
-                negated,
-                low,
-                high,
-            } => todo!(),
-            ast::Expr::BinaryOp { left, op, right } => todo!(),
-            ast::Expr::Like {
-                negated,
-                expr,
-                pattern,
-                escape_char,
-            } => todo!(),
-            ast::Expr::ILike {
-                negated,
-                expr,
-                pattern,
-                escape_char,
-            } => todo!(),
-            ast::Expr::SimilarTo {
-                negated,
-                expr,
-                pattern,
-                escape_char,
-            } => todo!(),
-            ast::Expr::AnyOp(_) => todo!(),
-            ast::Expr::AllOp(_) => todo!(),
-            ast::Expr::UnaryOp { op, expr } => todo!(),
-            ast::Expr::Cast { expr, data_type } => todo!(),
-            ast::Expr::TryCast { expr, data_type } => todo!(),
-            ast::Expr::SafeCast { expr, data_type } => todo!(),
-            ast::Expr::AtTimeZone {
-                timestamp,
-                time_zone,
-            } => todo!(),
+                expr, low, high, ..
+            } => [
+                box_child!(expr, Expr),
+                box_child!(low, Expr),
+                box_child!(high, Expr),
+            ]
+            .concat(),
+            ast::Expr::BinaryOp { left, op, right } => [
+                box_child!(left, Expr),
+                value_child!(op, BinaryOperator),
+                box_child!(right, Expr),
+            ]
+            .concat(),
+            ast::Expr::Like { expr, pattern, .. } => {
+                [box_child!(expr, Expr), box_child!(pattern, Expr)].concat()
+            }
+            ast::Expr::ILike { expr, pattern, .. } => {
+                [box_child!(expr, Expr), box_child!(pattern, Expr)].concat()
+            }
+            ast::Expr::SimilarTo { expr, pattern, .. } => {
+                [box_child!(expr, Expr), box_child!(pattern, Expr)].concat()
+            }
+            ast::Expr::AnyOp(n) => box_child!(n, Expr),
+            ast::Expr::AllOp(n) => box_child!(n, Expr),
+            ast::Expr::UnaryOp { op, expr } => {
+                [value_child!(op, UnaryOperator), box_child!(expr, Expr)].concat()
+            }
+            ast::Expr::Cast { expr, data_type } => {
+                [box_child!(expr, Expr), value_child!(data_type, DataType)].concat()
+            }
+            ast::Expr::TryCast { expr, data_type } => {
+                [box_child!(expr, Expr), value_child!(data_type, DataType)].concat()
+            }
+            ast::Expr::SafeCast { expr, data_type } => {
+                [box_child!(expr, Expr), value_child!(data_type, DataType)].concat()
+            }
+            ast::Expr::AtTimeZone { timestamp, .. } => box_child!(timestamp, Expr),
             ast::Expr::Extract { field, expr } => todo!(),
             ast::Expr::Position { expr, r#in } => todo!(),
             ast::Expr::Substring {
@@ -817,11 +877,11 @@ impl Traversable for ast::Expr {
                 overlay_for,
             } => todo!(),
             ast::Expr::Collate { expr, collation } => todo!(),
-            ast::Expr::Nested(_) => todo!(),
+            ast::Expr::Nested(n) => todo!(),
             ast::Expr::Value(n) => vec![Node::Value(n.to_owned())],
             ast::Expr::TypedString { data_type, value } => todo!(),
             ast::Expr::MapAccess { column, keys } => todo!(),
-            ast::Expr::Function(_) => todo!(),
+            ast::Expr::Function(n) => todo!(),
             ast::Expr::Case {
                 operand,
                 conditions,
@@ -829,15 +889,15 @@ impl Traversable for ast::Expr {
                 else_result,
             } => todo!(),
             ast::Expr::Exists { subquery, negated } => todo!(),
-            ast::Expr::Subquery(_) => todo!(),
-            ast::Expr::ArraySubquery(_) => todo!(),
-            ast::Expr::ListAgg(_) => todo!(),
-            ast::Expr::GroupingSets(_) => todo!(),
-            ast::Expr::Cube(_) => todo!(),
-            ast::Expr::Rollup(_) => todo!(),
-            ast::Expr::Tuple(_) => todo!(),
+            ast::Expr::Subquery(n) => todo!(),
+            ast::Expr::ArraySubquery(n) => todo!(),
+            ast::Expr::ListAgg(n) => todo!(),
+            ast::Expr::GroupingSets(n) => todo!(),
+            ast::Expr::Cube(n) => todo!(),
+            ast::Expr::Rollup(n) => todo!(),
+            ast::Expr::Tuple(n) => todo!(),
             ast::Expr::ArrayIndex { obj, indexes } => todo!(),
-            ast::Expr::Array(_) => todo!(),
+            ast::Expr::Array(n) => todo!(),
         }
     }
 }
