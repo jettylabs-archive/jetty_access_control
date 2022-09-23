@@ -1,6 +1,6 @@
 use std::{option, vec};
 
-use sqlparser::ast;
+use sqlparser::ast::{self, ColumnDef};
 
 /// Return a Vec<Node> from the variable and node type
 macro_rules! value_child {
@@ -15,7 +15,7 @@ macro_rules! vec_child {
         $value
             .iter()
             .map(|n| Node::$node_type(n.to_owned()))
-            .collect()
+            .collect::<Vec<Node>>()
     };
 }
 
@@ -31,6 +31,37 @@ macro_rules! option_child {
 macro_rules! box_child {
     ($value:ident, $node_type:tt) => {
         vec![Node::$node_type(*$value.to_owned())]
+    };
+}
+
+macro_rules! option_box_child {
+    ($value:ident, $node_type:tt) => {
+        match $value {
+            Some(n) => vec![Node::$node_type(*n.to_owned())],
+            None => vec![],
+        }
+    };
+}
+
+macro_rules! option_vec_child {
+    ($value:ident, $node_type:tt) => {
+        match $value {
+            Some(n) => n
+                .iter()
+                .map(|m| Node::$node_type(m.to_owned()))
+                .collect::<Vec<Node>>(),
+            None => vec![],
+        }
+    };
+}
+
+macro_rules! vec_vec_child {
+    ($value:ident, $node_type:tt) => {
+        $value
+            .iter()
+            .flatten()
+            .map(|n| Node::$node_type(n.to_owned()))
+            .collect()
     };
 }
 
@@ -858,152 +889,266 @@ impl Traversable for ast::Expr {
                 [box_child!(expr, Expr), value_child!(data_type, DataType)].concat()
             }
             ast::Expr::AtTimeZone { timestamp, .. } => box_child!(timestamp, Expr),
-            ast::Expr::Extract { field, expr } => todo!(),
-            ast::Expr::Position { expr, r#in } => todo!(),
+            ast::Expr::Extract { field, expr } => {
+                [value_child!(field, DateTimeField), box_child!(expr, Expr)].concat()
+            }
+            ast::Expr::Position { expr, r#in } => {
+                [box_child!(expr, Expr), box_child!(r#in, Expr)].concat()
+            }
             ast::Expr::Substring {
                 expr,
                 substring_from,
                 substring_for,
-            } => todo!(),
+            } => [
+                box_child!(expr, Expr),
+                option_box_child!(substring_from, Expr),
+                option_box_child!(substring_for, Expr),
+            ]
+            .concat(),
             ast::Expr::Trim {
                 expr,
                 trim_where,
                 trim_what,
-            } => todo!(),
+            } => [
+                box_child!(expr, Expr),
+                option_child!(trim_where, TrimWhereField),
+                option_box_child!(trim_what, Expr),
+            ]
+            .concat(),
             ast::Expr::Overlay {
                 expr,
                 overlay_what,
                 overlay_from,
                 overlay_for,
-            } => todo!(),
-            ast::Expr::Collate { expr, collation } => todo!(),
-            ast::Expr::Nested(n) => todo!(),
+            } => [
+                box_child!(expr, Expr),
+                box_child!(overlay_what, Expr),
+                box_child!(overlay_from, Expr),
+                option_box_child!(overlay_for, Expr),
+            ]
+            .concat(),
+            ast::Expr::Collate { expr, collation } => {
+                [box_child!(expr, Expr), value_child!(collation, ObjectName)].concat()
+            }
+            ast::Expr::Nested(n) => box_child!(n, Expr),
             ast::Expr::Value(n) => vec![Node::Value(n.to_owned())],
-            ast::Expr::TypedString { data_type, value } => todo!(),
-            ast::Expr::MapAccess { column, keys } => todo!(),
-            ast::Expr::Function(n) => todo!(),
+            ast::Expr::TypedString { data_type, .. } => value_child!(data_type, DataType),
+            ast::Expr::MapAccess { column, keys } => {
+                [box_child!(column, Expr), vec_child!(keys, Expr)].concat()
+            }
+            ast::Expr::Function(n) => value_child!(n, Function),
             ast::Expr::Case {
                 operand,
                 conditions,
                 results,
                 else_result,
-            } => todo!(),
-            ast::Expr::Exists { subquery, negated } => todo!(),
-            ast::Expr::Subquery(n) => todo!(),
-            ast::Expr::ArraySubquery(n) => todo!(),
-            ast::Expr::ListAgg(n) => todo!(),
-            ast::Expr::GroupingSets(n) => todo!(),
-            ast::Expr::Cube(n) => todo!(),
-            ast::Expr::Rollup(n) => todo!(),
-            ast::Expr::Tuple(n) => todo!(),
-            ast::Expr::ArrayIndex { obj, indexes } => todo!(),
-            ast::Expr::Array(n) => todo!(),
+            } => [
+                option_box_child!(operand, Expr),
+                vec_child!(conditions, Expr),
+                vec_child!(results, Expr),
+                option_box_child!(else_result, Expr),
+            ]
+            .concat(),
+            ast::Expr::Exists { subquery, .. } => box_child!(subquery, Query),
+            ast::Expr::Subquery(n) => box_child!(n, Query),
+            ast::Expr::ArraySubquery(n) => box_child!(n, Query),
+            ast::Expr::ListAgg(n) => value_child!(n, ListAgg),
+            ast::Expr::GroupingSets(n) => vec_vec_child!(n, Expr),
+            ast::Expr::Cube(n) => vec_vec_child!(n, Expr),
+            ast::Expr::Rollup(n) => vec_vec_child!(n, Expr),
+            ast::Expr::Tuple(n) => vec_child!(n, Expr),
+            ast::Expr::ArrayIndex { obj, indexes } => {
+                [box_child!(obj, Expr), vec_child!(indexes, Expr)].concat()
+            }
+            ast::Expr::Array(n) => value_child!(n, Array),
         }
     }
 }
 impl Traversable for ast::FetchDirection {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        match &self {
+            ast::FetchDirection::Count { limit } => value_child!(limit, Value),
+            ast::FetchDirection::Absolute { limit } => value_child!(limit, Value),
+            ast::FetchDirection::Relative { limit } => value_child!(limit, Value),
+            ast::FetchDirection::Forward { limit } => option_child!(limit, Value),
+            ast::FetchDirection::Backward { limit } => option_child!(limit, Value),
+            _ => vec![],
+        }
     }
 }
 impl Traversable for ast::FileFormat {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        vec![]
     }
 }
 impl Traversable for ast::FunctionArg {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        match &self {
+            ast::FunctionArg::Named { name, arg } => [
+                value_child!(name, Ident),
+                value_child!(arg, FunctionArgExpr),
+            ]
+            .concat(),
+            ast::FunctionArg::Unnamed(n) => value_child!(n, FunctionArgExpr),
+        }
     }
 }
 impl Traversable for ast::FunctionArgExpr {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        match &self {
+            ast::FunctionArgExpr::Expr(n) => value_child!(n, Expr),
+            ast::FunctionArgExpr::QualifiedWildcard(n) => value_child!(n, ObjectName),
+            _ => vec![],
+        }
     }
 }
 impl Traversable for ast::GrantObjects {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        match &self {
+            ast::GrantObjects::AllSequencesInSchema { schemas: n } => vec_child!(n, ObjectName),
+            ast::GrantObjects::AllTablesInSchema { schemas: n } => vec_child!(n, ObjectName),
+            ast::GrantObjects::Schemas(n) => vec_child!(n, ObjectName),
+            ast::GrantObjects::Sequences(n) => vec_child!(n, ObjectName),
+            ast::GrantObjects::Tables(n) => vec_child!(n, ObjectName),
+        }
     }
 }
 impl Traversable for ast::HiveDistributionStyle {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        match &self {
+            ast::HiveDistributionStyle::PARTITIONED { columns } => vec_child!(columns, ColumnDef),
+            ast::HiveDistributionStyle::CLUSTERED {
+                columns, sorted_by, ..
+            } => [vec_child!(columns, Ident), vec_child!(sorted_by, ColumnDef)].concat(),
+            ast::HiveDistributionStyle::SKEWED { columns, on, .. } => {
+                [vec_child!(columns, ColumnDef), vec_child!(on, ColumnDef)].concat()
+            }
+            _ => vec![],
+        }
     }
 }
 impl Traversable for ast::HiveIOFormat {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        match &self {
+            ast::HiveIOFormat::IOF {
+                input_format,
+                output_format,
+            } => [
+                value_child!(input_format, Expr),
+                value_child!(output_format, Expr),
+            ]
+            .concat(),
+            ast::HiveIOFormat::FileFormat { format } => value_child!(format, FileFormat),
+        }
     }
 }
 impl Traversable for ast::HiveRowFormat {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        vec![]
     }
 }
 impl Traversable for ast::JoinConstraint {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        match &self {
+            ast::JoinConstraint::On(n) => value_child!(n, Expr),
+            ast::JoinConstraint::Using(n) => vec_child!(n, Ident),
+            _ => vec![],
+        }
     }
 }
 impl Traversable for ast::JoinOperator {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        match &self {
+            ast::JoinOperator::Inner(n) => value_child!(n, JoinConstraint),
+            ast::JoinOperator::LeftOuter(n) => value_child!(n, JoinConstraint),
+            ast::JoinOperator::RightOuter(n) => value_child!(n, JoinConstraint),
+            ast::JoinOperator::FullOuter(n) => value_child!(n, JoinConstraint),
+            _ => vec![],
+        }
     }
 }
 impl Traversable for ast::JsonOperator {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        vec![]
     }
 }
 impl Traversable for ast::KillType {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        vec![]
     }
 }
 impl Traversable for ast::ListAggOnOverflow {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        match &self {
+            ast::ListAggOnOverflow::Truncate { filler, .. } => option_box_child!(filler, Expr),
+            _ => vec![],
+        }
     }
 }
 impl Traversable for ast::LockType {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        vec![]
     }
 }
 impl Traversable for ast::MergeClause {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        match &self {
+            ast::MergeClause::MatchedUpdate {
+                predicate,
+                assignments,
+            } => [
+                option_child!(predicate, Expr),
+                vec_child!(assignments, Assignment),
+            ]
+            .concat(),
+            ast::MergeClause::MatchedDelete(n) => option_child!(n, Expr),
+            ast::MergeClause::NotMatched {
+                predicate,
+                columns,
+                values,
+            } => [
+                option_child!(predicate, Expr),
+                vec_child!(columns, Ident),
+                value_child!(values, Values),
+            ]
+            .concat(),
+        }
     }
 }
 impl Traversable for ast::ObjectType {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        vec![]
     }
 }
 impl Traversable for ast::OffsetRows {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        vec![]
     }
 }
 impl Traversable for ast::OnCommit {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        vec![]
     }
 }
 impl Traversable for ast::OnInsert {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        match &self {
+            ast::OnInsert::DuplicateKeyUpdate(n) => vec_child!(n, Assignment),
+            _ => vec![],
+        }
     }
 }
 impl Traversable for ast::Privileges {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        match &self {
+            ast::Privileges::Actions(n) => vec_child!(n, Action),
+            _ => vec![],
+        }
     }
 }
 impl Traversable for ast::ReferentialAction {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        vec![]
     }
 }
 impl Traversable for ast::SelectItem {
@@ -1044,33 +1189,315 @@ impl Traversable for ast::SetExpr {
 }
 impl Traversable for ast::SetOperator {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        vec![]
     }
 }
 impl Traversable for ast::ShowCreateObject {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        vec![]
     }
 }
 impl Traversable for ast::ShowStatementFilter {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        match &self {
+            ast::ShowStatementFilter::Where(n) => value_child!(n, Expr),
+            _ => vec![],
+        }
     }
 }
 impl Traversable for ast::SqliteOnConflict {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        vec![]
     }
 }
 impl Traversable for ast::Statement {
     fn get_children(&self) -> Vec<Node> {
-        let children = match self {
+        match self {
             ast::Statement::Query(q) => {
                 vec![Node::Query(*q.to_owned())]
             }
-            _ => todo!(),
-        };
-        children
+            ast::Statement::Analyze {
+                table_name,
+                partitions,
+                columns,
+                ..
+            } => [
+                value_child!(table_name, ObjectName),
+                option_vec_child!(partitions, Expr),
+                vec_child!(columns, Ident),
+            ]
+            .concat(),
+            ast::Statement::Truncate {
+                table_name,
+                partitions,
+            } => [
+                value_child!(table_name, ObjectName),
+                option_vec_child!(partitions, Expr),
+            ]
+            .concat(),
+            ast::Statement::Msck {
+                table_name,
+                partition_action,
+                ..
+            } => [
+                value_child!(table_name, ObjectName),
+                option_child!(partition_action, AddDropSync),
+            ]
+            .concat(),
+            ast::Statement::Insert {
+                or,
+                table_name,
+                columns,
+                source,
+                partitioned,
+                after_columns,
+                on,
+                ..
+            } => [
+                option_child!(or, SqliteOnConflict),
+                value_child!(table_name, ObjectName),
+                vec_child!(columns, Ident),
+                box_child!(source, Query),
+                option_vec_child!(partitioned, Expr),
+                vec_child!(after_columns, Ident),
+                option_child!(on, OnInsert),
+            ]
+            .concat(),
+            ast::Statement::Directory {
+                file_format,
+                source,
+                ..
+            } => [
+                option_child!(file_format, FileFormat),
+                box_child!(source, Query),
+            ]
+            .concat(),
+            ast::Statement::Copy {
+                table_name,
+                columns,
+                target,
+                options,
+                legacy_options,
+                ..
+            } => [
+                value_child!(table_name, ObjectName),
+                vec_child!(columns, Ident),
+                value_child!(target, CopyTarget),
+                vec_child!(options, CopyOption),
+                vec_child!(legacy_options, CopyLegacyOption),
+            ]
+            .concat(),
+            ast::Statement::Close { cursor } => value_child!(cursor, CloseCursor),
+            ast::Statement::Update {
+                table,
+                assignments,
+                from,
+                selection,
+            } => [
+                value_child!(table, TableWithJoins),
+                vec_child!(assignments, Assignment),
+                option_child!(from, TableWithJoins),
+                option_child!(selection, Expr),
+            ]
+            .concat(),
+            ast::Statement::Delete {
+                table_name,
+                using,
+                selection,
+            } => [
+                value_child!(table_name, TableFactor),
+                option_child!(using, TableFactor),
+                option_child!(selection, Expr),
+            ]
+            .concat(),
+            ast::Statement::CreateView {
+                name,
+                columns,
+                query,
+                with_options,
+                ..
+            } => [
+                value_child!(name, ObjectName),
+                vec_child!(columns, Ident),
+                box_child!(query, Query),
+                vec_child!(with_options, SqlOption),
+            ]
+            .concat(),
+            ast::Statement::CreateTable {
+                name,
+                columns,
+                constraints,
+                hive_distribution,
+                hive_formats,
+                table_properties,
+                with_options,
+                file_format,
+                query,
+                like,
+                clone,
+                on_commit,
+                ..
+            } => [
+                value_child!(name, ObjectName),
+                vec_child!(columns, ColumnDef),
+                vec_child!(constraints, TableConstraint),
+                value_child!(hive_distribution, HiveDistributionStyle),
+                option_child!(hive_formats, HiveFormat),
+                vec_child!(table_properties, SqlOption),
+                vec_child!(with_options, SqlOption),
+                option_child!(file_format, FileFormat),
+                option_box_child!(query, Query),
+                option_child!(like, ObjectName),
+                option_child!(clone, ObjectName),
+                option_child!(on_commit, OnCommit),
+            ]
+            .concat(),
+            ast::Statement::CreateVirtualTable {
+                name,
+                module_name,
+                module_args,
+                ..
+            } => [
+                value_child!(name, ObjectName),
+                value_child!(module_name, Ident),
+                vec_child!(module_args, Ident),
+            ]
+            .concat(),
+            ast::Statement::CreateIndex {
+                name,
+                table_name,
+                columns,
+                ..
+            } => [
+                value_child!(name, ObjectName),
+                value_child!(table_name, ObjectName),
+                vec_child!(columns, OrderByExpr),
+            ]
+            .concat(),
+            ast::Statement::AlterTable { name, operation } => [
+                value_child!(name, ObjectName),
+                value_child!(operation, AlterTableOperation),
+            ]
+            .concat(),
+            ast::Statement::Drop {
+                object_type, names, ..
+            } => [
+                value_child!(object_type, ObjectType),
+                vec_child!(names, ObjectName),
+            ]
+            .concat(),
+            ast::Statement::Declare { name, query, .. } => {
+                [value_child!(name, Ident), box_child!(query, Query)].concat()
+            }
+            ast::Statement::Fetch {
+                name,
+                direction,
+                into,
+            } => [
+                value_child!(name, Ident),
+                value_child!(direction, FetchDirection),
+                option_child!(into, ObjectName),
+            ]
+            .concat(),
+            ast::Statement::Discard { object_type } => value_child!(object_type, DiscardObject),
+            ast::Statement::SetRole { role_name, .. } => option_child!(role_name, Ident),
+            ast::Statement::SetVariable {
+                variable, value, ..
+            } => [value_child!(variable, ObjectName), vec_child!(value, Expr)].concat(),
+            ast::Statement::ShowVariable { variable } => vec_child!(variable, Ident),
+            ast::Statement::ShowVariables { filter } => option_child!(filter, ShowStatementFilter),
+            ast::Statement::ShowCreate { obj_type, obj_name } => [
+                value_child!(obj_type, ShowCreateObject),
+                value_child!(obj_name, ObjectName),
+            ]
+            .concat(),
+            ast::Statement::ShowColumns {
+                table_name, filter, ..
+            } => [
+                value_child!(table_name, ObjectName),
+                option_child!(filter, ShowStatementFilter),
+            ]
+            .concat(),
+            ast::Statement::ShowTables {
+                db_name, filter, ..
+            } => [
+                option_child!(db_name, Ident),
+                option_child!(filter, ShowStatementFilter),
+            ]
+            .concat(),
+            ast::Statement::ShowCollation { filter } => todo!(),
+            ast::Statement::Use { db_name } => todo!(),
+            ast::Statement::StartTransaction { modes } => todo!(),
+            ast::Statement::SetTransaction {
+                modes,
+                snapshot,
+                session,
+            } => todo!(),
+            ast::Statement::Comment {
+                object_type,
+                object_name,
+                comment,
+            } => todo!(),
+            ast::Statement::Commit { chain } => todo!(),
+            ast::Statement::Rollback { chain } => todo!(),
+            ast::Statement::CreateSchema {
+                schema_name,
+                if_not_exists,
+            } => todo!(),
+            ast::Statement::CreateDatabase {
+                db_name,
+                if_not_exists,
+                location,
+                managed_location,
+            } => todo!(),
+            ast::Statement::CreateFunction {
+                temporary,
+                name,
+                class_name,
+                using,
+            } => todo!(),
+            ast::Statement::Assert { condition, message } => todo!(),
+            ast::Statement::Grant {
+                privileges,
+                objects,
+                grantees,
+                with_grant_option,
+                granted_by,
+            } => todo!(),
+            ast::Statement::Revoke {
+                privileges,
+                objects,
+                grantees,
+                granted_by,
+                cascade,
+            } => todo!(),
+            ast::Statement::Deallocate { name, prepare } => todo!(),
+            ast::Statement::Execute { name, parameters } => todo!(),
+            ast::Statement::Prepare {
+                name,
+                data_types,
+                statement,
+            } => todo!(),
+            ast::Statement::Kill { modifier, id } => todo!(),
+            ast::Statement::ExplainTable {
+                describe_alias,
+                table_name,
+            } => todo!(),
+            ast::Statement::Explain {
+                describe_alias,
+                analyze,
+                verbose,
+                statement,
+            } => todo!(),
+            ast::Statement::Savepoint { name } => todo!(),
+            ast::Statement::Merge {
+                into,
+                table,
+                source,
+                on,
+                clauses,
+            } => todo!(),
+        }
     }
 }
 impl Traversable for ast::TableConstraint {
