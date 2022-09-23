@@ -5,13 +5,14 @@ use jetty_core::{
     connectors::{nodes, AssetType},
     cual::Cual,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::rest::{self, get_tableau_cual, FetchJson, TableauAssetType};
 
-use super::FetchPermissions;
+use super::Permissionable;
 
-#[derive(Clone, Default, Debug, Deserialize)]
+/// Representation of Tableau metric
+#[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub(crate) struct Metric {
     pub(crate) cual: Cual,
     pub id: String,
@@ -21,9 +22,10 @@ pub(crate) struct Metric {
     pub project_id: String,
     pub owner_id: String,
     pub underlying_view_id: String,
-    pub permissions: Vec<super::Permission>, // Not yet sure if this will be possible
+    pub permissions: Vec<super::Permission>,
 }
 
+/// Convert JSON to a Metric struct
 fn to_node(val: &serde_json::Value) -> Result<Metric> {
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]
@@ -53,6 +55,7 @@ fn to_node(val: &serde_json::Value) -> Result<Metric> {
     })
 }
 
+/// Get basic metric info, excluding permissions
 pub(crate) async fn get_basic_metrics(
     tc: &rest::TableauRestClient,
 ) -> Result<HashMap<String, Metric>> {
@@ -90,9 +93,12 @@ impl Metric {
     }
 }
 
-impl FetchPermissions for Metric {
+impl Permissionable for Metric {
     fn get_endpoint(&self) -> String {
         format!("metrics/{}/permissions", self.id)
+    }
+    fn set_permissions(&mut self, permissions: Vec<super::Permission>) {
+        self.permissions = permissions;
     }
 }
 
@@ -147,7 +153,7 @@ mod tests {
             .context("running tableau connector setup")?;
         let mut nodes = get_basic_metrics(&tc.coordinator.rest_client).await?;
         for (_k, v) in &mut nodes {
-            v.permissions = v.get_permissions(&tc.coordinator.rest_client).await?;
+            v.update_permissions(&tc.coordinator.rest_client).await;
         }
         for (_k, v) in nodes {
             println!("{:#?}", v);

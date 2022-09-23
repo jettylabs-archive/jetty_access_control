@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use super::{FetchPermissions, Permission};
+use super::{Permission, Permissionable};
 use crate::rest::{self, get_tableau_cual, FetchJson, TableauAssetType};
 
 use anyhow::{Context, Result};
@@ -8,9 +8,10 @@ use jetty_core::{
     connectors::{nodes, AssetType},
     cual::Cual,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Default, Debug, Deserialize)]
+/// Representation of a Tableau Project
+#[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub(crate) struct Project {
     pub(crate) cual: Cual,
     pub id: String,
@@ -43,6 +44,7 @@ impl Project {
     }
 }
 
+/// Convert JSON into a project struct
 fn to_node(val: &serde_json::Value) -> Result<super::Project> {
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]
@@ -69,6 +71,7 @@ fn to_node(val: &serde_json::Value) -> Result<super::Project> {
     })
 }
 
+/// Get basic project information (excluding permissions)
 pub(crate) async fn get_basic_projects(
     tc: &rest::TableauRestClient,
 ) -> Result<HashMap<String, Project>> {
@@ -80,9 +83,12 @@ pub(crate) async fn get_basic_projects(
     super::to_asset_map(tc, node, &to_node)
 }
 
-impl FetchPermissions for Project {
+impl Permissionable for Project {
     fn get_endpoint(&self) -> String {
         format!("projects/{}/permissions", self.id)
+    }
+    fn set_permissions(&mut self, permissions: Vec<super::Permission>) {
+        self.permissions = permissions;
     }
 }
 
@@ -143,7 +149,7 @@ mod tests {
             .context("running tableau connector setup")?;
         let mut nodes = get_basic_projects(&tc.coordinator.rest_client).await?;
         for (_k, v) in &mut nodes {
-            v.permissions = v.get_permissions(&tc.coordinator.rest_client).await?;
+            v.update_permissions(&tc.coordinator.rest_client).await;
         }
         for (_k, v) in nodes {
             println!("{:#?}", v);

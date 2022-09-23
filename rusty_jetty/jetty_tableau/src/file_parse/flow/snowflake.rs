@@ -86,6 +86,8 @@ pub(super) fn get_output_table_cuals(
         table = table.trim_matches(']').to_owned();
     } else if table.starts_with('`') {
         table = table.trim_matches('`').to_owned();
+    } else {
+        table = table.to_uppercase();
     }
 
     let snowflake_table = crate::file_parse::snowflake_common::SnowflakeTableInfo {

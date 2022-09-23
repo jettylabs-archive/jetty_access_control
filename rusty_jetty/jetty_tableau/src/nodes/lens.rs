@@ -5,13 +5,14 @@ use jetty_core::{
     connectors::{nodes, AssetType},
     cual::Cual,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::rest::{self, get_tableau_cual, FetchJson, TableauAssetType};
 
-use super::FetchPermissions;
+use super::Permissionable;
 
-#[derive(Clone, Default, Debug, Deserialize)]
+/// Representation of a Tableau Lens
+#[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub(crate) struct Lens {
     pub(crate) cual: Cual,
     pub id: String,
@@ -44,6 +45,7 @@ impl Lens {
     }
 }
 
+/// Convert JSON to a Lens struct
 fn to_node(val: &serde_json::Value) -> Result<Lens> {
     #[derive(Deserialize)]
     struct AssetInfo {
@@ -67,6 +69,8 @@ fn to_node(val: &serde_json::Value) -> Result<Lens> {
         permissions: Default::default(),
     })
 }
+
+/// Get basic lense information. Excludes permissions.
 pub(crate) async fn get_basic_lenses(
     tc: &rest::TableauRestClient,
 ) -> Result<HashMap<String, Lens>> {
@@ -113,9 +117,12 @@ impl From<Lens> for nodes::Asset {
     }
 }
 
-impl FetchPermissions for Lens {
+impl Permissionable for Lens {
     fn get_endpoint(&self) -> String {
         format!("lenses/{}/permissions", self.id)
+    }
+    fn set_permissions(&mut self, permissions: Vec<super::Permission>) {
+        self.permissions = permissions;
     }
 }
 
@@ -144,7 +151,7 @@ mod tests {
             .context("running tableau connector setup")?;
         let mut nodes = get_basic_lenses(&tc.coordinator.rest_client).await?;
         for (_k, v) in &mut nodes {
-            v.permissions = v.get_permissions(&tc.coordinator.rest_client).await?;
+            v.update_permissions(&tc.coordinator.rest_client).await;
         }
         for (_k, v) in nodes {
             println!("{:#?}", v);

@@ -38,7 +38,7 @@ impl TableauAssetType {
 
 pub(crate) fn get_tableau_cual(asset_type: TableauAssetType, id: &str) -> Result<Cual> {
     Ok(Cual::new(format!(
-        "{}{}/{}",
+        "{}/{}/{}",
         get_cual_prefix()?,
         asset_type.as_str(),
         id
@@ -60,7 +60,7 @@ pub(crate) fn set_cual_prefix(server_name: &str, site_name: &str) {
     }
 }
 
-fn get_cual_prefix<'a>() -> Result<&'a str> {
+pub(crate) fn get_cual_prefix<'a>() -> Result<&'a str> {
     if INIT_CUAL_PREFIX.is_completed() {
         // CUAL_PREFIX is set by a Once and is safe to use after initialization.
         unsafe { Ok(&CUAL_PREFIX) }

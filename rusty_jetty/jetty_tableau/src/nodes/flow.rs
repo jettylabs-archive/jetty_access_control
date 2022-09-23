@@ -1,17 +1,23 @@
 use std::collections::{HashMap, HashSet};
 
 use anyhow::{Context, Result};
+use async_trait::async_trait;
 use jetty_core::{
     connectors::{nodes, AssetType},
     cual::Cual,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-use crate::rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType};
+use crate::{
+    coordinator::{Coordinator, HasSources},
+    file_parse::{self, flow::FlowDoc},
+    rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType},
+};
 
-use super::FetchPermissions;
+use super::Permissionable;
 
-#[derive(Clone, Default, Debug, Deserialize)]
+/// Representation of a Tableau Flow
+#[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub(crate) struct Flow {
     pub(crate) cual: Cual,
     pub id: String,
@@ -19,8 +25,8 @@ pub(crate) struct Flow {
     pub project_id: String,
     pub owner_id: String,
     pub updated_at: String,
-    // needs to have input and output sources
-    pub datasource_connections: Vec<String>,
+    pub derived_from: HashSet<String>,
+    pub derived_to: HashSet<String>,
     pub permissions: Vec<super::Permission>,
 }
 
@@ -32,7 +38,8 @@ impl Flow {
         project_id: String,
         owner_id: String,
         updated_at: String,
-        datasource_connections: Vec<String>,
+        derived_from: HashSet<String>,
+        derived_to: HashSet<String>,
         permissions: Vec<super::Permission>,
     ) -> Self {
         Self {
@@ -42,7 +49,8 @@ impl Flow {
             project_id,
             owner_id,
             updated_at,
-            datasource_connections,
+            derived_from,
+            derived_to,
             permissions,
         }
     }
@@ -58,6 +66,44 @@ impl Downloadable for Flow {
     }
 }
 
+#[async_trait]
+impl HasSources for Flow {
+    fn id(&self) -> &String {
+        &self.id
+    }
+
+    fn name(&self) -> &String {
+        &self.name
+    }
+
+    fn updated_at(&self) -> &String {
+        &self.updated_at
+    }
+
+    fn sources(&self) -> (HashSet<String>, HashSet<String>) {
+        (self.derived_from.to_owned(), self.derived_from.to_owned())
+    }
+
+    async fn fetch_sources(
+        &self,
+        coord: &Coordinator,
+    ) -> Result<(HashSet<String>, HashSet<String>)> {
+        // download the source
+        let archive = coord.rest_client.download(self, true).await?;
+        // get the file
+        let file = rest::unzip_text_file(archive, Self::match_file)?;
+        // parse the file
+        let flow_doc = FlowDoc::new(file)?;
+        Ok(flow_doc.parse(&coord))
+    }
+
+    fn set_sources(&mut self, sources: (HashSet<String>, HashSet<String>)) {
+        self.derived_from = sources.0;
+        self.derived_to = sources.1;
+    }
+}
+
+/// Convert JSON into a Flow struct
 fn to_node(val: &serde_json::Value) -> Result<Flow> {
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]
@@ -80,10 +126,12 @@ fn to_node(val: &serde_json::Value) -> Result<Flow> {
         project_id: asset_info.project.id,
         updated_at: asset_info.updated_at,
         permissions: Default::default(),
-        datasource_connections: Default::default(),
+        derived_from: Default::default(),
+        derived_to: Default::default(),
     })
 }
 
+/// Get basic information about all flows. Does not include permissions or derived_to and derived_from information.
 pub(crate) async fn get_basic_flows(tc: &rest::TableauRestClient) -> Result<HashMap<String, Flow>> {
     let node = tc
         .build_request("flows".to_owned(), None, reqwest::Method::GET)
@@ -93,9 +141,12 @@ pub(crate) async fn get_basic_flows(tc: &rest::TableauRestClient) -> Result<Hash
     super::to_asset_map(tc, node, &to_node)
 }
 
-impl FetchPermissions for Flow {
+impl Permissionable for Flow {
     fn get_endpoint(&self) -> String {
         format!("flows/{}/permissions", self.id)
+    }
+    fn set_permissions(&mut self, permissions: Vec<super::Permission>) {
+        self.permissions = permissions;
     }
 }
 
@@ -118,12 +169,17 @@ impl From<Flow> for nodes::Asset {
             // Children objects will be handled in their respective nodes.
             HashSet::new(),
             // Flows are derived from their source data.
-            HashSet::from_iter(val.datasource_connections.iter().map(|c| {
+            HashSet::from_iter(val.derived_from.iter().map(|c| {
                 get_tableau_cual(TableauAssetType::Datasource, c)
                     .expect("Getting datasource CUAL for flow")
                     .uri()
             })),
-            HashSet::new(),
+            // Flows can also be used to create other data assets
+            HashSet::from_iter(val.derived_to.iter().map(|c| {
+                get_tableau_cual(TableauAssetType::Datasource, c)
+                    .expect("Getting datasource CUAL for flow")
+                    .uri()
+            })),
             // No tags at this point.
             HashSet::new(),
         )
@@ -156,7 +212,7 @@ mod tests {
             .context("running tableau connector setup")?;
         let mut nodes = get_basic_flows(&tc.coordinator.rest_client).await?;
         for (_k, v) in &mut nodes {
-            v.permissions = v.get_permissions(&tc.coordinator.rest_client).await?;
+            v.update_permissions(&tc.coordinator.rest_client).await;
         }
         for (_k, v) in nodes {
             println!("{:#?}", v);
@@ -187,8 +243,9 @@ mod tests {
             "project_id".to_owned(),
             "owner_id".to_owned(),
             "updated".to_owned(),
-            vec![],
-            vec![],
+            Default::default(),
+            Default::default(),
+            Default::default(),
         );
         nodes::Asset::from(l);
     }
@@ -203,8 +260,9 @@ mod tests {
             "project_id".to_owned(),
             "owner_id".to_owned(),
             "updated".to_owned(),
-            vec![],
-            vec![],
+            Default::default(),
+            Default::default(),
+            Default::default(),
         );
         let a: nodes::Asset = l.into();
     }
