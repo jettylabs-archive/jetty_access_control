@@ -9,7 +9,7 @@ macro_rules! value_child {
     };
 }
 
-/// Return a Vec<Node> from a Vec given vac and node type
+/// Return a Vec<Node> from a Vec given vec and node type
 macro_rules! vec_child {
     ($value:ident, $node_type:tt) => {
         $value
@@ -19,6 +19,7 @@ macro_rules! vec_child {
     };
 }
 
+/// Return a Vec<Node> of the specified type from an ast node wrapped in an option
 macro_rules! option_child {
     ($value:ident, $node_type:tt) => {
         match $value {
@@ -28,12 +29,14 @@ macro_rules! option_child {
     };
 }
 
+/// Return a Vec<Node> of the specified type from an ast node wrapped in a Box
 macro_rules! box_child {
     ($value:ident, $node_type:tt) => {
         vec![Node::$node_type(*$value.to_owned())]
     };
 }
 
+/// Return a Vec<Node> of the specified type from an ast node wrapped in an option then a Box
 macro_rules! option_box_child {
     ($value:ident, $node_type:tt) => {
         match $value {
@@ -43,6 +46,7 @@ macro_rules! option_box_child {
     };
 }
 
+/// Return a Vec<Node> of the specified type from an ast node wrapped in an option then a vec
 macro_rules! option_vec_child {
     ($value:ident, $node_type:tt) => {
         match $value {
@@ -55,6 +59,7 @@ macro_rules! option_vec_child {
     };
 }
 
+/// Return a Vec<Node> of the specified type from an ast node wrapped in nested vecs
 macro_rules! vec_vec_child {
     ($value:ident, $node_type:tt) => {
         $value
@@ -173,10 +178,12 @@ impl Node {
 
 /// This Macro implements the Traversable trait for node by matching on
 /// the inner enum types
+
 macro_rules! impl_traversable_node {
     ($($t:tt),+) => {
         impl Traversable for Node {
             fn get_children(&self) -> Vec<Node> {
+                #[allow(unreachable_patterns)]
                 match self {
                     $(Node::$t(n) => n.get_children(),)*
                     _ => panic!("Not supported. Please insert another quarter. {:#?}", &self),

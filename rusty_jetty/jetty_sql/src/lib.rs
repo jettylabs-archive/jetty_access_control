@@ -9,7 +9,6 @@ use sqlparser::dialect::{self, Dialect};
 use sqlparser::parser::Parser;
 
 use node::Node;
-use sqlparser::test_utils::table;
 
 pub enum DbType {
     Snowflake,
@@ -51,6 +50,8 @@ pub fn get_tables(query: &str, db: DbType) -> Result<HashSet<Vec<String>>> {
     }
 }
 
+/// Given Node, get the referenced tables. Looks up against a cte_context variable to
+/// make sure to correctly identify source tables
 fn get_tables_from_node(
     node: &Node,
     cte_context: &HashMap<Vec<String>, HashSet<Vec<String>>>,
@@ -85,6 +86,7 @@ fn get_tables_from_node(
     table_names
 }
 
+/// Capitalize identifiers appropriately, given a DbType
 fn capitalize_identifiers(i: &ast::Ident, db: &DbType) -> String {
     match db {
         DbType::Snowflake => {
@@ -128,6 +130,10 @@ mod test {
             (
                 r#"with a as (select z from schema_a.table_1) Select * FROM a"#.to_owned(),
                 vec![vec!["SCHEMA_A".to_owned(), "TABLE_1".to_owned()]],
+            ),
+            (
+            r#"with a as (select z from schema_a.table_1) Select * FROM b"#.to_owned(),
+            vec![vec!["B".to_owned()]],
             ),
             (
                 r#"with a as (select z from schema_a.table_1), b as (select z from a) Select * FROM b"#.to_owned(),
