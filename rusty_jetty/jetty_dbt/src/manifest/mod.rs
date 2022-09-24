@@ -143,7 +143,6 @@ impl DbtProjectManifest for DbtManifest {
                 // Filter out test nodes.
                 .filter(|d| !d.starts_with("test"))
                 .collect();
-            println!("assigning node {:?} deps {:?}", name, new_deps);
             if let Some(deps) = self.dependencies.get_mut(&name) {
                 // Combine the new deps with the existing ones.
                 deps.extend(new_deps);

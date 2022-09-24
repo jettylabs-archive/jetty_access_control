@@ -9,5 +9,7 @@ edition = "2021"
 jetty_core = { path = "../jetty_core" }
 jetty_snowflake = { path = "../jetty_snowflake" }
 jetty_dbt = { path = "../jetty_dbt" }
+jetty_tableau = { path = "../jetty_tableau" }
 tokio = { version = "1.20.1", features = ["rt", "macros"] }
 anyhow = "^1"
+clap = { version = "3.2.22", features = ["derive"] }

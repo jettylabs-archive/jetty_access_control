@@ -23,6 +23,25 @@ pub struct ConnectorData {
     pub policies: Vec<Policy>,
 }
 
+impl ConnectorData {
+    /// Basic constructor
+    pub fn new(
+        groups: Vec<Group>,
+        users: Vec<User>,
+        assets: Vec<Asset>,
+        tags: Vec<Tag>,
+        policies: Vec<Policy>,
+    ) -> Self {
+        Self {
+            groups,
+            users,
+            assets,
+            tags,
+            policies,
+        }
+    }
+}
+
 #[derive(Default, Debug, PartialEq, Eq)]
 /// Group data provided by connectors
 pub struct Group {
