@@ -182,7 +182,7 @@ fn to_node_graphql(val: &serde_json::Value) -> Result<Workbook> {
         owner_id: workbook_info.owner.luid,
         project_id: workbook_info.project_luid,
         updated_at: workbook_info.updated_at,
-        has_embedded_sources: workbook_info.embedded_datasources.len() > 0,
+        has_embedded_sources: !workbook_info.embedded_datasources.is_empty(),
         sources: Default::default(),
         permissions: Default::default(),
     })
@@ -215,7 +215,7 @@ pub(crate) async fn get_basic_workbooks(
         .fetch_json_response(None)
         .await?;
     let node = rest::get_json_from_path(&node, &vec!["data".to_owned(), "workbooks".to_owned()])?;
-    super::to_asset_map(&tc, node, &to_node_graphql)
+    super::to_asset_map(tc, node, &to_node_graphql)
 }
 
 #[cfg(test)]

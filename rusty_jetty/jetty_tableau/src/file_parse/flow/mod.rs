@@ -265,7 +265,7 @@ mod test {
 
     #[test]
     fn new_parse_flow_works() -> Result<()> {
-        let data = fs::read_to_string("test_data/flow2".to_owned()).unwrap();
+        let data = fs::read_to_string("test_data/flow2").unwrap();
 
         let mut coord = crate::coordinator::Coordinator::new_dummy();
 
@@ -367,7 +367,6 @@ mod test {
                 "snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/GOLD/ADULT_AGGREGATED_TABLE".to_owned(),
             ]
         .into_iter()
-        .map(|v| v.to_owned())
         .collect::<HashSet<String>>());
 
         assert_eq!(
@@ -395,7 +394,6 @@ mod test {
                 ),
             ]
             .into_iter()
-            .map(|v| v.to_owned())
             .collect::<HashSet<String>>()
         );
 
