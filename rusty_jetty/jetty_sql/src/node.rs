@@ -1,6 +1,6 @@
-use std::{option, vec};
+use std::vec;
 
-use sqlparser::ast::{self, ColumnDef};
+use sqlparser::ast;
 
 /// Return a Vec<Node> from the variable and node type
 macro_rules! value_child {
@@ -811,7 +811,6 @@ impl Traversable for ast::DiscardObject {
 }
 impl Traversable for ast::Expr {
     fn get_children(&self) -> Vec<Node> {
-        dbg!(&self);
         match self {
             ast::Expr::Identifier(n) => value_child!(n, Ident),
             ast::Expr::CompoundIdentifier(n) => vec_child!(n, Ident),
@@ -1425,84 +1424,127 @@ impl Traversable for ast::Statement {
                 option_child!(filter, ShowStatementFilter),
             ]
             .concat(),
-            ast::Statement::ShowCollation { filter } => todo!(),
-            ast::Statement::Use { db_name } => todo!(),
-            ast::Statement::StartTransaction { modes } => todo!(),
+            ast::Statement::ShowCollation { filter } => option_child!(filter, ShowStatementFilter),
+            ast::Statement::Use { db_name } => value_child!(db_name, Ident),
+            ast::Statement::StartTransaction { modes } => vec_child!(modes, TransactionMode),
             ast::Statement::SetTransaction {
-                modes,
-                snapshot,
-                session,
-            } => todo!(),
+                modes, snapshot, ..
+            } => [
+                vec_child!(modes, TransactionMode),
+                option_child!(snapshot, Value),
+            ]
+            .concat(),
             ast::Statement::Comment {
                 object_type,
                 object_name,
-                comment,
-            } => todo!(),
-            ast::Statement::Commit { chain } => todo!(),
-            ast::Statement::Rollback { chain } => todo!(),
-            ast::Statement::CreateSchema {
-                schema_name,
-                if_not_exists,
-            } => todo!(),
-            ast::Statement::CreateDatabase {
-                db_name,
-                if_not_exists,
-                location,
-                managed_location,
-            } => todo!(),
-            ast::Statement::CreateFunction {
-                temporary,
-                name,
-                class_name,
-                using,
-            } => todo!(),
-            ast::Statement::Assert { condition, message } => todo!(),
+                ..
+            } => [
+                value_child!(object_type, CommentObject),
+                value_child!(object_name, ObjectName),
+            ]
+            .concat(),
+            ast::Statement::Commit { .. } => vec![],
+            ast::Statement::Rollback { .. } => vec![],
+            ast::Statement::CreateSchema { schema_name, .. } => {
+                value_child!(schema_name, ObjectName)
+            }
+            ast::Statement::CreateDatabase { db_name, .. } => value_child!(db_name, ObjectName),
+            ast::Statement::CreateFunction { name, using, .. } => [
+                value_child!(name, ObjectName),
+                option_child!(using, CreateFunctionUsing),
+            ]
+            .concat(),
+            ast::Statement::Assert { condition, message } => {
+                [value_child!(condition, Expr), option_child!(message, Expr)].concat()
+            }
             ast::Statement::Grant {
                 privileges,
                 objects,
                 grantees,
-                with_grant_option,
+
                 granted_by,
-            } => todo!(),
+                ..
+            } => [
+                value_child!(privileges, Privileges),
+                value_child!(objects, GrantObjects),
+                vec_child!(grantees, Ident),
+                option_child!(granted_by, Ident),
+            ]
+            .concat(),
             ast::Statement::Revoke {
                 privileges,
                 objects,
                 grantees,
                 granted_by,
-                cascade,
-            } => todo!(),
-            ast::Statement::Deallocate { name, prepare } => todo!(),
-            ast::Statement::Execute { name, parameters } => todo!(),
+                ..
+            } => [
+                value_child!(privileges, Privileges),
+                value_child!(objects, GrantObjects),
+                vec_child!(grantees, Ident),
+                option_child!(granted_by, Ident),
+            ]
+            .concat(),
+            ast::Statement::Deallocate { name, .. } => value_child!(name, Ident),
+            ast::Statement::Execute { name, parameters } => {
+                [value_child!(name, Ident), vec_child!(parameters, Expr)].concat()
+            }
             ast::Statement::Prepare {
                 name,
                 data_types,
                 statement,
-            } => todo!(),
-            ast::Statement::Kill { modifier, id } => todo!(),
-            ast::Statement::ExplainTable {
-                describe_alias,
-                table_name,
-            } => todo!(),
-            ast::Statement::Explain {
-                describe_alias,
-                analyze,
-                verbose,
-                statement,
-            } => todo!(),
-            ast::Statement::Savepoint { name } => todo!(),
+            } => [
+                value_child!(name, Ident),
+                vec_child!(data_types, DataType),
+                box_child!(statement, Statement),
+            ]
+            .concat(),
+            ast::Statement::Kill { modifier, .. } => option_child!(modifier, KillType),
+            ast::Statement::ExplainTable { table_name, .. } => value_child!(table_name, ObjectName),
+            ast::Statement::Explain { statement, .. } => box_child!(statement, Statement),
+            ast::Statement::Savepoint { name } => value_child!(name, Ident),
             ast::Statement::Merge {
-                into,
                 table,
                 source,
                 on,
                 clauses,
-            } => todo!(),
+                ..
+            } => [
+                value_child!(table, TableFactor),
+                value_child!(source, TableFactor),
+                box_child!(on, Expr),
+                vec_child!(clauses, MergeClause),
+            ]
+            .concat(),
+            _ => vec![],
         }
     }
 }
 impl Traversable for ast::TableConstraint {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        match &self {
+            ast::TableConstraint::Unique { name, columns, .. } => {
+                [option_child!(name, Ident), vec_child!(columns, Ident)].concat()
+            }
+            ast::TableConstraint::ForeignKey {
+                name,
+                columns,
+                foreign_table,
+                referred_columns,
+                on_delete,
+                on_update,
+            } => [
+                option_child!(name, Ident),
+                vec_child!(columns, Ident),
+                value_child!(foreign_table, ObjectName),
+                vec_child!(referred_columns, Ident),
+                option_child!(on_delete, ReferentialAction),
+                option_child!(on_update, ReferentialAction),
+            ]
+            .concat(),
+            ast::TableConstraint::Check { name, expr } => {
+                [option_child!(name, Ident), box_child!(expr, Expr)].concat()
+            }
+        }
     }
 }
 impl Traversable for ast::TableFactor {
@@ -1576,58 +1618,57 @@ impl Traversable for ast::TableFactor {
 }
 impl Traversable for ast::TransactionAccessMode {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        vec![]
     }
 }
 impl Traversable for ast::TransactionIsolationLevel {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        vec![]
     }
 }
 impl Traversable for ast::TransactionMode {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        match &self {
+            ast::TransactionMode::AccessMode(n) => value_child!(n, TransactionAccessMode),
+            ast::TransactionMode::IsolationLevel(n) => value_child!(n, TransactionIsolationLevel),
+        }
     }
 }
 impl Traversable for ast::TrimWhereField {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        vec![]
     }
 }
 impl Traversable for ast::UnaryOperator {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        vec![]
     }
 }
 impl Traversable for ast::Value {
     fn get_children(&self) -> Vec<Node> {
         match self {
-            ast::Value::Number(_, _) => vec![],
-            ast::Value::SingleQuotedString(_) => todo!(),
-            ast::Value::EscapedStringLiteral(_) => todo!(),
-            ast::Value::NationalStringLiteral(_) => todo!(),
-            ast::Value::HexStringLiteral(_) => todo!(),
-            ast::Value::DoubleQuotedString(_) => todo!(),
-            ast::Value::Boolean(_) => todo!(),
             ast::Value::Interval {
                 value,
                 leading_field,
-                leading_precision,
                 last_field,
-                fractional_seconds_precision,
-            } => todo!(),
-            ast::Value::Null => todo!(),
-            ast::Value::Placeholder(_) => todo!(),
+                ..
+            } => [
+                box_child!(value, Expr),
+                option_child!(leading_field, DateTimeField),
+                option_child!(last_field, DateTimeField),
+            ]
+            .concat(),
+            _ => vec![],
         }
     }
 }
 impl Traversable for ast::WindowFrameBound {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        vec![]
     }
 }
 impl Traversable for ast::WindowFrameUnits {
     fn get_children(&self) -> Vec<Node> {
-        todo!()
+        vec![]
     }
 }
