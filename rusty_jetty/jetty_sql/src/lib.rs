@@ -10,6 +10,8 @@ use sqlparser::parser::Parser;
 
 use node::Node;
 
+type TableName = Vec<String>;
+
 pub enum DbType {
     Snowflake,
     Generic,
@@ -17,7 +19,7 @@ pub enum DbType {
 
 /// Parse a SQL query and extract db table names from the query. Returns a vector of
 /// fully-qualified path components, eg: ["db_name", "schema_name", "table_name"]
-pub fn get_tables(query: &str, db: DbType) -> Result<HashSet<Vec<String>>> {
+pub fn get_tables(query: &str, db: DbType) -> Result<HashSet<TableName>> {
     let dialect: Box<dyn Dialect> = match db {
         DbType::Snowflake => Box::new(dialect::SnowflakeDialect {}),
         DbType::Generic => Box::new(dialect::GenericDialect {}),
@@ -34,10 +36,15 @@ pub fn get_tables(query: &str, db: DbType) -> Result<HashSet<Vec<String>>> {
     let query_node = descendants.iter().find(|n| matches!(n, Node::Query(_)));
 
     if let Some(node::Node::Query(ast::Query { body, with, .. })) = query_node {
-        let mut cte_context: HashMap<Vec<String>, HashSet<Vec<String>>> = HashMap::new();
+        // Tables are identified by a vec of name parts e.g., ["schema_name", "table_name"]
+        // The cte context is a lookup map that is built up as CTEs are processed. When a table
+        // name is found in a query, it's checked against this context, and if the table matches
+        // a CTE, the source tables from the cte (rather than the CTE's name) are inserted into
+        // the final source list
+        let mut cte_context: HashMap<TableName, HashSet<TableName>> = HashMap::new();
         if let Some(with_node) = with {
             for cte in &with_node.cte_tables {
-                let table_name = vec![capitalize_identifiers(&cte.alias.name, &db)];
+                let table_name: TableName = vec![capitalize_identifiers(&cte.alias.name, &db)];
                 let sources = get_tables_from_node(&Node::Cte(cte.to_owned()), &cte_context, &db);
                 cte_context.insert(table_name, sources);
             }
@@ -54,9 +61,9 @@ pub fn get_tables(query: &str, db: DbType) -> Result<HashSet<Vec<String>>> {
 /// make sure to correctly identify source tables
 fn get_tables_from_node(
     node: &Node,
-    cte_context: &HashMap<Vec<String>, HashSet<Vec<String>>>,
+    cte_context: &HashMap<TableName, HashSet<TableName>>,
     db: &DbType,
-) -> HashSet<Vec<String>> {
+) -> HashSet<TableName> {
     let descendants = node.get_descendants();
     let object_names: Vec<ast::ObjectName> = descendants
         .iter()
@@ -69,12 +76,12 @@ fn get_tables_from_node(
             }
         })
         .collect();
-    let table_names: HashSet<Vec<String>> = object_names
+    let table_names: HashSet<TableName> = object_names
         .iter()
         .map(|o| {
             o.0.iter()
                 .map(|i| capitalize_identifiers(i, &db))
-                .collect::<Vec<String>>()
+                .collect::<TableName>()
         })
         .map(|n| match cte_context.get(&n) {
             Some(v) => v.to_owned(),
