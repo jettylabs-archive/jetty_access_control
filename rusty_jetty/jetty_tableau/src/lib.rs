@@ -8,7 +8,7 @@ mod rest;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use jetty_core::{
-    connectors::{nodes::ConnectorData, ConnectorClient},
+    connectors::{nodes as jetty_nodes, nodes::ConnectorData, ConnectorClient},
     jetty::{ConnectorConfig, CredentialsBlob},
     Connector,
 };
@@ -17,7 +17,7 @@ use serde::Deserialize;
 use serde_json::json;
 use std::collections::{HashMap, HashSet};
 
-type TableauConfig = HashMap<String, String>;
+pub type TableauConfig = HashMap<String, String>;
 
 /// Credentials for authenticating with Tableau.
 ///
@@ -34,9 +34,54 @@ struct TableauCredentials {
 
 #[allow(dead_code)]
 #[derive(Default)]
-struct TableauConnector {
+pub struct TableauConnector {
     config: TableauConfig,
     coordinator: coordinator::Coordinator,
+}
+
+impl TableauConnector {
+    fn env_to_jetty(
+        &self,
+    ) -> (
+        Vec<jetty_nodes::Group>,
+        Vec<jetty_nodes::User>,
+        Vec<jetty_nodes::Asset>,
+        Vec<jetty_nodes::Tag>,
+        Vec<jetty_nodes::Policy>,
+    ) {
+        let flows = self.object_to_jetty(&self.coordinator.env.flows);
+        let projects = self.object_to_jetty(&self.coordinator.env.projects);
+        let lenses = self.object_to_jetty(&self.coordinator.env.lenses);
+        let datasources = self.object_to_jetty(&self.coordinator.env.datasources);
+        let workbooks = self.object_to_jetty(&self.coordinator.env.workbooks);
+        let metrics = self.object_to_jetty(&self.coordinator.env.metrics);
+        let views = self.object_to_jetty(&self.coordinator.env.views);
+
+        let all_assets = flows
+            .into_iter()
+            .chain(projects.into_iter())
+            .chain(lenses.into_iter())
+            .chain(datasources.into_iter())
+            .chain(workbooks.into_iter())
+            .chain(metrics.into_iter())
+            .chain(views.into_iter())
+            .collect();
+
+        (
+            self.object_to_jetty(&self.coordinator.env.groups),
+            self.object_to_jetty(&self.coordinator.env.users),
+            all_assets,
+            vec![], // self.object_to_jetty(&self.coordinator.env.tags);
+            vec![], // self.object_to_jetty(&self.coordinator.env.policies);
+        )
+    }
+
+    fn object_to_jetty<O, J>(&self, obj_map: &HashMap<String, O>) -> Vec<J>
+    where
+        O: Into<J> + Clone,
+    {
+        obj_map.clone().into_values().map(|x| x.into()).collect()
+    }
 }
 
 #[async_trait]
@@ -91,7 +136,8 @@ impl Connector for TableauConnector {
     }
 
     async fn get_data(&mut self) -> ConnectorData {
-        todo!()
+        let (groups, users, assets, tags, policies) = self.env_to_jetty();
+        ConnectorData::new(groups, users, vec![], vec![], vec![])
     }
 }
 
