@@ -1,9 +1,14 @@
 use std::collections::{HashMap, HashSet};
 
 use super::{Permission, Permissionable};
-use crate::rest::{self, get_tableau_cual, FetchJson, TableauAssetType};
+use crate::{
+    coordinator::Environment,
+    nodes::SerializedPermission,
+    rest::{self, get_tableau_cual, FetchJson, TableauAssetType},
+};
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
+use async_trait::async_trait;
 use jetty_core::{
     connectors::{nodes as jetty_nodes, AssetType},
     cual::Cual,
@@ -83,12 +88,56 @@ pub(crate) async fn get_basic_projects(
     super::to_asset_map(tc, node, &to_node)
 }
 
+#[async_trait]
 impl Permissionable for Project {
     fn get_endpoint(&self) -> String {
         format!("projects/{}/permissions", self.id)
     }
     fn set_permissions(&mut self, permissions: Vec<super::Permission>) {
         self.permissions = permissions;
+    }
+
+    /// Fetches the permissions for an asset and returns them as a vector of Permissions
+    async fn update_permissions(
+        &mut self,
+        tc: &crate::TableauRestClient,
+        env: &Environment,
+    ) -> Result<()> {
+        let req = tc.build_request(self.get_endpoint(), None, reqwest::Method::GET)?;
+
+        let resp = req.fetch_json_response(None).await?;
+
+        let permissions_array = rest::get_json_from_path(
+            &resp,
+            &vec!["permissions".to_owned(), "granteeCapabilities".to_owned()],
+        )?;
+
+        // default project, no parent project, user permission
+        let final_permissions = if matches!(permissions_array, serde_json::Value::Array(_)) {
+            let permissions: Vec<SerializedPermission> = serde_json::from_value(permissions_array)?;
+            permissions
+                .iter()
+                .filter_map(|p| {
+                    if &self.name == "default"
+                        && matches!(p, SerializedPermission { user: Some(_), .. })
+                        && self.parent_project_id.is_none()
+                    {
+                        // We infer this to be the default project owner
+                        // permission, for which a user does not exist.
+                        // Therefore, we will skip this permission.
+                        println!("Skipping owner for default project.");
+                        None
+                    } else {
+                        Some(p.to_owned().to_permission(env))
+                    }
+                })
+                .collect()
+        } else {
+            bail!("unable to parse permissions")
+        };
+
+        self.set_permissions(final_permissions);
+        Ok(())
     }
 }
 
@@ -144,12 +193,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_fetching_project_permissions_works() -> Result<()> {
-        let tc = crate::connector_setup()
+        let mut tc = crate::connector_setup()
             .await
             .context("running tableau connector setup")?;
+        tc.coordinator.update_env().await?;
         let mut nodes = get_basic_projects(&tc.coordinator.rest_client).await?;
         for (_k, v) in &mut nodes {
-            v.update_permissions(&tc.coordinator.rest_client).await;
+            v.update_permissions(&tc.coordinator.rest_client, &tc.coordinator.env)
+                .await;
         }
         for (_k, v) in nodes {
             println!("{:#?}", v);

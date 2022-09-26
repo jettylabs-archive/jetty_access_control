@@ -2,6 +2,7 @@
 //! represent Tableau's structure as well as the functionality to turn that into
 //! Jetty's node structure.
 
+pub(crate) mod asset_to_policy;
 pub(crate) mod datasource;
 pub(crate) mod flow;
 pub(crate) mod group;
@@ -24,9 +25,15 @@ pub(crate) use user::User;
 pub(crate) use view::View;
 pub(crate) use workbook::Workbook;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
-use crate::rest::{self, FetchJson};
+use crate::{
+    coordinator::Environment,
+    nodes as tableau_nodes,
+    rest::{self, FetchJson},
+};
+
+use jetty_core::connectors::nodes as jetty_nodes;
 
 use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
@@ -34,13 +41,17 @@ use serde::{Deserialize, Serialize};
 /// This trait is implemented by permissionable Tableau asset nodes and makes it simpler to
 /// fetch and parse permissions
 #[async_trait]
-pub(crate) trait Permissionable {
+pub(crate) trait Permissionable: core::fmt::Debug {
     fn get_endpoint(&self) -> String;
 
     fn set_permissions(&mut self, permissions: Vec<Permission>);
 
     /// Fetches the permissions for an asset and returns them as a vector of Permissions
-    async fn update_permissions(&mut self, tc: &crate::TableauRestClient) -> Result<()> {
+    async fn update_permissions(
+        &mut self,
+        tc: &crate::TableauRestClient,
+        env: &Environment,
+    ) -> Result<()> {
         let req = tc.build_request(self.get_endpoint(), None, reqwest::Method::GET)?;
 
         let resp = req.fetch_json_response(None).await?;
@@ -54,7 +65,7 @@ pub(crate) trait Permissionable {
             let permissions: Vec<SerializedPermission> = serde_json::from_value(permissions_array)?;
             permissions
                 .iter()
-                .map(move |p| p.to_owned().to_permission())
+                .map(move |p| p.to_owned().to_permission(env))
                 .collect()
         } else {
             bail!("unable to parse permissions")
@@ -106,11 +117,34 @@ pub(crate) struct Permission {
     capabilities: HashMap<String, String>,
 }
 
+impl From<Permission> for jetty_nodes::Policy {
+    fn from(val: Permission) -> Self {
+        let mut granted_to_groups = HashSet::new();
+        let mut granted_to_users = HashSet::new();
+
+        match val.grantee {
+            Grantee::Group(tableau_nodes::Group { id, .. }) => granted_to_groups.insert(id),
+            Grantee::User(tableau_nodes::User { id, .. }) => granted_to_users.insert(id),
+        };
+
+        jetty_nodes::Policy::new(
+            "".to_owned(),
+            val.capabilities.into_values().collect(),
+            HashSet::new(),
+            HashSet::new(),
+            granted_to_groups,
+            granted_to_users,
+            false,
+            false,
+        )
+    }
+}
+
 /// Grantee of a Tableau permission
 #[derive(Deserialize, Debug, Clone, Serialize)]
 pub(crate) enum Grantee {
-    Group { id: String },
-    User { id: String },
+    Group(tableau_nodes::Group),
+    User(tableau_nodes::User),
 }
 
 /// Deserialization helper for Tableau permissions
@@ -137,18 +171,31 @@ struct SerializedPermission {
 impl SerializedPermission {
     /// Converts a Tableau permission response to a Permission struct to use
     /// when representing the Tableau environment
-    pub(crate) fn to_permission(self) -> Permission {
-        let mut grantee_value = Grantee::Group { id: "".to_owned() };
-        if let Some(IdField { id }) = self.group {
-            grantee_value = Grantee::Group { id }
-        } else {
-            grantee_value = Grantee::User {
-                id: self.user.unwrap().id,
-            }
+    pub(crate) fn to_permission(self, env: &Environment) -> Permission {
+        let grantee = match self {
+            Self {
+                group: Some(IdField { id }),
+                ..
+            } => Grantee::Group(
+                env.groups
+                    .get(&id)
+                    .expect(&format!("Group {} not yet in environment", id))
+                    .clone(),
+            ),
+            Self {
+                user: Some(IdField { id }),
+                ..
+            } => Grantee::User(
+                env.users
+                    .get(&id)
+                    .expect(&format!("User {} not yet in environment", id))
+                    .clone(),
+            ),
+            _ => panic!("no user or group for permission {:#?}", self),
         };
 
         Permission {
-            grantee: grantee_value,
+            grantee,
             capabilities: self
                 .capabilities
                 .capability

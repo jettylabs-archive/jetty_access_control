@@ -20,7 +20,7 @@ use super::Permissionable;
 /// Representation of Tableau Workbook
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub(crate) struct Workbook {
-    cual: Cual,
+    pub(crate) cual: Cual,
     pub id: String,
     /// Unqualified name of the workbook
     pub name: String,
@@ -259,7 +259,8 @@ mod tests {
             .context("running tableau connector setup")?;
         let mut workbooks = get_basic_workbooks(&tc.coordinator.rest_client).await?;
         for (_k, v) in &mut workbooks {
-            v.update_permissions(&tc.coordinator.rest_client).await;
+            v.update_permissions(&tc.coordinator.rest_client, &tc.coordinator.env)
+                .await;
         }
         for (_k, v) in workbooks {
             println!("{:#?}", v);

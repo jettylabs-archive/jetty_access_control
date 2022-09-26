@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 /// Representation of a Tableau View
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub(crate) struct View {
-    cual: Cual,
+    pub(crate) cual: Cual,
     pub id: String,
     pub name: String,
     pub workbook_id: String,
@@ -144,7 +144,8 @@ mod tests {
             .context("running tableau connector setup")?;
         let mut views = get_basic_views(&tc.coordinator.rest_client).await?;
         for (_k, v) in &mut views {
-            v.update_permissions(&tc.coordinator.rest_client).await;
+            v.update_permissions(&tc.coordinator.rest_client, &tc.coordinator.env)
+                .await;
         }
         for (_k, v) in views {
             println!("{:#?}", v);

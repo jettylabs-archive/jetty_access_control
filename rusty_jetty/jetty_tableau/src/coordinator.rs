@@ -23,7 +23,7 @@ const SERIALIZED_ENV_PATH: &str = "tableau_env.json";
 
 /// The state of a tableau site. We use this to persist state and
 /// enable incremental updates.
-#[derive(Default, Deserialize, Serialize, Debug)]
+#[derive(Default, Deserialize, Serialize, Debug, Clone)]
 pub(crate) struct Environment {
     pub users: HashMap<String, nodes::User>,
     pub groups: HashMap<String, nodes::Group>,
@@ -171,15 +171,17 @@ impl Coordinator {
             .collect::<Vec<_>>()
             .await;
 
+        // Clone the env so we don't try to both immutably and mutably borrow at the same time.
+        let new_env_clone = new_env.clone();
         // Now update permissions
         let permission_futures = vec![
-            self.get_permission_futures_from_map(&mut new_env.datasources),
-            self.get_permission_futures_from_map(&mut new_env.flows),
-            self.get_permission_futures_from_map(&mut new_env.lenses),
-            self.get_permission_futures_from_map(&mut new_env.metrics),
-            self.get_permission_futures_from_map(&mut new_env.projects),
-            self.get_permission_futures_from_map(&mut new_env.views),
-            self.get_permission_futures_from_map(&mut new_env.workbooks),
+            self.get_permission_futures_from_map(&mut new_env.datasources, &new_env_clone),
+            self.get_permission_futures_from_map(&mut new_env.flows, &new_env_clone),
+            self.get_permission_futures_from_map(&mut new_env.lenses, &new_env_clone),
+            self.get_permission_futures_from_map(&mut new_env.metrics, &new_env_clone),
+            self.get_permission_futures_from_map(&mut new_env.projects, &new_env_clone),
+            self.get_permission_futures_from_map(&mut new_env.views, &new_env_clone),
+            self.get_permission_futures_from_map(&mut new_env.workbooks, &new_env_clone),
         ];
 
         let permissions_fetches = futures::stream::iter(permission_futures.into_iter().flatten())
@@ -211,7 +213,6 @@ impl Coordinator {
         groups: &mut HashMap<String, nodes::Group>,
         users: &HashMap<String, nodes::User>,
     ) -> Vec<Result<(), anyhow::Error>> {
-        
         futures::stream::iter(
             groups
                 .iter_mut()
@@ -248,6 +249,7 @@ impl Coordinator {
     fn get_permission_futures_from_map<'a, T: Permissionable + Send>(
         &'a self,
         new_assets: &'a mut HashMap<String, T>,
+        env: &'a Environment,
     ) -> Vec<
         Pin<
             Box<
@@ -259,7 +261,7 @@ impl Coordinator {
     > {
         let fetches = new_assets
             .values_mut()
-            .map(|v| v.update_permissions(&self.rest_client))
+            .map(|v| v.update_permissions(&self.rest_client, env))
             .collect::<Vec<_>>();
         fetches
     }

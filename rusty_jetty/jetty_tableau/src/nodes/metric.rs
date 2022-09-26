@@ -153,7 +153,8 @@ mod tests {
             .context("running tableau connector setup")?;
         let mut nodes = get_basic_metrics(&tc.coordinator.rest_client).await?;
         for (_k, v) in &mut nodes {
-            v.update_permissions(&tc.coordinator.rest_client).await;
+            v.update_permissions(&tc.coordinator.rest_client, &tc.coordinator.env)
+                .await;
         }
         for (_k, v) in nodes {
             println!("{:#?}", v);
