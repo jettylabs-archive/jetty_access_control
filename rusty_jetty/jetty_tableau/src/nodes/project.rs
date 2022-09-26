@@ -118,17 +118,24 @@ impl Permissionable for Project {
             permissions
                 .iter()
                 .filter_map(|p| {
-                    if &self.name == "default"
+                    let permission_result = p.to_owned().to_permission(env);
+                    if permission_result.is_err()
+                        && &self.name == "default"
                         && matches!(p, SerializedPermission { user: Some(_), .. })
                         && self.parent_project_id.is_none()
                     {
                         // We infer this to be the default project owner
-                        // permission, for which a user does not exist.
-                        // Therefore, we will skip this permission.
+                        // permission (name == "default", no parent project
+                        // ID, user owner), for which a user does not exist
+                        // (permission_result is an err type). Therefore, we
+                        // will skip this permission.
                         println!("Skipping owner for default project.");
                         None
                     } else {
-                        Some(p.to_owned().to_permission(env))
+                        Some(
+                            permission_result
+                                .expect("Couldn't understand Tableau permission response."),
+                        )
                     }
                 })
                 .collect()
