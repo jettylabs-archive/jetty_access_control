@@ -225,7 +225,8 @@ mod tests {
             .context("running tableau connector setup")?;
         let mut nodes = get_basic_datasources(&tc.coordinator.rest_client).await?;
         for (_, v) in &mut nodes {
-            v.update_permissions(&tc.coordinator.rest_client).await;
+            v.update_permissions(&tc.coordinator.rest_client, &tc.coordinator.env)
+                .await;
         }
         for (_, v) in nodes {
             println!("{:#?}", v);

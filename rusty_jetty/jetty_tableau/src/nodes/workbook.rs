@@ -259,7 +259,8 @@ mod tests {
             .context("running tableau connector setup")?;
         let mut workbooks = get_basic_workbooks(&tc.coordinator.rest_client).await?;
         for (_k, v) in &mut workbooks {
-            v.update_permissions(&tc.coordinator.rest_client).await;
+            v.update_permissions(&tc.coordinator.rest_client, &tc.coordinator.env)
+                .await;
         }
         for (_k, v) in workbooks {
             println!("{:#?}", v);
