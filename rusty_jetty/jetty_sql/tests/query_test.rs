@@ -2,6 +2,7 @@ use anyhow::Result;
 
 use jetty_sql;
 
+// Tests that queries from the dataset are valid. Does not currently check table output.
 #[test]
 fn try_all_queries() -> Result<()> {
     let mut parse_failures = 0;
