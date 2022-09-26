@@ -173,7 +173,7 @@ impl Coordinator {
 
         // Clone the env so we don't try to both immutably and mutably borrow at the same time.
         let new_env_clone = new_env.clone();
-        // Now update permissions
+        // Now update permissions. NOTE: This must happen AFTER getting groups and users.
         let permission_futures = vec![
             self.get_permission_futures_from_map(&mut new_env.datasources, &new_env_clone),
             self.get_permission_futures_from_map(&mut new_env.flows, &new_env_clone),

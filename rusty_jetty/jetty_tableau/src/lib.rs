@@ -41,6 +41,7 @@ pub struct TableauConnector {
 }
 
 impl TableauConnector {
+    /// Get the environment, but transformed into Jetty objects.
     fn env_to_jetty_all(
         &self,
     ) -> (

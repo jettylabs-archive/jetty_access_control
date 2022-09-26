@@ -65,7 +65,11 @@ pub(crate) trait Permissionable: core::fmt::Debug {
             let permissions: Vec<SerializedPermission> = serde_json::from_value(permissions_array)?;
             permissions
                 .iter()
-                .map(move |p| p.to_owned().to_permission(env))
+                .map(move |p| {
+                    p.to_owned()
+                        .to_permission(env)
+                        .expect("Couldn't understand Tableau permission response.")
+                })
                 .collect()
         } else {
             bail!("unable to parse permissions")
@@ -117,7 +121,10 @@ pub(crate) struct Permission {
     capabilities: HashMap<String, String>,
 }
 
+/// Permissions and Jetty policies map 1:1.
 impl From<Permission> for jetty_nodes::Policy {
+    /// In order to get a Jetty policy from a permission, we need to grab
+    /// the user or group it's been granted to.
     fn from(val: Permission) -> Self {
         let mut granted_to_groups = HashSet::new();
         let mut granted_to_users = HashSet::new();
@@ -128,8 +135,11 @@ impl From<Permission> for jetty_nodes::Policy {
         };
 
         jetty_nodes::Policy::new(
+            // Leaving names empty for now for policies since they don't have
+            // a lot of significance for policies here anyway.
             "".to_owned(),
             val.capabilities.into_values().collect(),
+            // Handled by the caller.
             HashSet::new(),
             HashSet::new(),
             granted_to_groups,
@@ -170,8 +180,10 @@ struct SerializedPermission {
 
 impl SerializedPermission {
     /// Converts a Tableau permission response to a Permission struct to use
-    /// when representing the Tableau environment
-    pub(crate) fn to_permission(self, env: &Environment) -> Permission {
+    /// when representing the Tableau environment.
+    pub(crate) fn to_permission(self, env: &Environment) -> Result<Permission> {
+        // Get the grantee object from the environment. We assume the env
+        // should already have it available.
         let grantee = match self {
             Self {
                 group: Some(IdField { id }),
@@ -191,10 +203,10 @@ impl SerializedPermission {
                     .expect(&format!("User {} not yet in environment", id))
                     .clone(),
             ),
-            _ => panic!("no user or group for permission {:#?}", self),
+            _ => bail!("no user or group for permission {:#?}", self),
         };
 
-        Permission {
+        Ok(Permission {
             grantee,
             capabilities: self
                 .capabilities
@@ -202,7 +214,7 @@ impl SerializedPermission {
                 .iter()
                 .map(|Capability { name, mode }| (name.to_owned(), mode.to_owned()))
                 .collect(),
-        }
+        })
     }
 }
 
