@@ -25,8 +25,7 @@ pub fn get_tables(query: &str, db: DbType) -> Result<HashSet<TableName>> {
         DbType::Generic => Box::new(dialect::GenericDialect {}),
     };
 
-    let root =
-        node::Node::Statement(Parser::parse_sql(dialect.deref(), query).unwrap()[0].to_owned());
+    let root = node::Node::Statement(Parser::parse_sql(dialect.deref(), query)?[0].to_owned());
     if !matches!(&root, node::Node::Statement(ast::Statement::Query(_))) {
         bail!("not a query - skipping")
     }
