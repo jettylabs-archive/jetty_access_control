@@ -20,7 +20,7 @@ use super::Permissionable;
 /// Representation of Tableau Workbook
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub(crate) struct Workbook {
-    cual: Cual,
+    pub(crate) cual: Cual,
     pub id: String,
     /// Unqualified name of the workbook
     pub name: String,

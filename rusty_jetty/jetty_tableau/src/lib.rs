@@ -12,6 +12,7 @@ use jetty_core::{
     jetty::{ConnectorConfig, CredentialsBlob},
     Connector,
 };
+use nodes::asset_to_policy::env_to_jetty_policies;
 use rest::TableauRestClient;
 use serde::Deserialize;
 use serde_json::json;
@@ -40,7 +41,7 @@ pub struct TableauConnector {
 }
 
 impl TableauConnector {
-    fn env_to_jetty(
+    fn env_to_jetty_all(
         &self,
     ) -> (
         Vec<jetty_nodes::Group>,
@@ -49,7 +50,8 @@ impl TableauConnector {
         Vec<jetty_nodes::Tag>,
         Vec<jetty_nodes::Policy>,
     ) {
-        let flows = self.object_to_jetty(&self.coordinator.env.flows);
+        // Transform assets
+        let flows: Vec<jetty_nodes::Asset> = self.object_to_jetty(&self.coordinator.env.flows);
         let projects = self.object_to_jetty(&self.coordinator.env.projects);
         let lenses = self.object_to_jetty(&self.coordinator.env.lenses);
         let datasources = self.object_to_jetty(&self.coordinator.env.datasources);
@@ -67,12 +69,37 @@ impl TableauConnector {
             .chain(views.into_iter())
             .collect();
 
+        // Transform policies
+        let flow_policies: Vec<jetty_nodes::Policy> =
+            env_to_jetty_policies(&mut self.coordinator.env.flows.clone().into_values());
+        let project_policies: Vec<jetty_nodes::Policy> =
+            env_to_jetty_policies(&mut self.coordinator.env.projects.clone().into_values());
+        let lens_policies: Vec<jetty_nodes::Policy> =
+            env_to_jetty_policies(&mut self.coordinator.env.lenses.clone().into_values());
+        let datasource_policies: Vec<jetty_nodes::Policy> =
+            env_to_jetty_policies(&mut self.coordinator.env.datasources.clone().into_values());
+        let workbook_policies: Vec<jetty_nodes::Policy> =
+            env_to_jetty_policies(&mut self.coordinator.env.workbooks.clone().into_values());
+        let metric_policies: Vec<jetty_nodes::Policy> =
+            env_to_jetty_policies(&mut self.coordinator.env.metrics.clone().into_values());
+        let view_policies: Vec<jetty_nodes::Policy> =
+            env_to_jetty_policies(&mut self.coordinator.env.views.clone().into_values());
+        let all_policies = flow_policies
+            .into_iter()
+            .chain(project_policies.into_iter())
+            .chain(lens_policies.into_iter())
+            .chain(datasource_policies.into_iter())
+            .chain(workbook_policies.into_iter())
+            .chain(metric_policies.into_iter())
+            .chain(view_policies.into_iter())
+            .collect();
+
         (
             self.object_to_jetty(&self.coordinator.env.groups),
             self.object_to_jetty(&self.coordinator.env.users),
             all_assets,
             vec![], // self.object_to_jetty(&self.coordinator.env.tags);
-            vec![], // self.object_to_jetty(&self.coordinator.env.policies);
+            all_policies,
         )
     }
 
@@ -136,7 +163,7 @@ impl Connector for TableauConnector {
     }
 
     async fn get_data(&mut self) -> ConnectorData {
-        let (groups, users, assets, tags, policies) = self.env_to_jetty();
+        let (groups, users, assets, tags, policies) = self.env_to_jetty_all();
         ConnectorData::new(groups, users, vec![], vec![], vec![])
     }
 }

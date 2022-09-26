@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 /// Representation of a Tableau View
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub(crate) struct View {
-    cual: Cual,
+    pub(crate) cual: Cual,
     pub id: String,
     pub name: String,
     pub workbook_id: String,

@@ -2,6 +2,7 @@
 //! represent Tableau's structure as well as the functionality to turn that into
 //! Jetty's node structure.
 
+pub(crate) mod asset_to_policy;
 pub(crate) mod datasource;
 pub(crate) mod flow;
 pub(crate) mod group;
@@ -24,13 +25,15 @@ pub(crate) use user::User;
 pub(crate) use view::View;
 pub(crate) use workbook::Workbook;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::{
     coordinator::Environment,
     nodes as tableau_nodes,
     rest::{self, FetchJson},
 };
+
+use jetty_core::connectors::nodes as jetty_nodes;
 
 use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
@@ -112,6 +115,29 @@ struct IdField {
 pub(crate) struct Permission {
     grantee: Grantee,
     capabilities: HashMap<String, String>,
+}
+
+impl From<Permission> for jetty_nodes::Policy {
+    fn from(val: Permission) -> Self {
+        let mut granted_to_groups = HashSet::new();
+        let mut granted_to_users = HashSet::new();
+
+        match val.grantee {
+            Grantee::Group(tableau_nodes::Group { id, .. }) => granted_to_groups.insert(id),
+            Grantee::User(tableau_nodes::User { id, .. }) => granted_to_users.insert(id),
+        };
+
+        jetty_nodes::Policy::new(
+            "".to_owned(),
+            val.capabilities.into_values().collect(),
+            HashSet::new(),
+            HashSet::new(),
+            granted_to_groups,
+            granted_to_users,
+            false,
+            false,
+        )
+    }
 }
 
 /// Grantee of a Tableau permission
