@@ -91,7 +91,7 @@ impl DbtNode {
                     .collect();
                 JettyAsset::new(
                     (m_node as &dyn NamePartable).cual(),
-                    m_node.name.to_owned(),
+                    "".to_owned(),
                     m_node.materialized_as,
                     m_node.get_metadata(),
                     // No policies in dbt.
@@ -119,7 +119,7 @@ impl DbtNode {
                     .collect();
                 JettyAsset::new(
                     (s_node as &dyn NamePartable).cual(),
-                    s_node.name.to_owned(),
+                    "".to_owned(),
                     AssetType::DBTable,
                     HashMap::new(),
                     // No policies in dbt.
