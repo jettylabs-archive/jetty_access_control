@@ -7,6 +7,16 @@ use std::collections::{HashMap, HashSet};
 
 use super::DbtProjectManifest;
 
+#[derive(Deserialize, Debug, Default, Clone, PartialEq, Eq, Hash)]
+pub(crate) struct QuotingConfig {
+    #[serde(default)]
+    pub(crate) database: bool,
+    #[serde(default)]
+    pub(crate) schema: bool,
+    #[serde(default)]
+    pub(crate) identifier: bool,
+}
+
 /// A node within Dbt, representing either a model
 /// or a source.
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -21,6 +31,7 @@ pub(crate) struct DbtSourceNode {
     pub(crate) name: String,
     pub(crate) database: String,
     pub(crate) schema: String,
+    pub(crate) quoting: QuotingConfig,
 }
 
 /// A node within Dbt that represents a model.
@@ -31,6 +42,7 @@ pub(crate) struct DbtModelNode {
     pub(crate) database: String,
     pub(crate) schema: String,
     pub(crate) materialized_as: AssetType,
+    pub(crate) quoting: QuotingConfig,
 }
 
 impl DbtNode {

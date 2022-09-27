@@ -13,6 +13,8 @@ use std::fs::read_to_string;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
+use crate::manifest::node::QuotingConfig;
+
 pub(crate) type DbtNodeName = String;
 
 /// Trait to make mocking behavior easier.
@@ -65,6 +67,8 @@ impl DbtProjectManifest for DbtManifest {
         #[derive(Deserialize)]
         struct Config {
             enabled: bool,
+            #[serde(default)]
+            quoting: QuotingConfig,
         }
 
         #[derive(Deserialize)]
@@ -80,6 +84,8 @@ impl DbtProjectManifest for DbtManifest {
             database: String,
             schema: String,
             unique_id: String,
+            #[serde(default)]
+            quoting: QuotingConfig,
         }
 
         #[derive(Deserialize)]
@@ -113,6 +119,7 @@ impl DbtProjectManifest for DbtManifest {
                         database: node.database.to_owned().unwrap_or_default(),
                         schema: node.schema.to_owned().unwrap_or_default(),
                         materialized_as: ty,
+                        quoting: node.config.quoting,
                     }),
                 );
             } else {
@@ -128,6 +135,7 @@ impl DbtProjectManifest for DbtManifest {
                     name: "".to_owned(),
                     database: source.database,
                     schema: source.schema,
+                    quoting: source.quoting,
                 }),
             );
         }
