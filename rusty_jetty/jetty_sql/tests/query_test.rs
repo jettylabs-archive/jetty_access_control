@@ -1,6 +1,6 @@
 use anyhow::Result;
 
-use jetty_sql;
+
 
 // Tests that queries from the dataset are valid. Does not currently check table output.
 #[test]

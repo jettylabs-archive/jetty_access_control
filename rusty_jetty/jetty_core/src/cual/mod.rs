@@ -29,7 +29,7 @@ pub struct Cual {
 impl Cual {
     /// Create a new wrapper for the given URI.
     pub fn new(uri: String) -> Self {
-        Self { uri: uri }
+        Self { uri }
     }
 
     /// Accessor for the underlying URI. This function makes it so we can

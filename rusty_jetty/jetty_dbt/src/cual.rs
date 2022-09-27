@@ -67,7 +67,7 @@ mod test {
 
     #[test]
     fn no_quoting_config_yields_no_quotes() {
-        let mut source_node = DbtSourceNode {
+        let source_node = DbtSourceNode {
             name: r#"db.schema.model"#.to_owned(),
         };
 
@@ -81,7 +81,7 @@ mod test {
 
     #[test]
     fn db_quoting_config_results_in_quotes() {
-        let mut source_node = DbtSourceNode {
+        let source_node = DbtSourceNode {
             name: r#"\"db\".schema.model"#.to_owned(),
         };
         // Just db
@@ -95,7 +95,7 @@ mod test {
 
     #[test]
     fn schema_quoting_config_results_in_quotes() {
-        let mut source_node = DbtSourceNode {
+        let source_node = DbtSourceNode {
             name: r#"db.\"schema\".model"#.to_owned(),
         };
         // Just schema
@@ -108,7 +108,7 @@ mod test {
 
     #[test]
     fn identifier_quoting_config_results_in_quotes() {
-        let mut source_node = DbtSourceNode {
+        let source_node = DbtSourceNode {
             name: r#"db.schema.\"model\""#.to_owned(),
         };
         // Just identifier
@@ -121,7 +121,7 @@ mod test {
 
     #[test]
     fn db_schema_quoting_config_results_in_quotes() {
-        let mut source_node = DbtSourceNode {
+        let source_node = DbtSourceNode {
             name: r#"\"db\".\"schema\".model"#.to_owned(),
         };
         // db and schema
@@ -134,7 +134,7 @@ mod test {
 
     #[test]
     fn db_schema_identifier_quoting_config_results_in_quotes() {
-        let mut source_node = DbtSourceNode {
+        let source_node = DbtSourceNode {
             name: r#"\"db\".\"schema\".\"model\""#.to_owned(),
         };
         // db and schema and identifier
@@ -147,7 +147,7 @@ mod test {
 
     #[test]
     fn db_identifier_quoting_config_results_in_quotes() {
-        let mut source_node = DbtSourceNode {
+        let source_node = DbtSourceNode {
             name: r#"\"db\".schema.\"model\""#.to_owned(),
         };
         // db and schema and identifier
@@ -160,7 +160,7 @@ mod test {
 
     #[test]
     fn schema_identifier_quoting_config_results_in_quotes() {
-        let mut source_node = DbtSourceNode {
+        let source_node = DbtSourceNode {
             name: r#"db.\"schema\".\"model\""#.to_owned(),
         };
         // db and schema and identifier
@@ -175,7 +175,7 @@ mod test {
     #[test]
     #[should_panic]
     fn periods_in_quotes_panics() {
-        let mut source_node = DbtSourceNode {
+        let source_node = DbtSourceNode {
             name: r#"db.\"schema.schema2\".\"model\""#.to_owned(),
         };
         // db and schema and identifier
