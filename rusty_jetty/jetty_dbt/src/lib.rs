@@ -175,6 +175,7 @@ mod tests {
                 "".to_owned(),
                 DbtNode::ModelNode(DbtModelNode {
                     materialized_as: AssetType::DBView,
+                    name: "db.schema.model".to_owned(),
                     ..Default::default()
                 }),
             )]))
@@ -187,8 +188,8 @@ mod tests {
             data,
             ConnectorData {
                 assets: vec![Asset {
-                    cual: Cual::new("snowflake:////".to_owned()),
-                    name: "".to_owned(),
+                    cual: Cual::new("snowflake://DB/SCHEMA/MODEL".to_owned()),
+                    name: "db.schema.model".to_owned(),
                     asset_type: AssetType::DBView,
                     metadata: HashMap::from([("enabled".to_owned(), "false".to_owned())]),
                     governed_by: HashSet::new(),
@@ -239,8 +240,6 @@ mod tests {
                     "test2".to_owned(),
                     DbtNode::SourceNode(DbtSourceNode {
                         name: "test2".to_owned(),
-                        database: "test2db".to_owned(),
-                        schema: "test2schema".to_owned(),
                         ..Default::default()
                     }),
                 ),

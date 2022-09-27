@@ -1,87 +1,144 @@
-use jetty_core::{
-    connectors::AssetType,
-    cual::{Cual, Cualable},
-};
+// Convenience import
+pub(crate) use jetty_core::cual::{Cual, Cualable};
 
-use crate::manifest::node::{DbtModelNode, DbtNode, DbtSourceNode};
+use crate::manifest::node::NamePartable;
 
+/// Create a CUAL for a set of identifiers.
+#[macro_export]
 macro_rules! cual {
     ($db:expr) => {
-        Cual::new(format!("{}://{}", "snowflake", $db))
+        Cual::new(format!("{}://{}", "snowflake", urlencoding::encode(&$db)))
     };
     ($db:expr, $schema:expr) => {
-        Cual::new(format!("{}://{}/{}", "snowflake", $db, $schema))
+        Cual::new(format!(
+            "{}://{}/{}",
+            "snowflake",
+            urlencoding::encode(&$db),
+            urlencoding::encode(&$schema)
+        ))
     };
     ($db:expr, $schema:expr, $table:expr) => {
-        Cual::new(format!("{}://{}/{}/{}", "snowflake", $db, $schema, $table))
+        Cual::new(format!(
+            "{}://{}/{}/{}",
+            "snowflake",
+            urlencoding::encode(&$db),
+            urlencoding::encode(&$schema),
+            urlencoding::encode(&$table)
+        ))
     };
 }
 
-impl Cualable for DbtNode {
-    fn cual(&self) -> Cual {
-        match self {
-            DbtNode::ModelNode(DbtModelNode {
-                name,
-                enabled: _,
-                database,
-                schema,
-                materialized_as: _,
-            }) => cual!(database.to_owned(), schema.to_owned(), name.to_owned()),
-            DbtNode::SourceNode(DbtSourceNode {
-                name,
-                database,
-                schema,
-            }) => cual!(database.to_owned(), schema.to_owned(), name.to_owned()),
-        }
-    }
-}
+pub(crate) use cual;
 
-impl Cualable for DbtModelNode {
+impl Cualable for dyn NamePartable {
     fn cual(&self) -> Cual {
-        // If the model is materialized as a warehouse object, it gets a
-        // warehouse-specific CUAL.
-        // Otherwise, it gets a dbt CUAL.
-        match self.materialized_as {
-            AssetType::DBTable | AssetType::DBView => cual!(
-                self.database.to_owned(),
-                self.schema.to_owned(),
-                self.name.to_owned()
-            ),
-            // Every model that gets passed in here should be materialized
-            // as a table or view.
-            _ => panic!(
-                "Failed to get CUAL for dbt node. Wrong materialization: {:?}",
-                self.materialized_as
-            ),
-        }
-    }
-}
-
-impl Cualable for DbtSourceNode {
-    fn cual(&self) -> Cual {
-        // Sources come from the db. Create the CUAL to correspond to
-        // the origin datastore.
-        cual!(self.database, self.schema, self.name)
+        self.dbt_cual()
     }
 }
 
 #[cfg(test)]
 mod test {
-    use crate::manifest::node::DbtModelNode;
+    use jetty_core::connectors::AssetType;
+
+    use crate::manifest::node::{DbtModelNode, DbtSourceNode};
 
     use super::*;
 
     #[test]
+    fn macro_works() {
+        let c = cual!("my_db").uri();
+        assert_eq!(c, "snowflake://my_db")
+    }
+
+    #[test]
     fn proper_model_node_yields_cual() {
-        let result_cual = DbtModelNode {
-            name: "model".to_owned(),
-            database: "db".to_owned(),
-            schema: "schema".to_owned(),
+        let result_cual = (&DbtModelNode {
+            name: "db.schema.model".to_owned(),
             materialized_as: AssetType::DBTable,
             ..Default::default()
-        }
-        .cual();
+        } as &dyn NamePartable)
+            .cual();
 
+        assert_eq!(
+            result_cual,
+            Cual::new("snowflake://DB/SCHEMA/MODEL".to_owned())
+        );
+    }
+
+    #[test]
+    fn no_quoting_config_yields_no_quotes() {
+        let mut source_node = DbtSourceNode {
+            name: r#"db.schema.model"#.to_owned(),
+        };
+
+        // No quoting
+        let result_cual = (&source_node as &dyn NamePartable).cual();
+        assert_eq!(
+            result_cual,
+            Cual::new("snowflake://DB/SCHEMA/MODEL".to_owned())
+        );
+    }
+
+    #[test]
+    fn db_quoting_config_results_in_quotes() {
+        let mut source_node = DbtSourceNode {
+            name: r#"\"db\".schema.model"#.to_owned(),
+        };
+        // Just db
+        let result_cual = (&source_node as &dyn NamePartable).cual();
+        dbg!(&result_cual);
+        assert_eq!(
+            result_cual,
+            Cual::new("snowflake://db/SCHEMA/MODEL".to_owned())
+        );
+    }
+
+    #[test]
+    fn schema_quoting_config_results_in_quotes() {
+        let mut source_node = DbtSourceNode {
+            name: r#"db.\"schema\".model"#.to_owned(),
+        };
+        // Just schema
+        let result_cual = (&source_node as &dyn NamePartable).cual();
+        assert_eq!(
+            result_cual,
+            Cual::new("snowflake://DB/schema/MODEL".to_owned())
+        );
+    }
+
+    #[test]
+    fn identifier_quoting_config_results_in_quotes() {
+        let mut source_node = DbtSourceNode {
+            name: r#"db.schema.\"model\""#.to_owned(),
+        };
+        // Just identifier
+        let result_cual = (&source_node as &dyn NamePartable).cual();
+        assert_eq!(
+            result_cual,
+            Cual::new("snowflake://DB/SCHEMA/model".to_owned())
+        );
+    }
+
+    #[test]
+    fn db_schema_quoting_config_results_in_quotes() {
+        let mut source_node = DbtSourceNode {
+            name: r#"\"db\".\"schema\".model"#.to_owned(),
+        };
+        // db and schema
+        let result_cual = (&source_node as &dyn NamePartable).cual();
+        assert_eq!(
+            result_cual,
+            Cual::new("snowflake://db/schema/MODEL".to_owned())
+        );
+    }
+
+    #[test]
+    fn db_schema_identifier_quoting_config_results_in_quotes() {
+        let mut source_node = DbtSourceNode {
+            name: r#"\"db\".\"schema\".\"model\""#.to_owned(),
+        };
+        // db and schema and identifier
+        let result_cual = (&source_node as &dyn NamePartable).cual();
         assert_eq!(
             result_cual,
             Cual::new("snowflake://db/schema/model".to_owned())
@@ -89,27 +146,43 @@ mod test {
     }
 
     #[test]
-    fn proper_source_node_yields_cual() {
-        let result_cual = DbtSourceNode {
-            name: "model".to_owned(),
-            database: "db".to_owned(),
-            schema: "schema".to_owned(),
-        }
-        .cual();
-
+    fn db_identifier_quoting_config_results_in_quotes() {
+        let mut source_node = DbtSourceNode {
+            name: r#"\"db\".schema.\"model\""#.to_owned(),
+        };
+        // db and schema and identifier
+        let result_cual = (&source_node as &dyn NamePartable).cual();
         assert_eq!(
             result_cual,
-            Cual::new("snowflake://db/schema/model".to_owned())
+            Cual::new("snowflake://db/SCHEMA/model".to_owned())
         );
     }
 
+    #[test]
+    fn schema_identifier_quoting_config_results_in_quotes() {
+        let mut source_node = DbtSourceNode {
+            name: r#"db.\"schema\".\"model\""#.to_owned(),
+        };
+        // db and schema and identifier
+        let result_cual = (&source_node as &dyn NamePartable).cual();
+        assert_eq!(
+            result_cual,
+            Cual::new("snowflake://DB/schema/model".to_owned())
+        );
+    }
+
+    /// Periods between quotes aren't currently supported.
     #[test]
     #[should_panic]
-    fn unexpected_asset_type_panics() {
-        DbtModelNode {
-            materialized_as: AssetType::DBWarehouse,
-            ..Default::default()
-        }
-        .cual();
+    fn periods_in_quotes_panics() {
+        let mut source_node = DbtSourceNode {
+            name: r#"db.\"schema.schema2\".\"model\""#.to_owned(),
+        };
+        // db and schema and identifier
+        let result_cual = (&source_node as &dyn NamePartable).cual();
+        assert_eq!(
+            result_cual,
+            Cual::new("snowflake://DB/schema/model".to_owned())
+        );
     }
 }

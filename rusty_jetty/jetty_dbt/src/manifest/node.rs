@@ -1,11 +1,47 @@
 use serde::Deserialize;
 
 use jetty_core::connectors::AssetType;
+use jetty_core::cual::Cual;
 use jetty_core::{connectors::nodes::Asset as JettyAsset, cual::Cualable};
 
 use std::collections::{HashMap, HashSet};
 
 use super::DbtProjectManifest;
+use crate::cual::cual;
+
+pub(crate) trait NamePartable {
+    // Get the relation name for the object.
+    fn name(&self) -> &str;
+    /// Get the parts of the name in a format eligible for making a CUAL.
+    fn name_parts(&self) -> Vec<String> {
+        self.name()
+            .split('.')
+            .map(|p| {
+                if p.starts_with(r#"\""#) {
+                    // Remove the quotes and return the contained part as-is.
+                    p.trim_start_matches(r#"\""#)
+                        .trim_end_matches(r#"\""#)
+                        .to_owned()
+                } else {
+                    // Not quoted – we can just capitalize it (only for
+                    // Snowflake).
+                    p.to_uppercase()
+                }
+            })
+            .collect()
+    }
+
+    // Get the cual based on the parts of the relational name.
+    fn dbt_cual(&self) -> Cual {
+        let name_parts = self.name_parts();
+        match name_parts.len() {
+            1 => cual!(name_parts[0]),
+            2 => cual!(name_parts[0], name_parts[1]),
+            3 => cual!(name_parts[0], name_parts[1], name_parts[2]),
+            num => panic!("{} name parts is too many for a dbt CUAL", num),
+        }
+    }
+}
 
 /// A node within Dbt, representing either a model
 /// or a source.
@@ -19,8 +55,6 @@ pub(crate) enum DbtNode {
 #[derive(Default, Clone, Deserialize, PartialEq, Eq, Hash)]
 pub(crate) struct DbtSourceNode {
     pub(crate) name: String,
-    pub(crate) database: String,
-    pub(crate) schema: String,
 }
 
 /// A node within Dbt that represents a model.
@@ -28,9 +62,16 @@ pub(crate) struct DbtSourceNode {
 pub(crate) struct DbtModelNode {
     pub(crate) name: String,
     pub(crate) enabled: bool,
-    pub(crate) database: String,
-    pub(crate) schema: String,
     pub(crate) materialized_as: AssetType,
+}
+
+impl NamePartable for DbtNode {
+    fn name(&self) -> &str {
+        match self {
+            Self::ModelNode(DbtModelNode { name, .. }) => &name,
+            Self::SourceNode(DbtSourceNode { name, .. }) => &name,
+        }
+    }
 }
 
 impl DbtNode {
@@ -49,7 +90,7 @@ impl DbtNode {
                     .map(|dep_name| manifest.cual_for_node(dep_name.to_owned()).unwrap().uri())
                     .collect();
                 JettyAsset::new(
-                    m_node.cual(),
+                    (m_node as &dyn NamePartable).cual(),
                     m_node.name.to_owned(),
                     m_node.materialized_as,
                     m_node.get_metadata(),
@@ -77,7 +118,7 @@ impl DbtNode {
                     .map(|dep_name| manifest.cual_for_node(dep_name.to_owned()).unwrap().uri())
                     .collect();
                 JettyAsset::new(
-                    s_node.cual(),
+                    (s_node as &dyn NamePartable).cual(),
                     s_node.name.to_owned(),
                     AssetType::DBTable,
                     HashMap::new(),
@@ -97,6 +138,19 @@ impl DbtNode {
         }
     }
 }
+
+impl NamePartable for DbtModelNode {
+    fn name(&self) -> &str {
+        &self.name
+    }
+}
+
+impl NamePartable for DbtSourceNode {
+    fn name(&self) -> &str {
+        &self.name
+    }
+}
+
 impl DbtModelNode {
     pub(crate) fn get_metadata(&self) -> HashMap<String, String> {
         HashMap::from([("enabled".to_owned(), self.enabled.to_string())])
