@@ -213,8 +213,8 @@ async fn construct_connector_from(input: &TestInput) -> TestHarness<SnowflakeCon
         ),
     ]);
     TestHarness {
-        input: input.clone(),
-        mock_server: wiremock_server,
+        _input: input.clone(),
+        _mock_server: wiremock_server,
         connector: SnowflakeConnector::new(
             &ConnectorConfig::default(),
             &creds,
