@@ -101,7 +101,7 @@ impl DbtProjectManifest for DbtManifest {
             format!("deserializing manifest json from {:?}", manifest_path),
         )?;
         // First we will ingest the nodes.
-        for (node_name, node) in json_manifest.nodes {
+        for (_node_name, node) in json_manifest.nodes {
             let asset_type = node.resource_type.try_to_asset_type()?;
             if let Some(ty) = asset_type {
                 self.nodes.insert(

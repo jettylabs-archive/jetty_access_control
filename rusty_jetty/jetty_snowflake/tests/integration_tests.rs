@@ -6,10 +6,10 @@ use jetty_core::{
         nodes::{self, Group},
         ConnectorClient,
     },
-    jetty::{ConnectorConfig},
+    jetty::ConnectorConfig,
     Connector,
 };
-use jetty_snowflake::{SnowflakeConnector};
+use jetty_snowflake::SnowflakeConnector;
 
 use serde::Serialize;
 
@@ -184,8 +184,8 @@ impl WiremockServer {
 }
 
 struct TestHarness<T: Connector> {
-    input: TestInput,
-    mock_server: WiremockServer,
+    _input: TestInput,
+    _mock_server: WiremockServer,
     connector: Box<T>,
 }
 
