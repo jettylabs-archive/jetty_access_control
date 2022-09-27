@@ -13,7 +13,7 @@ use std::fs::read_to_string;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
-use crate::manifest::node::QuotingConfig;
+use self::node::NamePartable;
 
 pub(crate) type DbtNodeName = String;
 
@@ -67,25 +67,18 @@ impl DbtProjectManifest for DbtManifest {
         #[derive(Deserialize)]
         struct Config {
             enabled: bool,
-            #[serde(default)]
-            quoting: QuotingConfig,
         }
 
         #[derive(Deserialize)]
         struct DbtManifestNode {
+            relation_name: Option<String>,
             resource_type: String,
             config: Config,
-            database: Option<String>,
-            schema: Option<String>,
         }
 
         #[derive(Deserialize, Debug)]
         struct DbtManifestSourceNode {
-            database: String,
-            schema: String,
-            unique_id: String,
-            #[serde(default)]
-            quoting: QuotingConfig,
+            relation_name: Option<String>,
         }
 
         #[derive(Deserialize)]
@@ -112,14 +105,12 @@ impl DbtProjectManifest for DbtManifest {
             let asset_type = node.resource_type.try_to_asset_type()?;
             if let Some(ty) = asset_type {
                 self.nodes.insert(
-                    node_name.to_owned(),
+                    node.relation_name.clone().unwrap().to_owned(),
                     DbtNode::ModelNode(DbtModelNode {
-                        name: "".to_owned(),
+                        // All  model nodes should have relation names
+                        name: node.relation_name.unwrap().to_owned(),
                         enabled: node.config.enabled.to_owned(),
-                        database: node.database.to_owned().unwrap_or_default(),
-                        schema: node.schema.to_owned().unwrap_or_default(),
                         materialized_as: ty,
-                        quoting: node.config.quoting,
                     }),
                 );
             } else {
@@ -130,12 +121,10 @@ impl DbtProjectManifest for DbtManifest {
         // Now we'll ingest sources.
         for (_source_name, source) in json_manifest.sources {
             self.nodes.insert(
-                source.unique_id.to_owned(),
+                source.relation_name.clone().unwrap().to_owned(),
                 DbtNode::SourceNode(DbtSourceNode {
-                    name: "".to_owned(),
-                    database: source.database,
-                    schema: source.schema,
-                    quoting: source.quoting,
+                    // All  source nodes should have relation names
+                    name: source.relation_name.unwrap().to_owned(),
                 }),
             );
         }
@@ -176,7 +165,7 @@ impl DbtProjectManifest for DbtManifest {
 
     fn cual_for_node(&self, node_name: DbtNodeName) -> Result<Cual> {
         if let Some(node) = self.nodes.get(&node_name) {
-            Ok(node.cual())
+            Ok((node as &dyn NamePartable).cual())
         } else {
             bail!("couldn't get node for name {}", node_name);
         }
