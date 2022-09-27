@@ -305,6 +305,56 @@ mod test {
     }
 
     #[test]
+    fn db_identifier_quoting_config_results_in_quotes() {
+        let mut source_node = DbtSourceNode {
+            name: "model".to_owned(),
+            database: "db".to_owned(),
+            schema: "schema".to_owned(),
+            quoting: QuotingConfig {
+                database: true,
+                schema: false,
+                identifier: false,
+            },
+        };
+        // db and schema and identifier
+        source_node.quoting = QuotingConfig {
+            database: true,
+            identifier: true,
+            ..Default::default()
+        };
+        let result_cual = source_node.cual();
+        assert_eq!(
+            result_cual,
+            Cual::new("snowflake://%22db%22/schema/%22model%22".to_owned())
+        );
+    }
+
+    #[test]
+    fn schema_identifier_quoting_config_results_in_quotes() {
+        let mut source_node = DbtSourceNode {
+            name: "model".to_owned(),
+            database: "db".to_owned(),
+            schema: "schema".to_owned(),
+            quoting: QuotingConfig {
+                database: true,
+                schema: false,
+                identifier: false,
+            },
+        };
+        // db and schema and identifier
+        source_node.quoting = QuotingConfig {
+            schema: true,
+            identifier: true,
+            ..Default::default()
+        };
+        let result_cual = source_node.cual();
+        assert_eq!(
+            result_cual,
+            Cual::new("snowflake://db/%22schema%22/%22model%22".to_owned())
+        );
+    }
+
+    #[test]
     #[should_panic]
     fn unexpected_asset_type_panics() {
         DbtModelNode {
