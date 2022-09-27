@@ -8,13 +8,24 @@ use crate::{Database, Schema, Table, View};
 
 macro_rules! cual {
     ($db:expr) => {
-        Cual::new(format!("{}://{}", "snowflake", $db))
+        Cual::new(format!("{}://{}", "snowflake", urlencoding::encode(&$db)))
     };
     ($db:expr, $schema:expr) => {
-        Cual::new(format!("{}://{}/{}", "snowflake", $db, $schema))
+        Cual::new(format!(
+            "{}://{}/{}",
+            "snowflake",
+            urlencoding::encode(&$db),
+            urlencoding::encode(&$schema)
+        ))
     };
     ($db:expr, $schema:expr, $table:expr) => {
-        Cual::new(format!("{}://{}/{}/{}", "snowflake", $db, $schema, $table))
+        Cual::new(format!(
+            "{}://{}/{}/{}",
+            "snowflake",
+            urlencoding::encode(&$db),
+            urlencoding::encode(&$schema),
+            urlencoding::encode(&$table)
+        ))
     };
 }
 
