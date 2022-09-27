@@ -67,7 +67,7 @@ pub(crate) trait Permissionable: core::fmt::Debug {
                 .iter()
                 .map(move |p| {
                     p.to_owned()
-                        .to_permission(env)
+                        .into_permission(env)
                         .expect("Couldn't understand Tableau permission response.")
                 })
                 .collect()
@@ -181,7 +181,7 @@ struct SerializedPermission {
 impl SerializedPermission {
     /// Converts a Tableau permission response to a Permission struct to use
     /// when representing the Tableau environment.
-    pub(crate) fn to_permission(self, env: &Environment) -> Result<Permission> {
+    pub(crate) fn into_permission(self, env: &Environment) -> Result<Permission> {
         // Get the grantee object from the environment. We assume the env
         // should already have it available.
         let grantee = match self {
@@ -191,7 +191,7 @@ impl SerializedPermission {
             } => Grantee::Group(
                 env.groups
                     .get(&id)
-                    .expect(&format!("Group {} not yet in environment", id))
+                    .unwrap_or_else(|| panic!("Group {} not yet in environment", id))
                     .clone(),
             ),
             Self {
@@ -200,7 +200,7 @@ impl SerializedPermission {
             } => Grantee::User(
                 env.users
                     .get(&id)
-                    .expect(&format!("User {} not yet in environment", id))
+                    .unwrap_or_else(|| panic!("User {} not yet in environment", id))
                     .clone(),
             ),
             _ => bail!("no user or group for permission {:#?}", self),

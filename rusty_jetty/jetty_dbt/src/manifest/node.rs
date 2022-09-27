@@ -68,8 +68,8 @@ pub(crate) struct DbtModelNode {
 impl NamePartable for DbtNode {
     fn name(&self) -> &str {
         match self {
-            Self::ModelNode(DbtModelNode { name, .. }) => &name,
-            Self::SourceNode(DbtSourceNode { name, .. }) => &name,
+            Self::ModelNode(DbtModelNode { name, .. }) => name,
+            Self::SourceNode(DbtSourceNode { name, .. }) => name,
         }
     }
 }

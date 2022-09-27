@@ -39,7 +39,6 @@ pub(crate) fn env_to_jetty_policies(
     asset: &mut dyn Iterator<Item = impl Into<Vec<jetty_nodes::Policy>>>,
 ) -> Vec<jetty_nodes::Policy> {
     asset
-        .map(|f| -> Vec<jetty_nodes::Policy> { f.into() })
-        .flatten()
+        .flat_map(|f| -> Vec<jetty_nodes::Policy> { f.into() })
         .collect()
 }

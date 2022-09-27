@@ -1159,20 +1159,19 @@ impl Traversable for ast::ReferentialAction {
 }
 impl Traversable for ast::SelectItem {
     fn get_children(&self) -> Vec<Node> {
-        let children = match self {
+        match self {
             ast::SelectItem::UnnamedExpr(n) => vec![Node::Expr(n.to_owned())],
             ast::SelectItem::ExprWithAlias { expr, alias } => {
                 vec![Node::Expr(expr.to_owned()), Node::Ident(alias.to_owned())]
             }
             ast::SelectItem::QualifiedWildcard(n) => vec![Node::ObjectName(n.to_owned())],
             ast::SelectItem::Wildcard => vec![],
-        };
-        children
+        }
     }
 }
 impl Traversable for ast::SetExpr {
     fn get_children(&self) -> Vec<Node> {
-        let children = match self {
+        match self {
             ast::SetExpr::Select(n) => vec![Node::Select(*n.to_owned())],
             ast::SetExpr::Query(n) => vec![Node::Query(*n.to_owned())],
             ast::SetExpr::SetOperation {
@@ -1189,8 +1188,7 @@ impl Traversable for ast::SetExpr {
             }
             ast::SetExpr::Values(n) => vec![Node::Values(n.to_owned())],
             ast::SetExpr::Insert(n) => vec![Node::Statement(n.to_owned())],
-        };
-        children
+        }
     }
 }
 impl Traversable for ast::SetOperator {

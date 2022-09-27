@@ -79,14 +79,13 @@ fn get_tables_from_node(
         .iter()
         .map(|o| {
             o.0.iter()
-                .map(|i| capitalize_identifiers(i, &db))
+                .map(|i| capitalize_identifiers(i, db))
                 .collect::<TableName>()
         })
-        .map(|n| match cte_context.get(&n) {
+        .flat_map(|n| match cte_context.get(&n) {
             Some(v) => v.to_owned(),
             None => HashSet::from([n.to_owned()]),
         })
-        .flatten()
         .collect();
 
     table_names
@@ -99,14 +98,14 @@ fn capitalize_identifiers(i: &ast::Ident, db: &DbType) -> String {
             if i.quote_style.is_some() {
                 i.value.to_owned()
             } else {
-                i.value.to_uppercase().to_owned()
+                i.value.to_uppercase()
             }
         }
         DbType::Generic => {
             if i.quote_style.is_some() {
                 i.value.to_owned()
             } else {
-                i.value.to_lowercase().to_owned()
+                i.value.to_lowercase()
             }
         }
     }

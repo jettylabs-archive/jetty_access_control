@@ -3,9 +3,6 @@ use std::collections::HashMap;
 use anyhow::{anyhow, bail, Context, Result};
 use regex::Regex;
 
-
-
-
 #[derive(Debug, Clone)]
 pub(crate) struct SnowflakeConnectionInfo {
     pub name: String,
@@ -73,10 +70,10 @@ impl SnowflakeQueryInfo {
 }
 
 fn cual_from_name_parts(
-    name_parts: &Vec<String>,
-    server: &String,
-    db: &String,
-    schema: &String,
+    name_parts: &[String],
+    server: &str,
+    db: &str,
+    schema: &str,
 ) -> Result<String> {
     let name_parts: Vec<std::borrow::Cow<str>> =
         name_parts.iter().map(|p| urlencoding::encode(p)).collect();

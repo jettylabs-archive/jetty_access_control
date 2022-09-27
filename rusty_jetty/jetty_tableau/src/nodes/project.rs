@@ -118,7 +118,7 @@ impl Permissionable for Project {
             permissions
                 .iter()
                 .filter_map(|p| {
-                    let permission_result = p.to_owned().to_permission(env);
+                    let permission_result = p.to_owned().into_permission(env);
                     if permission_result.is_err()
                         && &self.name == "default"
                         && matches!(p, SerializedPermission { user: Some(_), .. })
