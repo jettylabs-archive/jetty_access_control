@@ -87,7 +87,7 @@ impl Graph {
     ///
     /// Get all neighbors for a node, filtered by thos that yield true when
     /// `matcher` is applied to them.
-    fn get_neighbors_for_node(
+    pub(crate) fn get_neighbors_for_node(
         &self,
         node_name: &NodeName,
         matcher: fn(&JettyNode) -> bool,
@@ -103,29 +103,6 @@ impl Graph {
                 None
             }
         }))
-    }
-
-    fn get_assets_user_accesses(
-        &self,
-        user: &NodeName,
-    ) -> Result<impl Iterator<Item = &JettyNode>> {
-        match user {
-            NodeName::User(_) => (),
-            _ => bail!("not a user"),
-        };
-        // 1. traverse graph from user to their policies.
-        Ok(self
-            .get_neighbors_for_node(user, |p| matches!(p, JettyNode::Policy(_)))?
-            .map(|policy| {
-                // 2. traverse graph from policies to their governed assets.
-                self.get_neighbors_for_node(&policy.get_name(), |a| {
-                    matches!(a, JettyNode::Asset(_))
-                })
-                .unwrap()
-            })
-            .flatten())
-        // TODO: recursively get child assets here
-        // 3? ask connector for effective permissions
     }
 
     /// Updates a node. Should return the updated node. Returns an
@@ -170,12 +147,13 @@ mod tests {
     use anyhow::{anyhow, Context, Result};
 
     use crate::{
-        access_graph::{AssetAttributes, GroupAttributes, JettyEdge, PolicyAttributes},
+        access_graph::{test_util::new_graph, AssetAttributes, GroupAttributes, JettyEdge},
         connectors::AssetType,
         cual::Cual,
     };
 
     use super::*;
+
     use std::collections::{HashMap, HashSet};
 
     /// Test merge_nodes
@@ -356,63 +334,5 @@ mod tests {
             vec![vec![NodeIndex::new(0), NodeIndex::new(1)]]
         );
         Ok(())
-    }
-
-    #[test]
-    fn get_neighbors_for_node_works() -> Result<()> {
-        let mut g = new_graph();
-        g.add_node(&JettyNode::User(UserAttributes {
-            name: "user".to_owned(),
-            identifiers: HashMap::new(),
-            other_identifiers: HashSet::new(),
-            metadata: HashMap::new(),
-            connectors: HashSet::new(),
-        }))?;
-
-        g.add_node(&JettyNode::Policy(PolicyAttributes {
-            connectors: HashSet::new(),
-            name: "policy".to_owned(),
-            privileges: HashSet::new(),
-            pass_through_hierarchy: false,
-            pass_through_lineage: false,
-        }))?;
-
-        g.add_node(&JettyNode::Asset(AssetAttributes {
-            cual: Cual::new("my_cual".to_owned()),
-            asset_type: AssetType::default(),
-            metadata: HashMap::new(),
-            connectors: HashSet::new(),
-        }))?;
-
-        g.add_edge(JettyEdge {
-            from: NodeName::User("user".to_owned()),
-            to: NodeName::Policy("policy".to_owned()),
-            edge_type: EdgeType::GrantedBy,
-        })?;
-
-        g.add_edge(JettyEdge {
-            from: NodeName::Policy("policy".to_owned()),
-            to: NodeName::Asset("my_cual".to_owned()),
-            edge_type: EdgeType::Governs,
-        })?;
-
-        let a = g.get_assets_user_accesses(&NodeName::User("user".to_owned()))?;
-        assert_eq!(
-            a.collect::<Vec<_>>(),
-            vec![&JettyNode::Asset(AssetAttributes {
-                cual: Cual::new("my_cual".to_owned()),
-                asset_type: AssetType::Other,
-                metadata: HashMap::new(),
-                connectors: HashSet::new(),
-            })]
-        );
-        Ok(())
-    }
-
-    fn new_graph() -> super::Graph {
-        super::Graph {
-            graph: petgraph::stable_graph::StableDiGraph::new(),
-            nodes: HashMap::new(),
-        }
     }
 }

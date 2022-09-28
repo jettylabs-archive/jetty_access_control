@@ -2,8 +2,11 @@
 //!
 //! `access_graph` is a library for modeling data access permissions and metadata as a graph.
 
+pub mod explore;
 pub mod graph;
 mod helpers;
+#[cfg(test)]
+pub mod test_util;
 
 use crate::{connectors::AssetType, cual::Cual};
 
