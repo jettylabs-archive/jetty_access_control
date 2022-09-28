@@ -79,8 +79,8 @@ mod tests {
 
     use crate::{
         access_graph::{
-            test_util::{new_graph, new_graph_with},
-            AssetAttributes, EdgeType, JettyEdge, PolicyAttributes, UserAttributes,
+            test_util::{new_graph_with},
+            AssetAttributes, PolicyAttributes, UserAttributes,
         },
         connectors::AssetType,
         cual::Cual,
