@@ -119,6 +119,7 @@ impl Grant for StandardGrant {
 mod tests {
 
     use crate::{cual, Cual};
+    use anyhow::Result;
 
     use super::*;
 
@@ -134,7 +135,7 @@ mod tests {
     }
 
     #[test]
-    fn grant_into_policy_works() {
+    fn grant_into_policy_works() -> Result<()> {
         let g = StandardGrant {
             name: "db".to_owned(),
             privilege: "priv".to_owned(),
@@ -147,7 +148,7 @@ mod tests {
             nodes::Policy::new(
                 "snowflake.grantee_name.db".to_owned(),
                 HashSet::from(["priv".to_owned()]),
-                HashSet::from([cual!("db").uri()]),
+                HashSet::from([cual_from_snowflake_obj_name("DB")?.uri()]),
                 HashSet::new(),
                 HashSet::from(["grantee_name".to_owned()]),
                 HashSet::new(),
@@ -155,6 +156,7 @@ mod tests {
                 false,
             ),
         );
+        Ok(())
     }
 
     #[test]

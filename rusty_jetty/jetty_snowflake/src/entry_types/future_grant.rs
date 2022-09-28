@@ -85,7 +85,7 @@ impl Grant for FutureGrant {
 
 #[cfg(test)]
 mod tests {
-    use crate::cual::{cual, Cual};
+    use anyhow::Result;
 
     use super::*;
 
@@ -101,7 +101,7 @@ mod tests {
     }
 
     #[test]
-    fn grant_into_policy_works() {
+    fn grant_into_policy_works() -> Result<()> {
         let g = FutureGrant {
             name: "db.<SCHEMA>".to_owned(),
             privilege: "priv".to_owned(),
@@ -114,14 +114,15 @@ mod tests {
             nodes::Policy::new(
                 "snowflake.future.grantee_name.db".to_owned(),
                 HashSet::from(["priv".to_owned()]),
-                HashSet::from([cual!("db").uri()]),
+                HashSet::from([cual_from_snowflake_obj_name("DB")?.uri()]),
                 HashSet::new(),
                 HashSet::from(["grantee_name".to_owned()]),
                 HashSet::new(),
                 true,
                 false,
             ),
-        )
+        );
+        Ok(())
     }
 
     #[test]
@@ -158,7 +159,7 @@ mod tests {
     }
 
     #[test]
-    fn future_grant_table_into_policy_works() {
+    fn future_grant_table_into_policy_works() -> Result<()> {
         let g = FutureGrant {
             name: "db.schema.<TABLE>".to_owned(),
             privilege: "priv".to_owned(),
@@ -171,14 +172,15 @@ mod tests {
             nodes::Policy::new(
                 "snowflake.future.grantee_name.db.schema".to_owned(),
                 HashSet::from(["priv".to_owned()]),
-                HashSet::from([cual!("db", "schema").uri()]),
+                HashSet::from([cual_from_snowflake_obj_name("DB.SCHEMA")?.uri()]),
                 HashSet::new(),
                 HashSet::from(["grantee_name".to_owned()]),
                 HashSet::new(),
                 true,
                 false,
             ),
-        )
+        );
+        Ok(())
     }
 
     #[test]
