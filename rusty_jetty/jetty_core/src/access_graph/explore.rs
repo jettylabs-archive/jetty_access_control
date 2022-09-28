@@ -33,12 +33,11 @@ impl Graph {
         // 1. traverse graph from user to their policies.
         Ok(self
             .get_neighbors_for_node(user, policy_matcher)?
-            .map(|policy| {
+            .flat_map(|policy| {
                 // 2. traverse graph from policies to their governed assets.
                 self.get_neighbors_for_node(&policy.get_name(), asset_matcher)
                     .unwrap()
-            })
-            .flatten())
+            }))
         // TODO: recursively get child assets as necessary here.
         // 3? ask connector for effective permissions
     }
@@ -61,14 +60,13 @@ impl Graph {
         // 1. traverse graph from the asset to their policies.
         Ok(self
             .get_neighbors_for_node(asset, policy_matcher)?
-            .map(|policy| {
+            .flat_map(|policy| {
                 // 2. traverse graph from policies to their users.
                 let r = self
                     .get_neighbors_for_node(&policy.get_name(), user_matcher)
                     .unwrap();
                 r
-            })
-            .flatten())
+            }))
         // 3? ask connector for effective permissions.
     }
 }
@@ -98,21 +96,17 @@ mod tests {
         });
 
         let g = new_graph_with(
-            &vec![
-                &test_asset,
+            &[&test_asset,
                 &JettyNode::Policy(PolicyAttributes::new("policy".to_owned())),
-                &JettyNode::User(UserAttributes::new("user".to_owned())),
-            ],
-            &vec![
-                (
+                &JettyNode::User(UserAttributes::new("user".to_owned()))],
+            &[(
                     NodeName::User("user".to_owned()),
                     NodeName::Policy("policy".to_owned()),
                 ),
                 (
                     NodeName::Policy("policy".to_owned()),
                     NodeName::Asset("my_cual".to_owned()),
-                ),
-            ],
+                )],
         )?;
 
         let a = g.get_assets_user_accesses(&NodeName::User("user".to_owned()))?;
@@ -131,22 +125,18 @@ mod tests {
         });
 
         let g = new_graph_with(
-            &vec![
-                &test_user,
+            &[&test_user,
                 &JettyNode::Policy(PolicyAttributes::new("policy".to_owned())),
-                &JettyNode::Asset(AssetAttributes::new(Cual::new("my_cual".to_owned()))),
-            ],
+                &JettyNode::Asset(AssetAttributes::new(Cual::new("my_cual".to_owned())))],
             // For this test we need the back edges so we can get back to users
-            &vec![
-                (
+            &[(
                     NodeName::Policy("policy".to_owned()),
                     NodeName::User("user".to_owned()),
                 ),
                 (
                     NodeName::Asset("my_cual".to_owned()),
                     NodeName::Policy("policy".to_owned()),
-                ),
-            ],
+                )],
         )?;
 
         let a = g.get_users_with_access_to(&NodeName::Asset("my_cual".to_owned()))?;

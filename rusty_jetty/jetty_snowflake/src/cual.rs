@@ -35,10 +35,10 @@ pub(crate) fn cual_from_snowflake_obj_name(name: &str) -> Result<Cual> {
     let parts: Vec<_> = name
         .split('.')
         .map(|p| {
-            if p.starts_with(r#"""#) {
+            if p.starts_with('"') {
                 // Remove the quotes and return the contained part as-is.
-                p.trim_start_matches(r#"""#)
-                    .trim_end_matches(r#"""#)
+                p.trim_start_matches('"')
+                    .trim_end_matches('"')
                     .to_owned()
             } else {
                 // Not quoted – we can just capitalize it (only for
