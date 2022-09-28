@@ -60,6 +60,7 @@ impl Graph {
         Ok(())
     }
 
+    #[allow(dead_code)]
     fn get_paths(
         &self,
         from_node_name: &NodeName,

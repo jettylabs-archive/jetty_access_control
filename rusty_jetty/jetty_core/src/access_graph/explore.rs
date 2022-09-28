@@ -21,6 +21,7 @@ fn asset_matcher(a: &JettyNode) -> bool {
 }
 
 impl Graph {
+    #[allow(dead_code)]
     fn get_assets_user_accesses(
         &self,
         user: &NodeName,
@@ -42,6 +43,7 @@ impl Graph {
         // 3? ask connector for effective permissions
     }
 
+    #[allow(dead_code)]
     fn get_users_with_access_to(
         &self,
         asset: &NodeName,
@@ -77,8 +79,8 @@ mod tests {
 
     use crate::{
         access_graph::{
-            test_util::new_graph, AssetAttributes, EdgeType, JettyEdge, PolicyAttributes,
-            UserAttributes,
+            test_util::{new_graph, new_graph_with},
+            AssetAttributes, EdgeType, JettyEdge, PolicyAttributes, UserAttributes,
         },
         connectors::AssetType,
         cual::Cual,
@@ -88,23 +90,6 @@ mod tests {
 
     #[test]
     fn get_assets_user_accesses_works() -> Result<()> {
-        let mut g = new_graph();
-        g.add_node(&JettyNode::User(UserAttributes {
-            name: "user".to_owned(),
-            identifiers: HashMap::new(),
-            other_identifiers: HashSet::new(),
-            metadata: HashMap::new(),
-            connectors: HashSet::new(),
-        }))?;
-
-        g.add_node(&JettyNode::Policy(PolicyAttributes {
-            connectors: HashSet::new(),
-            name: "policy".to_owned(),
-            privileges: HashSet::new(),
-            pass_through_hierarchy: false,
-            pass_through_lineage: false,
-        }))?;
-
         let test_asset = JettyNode::Asset(AssetAttributes {
             cual: Cual::new("my_cual".to_owned()),
             asset_type: AssetType::default(),
@@ -112,19 +97,23 @@ mod tests {
             connectors: HashSet::new(),
         });
 
-        g.add_node(&test_asset)?;
-
-        g.add_edge(JettyEdge {
-            from: NodeName::User("user".to_owned()),
-            to: NodeName::Policy("policy".to_owned()),
-            edge_type: EdgeType::GrantedBy,
-        })?;
-
-        g.add_edge(JettyEdge {
-            from: NodeName::Policy("policy".to_owned()),
-            to: NodeName::Asset("my_cual".to_owned()),
-            edge_type: EdgeType::Governs,
-        })?;
+        let g = new_graph_with(
+            &vec![
+                &test_asset,
+                &JettyNode::Policy(PolicyAttributes::new("policy".to_owned())),
+                &JettyNode::User(UserAttributes::new("user".to_owned())),
+            ],
+            &vec![
+                (
+                    NodeName::User("user".to_owned()),
+                    NodeName::Policy("policy".to_owned()),
+                ),
+                (
+                    NodeName::Policy("policy".to_owned()),
+                    NodeName::Asset("my_cual".to_owned()),
+                ),
+            ],
+        )?;
 
         let a = g.get_assets_user_accesses(&NodeName::User("user".to_owned()))?;
         assert_eq!(a.collect::<Vec<_>>(), vec![&test_asset]);
@@ -133,7 +122,6 @@ mod tests {
 
     #[test]
     fn get_users_with_access_to_works() -> Result<()> {
-        let mut g = new_graph();
         let test_user = JettyNode::User(UserAttributes {
             name: "user".to_owned(),
             identifiers: HashMap::new(),
@@ -142,35 +130,24 @@ mod tests {
             connectors: HashSet::new(),
         });
 
-        g.add_node(&test_user)?;
-
-        g.add_node(&JettyNode::Policy(PolicyAttributes {
-            connectors: HashSet::new(),
-            name: "policy".to_owned(),
-            privileges: HashSet::new(),
-            pass_through_hierarchy: false,
-            pass_through_lineage: false,
-        }))?;
-
-        g.add_node(&JettyNode::Asset(AssetAttributes {
-            cual: Cual::new("my_cual".to_owned()),
-            asset_type: AssetType::default(),
-            metadata: HashMap::new(),
-            connectors: HashSet::new(),
-        }))?;
-
-        // For this test we need the back edges so we can get back to users
-        g.add_edge(JettyEdge {
-            from: NodeName::Policy("policy".to_owned()),
-            to: NodeName::User("user".to_owned()),
-            edge_type: EdgeType::GrantedBy,
-        })?;
-
-        g.add_edge(JettyEdge {
-            from: NodeName::Asset("my_cual".to_owned()),
-            to: NodeName::Policy("policy".to_owned()),
-            edge_type: EdgeType::GovernedBy,
-        })?;
+        let g = new_graph_with(
+            &vec![
+                &test_user,
+                &JettyNode::Policy(PolicyAttributes::new("policy".to_owned())),
+                &JettyNode::Asset(AssetAttributes::new(Cual::new("my_cual".to_owned()))),
+            ],
+            // For this test we need the back edges so we can get back to users
+            &vec![
+                (
+                    NodeName::Policy("policy".to_owned()),
+                    NodeName::User("user".to_owned()),
+                ),
+                (
+                    NodeName::Asset("my_cual".to_owned()),
+                    NodeName::Policy("policy".to_owned()),
+                ),
+            ],
+        )?;
 
         let a = g.get_users_with_access_to(&NodeName::Asset("my_cual".to_owned()))?;
         assert_eq!(a.collect::<Vec<_>>(), vec![&test_user]);
