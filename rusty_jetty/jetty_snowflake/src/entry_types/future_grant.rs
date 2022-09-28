@@ -171,7 +171,7 @@ mod tests {
             nodes::Policy::new(
                 "snowflake.future.grantee_name.db.schema".to_owned(),
                 HashSet::from(["priv".to_owned()]),
-                HashSet::from([cual!("db").uri()]),
+                HashSet::from([cual!("db", "schema").uri()]),
                 HashSet::new(),
                 HashSet::from(["grantee_name".to_owned()]),
                 HashSet::new(),

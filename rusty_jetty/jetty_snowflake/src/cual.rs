@@ -32,14 +32,28 @@ macro_rules! cual {
 pub(crate) use cual;
 
 pub(crate) fn cual_from_snowflake_obj_name(name: &str) -> Result<Cual> {
-    let parts: Vec<_> = name.split('.').map(str::to_lowercase).collect();
+    let parts: Vec<_> = name
+        .split('.')
+        .map(|p| {
+            if p.starts_with(r#"""#) {
+                // Remove the quotes and return the contained part as-is.
+                p.trim_start_matches(r#"""#)
+                    .trim_end_matches(r#"""#)
+                    .to_owned()
+            } else {
+                // Not quoted – we can just capitalize it (only for
+                // Snowflake).
+                p.to_uppercase()
+            }
+        })
+        .collect();
 
-    if let Some(db) = parts.get(0) {
-        Ok(cual!(db))
-    } else if let [db, schema] = &parts[0..1] {
-        Ok(cual!(db, schema))
-    } else if let [db, schema, obj_name] = &parts[0..2] {
+    if let (Some(db), Some(schema), Some(obj_name)) = (parts.get(0), parts.get(1), parts.get(2)) {
         Ok(cual!(db, schema, obj_name))
+    } else if let (Some(db), Some(schema)) = (parts.get(0), parts.get(1)) {
+        Ok(cual!(db, schema))
+    } else if let Some(db) = parts.get(0) {
+        Ok(cual!(db))
     } else {
         bail!("name {} was not fully qualified", name)
     }
@@ -76,6 +90,16 @@ impl Cualable for Database {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_cual_from_name() -> Result<()> {
+        let c = cual_from_snowflake_obj_name("SNOWFLAKE_SAMPLE_DATA.TPCDS_SF10TCL.WEB_PAGE")?;
+        assert_eq!(
+            c.uri(),
+            "snowflake://SNOWFLAKE_SAMPLE_DATA/TPCDS_SF10TCL/WEB_PAGE".to_owned()
+        );
+        Ok(())
+    }
 
     #[test]
     fn table_cual_constructs_properly() {
