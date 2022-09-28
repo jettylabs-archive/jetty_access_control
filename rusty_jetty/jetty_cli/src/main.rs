@@ -96,8 +96,7 @@ async fn main() -> Result<()> {
     if args.visualize {
         println!("visualizing access graph");
         let now = Instant::now();
-        ag.graph
-            .visualize("/tmp/graph.svg".to_owned())
+        ag.visualize("/tmp/graph.svg")
             .context("failed to visualize")?;
         println!(
             "access graph creation took {} seconds",

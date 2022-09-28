@@ -77,7 +77,6 @@ impl GroupAttributes {
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct AssetAttributes {
     cual: Cual,
-    name: String,
     asset_type: AssetType,
     metadata: HashMap<String, String>,
     connectors: HashSet<String>,
@@ -85,8 +84,6 @@ pub(crate) struct AssetAttributes {
 
 impl AssetAttributes {
     fn merge_attributes(&self, new_attributes: &AssetAttributes) -> Result<AssetAttributes> {
-        let name = merge_matched_field(&self.name, &new_attributes.name)
-            .context("field: AssetAttributes.name")?;
         let cual = merge_matched_field(&self.cual, &new_attributes.cual)
             .context("field: GroupAttributes.cual")?;
         let asset_type = merge_matched_field(&self.asset_type, &self.asset_type)
@@ -96,7 +93,6 @@ impl AssetAttributes {
         let connectors = merge_set(&self.connectors, &new_attributes.connectors);
         Ok(AssetAttributes {
             cual,
-            name,
             asset_type,
             metadata,
             connectors,
@@ -292,7 +288,7 @@ pub(crate) struct JettyEdge {
 /// Representation of data access state
 pub struct AccessGraph {
     /// The graph itself
-    pub graph: graph::Graph,
+    graph: graph::Graph,
     edge_cache: HashSet<JettyEdge>,
     #[allow(dead_code)]
     last_modified: usize,
@@ -347,6 +343,11 @@ impl AccessGraph {
             self.edge_cache.extend(edges);
         }
         Ok(())
+    }
+
+    /// Convenience fn to visualize the graph.
+    pub fn visualize(&self, path: &str) -> Result<String> {
+        self.graph.visualize(path)
     }
 }
 
