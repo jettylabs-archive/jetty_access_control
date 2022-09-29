@@ -1,3 +1,5 @@
+use std::sync::Once;
+
 use anyhow::{bail, Result};
 
 use jetty_core::cual::Cualable;
@@ -6,22 +8,58 @@ pub use jetty_core::cual::Cual;
 
 use crate::{Database, Schema, Table, View};
 
+static mut CUAL_ACCOUNT_NAME: String = String::new();
+static INIT_CUAL_ACCOUNT_NAME: Once = Once::new();
+
+// Accessing a `static mut` is unsafe much of the time, but if we do so
+// in a synchronized fashion (e.g., write once or read all) then we're
+// good to go!
+//
+// This function will only set the string once, and will
+// otherwise always effectively be a no-op.
+pub(crate) fn set_cual_account_name(account_name: &str) {
+    unsafe {
+        INIT_CUAL_ACCOUNT_NAME.call_once(|| {
+            CUAL_ACCOUNT_NAME = format!(
+                "{}.snowflakecomputing.com",
+                account_name.to_lowercase().to_owned()
+            )
+        });
+    }
+}
+
+pub(crate) fn get_cual_account_name<'a>() -> Result<&'a str> {
+    if INIT_CUAL_ACCOUNT_NAME.is_completed() {
+        // CUAL_PREFIX is set by a Once and is safe to use after initialization.
+        unsafe { Ok(&CUAL_ACCOUNT_NAME) }
+    } else {
+        bail!("cual prefix was not yet set")
+    }
+}
+
 macro_rules! cual {
     ($db:expr) => {
-        Cual::new(format!("{}://{}", "snowflake", urlencoding::encode(&$db)))
-    };
-    ($db:expr, $schema:expr) => {
         Cual::new(format!(
             "{}://{}/{}",
             "snowflake",
+            get_cual_account_name().expect("couldn't get CUAL account name"),
+            urlencoding::encode(&$db)
+        ))
+    };
+    ($db:expr, $schema:expr) => {
+        Cual::new(format!(
+            "{}://{}/{}/{}",
+            "snowflake",
+            get_cual_account_name().expect("couldn't get CUAL account name"),
             urlencoding::encode(&$db),
             urlencoding::encode(&$schema)
         ))
     };
     ($db:expr, $schema:expr, $table:expr) => {
         Cual::new(format!(
-            "{}://{}/{}/{}",
+            "{}://{}/{}/{}/{}",
             "snowflake",
+            get_cual_account_name().expect("couldn't get CUAL account name"),
             urlencoding::encode(&$db),
             urlencoding::encode(&$schema),
             urlencoding::encode(&$table)
@@ -93,16 +131,18 @@ mod tests {
 
     #[test]
     fn test_cual_from_name() -> Result<()> {
+        set_cual_account_name("account");
         let c = cual_from_snowflake_obj_name("SNOWFLAKE_SAMPLE_DATA.TPCDS_SF10TCL.WEB_PAGE")?;
         assert_eq!(
             c.uri(),
-            "snowflake://SNOWFLAKE_SAMPLE_DATA/TPCDS_SF10TCL/WEB_PAGE".to_owned()
+            "snowflake://account.snowflakecomputing.com/SNOWFLAKE_SAMPLE_DATA/TPCDS_SF10TCL/WEB_PAGE".to_owned()
         );
         Ok(())
     }
 
     #[test]
     fn table_cual_constructs_properly() {
+        set_cual_account_name("account");
         let cual = Table {
             name: "my_table".to_owned(),
             schema_name: "schema".to_owned(),
@@ -111,12 +151,15 @@ mod tests {
         .cual();
         assert_eq!(
             cual,
-            Cual::new("snowflake://database/schema/my_table".to_owned())
+            Cual::new(
+                "snowflake://account.snowflakecomputing.com/database/schema/my_table".to_owned()
+            )
         )
     }
 
     #[test]
     fn view_cual_constructs_properly() {
+        set_cual_account_name("account");
         let cual = View {
             name: "my_table".to_owned(),
             schema_name: "schema".to_owned(),
@@ -125,26 +168,36 @@ mod tests {
         .cual();
         assert_eq!(
             cual,
-            Cual::new("snowflake://database/schema/my_table".to_owned())
+            Cual::new(
+                "snowflake://account.snowflakecomputing.com/database/schema/my_table".to_owned()
+            )
         )
     }
 
     #[test]
     fn schema_cual_constructs_properly() {
+        set_cual_account_name("account");
         let cual = Schema {
             name: "my_schema".to_owned(),
             database_name: "database".to_owned(),
         }
         .cual();
-        assert_eq!(cual, Cual::new("snowflake://database/my_schema".to_owned()))
+        assert_eq!(
+            cual,
+            Cual::new("snowflake://account.snowflakecomputing.com/database/my_schema".to_owned())
+        )
     }
 
     #[test]
     fn db_cual_constructs_properly() {
+        set_cual_account_name("account");
         let cual = Database {
             name: "my_db".to_owned(),
         }
         .cual();
-        assert_eq!(cual, Cual::new("snowflake://my_db".to_owned()))
+        assert_eq!(
+            cual,
+            Cual::new("snowflake://account.snowflakecomputing.com/my_db".to_owned())
+        )
     }
 }

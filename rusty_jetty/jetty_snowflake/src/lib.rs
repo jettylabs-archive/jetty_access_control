@@ -19,7 +19,7 @@ mod cual;
 mod entry_types;
 mod rest;
 
-use cual::{cual, Cual};
+use cual::{cual, get_cual_account_name, set_cual_account_name, Cual};
 pub use entry_types::*;
 use jetty_core::cual::Cualable;
 use rest::{SnowflakeRequestConfig, SnowflakeRestClient, SnowflakeRestConfig};
@@ -141,6 +141,7 @@ impl Connector for SnowflakeConnector {
 
             required_fields.remove::<str>(k);
         }
+        set_cual_account_name(&conn.account);
 
         if !required_fields.is_empty() {
             Err(anyhow![
