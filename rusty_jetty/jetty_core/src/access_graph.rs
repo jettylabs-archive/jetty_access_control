@@ -51,6 +51,18 @@ impl UserAttributes {
             connectors,
         })
     }
+
+    /// Convenience constructor for testing
+    #[cfg(test)]
+    fn new(name: String) -> Self {
+        Self {
+            name,
+            identifiers: Default::default(),
+            other_identifiers: Default::default(),
+            metadata: Default::default(),
+            connectors: Default::default(),
+        }
+    }
 }
 
 /// Attributes associated with a Group node
@@ -100,6 +112,17 @@ impl AssetAttributes {
             metadata,
             connectors,
         })
+    }
+
+    /// Convenience constructor for testing
+    #[cfg(test)]
+    fn new(cual: Cual) -> Self {
+        Self {
+            cual,
+            asset_type: AssetType::default(),
+            metadata: Default::default(),
+            connectors: Default::default(),
+        }
     }
 }
 
@@ -175,6 +198,18 @@ impl PolicyAttributes {
             connectors,
         })
     }
+
+    /// Convenience constructor for testing
+    #[cfg(test)]
+    fn new(name: String) -> Self {
+        Self {
+            name,
+            privileges: Default::default(),
+            pass_through_hierarchy: Default::default(),
+            pass_through_lineage: Default::default(),
+            connectors: Default::default(),
+        }
+    }
 }
 
 /// Enum of node types
@@ -233,7 +268,7 @@ impl JettyNode {
 }
 
 /// Enum of edge types
-#[derive(PartialEq, Eq, Hash, Debug, Copy, Clone)]
+#[derive(PartialEq, Eq, Hash, Debug, Copy, Clone, Default)]
 pub(crate) enum EdgeType {
     MemberOf,
     Includes,
@@ -247,6 +282,8 @@ pub(crate) enum EdgeType {
     AppliedTo,
     Governs,
     GrantedTo,
+    #[default]
+    Other,
 }
 
 fn get_edge_type_pair(edge_type: &EdgeType) -> EdgeType {
@@ -263,6 +300,7 @@ fn get_edge_type_pair(edge_type: &EdgeType) -> EdgeType {
         EdgeType::AppliedTo => EdgeType::TaggedAs,
         EdgeType::GovernedBy => EdgeType::Governs,
         EdgeType::Governs => EdgeType::GovernedBy,
+        EdgeType::Other => EdgeType::Other,
     }
 }
 
@@ -286,6 +324,17 @@ pub(crate) struct JettyEdge {
     from: NodeName,
     to: NodeName,
     edge_type: EdgeType,
+}
+
+impl JettyEdge {
+    #[allow(dead_code)]
+    pub(crate) fn new(from: NodeName, to: NodeName, edge_type: EdgeType) -> Self {
+        Self {
+            from,
+            to,
+            edge_type,
+        }
+    }
 }
 
 /// Representation of data access state
