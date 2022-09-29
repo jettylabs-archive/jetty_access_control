@@ -96,8 +96,8 @@ impl Graph {
         let node = self
             .get_node(node_name)
             .ok_or_else(|| anyhow!("node not found"))?;
-        Ok(self.graph.edges(*node).filter_map(move |e| {
-            let target = &self.graph[e.target()];
+        Ok(self.graph.neighbors(*node).filter_map(move |target_node| {
+            let target = &self.graph[target_node];
             if matcher(target) {
                 Some(target)
             } else {
