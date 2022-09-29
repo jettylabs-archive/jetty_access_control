@@ -110,7 +110,6 @@ impl NodeHelper for nodes::Asset {
     fn get_node(&self, connector: String) -> JettyNode {
         JettyNode::Asset(AssetAttributes {
             cual: self.cual.clone(),
-            name: self.name.to_owned(),
             asset_type: self.asset_type.to_owned(),
             metadata: self.metadata.to_owned(),
             connectors: HashSet::from([connector]),

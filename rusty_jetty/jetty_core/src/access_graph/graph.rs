@@ -15,13 +15,13 @@ use super::{EdgeType, JettyNode, NodeName};
 /// The main graph wrapper
 pub struct Graph {
     pub(crate) graph: StableDiGraph<JettyNode, EdgeType>,
-    /// A map of node identifiers to indecies
+    /// A map of node identifiers to indicies
     pub(crate) nodes: HashMap<NodeName, NodeIndex>,
 }
 
 impl Graph {
     /// Save a svg of the access graph to the specified filename
-    pub fn visualize(&self, path: String) -> Result<String> {
+    pub fn visualize(&self, path: &str) -> Result<String> {
         let my_dot = dot::Dot::new(&self.graph);
         let g = graphviz::parse(&format!["{:?}", my_dot])
             .map_err(|s| anyhow!(s))
@@ -29,16 +29,21 @@ impl Graph {
         let draw = graphviz::exec(
             g,
             &mut PrinterContext::default(),
-            vec![CommandArg::Format(Format::Svg), CommandArg::Output(path)],
+            vec![
+                CommandArg::Format(Format::Svg),
+                CommandArg::Output(path.to_owned()),
+            ],
         )
         .context("failed to exec graphviz. do you need to install it?")?;
         Ok(draw)
     }
+
     /// Check whether a given node already exists in the graph
     #[inline(always)]
     pub fn get_node(&self, node: &NodeName) -> Option<&NodeIndex> {
         self.nodes.get(node)
     }
+
     /// Adds a node to the graph and returns the index.
     pub(crate) fn add_node(&mut self, node: &JettyNode) -> Result<()> {
         let node_name = node.get_name();
