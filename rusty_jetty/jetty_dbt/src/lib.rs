@@ -189,7 +189,7 @@ mod tests {
             ConnectorData {
                 assets: vec![Asset {
                     cual: Cual::new("snowflake://DB/SCHEMA/MODEL".to_owned()),
-                    name: "db.schema.model".to_owned(),
+                    name: "".to_owned(),
                     asset_type: AssetType::DBView,
                     metadata: HashMap::from([("enabled".to_owned(), "false".to_owned())]),
                     governed_by: HashSet::new(),
