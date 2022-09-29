@@ -26,7 +26,7 @@ use anyhow::{anyhow, Context, Result};
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct UserAttributes {
     name: String,
-    identifiers: HashMap<connectors::UserIdentifier, String>,
+    identifiers: HashSet<connectors::UserIdentifier>,
     other_identifiers: HashSet<String>,
     metadata: HashMap<String, String>,
     connectors: HashSet<String>,
@@ -36,7 +36,7 @@ impl UserAttributes {
     fn merge_attributes(&self, new_attributes: &UserAttributes) -> Result<UserAttributes> {
         let name = merge_matched_field(&self.name, &new_attributes.name)
             .context("field: UserAttributes.name")?;
-        let identifiers = merge_map(&self.identifiers, &new_attributes.identifiers)
+        let identifiers = merge_matched_field(&self.identifiers, &new_attributes.identifiers)
             .context("field: UserAttributes.identifiers")?;
         let other_identifiers =
             merge_set(&self.other_identifiers, &new_attributes.other_identifiers);
@@ -481,6 +481,7 @@ mod tests {
                 assets: vec![],
                 policies: vec![],
                 tags: vec![],
+                effective_permissions: HashMap::new(),
             },
         };
 

@@ -12,7 +12,7 @@
 mod cual;
 mod manifest;
 
-use std::path::Path;
+use std::{collections::HashMap, path::Path};
 
 use jetty_core::{
     connectors::{
@@ -94,6 +94,7 @@ impl Connector for DbtConnector {
             assets: all_nodes_as_assets,
             // TODO?
             tags: vec![],
+            effective_permissions: HashMap::new(),
         }
     }
 }
@@ -197,7 +198,7 @@ mod tests {
                     parent_of: HashSet::new(),
                     derived_from: HashSet::new(),
                     derived_to: HashSet::new(),
-                    tagged_as: HashSet::new()
+                    tagged_as: HashSet::new(),
                 }],
                 ..Default::default()
             }
