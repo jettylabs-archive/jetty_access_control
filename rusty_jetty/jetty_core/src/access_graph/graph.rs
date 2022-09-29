@@ -1,6 +1,7 @@
 //! Graph stuff
 //!
 
+use anyhow::bail;
 use anyhow::{anyhow, Context, Result};
 use graphviz_rust as graphviz;
 use graphviz_rust::cmd::CommandArg;
@@ -58,6 +59,29 @@ impl Graph {
         Ok(())
     }
 
+    fn get_paths(
+        &self,
+        from_node_name: &NodeName,
+        to_node_name: &NodeName,
+    ) -> Result<impl Iterator<Item = Vec<NodeIndex>> + '_> {
+        if let (Some(from), Some(to)) = (self.get_node(from_node_name), self.get_node(to_node_name))
+        {
+            Ok(petgraph::algo::all_simple_paths::<Vec<_>, _>(
+                &self.graph,
+                *from,
+                *to,
+                0,
+                None,
+            ))
+        } else {
+            bail!(
+                "node names {:?} -> {:?} not found.",
+                from_node_name,
+                to_node_name
+            )
+        }
+    }
+
     /// Updates a node. Should return the updated node. Returns an
     /// error if the nodes are incompatible (would require overwriting values).
     /// To be compatible, metadata from each
@@ -99,7 +123,11 @@ impl Graph {
 mod tests {
     use anyhow::{anyhow, Context, Result};
 
-    use crate::access_graph::GroupAttributes;
+    use crate::{
+        access_graph::{AssetAttributes, GroupAttributes, JettyEdge},
+        connectors::AssetType,
+        cual::Cual,
+    };
 
     use super::*;
     use std::collections::{HashMap, HashSet};
@@ -247,6 +275,40 @@ mod tests {
 
         assert_eq!(merged_node, combined_node);
 
+        Ok(())
+    }
+
+    #[test]
+    fn get_paths_works() -> Result<()> {
+        let mut g = new_graph();
+        g.add_node(&JettyNode::Asset(AssetAttributes {
+            cual: Cual::new("my_cual".to_owned()),
+            asset_type: AssetType::default(),
+            metadata: HashMap::new(),
+            connectors: HashSet::new(),
+        }))?;
+
+        g.add_node(&JettyNode::Asset(AssetAttributes {
+            cual: Cual::new("my_second_cual".to_owned()),
+            asset_type: AssetType::default(),
+            metadata: HashMap::new(),
+            connectors: HashSet::new(),
+        }))?;
+
+        g.add_edge(JettyEdge {
+            from: NodeName::Asset("my_cual".to_owned()),
+            to: NodeName::Asset("my_second_cual".to_owned()),
+            edge_type: EdgeType::ParentOf,
+        })?;
+
+        let paths = g.get_paths(
+            &NodeName::Asset("my_cual".to_owned()),
+            &NodeName::Asset("my_second_cual".to_owned()),
+        )?;
+        assert_eq!(
+            paths.collect::<Vec<Vec<NodeIndex>>>(),
+            vec![vec![NodeIndex::new(0), NodeIndex::new(1)]]
+        );
         Ok(())
     }
 
