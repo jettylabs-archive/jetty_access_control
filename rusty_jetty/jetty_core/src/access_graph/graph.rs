@@ -12,7 +12,7 @@ use petgraph::visit::EdgeRef;
 use petgraph::{dot, stable_graph::StableDiGraph};
 use std::collections::HashMap;
 
-use super::{EdgeType, JettyNode, NodeName, UserAttributes};
+use super::{EdgeType, JettyNode, NodeName};
 
 /// The main graph wrapper
 pub struct Graph {
