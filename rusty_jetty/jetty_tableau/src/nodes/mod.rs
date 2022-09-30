@@ -200,7 +200,6 @@ impl SerializedPermission {
     pub(crate) fn into_permission(self, env: &Environment) -> Result<Permission> {
         // Get the grantee object from the environment. We assume the env
         // should already have it available.
-        println!("intoingpermission");
         let grantee = match self {
             Self {
                 group: Some(IdField { ref id }),
@@ -223,10 +222,6 @@ impl SerializedPermission {
             _ => bail!("no user or group for permission {:#?}", self),
         };
 
-        println!(
-            "capabilities for {:?} are {:#?}",
-            grantee, self.capabilities.capability
-        );
         Ok(Permission {
             grantee,
             capabilities: self

@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use clap::Parser;
 
 use jetty_core::{
@@ -25,6 +25,11 @@ async fn main() -> Result<()> {
 
     let jetty = Jetty::new()?;
     let creds = fetch_credentials()?;
+
+    if args.connectors.is_empty() {
+        println!("No connectors, huh?");
+        bail!("Select a connector");
+    }
 
     let dbt_pcd = if args.connectors.contains(&"dbt".to_owned()) {
         println!("initializing dbt");
