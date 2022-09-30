@@ -138,7 +138,7 @@ mod tests {
                         "email".to_owned(),
                         "eauid".to_owned(),
                         "full name".to_owned(),
-                        "role".to_owned(),
+                        Default::default(),
                     ),
                 )]),
             );
@@ -158,7 +158,7 @@ mod tests {
                 "email".to_owned(),
                 "eauid".to_owned(),
                 "full name".to_owned(),
-                "role".to_owned(),
+                Default::default(),
             )],
         );
         jetty_nodes::Group::from(g);
@@ -175,7 +175,7 @@ mod tests {
                 "email".to_owned(),
                 "eauid".to_owned(),
                 "full name".to_owned(),
-                "role".to_owned(),
+                Default::default(),
             )],
         );
         let a: jetty_nodes::Group = g.into();
@@ -193,7 +193,7 @@ mod tests {
                 email.to_owned(),
                 "eauid".to_owned(),
                 "full name".to_owned(),
-                "role".to_owned(),
+                Default::default(),
             )],
         );
         let a: jetty_nodes::Group = g.into();

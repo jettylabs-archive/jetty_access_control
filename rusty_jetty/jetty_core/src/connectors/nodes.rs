@@ -13,17 +13,47 @@ use super::UserIdentifier;
 /// Alias for a sparse matrix addressable by matrix[x][y], where each entry is of type T.
 pub type SparseMatrix<X, Y, T> = HashMap<X, HashMap<Y, T>>;
 
+/// Mode for a permission that's either "allow," "deny," "none," or something
+/// else with a given explanation.
+#[derive(Debug, Default, Hash, PartialEq, Eq)]
+pub enum PermissionMode {
+    /// Allow this permission.
+    Allow,
+    /// Deny this permission.
+    Deny,
+    /// No permission set.
+    #[default]
+    None,
+    /// Permission set to something else with a contained explanation.
+    Other(String),
+}
+
+impl From<&str> for PermissionMode {
+    fn from(val: &str) -> Self {
+        match val.to_lowercase().as_str() {
+            "allow" => PermissionMode::Allow,
+            "deny" => PermissionMode::Deny,
+            "none" => PermissionMode::None,
+            other => PermissionMode::Other(other.to_owned()),
+        }
+    }
+}
 /// An effective permission
 #[derive(Debug, Default, Hash, PartialEq, Eq)]
 pub struct EffectivePermission {
     privilege: String,
+    mode: PermissionMode,
     reasons: Vec<String>,
 }
 
 impl EffectivePermission {
     /// Basic constructor
-    pub fn new(privilege: String, reasons: Vec<String>) -> Self {
-        Self { privilege, reasons }
+    pub fn new(privilege: String, mode: PermissionMode, reasons: Vec<String>) -> Self {
+        Self {
+            privilege,
+            mode,
+            reasons,
+        }
     }
 }
 

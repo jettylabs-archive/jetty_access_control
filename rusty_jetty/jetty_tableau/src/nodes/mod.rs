@@ -121,6 +121,22 @@ pub(crate) struct Permission {
     pub(crate) capabilities: HashMap<String, String>,
 }
 
+impl Permission {
+    pub(crate) fn has_capability(&self, cap: &str, mode: &str) -> bool {
+        self.capabilities
+            .iter()
+            .find(|(c, m)| c.as_str() == cap && m.as_str() == mode)
+            .is_some()
+    }
+
+    pub(crate) fn get_grantee_users(&self) -> Vec<String> {
+        match &self.grantee {
+            Grantee::User(u) => vec![u.id.to_owned()],
+            Grantee::Group(g) => g.includes.clone().iter().map(|u| u.id.to_owned()).collect(),
+        }
+    }
+}
+
 /// Permissions and Jetty policies map 1:1.
 impl From<Permission> for jetty_nodes::Policy {
     /// In order to get a Jetty policy from a permission, we need to grab
@@ -184,28 +200,33 @@ impl SerializedPermission {
     pub(crate) fn into_permission(self, env: &Environment) -> Result<Permission> {
         // Get the grantee object from the environment. We assume the env
         // should already have it available.
+        println!("intoingpermission");
         let grantee = match self {
             Self {
-                group: Some(IdField { id }),
+                group: Some(IdField { ref id }),
                 ..
             } => Grantee::Group(
                 env.groups
-                    .get(&id)
+                    .get(id)
                     .unwrap_or_else(|| panic!("Group {} not yet in environment", id))
                     .clone(),
             ),
             Self {
-                user: Some(IdField { id }),
+                user: Some(IdField { ref id }),
                 ..
             } => Grantee::User(
                 env.users
-                    .get(&id)
+                    .get(id)
                     .unwrap_or_else(|| panic!("User {} not yet in environment", id))
                     .clone(),
             ),
             _ => bail!("no user or group for permission {:#?}", self),
         };
 
+        println!(
+            "capabilities for {:?} are {:#?}",
+            grantee, self.capabilities.capability
+        );
         Ok(Permission {
             grantee,
             capabilities: self
