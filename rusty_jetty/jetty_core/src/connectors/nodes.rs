@@ -19,6 +19,14 @@ pub struct EffectivePermission {
     privilege: String,
     reasons: Vec<String>,
 }
+
+impl EffectivePermission {
+    /// Basic constructor
+    pub fn new(privilege: String, reasons: Vec<String>) -> Self {
+        Self { privilege, reasons }
+    }
+}
+
 /// Container for all node data for a given connector
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ConnectorData {

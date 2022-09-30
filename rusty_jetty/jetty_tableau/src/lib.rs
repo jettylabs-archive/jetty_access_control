@@ -17,11 +17,14 @@ use jetty_core::{
     jetty::{ConnectorConfig, CredentialsBlob},
     Connector,
 };
-use nodes::asset_to_policy::env_to_jetty_policies;
+use nodes::{asset_to_policy::env_to_jetty_policies, Grantee};
 use rest::TableauRestClient;
 use serde::Deserialize;
 use serde_json::json;
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    hash::Hash,
+};
 
 pub type TableauConfig = HashMap<String, String>;
 
@@ -112,10 +115,37 @@ impl TableauConnector {
     fn get_effective_permissions(
         &self,
     ) -> SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> {
-        let mut ep = HashMap::new();
-        // for user in users() {
-        //     ep.insert(user, HashMap::new());
-        // }
+        let mut ep: SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> =
+            HashMap::new();
+        // self.coordinator.flows.values().for_each(|f| f.permissions);
+
+        for asset in self.coordinator.env.flows.values() {
+            for perm in &asset.permissions {
+                for (cap, mode) in &perm.capabilities {
+                    match &perm.grantee {
+                        Grantee::User(u) => {
+                            // insert permission by [user][asset] into ep
+                            // TODO: make sure to include licensed/unlicensed
+                            let uid = UserIdentifier::Email(u.email.to_owned());
+                            if let Some(mut user_map) = ep.get_mut(&uid) {
+                                if let Some(mut asset_map) = (*user_map).get_mut(&asset.cual) {
+                                    *asset_map = HashSet::from([EffectivePermission::new(
+                                        cap.to_owned(),
+                                        vec!["explicitly set".to_owned()],
+                                    )]);
+                                }
+                            } else {
+                                let asset_map = HashMap::from([]);
+                                ep.insert(uid, asset_map);
+                            }
+                        }
+                        Grantee::Group(g) => {
+                            // insert permission by [user][asset] into ep for all users in group.
+                        }
+                    }
+                }
+            }
+        }
         ep
     }
 

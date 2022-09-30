@@ -117,8 +117,8 @@ struct IdField {
 /// Representation of Tableau permissions
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub(crate) struct Permission {
-    grantee: Grantee,
-    capabilities: HashMap<String, String>,
+    pub(crate) grantee: Grantee,
+    pub(crate) capabilities: HashMap<String, String>,
 }
 
 /// Permissions and Jetty policies map 1:1.
