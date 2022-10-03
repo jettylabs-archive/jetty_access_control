@@ -33,7 +33,6 @@ impl From<&str> for PermissionMode {
         match val.to_lowercase().as_str() {
             "allow" => PermissionMode::Allow,
             "deny" => PermissionMode::Deny,
-            "none" => PermissionMode::None,
             other => PermissionMode::Other(other.to_owned()),
         }
     }

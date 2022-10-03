@@ -31,7 +31,9 @@ async fn main() -> Result<()> {
         bail!("Select a connector");
     }
 
-    let dbt_pcd = if args.connectors.contains(&"dbt".to_owned()) {
+    let mut data_from_connectors = vec![];
+
+    if args.connectors.contains(&"dbt".to_owned()) {
         println!("initializing dbt");
         let now = Instant::now();
         // Initialize connectors
@@ -51,12 +53,10 @@ async fn main() -> Result<()> {
             data: dbt_data,
         };
         println!("dbt data took {} seconds", now.elapsed().as_secs_f32());
-        Some(dbt_pcd)
-    } else {
-        None
-    };
+        data_from_connectors.push(dbt_pcd);
+    }
 
-    let snow_pcd = if args.connectors.contains(&"snowflake".to_owned()) {
+    if args.connectors.contains(&"snowflake".to_owned()) {
         println!("intializing snowflake");
         let now = Instant::now();
         let mut snow = jetty_snowflake::SnowflakeConnector::new(
@@ -78,12 +78,10 @@ async fn main() -> Result<()> {
             "snowflake data took {} seconds",
             now.elapsed().as_secs_f32()
         );
-        Some(snow_pcd)
-    } else {
-        None
-    };
+        data_from_connectors.push(snow_pcd);
+    }
 
-    let tab_pcd = if args.connectors.contains(&"tableau".to_owned()) {
+    if args.connectors.contains(&"tableau".to_owned()) {
         println!("initializing tableau");
         let now = Instant::now();
         let mut tab = jetty_tableau::TableauConnector::new(
@@ -103,19 +101,12 @@ async fn main() -> Result<()> {
             data: tab_data,
         };
         println!("tableau data took {} seconds", now.elapsed().as_secs_f32());
-        Some(tab_pcd)
-    } else {
-        None
-    };
+        data_from_connectors.push(tab_pcd);
+    }
 
     println!("creating access graph");
     let now = Instant::now();
-    let ag = AccessGraph::new(
-        vec![dbt_pcd, snow_pcd, tab_pcd]
-            .into_iter()
-            .flatten()
-            .collect(),
-    )?;
+    let ag = AccessGraph::new(data_from_connectors)?;
     println!(
         "access graph creation took {} seconds",
         now.elapsed().as_secs_f32()

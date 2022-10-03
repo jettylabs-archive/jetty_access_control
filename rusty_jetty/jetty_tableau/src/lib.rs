@@ -123,30 +123,35 @@ impl TableauConnector {
         )
     }
 
+    /// Given an asset, get all of the user -> permission pairings.
+    ///
+    /// Return a map of users to a list of their (origin, capability, mode)
+    /// permissions.
+    ///
+    /// origin indicates whether the permission comes from the user or a group.
     fn get_user_perms<'a, T: Permissionable>(
         &self,
         asset: &'a T,
-    ) -> HashMap<&'a nodes::User, Vec<(&'a String, &'a String)>> {
-        // TODO: Add provenance here to indicate whether the permission was
-        // from user or group (user capabilities take precedence).
-        let mut user_perm_map: HashMap<&nodes::User, Vec<(&String, &String)>> = HashMap::new();
+    ) -> HashMap<&'a nodes::User, Vec<(&'a Grantee /* origin*/, &'a String, &'a String)>> {
+        let mut user_perm_map: HashMap<&nodes::User, Vec<(&Grantee, &String, &String)>> =
+            HashMap::new();
         asset.get_permissions().iter().for_each(|perm| {
             perm.capabilities.iter().for_each(|p| {
                 match &perm.grantee {
                     Grantee::User(u) => {
                         if let Some(perms) = user_perm_map.get_mut(&u) {
-                            (*perms).push(p);
+                            (*perms).push((&perm.grantee, p.0, p.1));
                         } else {
-                            user_perm_map.insert(&u, vec![p]);
+                            user_perm_map.insert(&u, vec![(&perm.grantee, p.0, p.1)]);
                         }
                     }
                     Grantee::Group(g) => {
                         // insert permission by [user][asset] into map for all users in group.
                         for user in &g.includes {
                             if let Some(perms) = user_perm_map.get_mut(&user) {
-                                (*perms).push(p);
+                                (*perms).push((&perm.grantee, p.0, p.1));
                             } else {
-                                user_perm_map.insert(&user, vec![p]);
+                                user_perm_map.insert(&user, vec![(&perm.grantee, p.0, p.1)]);
                             }
                         }
                     }
@@ -171,14 +176,15 @@ impl TableauConnector {
             user_perm_map.iter().map(|(user, perms)| {
                 // 1. check site role for allow alls and missing licenses.
                 let allow_all = match user.site_role {
-                    SiteRole::Explorer
+                    SiteRole::Creator
+                    | SiteRole::Explorer
                     | SiteRole::ExplorerCanPublish
                     | SiteRole::ReadOnly
-                    | SiteRole::Viewer => Some(false),
-                    SiteRole::Creator
-                    | SiteRole::ServerAdministrator
                     | SiteRole::SiteAdministratorExplorer
-                    | SiteRole::SiteAdministratorCreator => Some(true),
+                    | SiteRole::Viewer => Some(false),
+                    SiteRole::ServerAdministrator | SiteRole::SiteAdministratorCreator => {
+                        Some(true)
+                    }
                     SiteRole::Unlicensed | SiteRole::Unknown => None,
                 };
 
@@ -188,10 +194,10 @@ impl TableauConnector {
                         // Site role guarantees access, grant all capabilities.
                         perms
                             .iter()
-                            .map(|(capa, mode)| {
+                            .map(|(_, capa, mode)| {
                                 EffectivePermission::new(
                                     capa.to_string(),
-                                    PermissionMode::from(mode.as_str()),
+                                    PermissionMode::from(PermissionMode::Allow),
                                     vec![format!("user has site role {:?}", user.site_role)],
                                 )
                             })
@@ -214,7 +220,7 @@ impl TableauConnector {
                             // allow because project leader
                             perms
                                 .iter()
-                                .map(|(capa, mode)| {
+                                .map(|(_, capa, mode)| {
                                     EffectivePermission::new(
                                         capa.to_string(),
                                         PermissionMode::Allow,
@@ -233,7 +239,7 @@ impl TableauConnector {
                             // 3. content (asset) owner, allow
                             perms
                                 .iter()
-                                .map(|(capa, mode)| {
+                                .map(|(_, capa, mode)| {
                                     EffectivePermission::new(
                                         capa.to_string(),
                                         PermissionMode::Allow,
@@ -247,11 +253,20 @@ impl TableauConnector {
                             // apply the permission explicitly given
                             perms
                                 .iter()
-                                .map(|(capa, mode)| {
+                                .map(|(grantee, capa, mode)| {
+                                    let grantee_type = if matches!(grantee, Grantee::User(_)) {
+                                        "user"
+                                    } else {
+                                        "group"
+                                    };
                                     EffectivePermission::new(
                                         capa.to_string(),
                                         PermissionMode::from(mode.as_str()),
-                                        vec![format!("Permission set explicitly.")],
+                                        vec![format!(
+                                            "Permission set explicitly on {} {}.",
+                                            grantee_type,
+                                            grantee.get_name()
+                                        )],
                                     )
                                 })
                                 .collect()
@@ -261,7 +276,7 @@ impl TableauConnector {
                     // No license, deny access to this user.
                     perms
                         .iter()
-                        .map(|(capa, mode)| {
+                        .map(|(_, capa, mode)| {
                             EffectivePermission::new(
                                 capa.to_string(),
                                 PermissionMode::Deny,
