@@ -2,11 +2,29 @@ use std::collections::{HashMap, HashSet};
 
 use crate::rest::{self, FetchJson};
 use anyhow::{bail, Context, Result};
-use jetty_core::connectors::{nodes as jetty_nodes, UserIdentifier};
+use jetty_core::connectors::{
+    nodes::{self as jetty_nodes, EffectivePermission, PermissionMode},
+    UserIdentifier,
+};
 use serde::{Deserialize, Serialize};
 
+#[derive(Deserialize, Serialize, Clone, Default, Debug, Hash, PartialEq, Eq)]
+pub(crate) enum SiteRole {
+    Creator,
+    Explorer,
+    ExplorerCanPublish,
+    ServerAdministrator,
+    SiteAdministratorExplorer,
+    SiteAdministratorCreator,
+    Unlicensed,
+    ReadOnly,
+    Viewer,
+    #[default]
+    Unknown,
+}
+
 /// Representation of Tableau user
-#[derive(Deserialize, Serialize, Clone, Default, Debug)]
+#[derive(Deserialize, Serialize, Clone, Default, Debug, Hash, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct User {
     pub id: String,
@@ -14,7 +32,7 @@ pub(crate) struct User {
     pub email: String,
     pub external_auth_user_id: String,
     pub full_name: String,
-    pub site_role: String,
+    pub site_role: SiteRole,
 }
 
 impl User {
@@ -24,7 +42,7 @@ impl User {
         email: String,
         external_auth_user_id: String,
         full_name: String,
-        site_role: String,
+        site_role: SiteRole,
     ) -> Self {
         Self {
             id,
@@ -45,7 +63,7 @@ impl From<User> for jetty_nodes::User {
                 UserIdentifier::Email(val.email),
                 UserIdentifier::FullName(val.full_name),
             ]),
-            HashSet::from([val.external_auth_user_id, val.site_role]),
+            HashSet::from([val.external_auth_user_id, format!("{:?}", val.site_role)]),
             HashMap::new(),
             // Handled in groups.
             HashSet::new(),
@@ -95,7 +113,7 @@ mod tests {
             "email".to_owned(),
             "ea_user_id".to_owned(),
             "full_name".to_owned(),
-            "site_role".to_owned(),
+            Default::default(),
         );
         jetty_nodes::User::from(u);
     }
@@ -108,7 +126,7 @@ mod tests {
             "email".to_owned(),
             "ea_user_id".to_owned(),
             "full_name".to_owned(),
-            "site_role".to_owned(),
+            Default::default(),
         );
         let a: jetty_nodes::User = u.into();
     }

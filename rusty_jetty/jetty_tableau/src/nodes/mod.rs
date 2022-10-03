@@ -117,8 +117,24 @@ struct IdField {
 /// Representation of Tableau permissions
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub(crate) struct Permission {
-    grantee: Grantee,
-    capabilities: HashMap<String, String>,
+    pub(crate) grantee: Grantee,
+    pub(crate) capabilities: HashMap<String, String>,
+}
+
+impl Permission {
+    pub(crate) fn has_capability(&self, cap: &str, mode: &str) -> bool {
+        self.capabilities
+            .iter()
+            .find(|(c, m)| c.as_str() == cap && m.as_str() == mode)
+            .is_some()
+    }
+
+    pub(crate) fn get_grantee_users(&self) -> Vec<String> {
+        match &self.grantee {
+            Grantee::User(u) => vec![u.id.to_owned()],
+            Grantee::Group(g) => g.includes.clone().iter().map(|u| u.id.to_owned()).collect(),
+        }
+    }
 }
 
 /// Permissions and Jetty policies map 1:1.
@@ -186,20 +202,20 @@ impl SerializedPermission {
         // should already have it available.
         let grantee = match self {
             Self {
-                group: Some(IdField { id }),
+                group: Some(IdField { ref id }),
                 ..
             } => Grantee::Group(
                 env.groups
-                    .get(&id)
+                    .get(id)
                     .unwrap_or_else(|| panic!("Group {} not yet in environment", id))
                     .clone(),
             ),
             Self {
-                user: Some(IdField { id }),
+                user: Some(IdField { ref id }),
                 ..
             } => Grantee::User(
                 env.users
-                    .get(&id)
+                    .get(id)
                     .unwrap_or_else(|| panic!("User {} not yet in environment", id))
                     .clone(),
             ),

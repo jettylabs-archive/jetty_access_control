@@ -7,6 +7,7 @@ use super::{
     PolicyAttributes, TagAttributes, UserAttributes,
 };
 
+#[derive(Debug)]
 /// Wrapper for including the connector name and updated
 /// connector data.
 pub struct ProcessedConnectorData {
