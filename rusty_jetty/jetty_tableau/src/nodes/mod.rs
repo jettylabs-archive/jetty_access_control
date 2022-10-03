@@ -31,6 +31,7 @@ use crate::{
     coordinator::Environment,
     nodes as tableau_nodes,
     rest::{self, FetchJson},
+    Cual, Cualable,
 };
 
 use jetty_core::connectors::nodes as jetty_nodes;
@@ -38,11 +39,17 @@ use jetty_core::connectors::nodes as jetty_nodes;
 use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
 
+#[derive(Clone, Default, Debug, Deserialize, Serialize)]
+/// A Tableau-created Project ID.
+pub(crate) struct ProjectId(pub(crate) String);
+
 /// This trait is implemented by permissionable Tableau asset nodes and makes it simpler to
 /// fetch and parse permissions
 #[async_trait]
 pub(crate) trait Permissionable: core::fmt::Debug {
     fn get_endpoint(&self) -> String;
+
+    fn get_permissions(&self) -> &Vec<Permission>;
 
     fn set_permissions(&mut self, permissions: Vec<Permission>);
 
@@ -85,6 +92,13 @@ trait GetId {
     fn get_id(&self) -> String;
 }
 
+pub(crate) trait OwnedAsset {
+    /// Get the parent project ID.
+    fn get_parent_project_id(&self) -> Option<&ProjectId>;
+    /// Get the owner ID for this asset.
+    fn get_owner_id(&self) -> &str;
+}
+
 /// This Macro implements the GetId trait for one or more types that have an `id` field.
 macro_rules! impl_GetId {
     (for $($t:ty),+) => {
@@ -99,13 +113,75 @@ macro_rules! impl_GetId {
 impl_GetId!(for
     Group,
     User,
-    Project,
     Workbook,
     View,
     Datasource,
     Metric,
     Flow,
     Lens
+);
+
+/// Project uses ProjectId for its ID field so it needs to have a bespoke impl.
+impl GetId for Project {
+    fn get_id(&self) -> String {
+        self.id.0.to_owned()
+    }
+}
+
+/// This Macro implements the GetId trait for one or more types that have an `id` field.
+macro_rules! impl_OwnedAsset {
+    (for $($t:ty),+) => {
+        $(impl OwnedAsset for $t {
+            fn get_parent_project_id(&self) -> Option<&ProjectId>{
+                Some(&self.project_id)
+            }
+
+            fn get_owner_id(&self) -> &str {
+                &self.owner_id
+            }
+        })*
+    }
+}
+
+impl_OwnedAsset!(for
+    Workbook,
+    View,
+    Datasource,
+    Metric,
+    Flow,
+    Lens
+);
+
+/// Project is a little different so it needs to have a bespoke impl.
+impl OwnedAsset for Project {
+    fn get_parent_project_id(&self) -> Option<&ProjectId> {
+        self.parent_project_id.as_ref()
+    }
+
+    fn get_owner_id(&self) -> &str {
+        &self.owner_id
+    }
+}
+
+/// This Macro implements the Cualable trait for one or more types that have a `cual` field.
+macro_rules! impl_Cualable {
+    (for $($t:ty),+) => {
+        $(impl Cualable for $t {
+            fn cual(&self) -> Cual{
+                self.cual.clone()
+            }
+        })*
+    }
+}
+
+impl_Cualable!(for
+    Workbook,
+    View,
+    Datasource,
+    Metric,
+    Flow,
+    Lens,
+    Project
 );
 
 /// Helper struct for deserializing Tableau assets

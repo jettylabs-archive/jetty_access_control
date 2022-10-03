@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::rest::{self, get_tableau_cual, FetchJson, TableauAssetType};
 
-use super::Permissionable;
+use super::{Permissionable, ProjectId};
 
 /// Representation of Tableau metric
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
@@ -19,7 +19,7 @@ pub(crate) struct Metric {
     pub name: String,
     pub updated_at: String,
     pub suspended: bool,
-    pub project_id: String,
+    pub project_id: ProjectId,
     pub owner_id: String,
     pub underlying_view_id: String,
     pub permissions: Vec<super::Permission>,
@@ -47,7 +47,7 @@ fn to_node(val: &serde_json::Value) -> Result<Metric> {
         id: asset_info.id,
         name: asset_info.name,
         owner_id: asset_info.owner.id,
-        project_id: asset_info.project.id,
+        project_id: ProjectId(asset_info.project.id),
         updated_at: asset_info.updated_at,
         suspended: asset_info.suspended,
         underlying_view_id: asset_info.underlying_view.id,
@@ -85,10 +85,10 @@ impl Metric {
             name,
             updated_at,
             suspended,
-            project_id,
             owner_id,
             underlying_view_id,
             permissions,
+            project_id: ProjectId(project_id),
         }
     }
 }
@@ -99,6 +99,10 @@ impl Permissionable for Metric {
     }
     fn set_permissions(&mut self, permissions: Vec<super::Permission>) {
         self.permissions = permissions;
+    }
+
+    fn get_permissions(&self) -> &Vec<super::Permission> {
+        &self.permissions
     }
 }
 

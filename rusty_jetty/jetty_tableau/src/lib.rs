@@ -7,20 +7,26 @@ mod rest;
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
+use rest::TableauRestClient;
+use serde::Deserialize;
+use serde_json::json;
+
 use jetty_core::{
     connectors::{
         nodes::{self as jetty_nodes, EffectivePermission, SparseMatrix},
         nodes::{ConnectorData, PermissionMode},
         ConnectorClient, UserIdentifier,
     },
-    cual::Cual,
+    cual::{Cual, Cualable},
     jetty::{ConnectorConfig, CredentialsBlob},
     Connector,
 };
-use nodes::{asset_to_policy::env_to_jetty_policies, user::SiteRole, Grantee};
-use rest::TableauRestClient;
-use serde::Deserialize;
-use serde_json::json;
+
+use nodes::{
+    asset_to_policy::env_to_jetty_policies, user::SiteRole, Grantee, OwnedAsset, Permissionable,
+    ProjectId,
+};
+
 use std::{
     collections::{HashMap, HashSet},
     hash::Hash,
@@ -117,14 +123,14 @@ impl TableauConnector {
         )
     }
 
-    fn get_user_perms<'a>(
+    fn get_user_perms<'a, T: Permissionable>(
         &self,
-        asset: &'a nodes::Flow,
+        asset: &'a T,
     ) -> HashMap<&'a nodes::User, Vec<(&'a String, &'a String)>> {
         // TODO: Add provenance here to indicate whether the permission was
         // from user or group (user capabilities take precedence).
         let mut user_perm_map: HashMap<&nodes::User, Vec<(&String, &String)>> = HashMap::new();
-        asset.permissions.iter().for_each(|perm| {
+        asset.get_permissions().iter().for_each(|perm| {
             perm.capabilities.iter().for_each(|p| {
                 match &perm.grantee {
                     Grantee::User(u) => {
@@ -150,15 +156,16 @@ impl TableauConnector {
         user_perm_map
     }
 
-    fn get_effective_permissions(
+    fn get_effective_permissions_for_asset<T: OwnedAsset + Permissionable + Cualable>(
         &self,
+        assets: &HashMap<String, T>,
     ) -> SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> {
         let mut ep: SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> =
             HashMap::new();
         // for each asset
-        self.coordinator.env.flows.values().for_each(|asset| {
+        assets.values().for_each(|asset| {
             // get all perms as user -> [permission] mapping
-            let user_perm_map = self.get_user_perms(&asset);
+            let user_perm_map = self.get_user_perms(asset);
             // We'll go over each of those user -> [permission] mappings to
             // discover effective access.
             user_perm_map.iter().map(|(user, perms)| {
@@ -191,7 +198,9 @@ impl TableauConnector {
                             .collect()
                     } else {
                         // Need to dig more to figure out effective permission.
-                        let parent_project = &self.coordinator.env.projects[&asset.project_id];
+                        // TODO: climb the project hierarchy here to check all parent projects
+                        let ProjectId(project_id) = asset.get_parent_project_id().unwrap();
+                        let parent_project = &self.coordinator.env.projects[&project_id.to_owned()];
                         let is_project_leader = parent_project
                             .permissions
                             .iter()
@@ -220,7 +229,7 @@ impl TableauConnector {
                                     )
                                 })
                                 .collect()
-                        } else if asset.owner_id == user.id {
+                        } else if asset.get_owner_id() == user.id {
                             // 3. content (asset) owner, allow
                             perms
                                 .iter()
@@ -264,12 +273,35 @@ impl TableauConnector {
                 // Add final_permissions to ep[user][asset]
                 ep.insert(
                     UserIdentifier::Email(user.email.to_owned()),
-                    HashMap::from([(asset.cual.clone(), final_permissions)]),
+                    HashMap::from([(asset.cual().clone(), final_permissions)]),
                 );
             });
         });
-
         ep
+    }
+
+    fn get_effective_permissions(
+        &self,
+    ) -> SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> {
+        let mut final_eps = HashMap::new();
+        let flow_eps = self.get_effective_permissions_for_asset(&self.coordinator.env.flows);
+        let project_eps = self.get_effective_permissions_for_asset(&self.coordinator.env.projects);
+        let lens_eps = self.get_effective_permissions_for_asset(&self.coordinator.env.lenses);
+        let datasource_eps =
+            self.get_effective_permissions_for_asset(&self.coordinator.env.datasources);
+        let workbook_eps =
+            self.get_effective_permissions_for_asset(&self.coordinator.env.workbooks);
+        let metric_eps = self.get_effective_permissions_for_asset(&self.coordinator.env.metrics);
+        let view_eps = self.get_effective_permissions_for_asset(&self.coordinator.env.views);
+
+        final_eps.extend(flow_eps.into_iter());
+        final_eps.extend(project_eps.into_iter());
+        final_eps.extend(lens_eps.into_iter());
+        final_eps.extend(datasource_eps.into_iter());
+        final_eps.extend(workbook_eps.into_iter());
+        final_eps.extend(metric_eps.into_iter());
+        final_eps.extend(view_eps.into_iter());
+        final_eps
     }
 
     fn object_to_jetty<O, J>(&self, obj_map: &HashMap<String, O>) -> Vec<J>

@@ -15,7 +15,7 @@ use jetty_core::{
     cual::Cual,
 };
 
-use super::Permissionable;
+use super::{Permissionable, ProjectId};
 
 /// Representation of Tableau Workbook
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
@@ -27,7 +27,7 @@ pub(crate) struct Workbook {
     /// Tableau LUID of owner
     pub owner_id: String,
     /// LUID of project
-    pub project_id: String,
+    pub project_id: ProjectId,
     /// Probably not necessary?
     pub has_embedded_sources: bool,
     /// HashSet of derived-from cuals
@@ -42,7 +42,7 @@ impl Workbook {
         id: String,
         name: String,
         owner_id: String,
-        project_id: String,
+        project_id: ProjectId,
         has_embedded_sources: bool,
         sources: HashSet<String>,
         updated_at: String,
@@ -78,6 +78,10 @@ impl Permissionable for Workbook {
     }
     fn set_permissions(&mut self, permissions: Vec<super::Permission>) {
         self.permissions = permissions;
+    }
+
+    fn get_permissions(&self) -> &Vec<super::Permission> {
+        &self.permissions
     }
 }
 
@@ -121,6 +125,7 @@ impl HasSources for Workbook {
 
 impl From<Workbook> for jetty_nodes::Asset {
     fn from(val: Workbook) -> Self {
+        let ProjectId(project_id) = val.project_id;
         jetty_nodes::Asset::new(
             val.cual,
             val.name,
@@ -130,11 +135,9 @@ impl From<Workbook> for jetty_nodes::Asset {
             // Governing policies will be assigned in the policy.
             HashSet::new(),
             // Workbooks are children of their projects.
-            HashSet::from(
-                [get_tableau_cual(TableauAssetType::Project, &val.project_id)
-                    .unwrap()
-                    .uri()],
-            ),
+            HashSet::from([get_tableau_cual(TableauAssetType::Project, &project_id)
+                .unwrap()
+                .uri()]),
             // Children objects will be handled in their respective nodes.
             HashSet::new(),
             // Workbooks are derived from their source data.
@@ -180,7 +183,7 @@ fn to_node_graphql(val: &serde_json::Value) -> Result<Workbook> {
         id: workbook_info.luid,
         name: workbook_info.name,
         owner_id: workbook_info.owner.luid,
-        project_id: workbook_info.project_luid,
+        project_id: ProjectId(workbook_info.project_luid),
         updated_at: workbook_info.updated_at,
         has_embedded_sources: !workbook_info.embedded_datasources.is_empty(),
         sources: Default::default(),
@@ -275,7 +278,7 @@ mod tests {
             "id".to_owned(),
             "name".to_owned(),
             "owner_id".to_owned(),
-            "project_id".to_owned(),
+            ProjectId("project_id".to_owned()),
             false,
             HashSet::new(),
             "updated_at".to_owned(),
@@ -291,7 +294,7 @@ mod tests {
             "id".to_owned(),
             "name".to_owned(),
             "owner_id".to_owned(),
-            "project_id".to_owned(),
+            ProjectId("project_id".to_owned()),
             false,
             HashSet::new(),
             "updated_at".to_owned(),
