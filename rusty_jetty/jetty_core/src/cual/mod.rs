@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 /// # let cual_str = "jetty_connector://my/custom/cual".to_owned();
 /// Cual::new(cual_str);
 /// ```
-#[derive(Debug, PartialEq, Eq, Clone, Default, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Default, Hash, Deserialize, Serialize)]
 pub struct Cual {
     /// The underlying URI that points to the asset.
     uri: String,

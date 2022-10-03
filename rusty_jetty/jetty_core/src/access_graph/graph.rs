@@ -8,7 +8,7 @@ use graphviz_rust::cmd::CommandArg;
 use graphviz_rust::cmd::Format;
 use graphviz_rust::printer::PrinterContext;
 use petgraph::stable_graph::NodeIndex;
-use petgraph::visit::EdgeRef;
+
 use petgraph::{dot, stable_graph::StableDiGraph};
 use std::collections::HashMap;
 

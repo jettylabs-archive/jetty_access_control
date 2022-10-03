@@ -41,9 +41,9 @@ impl From<User> for jetty_nodes::User {
     fn from(val: User) -> Self {
         jetty_nodes::User::new(
             val.name,
-            HashMap::from([
-                (UserIdentifier::Email, val.email),
-                (UserIdentifier::FullName, val.full_name),
+            HashSet::from([
+                UserIdentifier::Email(val.email),
+                UserIdentifier::FullName(val.full_name),
             ]),
             HashSet::from([val.external_auth_user_id, val.site_role]),
             HashMap::new(),

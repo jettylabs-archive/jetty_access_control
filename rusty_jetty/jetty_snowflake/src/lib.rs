@@ -100,6 +100,7 @@ impl Connector for SnowflakeConnector {
                 .await
                 .context("failed to get policies")
                 .unwrap(),
+            effective_permissions: HashMap::new(),
         }
     }
 
@@ -420,10 +421,10 @@ impl SnowflakeConnector {
             let user_roles = self.get_grants_to_user(&user.name).await?;
             res.push(nodes::User::new(
                 user.name,
-                HashMap::from([
-                    (UserIdentifier::Email, user.email),
-                    (UserIdentifier::FirstName, user.first_name),
-                    (UserIdentifier::LastName, user.last_name),
+                HashSet::from([
+                    UserIdentifier::Email(user.email),
+                    UserIdentifier::FirstName(user.first_name),
+                    UserIdentifier::LastName(user.last_name),
                 ]),
                 HashSet::from([user.display_name, user.login_name]),
                 HashMap::new(),

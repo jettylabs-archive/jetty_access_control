@@ -77,8 +77,7 @@ mod tests {
 
     use crate::{
         access_graph::{
-            test_util::{new_graph_with},
-            AssetAttributes, PolicyAttributes, UserAttributes,
+            test_util::new_graph_with, AssetAttributes, PolicyAttributes, UserAttributes,
         },
         connectors::AssetType,
         cual::Cual,
@@ -96,17 +95,21 @@ mod tests {
         });
 
         let g = new_graph_with(
-            &[&test_asset,
+            &[
+                &test_asset,
                 &JettyNode::Policy(PolicyAttributes::new("policy".to_owned())),
-                &JettyNode::User(UserAttributes::new("user".to_owned()))],
-            &[(
+                &JettyNode::User(UserAttributes::new("user".to_owned())),
+            ],
+            &[
+                (
                     NodeName::User("user".to_owned()),
                     NodeName::Policy("policy".to_owned()),
                 ),
                 (
                     NodeName::Policy("policy".to_owned()),
                     NodeName::Asset("my_cual".to_owned()),
-                )],
+                ),
+            ],
         )?;
 
         let a = g.get_assets_user_accesses(&NodeName::User("user".to_owned()))?;
@@ -118,25 +121,29 @@ mod tests {
     fn get_users_with_access_to_works() -> Result<()> {
         let test_user = JettyNode::User(UserAttributes {
             name: "user".to_owned(),
-            identifiers: HashMap::new(),
+            identifiers: HashSet::new(),
             other_identifiers: HashSet::new(),
             metadata: HashMap::new(),
             connectors: HashSet::new(),
         });
 
         let g = new_graph_with(
-            &[&test_user,
+            &[
+                &test_user,
                 &JettyNode::Policy(PolicyAttributes::new("policy".to_owned())),
-                &JettyNode::Asset(AssetAttributes::new(Cual::new("my_cual".to_owned())))],
+                &JettyNode::Asset(AssetAttributes::new(Cual::new("my_cual".to_owned()))),
+            ],
             // For this test we need the back edges so we can get back to users
-            &[(
+            &[
+                (
                     NodeName::Policy("policy".to_owned()),
                     NodeName::User("user".to_owned()),
                 ),
                 (
                     NodeName::Asset("my_cual".to_owned()),
                     NodeName::Policy("policy".to_owned()),
-                )],
+                ),
+            ],
         )?;
 
         let a = g.get_users_with_access_to(&NodeName::Asset("my_cual".to_owned()))?;

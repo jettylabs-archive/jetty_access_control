@@ -8,7 +8,12 @@ mod rest;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use jetty_core::{
-    connectors::{nodes as jetty_nodes, nodes::ConnectorData, ConnectorClient},
+    connectors::{
+        nodes::ConnectorData,
+        nodes::{self as jetty_nodes, EffectivePermission, SparseMatrix},
+        ConnectorClient, UserIdentifier,
+    },
+    cual::Cual,
     jetty::{ConnectorConfig, CredentialsBlob},
     Connector,
 };
@@ -104,6 +109,16 @@ impl TableauConnector {
         )
     }
 
+    fn get_effective_permissions(
+        &self,
+    ) -> SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> {
+        let mut ep = HashMap::new();
+        // for user in users() {
+        //     ep.insert(user, HashMap::new());
+        // }
+        ep
+    }
+
     fn object_to_jetty<O, J>(&self, obj_map: &HashMap<String, O>) -> Vec<J>
     where
         O: Into<J> + Clone,
@@ -165,7 +180,8 @@ impl Connector for TableauConnector {
 
     async fn get_data(&mut self) -> ConnectorData {
         let (groups, users, assets, tags, policies) = self.env_to_jetty_all();
-        ConnectorData::new(groups, users, vec![], vec![], vec![])
+        let effective_permissions = self.get_effective_permissions();
+        ConnectorData::new(groups, users, assets, tags, policies, effective_permissions)
     }
 }
 

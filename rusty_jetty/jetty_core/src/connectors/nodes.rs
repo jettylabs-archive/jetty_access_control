@@ -8,6 +8,17 @@ use derivative::Derivative;
 
 use crate::cual::Cual;
 
+use super::UserIdentifier;
+
+/// Alias for a sparse matrix addressable by matrix[x][y], where each entry is of type T.
+pub type SparseMatrix<X, Y, T> = HashMap<X, HashMap<Y, T>>;
+
+/// An effective permission
+#[derive(Debug, Default, Hash, PartialEq, Eq)]
+pub struct EffectivePermission {
+    privilege: String,
+    reasons: Vec<String>,
+}
 /// Container for all node data for a given connector
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ConnectorData {
@@ -21,6 +32,13 @@ pub struct ConnectorData {
     pub tags: Vec<Tag>,
     /// All policies in the connector
     pub policies: Vec<Policy>,
+    /// Mapping of all users to the assets they have permissions granted
+    /// to.
+    ///
+    /// `effective_permissions["user_identifier"]["asset://cual"]` would contain the effective
+    /// permissions for that user,asset combination, with one EffectivePermission
+    /// per privilege containing possible explanations.
+    pub effective_permissions: SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>>,
 }
 
 impl ConnectorData {
@@ -31,6 +49,7 @@ impl ConnectorData {
         assets: Vec<Asset>,
         tags: Vec<Tag>,
         policies: Vec<Policy>,
+        effective_permissions: SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>>,
     ) -> Self {
         Self {
             groups,
@@ -38,6 +57,7 @@ impl ConnectorData {
             assets,
             tags,
             policies,
+            effective_permissions,
         }
     }
 }
@@ -91,7 +111,7 @@ pub struct User {
     pub name: String,
     /// Additional user identifiers that are used to resolve users
     /// cross-platform
-    pub identifiers: HashMap<super::UserIdentifier, String>,
+    pub identifiers: HashSet<super::UserIdentifier>,
     /// Additional identifying strings that can be used for cross-
     /// platform entity resolution
     pub other_identifiers: HashSet<String>,
@@ -108,7 +128,7 @@ impl User {
     /// Basic constructor.
     pub fn new(
         name: String,
-        identifiers: HashMap<super::UserIdentifier, String>,
+        identifiers: HashSet<super::UserIdentifier>,
         other_identifiers: HashSet<String>,
         metadata: HashMap<String, String>,
         member_of: HashSet<String>,
