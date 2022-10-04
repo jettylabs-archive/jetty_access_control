@@ -20,10 +20,16 @@ pub(crate) struct PermissionManager<'x> {
 }
 
 impl<'x> PermissionManager<'x> {
+    /// Basic constructor.
     pub(crate) fn new(coordinator: &'x Coordinator) -> Self {
         Self { coordinator }
     }
 
+    /// Crate-public method for getting all effective permissions for an asset
+    /// class.
+    ///
+    /// Gets explicit permissions, combines them with implicit permissions,
+    /// and then combines those with the site-role-specific permissions.
     pub(crate) fn get_effective_permissions_for_asset<T: OwnedAsset + Permissionable + Cualable>(
         &self,
         assets: &HashMap<String, T>,
@@ -77,6 +83,7 @@ impl<'x> PermissionManager<'x> {
         user_perm_map
     }
 
+    /// Get all superusers from the environment.
     fn superusers(&self) -> impl Iterator<Item = &nodes::User> {
         self.coordinator
             .env
@@ -95,6 +102,7 @@ impl<'x> PermissionManager<'x> {
             })
     }
 
+    /// Get all unlicensed users from the environment.
     fn unlicensed_users(&self) -> impl Iterator<Item = &nodes::User> {
         self.coordinator
             .env
@@ -113,6 +121,7 @@ impl<'x> PermissionManager<'x> {
             })
     }
 
+    /// Get all effective permissions that are based on site role.
     fn get_effective_permissions_for_site_roles<T: OwnedAsset + Permissionable + Cualable>(
         &self,
         assets: &HashMap<String, T>,
@@ -165,9 +174,9 @@ impl<'x> PermissionManager<'x> {
         ep
     }
 
-    pub(crate) fn get_explicit_effective_permissions_for_asset<
-        T: OwnedAsset + Permissionable + Cualable,
-    >(
+    /// Get all effective permissions that are explicitly set for the assets
+    /// given.
+    fn get_explicit_effective_permissions_for_asset<T: OwnedAsset + Permissionable + Cualable>(
         &self,
         assets: &HashMap<String, T>,
     ) -> SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> {
@@ -245,9 +254,9 @@ impl<'x> PermissionManager<'x> {
         }
     }
 
-    pub(crate) fn get_implicit_effective_permissions_for_asset<
-        T: OwnedAsset + Permissionable + Cualable,
-    >(
+    /// Get all effective permissions for permissions implicitly defined by
+    /// content ownership and project leadership.
+    fn get_implicit_effective_permissions_for_asset<T: OwnedAsset + Permissionable + Cualable>(
         &self,
         assets: &HashMap<String, T>,
     ) -> SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> {

@@ -48,6 +48,7 @@ impl Project {
         }
     }
 
+    /// Determine whether the given user is the project leader.
     pub(crate) fn is_leader(&self, user: &super::User) -> bool {
         self.permissions
             .iter()
