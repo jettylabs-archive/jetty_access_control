@@ -249,6 +249,16 @@ pub(crate) enum Grantee {
     User(tableau_nodes::User),
 }
 
+impl Grantee {
+    /// Get a human-readable name for this grantee.
+    pub(crate) fn get_name(&self) -> &str {
+        match self {
+            Grantee::Group(g) => &g.name,
+            Grantee::User(g) => &g.email,
+        }
+    }
+}
+
 /// Deserialization helper for Tableau permissions
 #[derive(Deserialize, Debug, Clone)]
 struct Capability {
