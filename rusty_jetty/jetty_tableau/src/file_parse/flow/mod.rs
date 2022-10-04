@@ -8,6 +8,7 @@ use serde::Deserialize;
 use super::RelationType;
 use crate::{
     coordinator::Coordinator,
+    nodes::ProjectId,
     rest::{get_tableau_cual, TableauAssetType, TableauRestClient},
 };
 
@@ -163,8 +164,8 @@ impl FlowDoc {
             .datasources
             .iter()
             .filter(|(_, v)| {
-                correct_projects.contains(&&v.project_id.to_owned())
-                    && v.name == conn.datasource_name
+                let ProjectId(project_id) = &v.project_id;
+                correct_projects.contains(&&project_id.to_owned()) && v.name == conn.datasource_name
             })
             .map(|(_, v)| v)
             .collect();
@@ -216,7 +217,9 @@ impl FlowDoc {
         let correct_datasource: Vec<_> = env
             .datasources
             .iter()
-            .filter(|(_, v)| &v.project_id == &conn.project_luid && v.name == conn.datasource_name)
+            .filter(|(_, v)| {
+                &v.project_id.0 == &conn.project_luid && v.name == conn.datasource_name
+            })
             .map(|(_, v)| v)
             .collect();
 
@@ -259,7 +262,7 @@ mod test {
     use anyhow::Result;
 
     use crate::{
-        nodes::{Datasource, Project},
+        nodes::{Datasource, Project, ProjectId},
         rest::{self, get_tableau_cual},
     };
 
@@ -273,7 +276,7 @@ mod test {
             (
                 "81db10c8-1c14-462f-996f-4bff60f982fa".to_owned(),
                 Project {
-                    id: "81db10c8-1c14-462f-996f-4bff60f982fa".to_owned(),
+                    id: ProjectId("81db10c8-1c14-462f-996f-4bff60f982fa".to_owned()),
                     name: "Isaac's Project".to_owned(),
                     ..Default::default()
                 },
@@ -281,7 +284,7 @@ mod test {
             (
                 "c585b0f7-fc43-4d0a-8942-12adf443ee98".to_owned(),
                 Project {
-                    id: "c585b0f7-fc43-4d0a-8942-12adf443ee98".to_owned(),
+                    id: ProjectId("c585b0f7-fc43-4d0a-8942-12adf443ee98".to_owned()),
                     name: "Isaac's Project".to_owned(),
                     ..Default::default()
                 },
@@ -289,7 +292,7 @@ mod test {
             (
                 "c9726ebd-9c86-4169-83de-5872354edc8c".to_owned(),
                 Project {
-                    id: "c9726ebd-9c86-4169-83de-5872354edc8c".to_owned(),
+                    id: ProjectId("c9726ebd-9c86-4169-83de-5872354edc8c".to_owned()),
                     name: "Samples".to_owned(),
                     ..Default::default()
                 },
@@ -302,7 +305,7 @@ mod test {
                 Datasource {
                     id: "a27d260d-9ff9-4707-82fd-e66cda23275d".to_owned(),
                     name: "Output With Custom Query".to_owned(),
-                    project_id: "c585b0f7-fc43-4d0a-8942-12adf443ee98".to_owned(),
+                    project_id: ProjectId("c585b0f7-fc43-4d0a-8942-12adf443ee98".to_owned()),
                     ..Default::default()
                 },
             ),
@@ -311,7 +314,7 @@ mod test {
                 Datasource {
                     id: "5f6df88d-aeb2-4551-a4c1-e326a45f4b91".to_owned(),
                     name: "Just sql - different db".to_owned(),
-                    project_id: "c585b0f7-fc43-4d0a-8942-12adf443ee98".to_owned(),
+                    project_id: ProjectId("c585b0f7-fc43-4d0a-8942-12adf443ee98".to_owned()),
                     ..Default::default()
                 },
             ),
@@ -320,7 +323,7 @@ mod test {
                 Datasource {
                     id: "d99c9c85-a525-4cce-beaa-7ebcda1ea577".to_owned(),
                     name: "multi-connection".to_owned(),
-                    project_id: "c585b0f7-fc43-4d0a-8942-12adf443ee98".to_owned(),
+                    project_id: ProjectId("c585b0f7-fc43-4d0a-8942-12adf443ee98".to_owned()),
                     ..Default::default()
                 },
             ),
@@ -329,7 +332,7 @@ mod test {
                 Datasource {
                     id: "6df04a18-19a6-4012-8a83-c2b33a8d1907".to_owned(),
                     name: "Test Flow Output".to_owned(),
-                    project_id: "c585b0f7-fc43-4d0a-8942-12adf443ee98".to_owned(),
+                    project_id: ProjectId("c585b0f7-fc43-4d0a-8942-12adf443ee98".to_owned()),
                     ..Default::default()
                 },
             ),
@@ -338,7 +341,7 @@ mod test {
                 Datasource {
                     id: "de1c1844-2ce6-480d-8016-afc7be49827e".to_owned(),
                     name: "Output 4 - Table".to_owned(),
-                    project_id: "c585b0f7-fc43-4d0a-8942-12adf443ee98".to_owned(),
+                    project_id: ProjectId("c585b0f7-fc43-4d0a-8942-12adf443ee98".to_owned()),
                     ..Default::default()
                 },
             ),
@@ -347,7 +350,7 @@ mod test {
                 Datasource {
                     id: "91dae170-0191-4dba-8cef-5eda957bf122".to_owned(),
                     name: "Output 3".to_owned(),
-                    project_id: "c585b0f7-fc43-4d0a-8942-12adf443ee98".to_owned(),
+                    project_id: ProjectId("c585b0f7-fc43-4d0a-8942-12adf443ee98".to_owned()),
                     ..Default::default()
                 },
             ),

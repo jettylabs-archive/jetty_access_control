@@ -14,7 +14,7 @@ use crate::{
     rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType},
 };
 
-use super::Permissionable;
+use super::{Permissionable, ProjectId, TableauAsset};
 
 /// Representation of a Tableau Flow
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
@@ -22,7 +22,7 @@ pub(crate) struct Flow {
     pub(crate) cual: Cual,
     pub id: String,
     pub name: String,
-    pub project_id: String,
+    pub project_id: ProjectId,
     pub owner_id: String,
     pub updated_at: String,
     pub derived_from: HashSet<String>,
@@ -35,7 +35,7 @@ impl Flow {
         cual: Cual,
         id: String,
         name: String,
-        project_id: String,
+        project_id: ProjectId,
         owner_id: String,
         updated_at: String,
         derived_from: HashSet<String>,
@@ -103,6 +103,12 @@ impl HasSources for Flow {
     }
 }
 
+impl TableauAsset for Flow {
+    fn get_asset_type(&self) -> TableauAssetType {
+        TableauAssetType::Flow
+    }
+}
+
 /// Convert JSON into a Flow struct
 fn to_node(val: &serde_json::Value) -> Result<Flow> {
     #[derive(Deserialize)]
@@ -123,7 +129,7 @@ fn to_node(val: &serde_json::Value) -> Result<Flow> {
         id: asset_info.id,
         name: asset_info.name,
         owner_id: asset_info.owner.id,
-        project_id: asset_info.project.id,
+        project_id: ProjectId(asset_info.project.id),
         updated_at: asset_info.updated_at,
         permissions: Default::default(),
         derived_from: Default::default(),
@@ -148,10 +154,15 @@ impl Permissionable for Flow {
     fn set_permissions(&mut self, permissions: Vec<super::Permission>) {
         self.permissions = permissions;
     }
+
+    fn get_permissions(&self) -> &Vec<super::Permission> {
+        &self.permissions
+    }
 }
 
 impl From<Flow> for jetty_nodes::Asset {
     fn from(val: Flow) -> Self {
+        let ProjectId(project_id) = val.project_id;
         jetty_nodes::Asset::new(
             val.cual,
             val.name,
@@ -161,11 +172,9 @@ impl From<Flow> for jetty_nodes::Asset {
             // Governing policies will be assigned in the policy.
             HashSet::new(),
             // Flows are children of their projects?
-            HashSet::from(
-                [get_tableau_cual(TableauAssetType::Project, &val.project_id)
-                    .expect("Getting parent project CUAL")
-                    .uri()],
-            ),
+            HashSet::from([get_tableau_cual(TableauAssetType::Project, &project_id)
+                .expect("Getting parent project CUAL")
+                .uri()]),
             // Children objects will be handled in their respective nodes.
             HashSet::new(),
             // Flows are derived from their source data.
@@ -241,7 +250,7 @@ mod tests {
             Cual::new("".to_owned()),
             "id".to_owned(),
             "name".to_owned(),
-            "project_id".to_owned(),
+            ProjectId("project_id".to_owned()),
             "owner_id".to_owned(),
             "updated".to_owned(),
             Default::default(),
@@ -258,7 +267,7 @@ mod tests {
             Cual::new("".to_owned()),
             "id".to_owned(),
             "name".to_owned(),
-            "project_id".to_owned(),
+            ProjectId("project_id".to_owned()),
             "owner_id".to_owned(),
             "updated".to_owned(),
             Default::default(),

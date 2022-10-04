@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::rest::{self, get_tableau_cual, FetchJson, TableauAssetType};
 
-use super::Permissionable;
+use super::{Permissionable, ProjectId, TableauAsset};
 
 /// Representation of a Tableau Lens
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
@@ -18,7 +18,7 @@ pub(crate) struct Lens {
     pub id: String,
     pub name: String,
     pub datasource_id: String,
-    pub project_id: String,
+    pub project_id: ProjectId,
     pub owner_id: String,
     pub permissions: Vec<super::Permission>,
 }
@@ -29,7 +29,7 @@ impl Lens {
         id: String,
         name: String,
         datasource_id: String,
-        project_id: String,
+        project_id: ProjectId,
         owner_id: String,
         permissions: Vec<super::Permission>,
     ) -> Self {
@@ -64,7 +64,7 @@ fn to_node(val: &serde_json::Value) -> Result<Lens> {
         id: asset_info.id,
         name: asset_info.name,
         owner_id: asset_info.owner_id,
-        project_id: asset_info.project_id,
+        project_id: ProjectId(asset_info.project_id),
         datasource_id: asset_info.datasource_id,
         permissions: Default::default(),
     })
@@ -117,12 +117,22 @@ impl From<Lens> for jetty_nodes::Asset {
     }
 }
 
+impl TableauAsset for Lens {
+    fn get_asset_type(&self) -> TableauAssetType {
+        TableauAssetType::Lens
+    }
+}
+
 impl Permissionable for Lens {
     fn get_endpoint(&self) -> String {
         format!("lenses/{}/permissions", self.id)
     }
     fn set_permissions(&mut self, permissions: Vec<super::Permission>) {
         self.permissions = permissions;
+    }
+
+    fn get_permissions(&self) -> &Vec<super::Permission> {
+        &self.permissions
     }
 }
 
@@ -152,7 +162,7 @@ mod tests {
         let mut nodes = get_basic_lenses(&tc.coordinator.rest_client).await?;
         for (_k, v) in &mut nodes {
             v.update_permissions(&tc.coordinator.rest_client, &tc.coordinator.env)
-                .await;
+                .await?;
         }
         for (_k, v) in nodes {
             println!("{:#?}", v);
@@ -168,7 +178,7 @@ mod tests {
             "id".to_owned(),
             "name".to_owned(),
             "datasource_id".to_owned(),
-            "project_id".to_owned(),
+            ProjectId("project_id".to_owned()),
             "owner_id".to_owned(),
             vec![],
         );
@@ -183,7 +193,7 @@ mod tests {
             "id".to_owned(),
             "name".to_owned(),
             "datasource_id".to_owned(),
-            "project_id".to_owned(),
+            ProjectId("project_id".to_owned()),
             "owner_id".to_owned(),
             vec![],
         );

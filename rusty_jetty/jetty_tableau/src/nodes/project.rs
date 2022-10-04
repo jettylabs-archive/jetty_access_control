@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use super::{Permission, Permissionable};
+use super::{Permission, Permissionable, ProjectId, TableauAsset};
 use crate::{
     coordinator::Environment,
     nodes::SerializedPermission,
@@ -19,22 +19,22 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub(crate) struct Project {
     pub(crate) cual: Cual,
-    pub id: String,
+    pub id: ProjectId,
     pub name: String,
     pub owner_id: String,
-    pub parent_project_id: Option<String>,
-    pub controlling_permissions_project_id: Option<String>,
+    pub parent_project_id: Option<ProjectId>,
+    pub controlling_permissions_project_id: Option<ProjectId>,
     pub permissions: Vec<Permission>,
 }
 
 impl Project {
     pub(crate) fn new(
         cual: Cual,
-        id: String,
+        id: ProjectId,
         name: String,
         owner_id: String,
-        parent_project_id: Option<String>,
-        controlling_permissions_project_id: Option<String>,
+        parent_project_id: Option<ProjectId>,
+        controlling_permissions_project_id: Option<ProjectId>,
         permissions: Vec<Permission>,
     ) -> Self {
         Self {
@@ -67,11 +67,13 @@ fn to_node(val: &serde_json::Value) -> Result<super::Project> {
 
     Ok(super::Project {
         cual: get_tableau_cual(TableauAssetType::Project, &project_info.id)?,
-        id: project_info.id,
+        id: ProjectId(project_info.id),
         name: project_info.name,
         owner_id: project_info.owner.id,
-        parent_project_id: project_info.parent_project_id,
-        controlling_permissions_project_id: project_info.controlling_permissions_project_id,
+        parent_project_id: project_info.parent_project_id.map(|i| ProjectId(i)),
+        controlling_permissions_project_id: project_info
+            .controlling_permissions_project_id
+            .map(|i| ProjectId(i)),
         permissions: Default::default(),
     })
 }
@@ -91,10 +93,15 @@ pub(crate) async fn get_basic_projects(
 #[async_trait]
 impl Permissionable for Project {
     fn get_endpoint(&self) -> String {
-        format!("projects/{}/permissions", self.id)
+        let ProjectId(id) = &self.id;
+        format!("projects/{}/permissions", id)
     }
     fn set_permissions(&mut self, permissions: Vec<super::Permission>) {
         self.permissions = permissions;
+    }
+
+    fn get_permissions(&self) -> &Vec<super::Permission> {
+        &self.permissions
     }
 
     /// Fetches the permissions for an asset and returns them as a vector of Permissions
@@ -152,7 +159,7 @@ impl From<Project> for jetty_nodes::Asset {
     fn from(val: Project) -> Self {
         let parents = val
             .parent_project_id
-            .map(|i| {
+            .map(|ProjectId(i)| {
                 get_tableau_cual(TableauAssetType::Project, &i)
                     .expect("Getting Tableau CUAL for project parent.")
                     .uri()
@@ -177,6 +184,12 @@ impl From<Project> for jetty_nodes::Asset {
             // No tags at this point.
             HashSet::new(),
         )
+    }
+}
+
+impl TableauAsset for Project {
+    fn get_asset_type(&self) -> TableauAssetType {
+        TableauAssetType::Project
     }
 }
 
@@ -219,11 +232,11 @@ mod tests {
     fn test_asset_from_project_works() {
         let wb = Project::new(
             Cual::new("".to_owned()),
-            "id".to_owned(),
+            ProjectId("id".to_owned()),
             "name".to_owned(),
             "owner_id".to_owned(),
-            Some("parent_project_id".to_owned()),
-            Some("cp_project_id".to_owned()),
+            Some(ProjectId("parent_project_id".to_owned())),
+            Some(ProjectId("cp_project_id".to_owned())),
             vec![],
         );
         jetty_nodes::Asset::from(wb);
@@ -233,11 +246,11 @@ mod tests {
     fn test_project_into_asset_works() {
         let wb = Project::new(
             Cual::new("".to_owned()),
-            "id".to_owned(),
+            ProjectId("id".to_owned()),
             "name".to_owned(),
             "owner_id".to_owned(),
-            Some("parent_project_id".to_owned()),
-            Some("cp_project_id".to_owned()),
+            Some(ProjectId("parent_project_id".to_owned())),
+            Some(ProjectId("cp_project_id".to_owned())),
             vec![],
         );
         let a: jetty_nodes::Asset = wb.into();

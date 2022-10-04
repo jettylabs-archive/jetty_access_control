@@ -3,24 +3,33 @@
 mod coordinator;
 mod file_parse;
 mod nodes;
+mod permissions;
 mod rest;
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
+use permissions::get_capabilities_for_asset_type;
+use rest::{TableauAssetType, TableauRestClient};
+use serde::Deserialize;
+use serde_json::json;
+
 use jetty_core::{
     connectors::{
         nodes::{self as jetty_nodes, EffectivePermission, SparseMatrix},
         nodes::{ConnectorData, PermissionMode},
         ConnectorClient, UserIdentifier,
     },
-    cual::Cual,
+    cual::{Cual, Cualable},
     jetty::{ConnectorConfig, CredentialsBlob},
     Connector,
 };
-use nodes::{asset_to_policy::env_to_jetty_policies, user::SiteRole, Grantee};
-use rest::TableauRestClient;
-use serde::Deserialize;
-use serde_json::json;
+
+use nodes::{
+    asset_to_policy::env_to_jetty_policies, user::SiteRole, Grantee, OwnedAsset, Permissionable,
+    ProjectId,
+};
+use permissions::PermissionManager;
+
 use std::{
     collections::{HashMap, HashSet},
     hash::Hash,
@@ -117,159 +126,38 @@ impl TableauConnector {
         )
     }
 
-    fn get_user_perms<'a>(
-        &self,
-        asset: &'a nodes::Flow,
-    ) -> HashMap<&'a nodes::User, Vec<(&'a String, &'a String)>> {
-        // TODO: Add provenance here to indicate whether the permission was
-        // from user or group (user capabilities take precedence).
-        let mut user_perm_map: HashMap<&nodes::User, Vec<(&String, &String)>> = HashMap::new();
-        asset.permissions.iter().for_each(|perm| {
-            perm.capabilities.iter().for_each(|p| {
-                match &perm.grantee {
-                    Grantee::User(u) => {
-                        if let Some(perms) = user_perm_map.get_mut(&u) {
-                            (*perms).push(p);
-                        } else {
-                            user_perm_map.insert(&u, vec![p]);
-                        }
-                    }
-                    Grantee::Group(g) => {
-                        // insert permission by [user][asset] into map for all users in group.
-                        for user in &g.includes {
-                            if let Some(perms) = user_perm_map.get_mut(&user) {
-                                (*perms).push(p);
-                            } else {
-                                user_perm_map.insert(&user, vec![p]);
-                            }
-                        }
-                    }
-                }
-            });
-        });
-        user_perm_map
-    }
-
     fn get_effective_permissions(
         &self,
     ) -> SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> {
-        let mut ep: SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> =
-            HashMap::new();
-        // for each asset
-        self.coordinator.env.flows.values().for_each(|asset| {
-            // get all perms as user -> [permission] mapping
-            let user_perm_map = self.get_user_perms(&asset);
-            // We'll go over each of those user -> [permission] mappings to
-            // discover effective access.
-            user_perm_map.iter().map(|(user, perms)| {
-                // 1. check site role for allow alls and missing licenses.
-                let allow_all = match user.site_role {
-                    SiteRole::Explorer
-                    | SiteRole::ExplorerCanPublish
-                    | SiteRole::ReadOnly
-                    | SiteRole::Viewer => Some(false),
-                    SiteRole::Creator
-                    | SiteRole::ServerAdministrator
-                    | SiteRole::SiteAdministratorExplorer
-                    | SiteRole::SiteAdministratorCreator => Some(true),
-                    SiteRole::Unlicensed | SiteRole::Unknown => None,
-                };
+        let permission_manager = PermissionManager::new(&self.coordinator);
+        let mut final_eps = HashMap::new();
+        let mut flow_eps =
+            permission_manager.get_effective_permissions_for_asset(&self.coordinator.env.flows);
+        // TODO: merge the reasons here when there are matching perms
+        flow_eps.extend(
+            permission_manager.get_implicit_permissions_for_asset(&self.coordinator.env.flows),
+        );
+        let project_eps =
+            permission_manager.get_effective_permissions_for_asset(&self.coordinator.env.projects);
+        let lens_eps =
+            permission_manager.get_effective_permissions_for_asset(&self.coordinator.env.lenses);
+        let datasource_eps = permission_manager
+            .get_effective_permissions_for_asset(&self.coordinator.env.datasources);
+        let workbook_eps =
+            permission_manager.get_effective_permissions_for_asset(&self.coordinator.env.workbooks);
+        let metric_eps =
+            permission_manager.get_effective_permissions_for_asset(&self.coordinator.env.metrics);
+        let view_eps =
+            permission_manager.get_effective_permissions_for_asset(&self.coordinator.env.views);
 
-                let final_permissions: HashSet<EffectivePermission> = if let Some(allow) = allow_all
-                {
-                    if allow {
-                        // Site role guarantees access, grant all capabilities.
-                        perms
-                            .iter()
-                            .map(|(capa, mode)| {
-                                EffectivePermission::new(
-                                    capa.to_string(),
-                                    PermissionMode::from(mode.as_str()),
-                                    vec![format!("user has site role {:?}", user.site_role)],
-                                )
-                            })
-                            .collect()
-                    } else {
-                        // Need to dig more to figure out effective permission.
-                        let parent_project = &self.coordinator.env.projects[&asset.project_id];
-                        let is_project_leader = parent_project
-                            .permissions
-                            .iter()
-                            .find(|p| {
-                                p.has_capability("ProjectLeader", "Allow")
-                                    && p.get_grantee_users().contains(&user.id)
-                            })
-                            .is_some();
-                        let is_project_owner = parent_project.owner_id == user.id;
-                        if is_project_leader || is_project_owner {
-                            // allow because project leader
-                            perms
-                                .iter()
-                                .map(|(capa, mode)| {
-                                    EffectivePermission::new(
-                                        capa.to_string(),
-                                        PermissionMode::Allow,
-                                        vec![format!(
-                                            "user is the {}.",
-                                            if is_project_leader {
-                                                "project leader"
-                                            } else {
-                                                "project owner"
-                                            }
-                                        )],
-                                    )
-                                })
-                                .collect()
-                        } else if asset.owner_id == user.id {
-                            // 3. content (asset) owner, allow
-                            perms
-                                .iter()
-                                .map(|(capa, mode)| {
-                                    EffectivePermission::new(
-                                        capa.to_string(),
-                                        PermissionMode::Allow,
-                                        vec![format!("user is the owner of this content.")],
-                                    )
-                                })
-                                .collect()
-                        } else {
-                            // 4. denied/allowed for user
-                            // 5. denied/allowed for group
-                            // apply the permission explicitly given
-                            perms
-                                .iter()
-                                .map(|(capa, mode)| {
-                                    EffectivePermission::new(
-                                        capa.to_string(),
-                                        PermissionMode::from(mode.as_str()),
-                                        vec![format!("Permission set explicitly.")],
-                                    )
-                                })
-                                .collect()
-                        }
-                    }
-                } else {
-                    // No license, deny access to this user.
-                    perms
-                        .iter()
-                        .map(|(capa, mode)| {
-                            EffectivePermission::new(
-                                capa.to_string(),
-                                PermissionMode::Deny,
-                                vec![format!("User unlicensed or site role unknown.")],
-                            )
-                        })
-                        .collect()
-                };
-                // Add final_permissions to ep[user][asset]
-                ep.insert(
-                    UserIdentifier::Email(user.email.to_owned()),
-                    HashMap::from([(asset.cual.clone(), final_permissions)]),
-                );
-            });
-        });
-
-        ep
+        final_eps.extend(flow_eps.into_iter());
+        final_eps.extend(project_eps.into_iter());
+        final_eps.extend(lens_eps.into_iter());
+        final_eps.extend(datasource_eps.into_iter());
+        final_eps.extend(workbook_eps.into_iter());
+        final_eps.extend(metric_eps.into_iter());
+        final_eps.extend(view_eps.into_iter());
+        final_eps
     }
 
     fn object_to_jetty<O, J>(&self, obj_map: &HashMap<String, O>) -> Vec<J>
