@@ -14,7 +14,7 @@ use crate::{
     rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType},
 };
 
-use super::{Permissionable, ProjectId};
+use super::{Permissionable, ProjectId, TableauAsset};
 
 /// Representation of a Tableau Flow
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
@@ -100,6 +100,12 @@ impl HasSources for Flow {
     fn set_sources(&mut self, sources: (HashSet<String>, HashSet<String>)) {
         self.derived_from = sources.0;
         self.derived_to = sources.1;
+    }
+}
+
+impl TableauAsset for Flow {
+    fn get_asset_type(&self) -> TableauAssetType {
+        TableauAssetType::Flow
     }
 }
 

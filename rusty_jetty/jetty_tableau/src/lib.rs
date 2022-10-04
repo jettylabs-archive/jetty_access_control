@@ -3,11 +3,13 @@
 mod coordinator;
 mod file_parse;
 mod nodes;
+mod permissions;
 mod rest;
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use rest::TableauRestClient;
+use permissions::get_capabilities_for_asset_type;
+use rest::{TableauAssetType, TableauRestClient};
 use serde::Deserialize;
 use serde_json::json;
 
@@ -212,7 +214,7 @@ impl TableauConnector {
                             .iter()
                             .find(|p| {
                                 p.has_capability("ProjectLeader", "Allow")
-                                    && p.get_grantee_users().contains(&user.id)
+                                    && p.grantee_user_ids().contains(&user.id)
                             })
                             .is_some();
                         let is_project_owner = parent_project.owner_id == user.id;
@@ -295,11 +297,109 @@ impl TableauConnector {
         ep
     }
 
+    /// Get the series of parents all the way up for an owned asset.
+    fn get_parent_projects_for<T: OwnedAsset>(&self, asset: &T) -> Vec<&nodes::Project> {
+        if let Some(ProjectId(parent_project_id)) = asset.get_parent_project_id() {
+            let parent = self
+                .coordinator
+                .env
+                .projects
+                .get(parent_project_id)
+                .expect("getting parent project from env");
+            self.get_parent_projects_for_project(parent)
+        } else {
+            vec![]
+        }
+    }
+
+    /// Recursive method to get a series of project parents.
+    fn get_parent_projects_for_project<'a>(
+        &'a self,
+        project: &'a nodes::Project,
+    ) -> Vec<&'a nodes::Project> {
+        if let Some(ProjectId(parent_project_id)) = project.get_parent_project_id() {
+            let parent = self
+                .coordinator
+                .env
+                .projects
+                .get(parent_project_id)
+                .expect("getting parent project from env");
+            let mut result = self.get_parent_projects_for_project(parent);
+            result.push(project);
+            result
+        } else {
+            vec![]
+        }
+    }
+
+    fn get_implicit_permissions_for_asset<T: OwnedAsset + Permissionable + Cualable>(
+        &self,
+        assets: &HashMap<String, T>,
+    ) -> SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> {
+        let mut ep: SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> =
+            HashMap::new();
+        assets.iter().for_each(|(_, asset)| {
+            let asset_capabilities = get_capabilities_for_asset_type(asset.get_asset_type());
+            // Content owners
+            let owner = self
+                .coordinator
+                .env
+                .users
+                .get(asset.get_owner_id())
+                .expect("getting user from env");
+            let perms = asset_capabilities
+                .iter()
+                .map(|capa| {
+                    EffectivePermission::new(
+                        capa.to_string(),
+                        PermissionMode::Allow,
+                        vec!["user is the owner of this content".to_owned()],
+                    )
+                })
+                .collect();
+            // TODO: Check for clashes here.
+            ep.insert(
+                UserIdentifier::Email(owner.email.to_owned()),
+                HashMap::from([(asset.cual(), perms)]),
+            );
+            // Project leaders
+            for parent_project in self.get_parent_projects_for(asset) {
+                parent_project.permissions.iter().for_each(|perm| {
+                    if perm.capabilities.contains_key("ProjectLeader") {
+                        let effective_perms: HashSet<EffectivePermission> = asset_capabilities
+                            .iter()
+                            .map(|capa| {
+                                EffectivePermission::new(
+                                    capa.to_string(),
+                                    PermissionMode::Allow,
+                                    vec![format!(
+                                        "user is the leader of project {}",
+                                        parent_project.name
+                                    )],
+                                )
+                            })
+                            .collect();
+                        for grantee_email in perm.grantee_user_emails() {
+                            // TODO: Check for clashes here.
+                            ep.insert(
+                                UserIdentifier::Email(grantee_email),
+                                HashMap::from([(asset.cual(), effective_perms.clone())]),
+                            );
+                        }
+                    }
+                });
+            }
+        });
+        ep
+    }
+
     fn get_effective_permissions(
         &self,
     ) -> SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> {
         let mut final_eps = HashMap::new();
-        let flow_eps = self.get_effective_permissions_for_asset(&self.coordinator.env.flows);
+        let mut flow_eps = self.get_effective_permissions_for_asset(&self.coordinator.env.flows);
+        // TODO: merge the reasons here when there are matching perms
+        flow_eps.extend(self.get_implicit_permissions_for_asset(&self.coordinator.env.flows));
         let project_eps = self.get_effective_permissions_for_asset(&self.coordinator.env.projects);
         let lens_eps = self.get_effective_permissions_for_asset(&self.coordinator.env.lenses);
         let datasource_eps =
