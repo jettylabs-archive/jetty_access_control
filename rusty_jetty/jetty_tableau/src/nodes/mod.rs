@@ -30,7 +30,7 @@ use std::collections::{HashMap, HashSet};
 use crate::{
     coordinator::Environment,
     nodes as tableau_nodes,
-    rest::{self, FetchJson},
+    rest::{self, FetchJson, TableauAssetType},
     Cual, Cualable,
 };
 
@@ -60,6 +60,7 @@ pub(crate) trait Permissionable: core::fmt::Debug {
         env: &Environment,
     ) -> Result<()> {
         let req = tc.build_request(self.get_endpoint(), None, reqwest::Method::GET)?;
+        println!("{:?}", req);
 
         let resp = req.fetch_json_response(None).await?;
 
@@ -92,7 +93,12 @@ trait GetId {
     fn get_id(&self) -> String;
 }
 
-pub(crate) trait OwnedAsset {
+pub(crate) trait TableauAsset {
+    /// Get the asset type for this asset.
+    fn get_asset_type(&self) -> TableauAssetType;
+}
+
+pub(crate) trait OwnedAsset: TableauAsset {
     /// Get the parent project ID.
     fn get_parent_project_id(&self) -> Option<&ProjectId>;
     /// Get the owner ID for this asset.
@@ -205,10 +211,22 @@ impl Permission {
             .is_some()
     }
 
-    pub(crate) fn get_grantee_users(&self) -> Vec<String> {
+    pub(crate) fn grantee_user_ids(&self) -> Vec<String> {
         match &self.grantee {
             Grantee::User(u) => vec![u.id.to_owned()],
             Grantee::Group(g) => g.includes.clone().iter().map(|u| u.id.to_owned()).collect(),
+        }
+    }
+
+    pub(crate) fn grantee_user_emails(&self) -> Vec<String> {
+        match &self.grantee {
+            Grantee::User(u) => vec![u.email.to_owned()],
+            Grantee::Group(g) => g
+                .includes
+                .clone()
+                .iter()
+                .map(|u| u.email.to_owned())
+                .collect(),
         }
     }
 }

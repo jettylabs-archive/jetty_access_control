@@ -14,7 +14,7 @@ use crate::{
     rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType, TableauRestClient},
 };
 
-use super::{Permissionable, ProjectId};
+use super::{Permissionable, ProjectId, TableauAsset};
 
 /// Representation of a Tableau Datasource
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
@@ -135,6 +135,12 @@ impl HasSources for Datasource {
 
     fn set_sources(&mut self, sources: (HashSet<String>, HashSet<String>)) {
         self.sources = sources.0;
+    }
+}
+
+impl TableauAsset for Datasource {
+    fn get_asset_type(&self) -> TableauAssetType {
+        TableauAssetType::Datasource
     }
 }
 

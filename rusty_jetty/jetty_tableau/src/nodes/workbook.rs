@@ -15,7 +15,7 @@ use jetty_core::{
     cual::Cual,
 };
 
-use super::{Permissionable, ProjectId};
+use super::{Permissionable, ProjectId, TableauAsset};
 
 /// Representation of Tableau Workbook
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
@@ -82,6 +82,12 @@ impl Permissionable for Workbook {
 
     fn get_permissions(&self) -> &Vec<super::Permission> {
         &self.permissions
+    }
+}
+
+impl TableauAsset for Workbook {
+    fn get_asset_type(&self) -> TableauAssetType {
+        TableauAssetType::Workbook
     }
 }
 

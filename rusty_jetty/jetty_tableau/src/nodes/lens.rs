@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::rest::{self, get_tableau_cual, FetchJson, TableauAssetType};
 
-use super::{Permissionable, ProjectId};
+use super::{Permissionable, ProjectId, TableauAsset};
 
 /// Representation of a Tableau Lens
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
@@ -117,6 +117,12 @@ impl From<Lens> for jetty_nodes::Asset {
     }
 }
 
+impl TableauAsset for Lens {
+    fn get_asset_type(&self) -> TableauAssetType {
+        TableauAssetType::Lens
+    }
+}
+
 impl Permissionable for Lens {
     fn get_endpoint(&self) -> String {
         format!("lenses/{}/permissions", self.id)
@@ -156,7 +162,7 @@ mod tests {
         let mut nodes = get_basic_lenses(&tc.coordinator.rest_client).await?;
         for (_k, v) in &mut nodes {
             v.update_permissions(&tc.coordinator.rest_client, &tc.coordinator.env)
-                .await;
+                .await?;
         }
         for (_k, v) in nodes {
             println!("{:#?}", v);

@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use super::{Permission, Permissionable, ProjectId};
+use super::{Permission, Permissionable, ProjectId, TableauAsset};
 use crate::rest::{self, get_tableau_cual, FetchJson, TableauAssetType};
 
 use anyhow::{Context, Result};
@@ -124,6 +124,13 @@ impl From<View> for jetty_nodes::Asset {
         )
     }
 }
+
+impl TableauAsset for View {
+    fn get_asset_type(&self) -> TableauAssetType {
+        TableauAssetType::View
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

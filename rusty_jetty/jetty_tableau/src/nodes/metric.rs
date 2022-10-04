@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::rest::{self, get_tableau_cual, FetchJson, TableauAssetType};
 
-use super::{Permissionable, ProjectId};
+use super::{Permissionable, ProjectId, TableauAsset};
 
 /// Representation of Tableau metric
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
@@ -130,6 +130,12 @@ impl From<Metric> for jetty_nodes::Asset {
             // No tags at this point.
             HashSet::new(),
         )
+    }
+}
+
+impl TableauAsset for Metric {
+    fn get_asset_type(&self) -> TableauAssetType {
+        TableauAssetType::Metric
     }
 }
 

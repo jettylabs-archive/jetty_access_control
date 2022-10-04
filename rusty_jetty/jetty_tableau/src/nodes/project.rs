@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use super::{Permission, Permissionable, ProjectId};
+use super::{Permission, Permissionable, ProjectId, TableauAsset};
 use crate::{
     coordinator::Environment,
     nodes::SerializedPermission,
@@ -184,6 +184,12 @@ impl From<Project> for jetty_nodes::Asset {
             // No tags at this point.
             HashSet::new(),
         )
+    }
+}
+
+impl TableauAsset for Project {
+    fn get_asset_type(&self) -> TableauAssetType {
+        TableauAssetType::Project
     }
 }
 
