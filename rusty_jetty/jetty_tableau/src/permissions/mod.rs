@@ -1,0 +1,24 @@
+//! Tableau permissions models and functionality
+//!
+
+pub(crate) mod consts;
+mod manager;
+mod matrix;
+
+use crate::rest::TableauAssetType;
+use consts::*;
+pub(crate) use manager::PermissionManager;
+
+pub(crate) fn get_capabilities_for_asset_type(
+    asset_type: TableauAssetType,
+) -> &'static [&'static str] {
+    match asset_type {
+        TableauAssetType::Workbook => WORKBOOK_CAPABILITIES,
+        TableauAssetType::Lens => LENS_CAPABILITIES,
+        TableauAssetType::Datasource => DATASOURCE_CAPABILITIES,
+        TableauAssetType::Flow => FLOW_CAPABILITIES,
+        TableauAssetType::Metric => METRIC_CAPABILITIES,
+        TableauAssetType::Project => PROJECT_CAPABILITIES,
+        TableauAssetType::View => VIEW_CAPABILITIES,
+    }
+}

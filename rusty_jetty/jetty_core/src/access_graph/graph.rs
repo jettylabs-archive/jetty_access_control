@@ -8,6 +8,7 @@ use graphviz_rust::cmd::CommandArg;
 use graphviz_rust::cmd::Format;
 use graphviz_rust::printer::PrinterContext;
 use petgraph::stable_graph::NodeIndex;
+
 use petgraph::{dot, stable_graph::StableDiGraph};
 use std::collections::HashMap;
 
@@ -59,6 +60,7 @@ impl Graph {
         Ok(())
     }
 
+    #[allow(dead_code)]
     fn get_paths(
         &self,
         from_node_name: &NodeName,
@@ -80,6 +82,28 @@ impl Graph {
                 to_node_name
             )
         }
+    }
+
+    /// Get the neighbors for the node with the given name.
+    ///
+    /// Get all neighbors for a node, filtered by thos that yield true when
+    /// `matcher` is applied to them.
+    pub(crate) fn get_neighbors_for_node(
+        &self,
+        node_name: &NodeName,
+        matcher: fn(&JettyNode) -> bool,
+    ) -> Result<impl Iterator<Item = &JettyNode>> {
+        let node = self
+            .get_node(node_name)
+            .ok_or_else(|| anyhow!("node not found"))?;
+        Ok(self.graph.neighbors(*node).filter_map(move |target_node| {
+            let target = &self.graph[target_node];
+            if matcher(target) {
+                Some(target)
+            } else {
+                None
+            }
+        }))
     }
 
     /// Updates a node. Should return the updated node. Returns an
@@ -124,12 +148,13 @@ mod tests {
     use anyhow::{anyhow, Context, Result};
 
     use crate::{
-        access_graph::{AssetAttributes, GroupAttributes, JettyEdge},
+        access_graph::{test_util::new_graph, AssetAttributes, GroupAttributes, JettyEdge},
         connectors::AssetType,
         cual::Cual,
     };
 
     use super::*;
+
     use std::collections::{HashMap, HashSet};
 
     /// Test merge_nodes
@@ -310,12 +335,5 @@ mod tests {
             vec![vec![NodeIndex::new(0), NodeIndex::new(1)]]
         );
         Ok(())
-    }
-
-    fn new_graph() -> super::Graph {
-        super::Graph {
-            graph: petgraph::stable_graph::StableDiGraph::new(),
-            nodes: HashMap::new(),
-        }
     }
 }

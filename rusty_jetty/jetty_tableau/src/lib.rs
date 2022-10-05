@@ -3,20 +3,37 @@
 mod coordinator;
 mod file_parse;
 mod nodes;
+mod permissions;
 mod rest;
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
+use permissions::get_capabilities_for_asset_type;
+use rest::{TableauAssetType, TableauRestClient};
+use serde::Deserialize;
+use serde_json::json;
+
 use jetty_core::{
-    connectors::{nodes as jetty_nodes, nodes::ConnectorData, ConnectorClient},
+    connectors::{
+        nodes::{self as jetty_nodes, EffectivePermission, SparseMatrix},
+        nodes::{ConnectorData, PermissionMode},
+        ConnectorClient, UserIdentifier,
+    },
+    cual::{Cual, Cualable},
     jetty::{ConnectorConfig, CredentialsBlob},
     Connector,
 };
-use nodes::asset_to_policy::env_to_jetty_policies;
-use rest::TableauRestClient;
-use serde::Deserialize;
-use serde_json::json;
-use std::collections::{HashMap, HashSet};
+
+use nodes::{
+    asset_to_policy::env_to_jetty_policies, user::SiteRole, Grantee, OwnedAsset, Permissionable,
+    ProjectId,
+};
+use permissions::PermissionManager;
+
+use std::{
+    collections::{HashMap, HashSet},
+    hash::Hash,
+};
 
 pub type TableauConfig = HashMap<String, String>;
 
@@ -41,6 +58,11 @@ pub struct TableauConnector {
 }
 
 impl TableauConnector {
+    pub async fn setup(&mut self) -> Result<()> {
+        self.coordinator.update_env().await?;
+        Ok(())
+    }
+
     /// Get the environment, but transformed into Jetty objects.
     fn env_to_jetty_all(
         &self,
@@ -104,6 +126,36 @@ impl TableauConnector {
         )
     }
 
+    fn get_effective_permissions(
+        &self,
+    ) -> SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> {
+        let permission_manager = PermissionManager::new(&self.coordinator);
+        let mut final_eps = HashMap::new();
+        let mut flow_eps =
+            permission_manager.get_effective_permissions_for_asset(&self.coordinator.env.flows);
+        let project_eps =
+            permission_manager.get_effective_permissions_for_asset(&self.coordinator.env.projects);
+        let lens_eps =
+            permission_manager.get_effective_permissions_for_asset(&self.coordinator.env.lenses);
+        let datasource_eps = permission_manager
+            .get_effective_permissions_for_asset(&self.coordinator.env.datasources);
+        let workbook_eps =
+            permission_manager.get_effective_permissions_for_asset(&self.coordinator.env.workbooks);
+        let metric_eps =
+            permission_manager.get_effective_permissions_for_asset(&self.coordinator.env.metrics);
+        let view_eps =
+            permission_manager.get_effective_permissions_for_asset(&self.coordinator.env.views);
+
+        final_eps.extend(flow_eps.into_iter());
+        final_eps.extend(project_eps.into_iter());
+        final_eps.extend(lens_eps.into_iter());
+        final_eps.extend(datasource_eps.into_iter());
+        final_eps.extend(workbook_eps.into_iter());
+        final_eps.extend(metric_eps.into_iter());
+        final_eps.extend(view_eps.into_iter());
+        final_eps
+    }
+
     fn object_to_jetty<O, J>(&self, obj_map: &HashMap<String, O>) -> Vec<J>
     where
         O: Into<J> + Clone,
@@ -165,7 +217,8 @@ impl Connector for TableauConnector {
 
     async fn get_data(&mut self) -> ConnectorData {
         let (groups, users, assets, tags, policies) = self.env_to_jetty_all();
-        ConnectorData::new(groups, users, vec![], vec![], vec![])
+        let effective_permissions = self.get_effective_permissions();
+        ConnectorData::new(groups, users, assets, tags, policies, effective_permissions)
     }
 }
 

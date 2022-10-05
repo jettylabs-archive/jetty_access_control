@@ -8,6 +8,119 @@ use derivative::Derivative;
 
 use crate::cual::Cual;
 
+use super::UserIdentifier;
+
+/// Alias for a sparse matrix addressable by matrix[x][y], where each entry is of type T.
+pub type SparseMatrix<X, Y, T> = HashMap<X, HashMap<Y, T>>;
+
+/// Mode for a permission that's either "allow," "deny," "none," or something
+/// else with a given explanation.
+#[derive(Debug, Default, Hash, PartialEq, Eq, Clone)]
+pub enum PermissionMode {
+    /// Allow this permission.
+    Allow,
+    /// Deny this permission.
+    Deny,
+    /// No permission set.
+    #[default]
+    None,
+    /// Permission set to something else with a contained explanation.
+    Other(String),
+}
+
+impl From<&str> for PermissionMode {
+    fn from(val: &str) -> Self {
+        match val.to_lowercase().as_str() {
+            "allow" => PermissionMode::Allow,
+            "deny" => PermissionMode::Deny,
+            other => PermissionMode::Other(other.to_owned()),
+        }
+    }
+}
+/// An effective permission
+#[derive(Debug, Default, Clone)]
+pub struct EffectivePermission {
+    /// The privilege granted/denied for this permission.
+    pub privilege: String,
+    /// The mode for this permission.
+    pub mode: PermissionMode,
+    /// The human-readable reasons this permission was applied.
+    pub reasons: Vec<String>,
+}
+
+impl EffectivePermission {
+    /// Basic constructor
+    pub fn new(privilege: String, mode: PermissionMode, reasons: Vec<String>) -> Self {
+        Self {
+            privilege,
+            mode,
+            reasons,
+        }
+    }
+}
+
+/// `EffectivePermission`s are hashed solely on the privilege.
+///
+/// This means that
+///
+/// ```text
+///  EffectivePermission{
+///   privilege: "read",
+///   mode: Allow,
+///   reasons: []
+/// }
+/// ```
+///
+/// and
+///
+///
+/// ```text
+///  EffectivePermission{
+///   privilege: "read",
+///   mode: Deny,
+///   reasons: ["some reasons"]
+/// }
+/// ```
+///
+/// are a hash collision and need to be merged to appropriately combine them.
+impl std::hash::Hash for EffectivePermission {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.privilege.hash(state);
+    }
+}
+
+/// `EffectivePermission`s are hashed solely on the privilege.
+///
+/// This means that
+///
+/// ```text
+///  EffectivePermission{
+///   privilege: "read",
+///   mode: Allow,
+///   reasons: []
+/// }
+/// ```
+///
+/// and
+///
+///
+/// ```text
+///  EffectivePermission{
+///   privilege: "read",
+///   mode: Deny,
+///   reasons: ["some reasons"]
+/// }
+/// ```
+///
+/// are considered equal.
+impl PartialEq for EffectivePermission {
+    fn eq(&self, other: &Self) -> bool {
+        self.privilege == other.privilege
+    }
+}
+
+impl Eq for EffectivePermission {}
+
 /// Container for all node data for a given connector
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ConnectorData {
@@ -21,6 +134,13 @@ pub struct ConnectorData {
     pub tags: Vec<Tag>,
     /// All policies in the connector
     pub policies: Vec<Policy>,
+    /// Mapping of all users to the assets they have permissions granted
+    /// to.
+    ///
+    /// `effective_permissions["user_identifier"]["asset://cual"]` would contain the effective
+    /// permissions for that user,asset combination, with one EffectivePermission
+    /// per privilege containing possible explanations.
+    pub effective_permissions: SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>>,
 }
 
 impl ConnectorData {
@@ -31,6 +151,7 @@ impl ConnectorData {
         assets: Vec<Asset>,
         tags: Vec<Tag>,
         policies: Vec<Policy>,
+        effective_permissions: SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>>,
     ) -> Self {
         Self {
             groups,
@@ -38,6 +159,7 @@ impl ConnectorData {
             assets,
             tags,
             policies,
+            effective_permissions,
         }
     }
 }
@@ -91,7 +213,7 @@ pub struct User {
     pub name: String,
     /// Additional user identifiers that are used to resolve users
     /// cross-platform
-    pub identifiers: HashMap<super::UserIdentifier, String>,
+    pub identifiers: HashSet<super::UserIdentifier>,
     /// Additional identifying strings that can be used for cross-
     /// platform entity resolution
     pub other_identifiers: HashSet<String>,
@@ -108,7 +230,7 @@ impl User {
     /// Basic constructor.
     pub fn new(
         name: String,
-        identifiers: HashMap<super::UserIdentifier, String>,
+        identifiers: HashSet<super::UserIdentifier>,
         other_identifiers: HashSet<String>,
         metadata: HashMap<String, String>,
         member_of: HashSet<String>,

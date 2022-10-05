@@ -30,7 +30,8 @@ use std::collections::{HashMap, HashSet};
 use crate::{
     coordinator::Environment,
     nodes as tableau_nodes,
-    rest::{self, FetchJson},
+    rest::{self, FetchJson, TableauAssetType},
+    Cual, Cualable,
 };
 
 use jetty_core::connectors::nodes as jetty_nodes;
@@ -38,11 +39,17 @@ use jetty_core::connectors::nodes as jetty_nodes;
 use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
 
+#[derive(Clone, Default, Debug, Deserialize, Serialize)]
+/// A Tableau-created Project ID.
+pub(crate) struct ProjectId(pub(crate) String);
+
 /// This trait is implemented by permissionable Tableau asset nodes and makes it simpler to
 /// fetch and parse permissions
 #[async_trait]
 pub(crate) trait Permissionable: core::fmt::Debug {
     fn get_endpoint(&self) -> String;
+
+    fn get_permissions(&self) -> &Vec<Permission>;
 
     fn set_permissions(&mut self, permissions: Vec<Permission>);
 
@@ -53,6 +60,7 @@ pub(crate) trait Permissionable: core::fmt::Debug {
         env: &Environment,
     ) -> Result<()> {
         let req = tc.build_request(self.get_endpoint(), None, reqwest::Method::GET)?;
+        println!("{:?}", req);
 
         let resp = req.fetch_json_response(None).await?;
 
@@ -85,6 +93,18 @@ trait GetId {
     fn get_id(&self) -> String;
 }
 
+pub(crate) trait TableauAsset {
+    /// Get the asset type for this asset.
+    fn get_asset_type(&self) -> TableauAssetType;
+}
+
+pub(crate) trait OwnedAsset: TableauAsset {
+    /// Get the parent project ID.
+    fn get_parent_project_id(&self) -> Option<&ProjectId>;
+    /// Get the owner ID for this asset.
+    fn get_owner_id(&self) -> &str;
+}
+
 /// This Macro implements the GetId trait for one or more types that have an `id` field.
 macro_rules! impl_GetId {
     (for $($t:ty),+) => {
@@ -99,13 +119,75 @@ macro_rules! impl_GetId {
 impl_GetId!(for
     Group,
     User,
-    Project,
     Workbook,
     View,
     Datasource,
     Metric,
     Flow,
     Lens
+);
+
+/// Project uses ProjectId for its ID field so it needs to have a bespoke impl.
+impl GetId for Project {
+    fn get_id(&self) -> String {
+        self.id.0.to_owned()
+    }
+}
+
+/// This Macro implements the OwnedAsset. Provides utilities to crawl tree of project and content owners.
+macro_rules! impl_OwnedAsset {
+    (for $($t:ty),+) => {
+        $(impl OwnedAsset for $t {
+            fn get_parent_project_id(&self) -> Option<&ProjectId>{
+                Some(&self.project_id)
+            }
+
+            fn get_owner_id(&self) -> &str {
+                &self.owner_id
+            }
+        })*
+    }
+}
+
+impl_OwnedAsset!(for
+    Workbook,
+    View,
+    Datasource,
+    Metric,
+    Flow,
+    Lens
+);
+
+/// Project is a little different so it needs to have a bespoke impl.
+impl OwnedAsset for Project {
+    fn get_parent_project_id(&self) -> Option<&ProjectId> {
+        self.parent_project_id.as_ref()
+    }
+
+    fn get_owner_id(&self) -> &str {
+        &self.owner_id
+    }
+}
+
+/// This Macro implements the Cualable trait for one or more types that have a `cual` field.
+macro_rules! impl_Cualable {
+    (for $($t:ty),+) => {
+        $(impl Cualable for $t {
+            fn cual(&self) -> Cual{
+                self.cual.clone()
+            }
+        })*
+    }
+}
+
+impl_Cualable!(for
+    Workbook,
+    View,
+    Datasource,
+    Metric,
+    Flow,
+    Lens,
+    Project
 );
 
 /// Helper struct for deserializing Tableau assets
@@ -117,8 +199,36 @@ struct IdField {
 /// Representation of Tableau permissions
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub(crate) struct Permission {
-    grantee: Grantee,
-    capabilities: HashMap<String, String>,
+    pub(crate) grantee: Grantee,
+    pub(crate) capabilities: HashMap<String, String>,
+}
+
+impl Permission {
+    pub(crate) fn has_capability(&self, cap: &str, mode: &str) -> bool {
+        self.capabilities
+            .iter()
+            .find(|(c, m)| c.as_str() == cap && m.as_str() == mode)
+            .is_some()
+    }
+
+    pub(crate) fn grantee_user_ids(&self) -> Vec<String> {
+        match &self.grantee {
+            Grantee::User(u) => vec![u.id.to_owned()],
+            Grantee::Group(g) => g.includes.clone().iter().map(|u| u.id.to_owned()).collect(),
+        }
+    }
+
+    pub(crate) fn grantee_user_emails(&self) -> Vec<String> {
+        match &self.grantee {
+            Grantee::User(u) => vec![u.email.to_owned()],
+            Grantee::Group(g) => g
+                .includes
+                .clone()
+                .iter()
+                .map(|u| u.email.to_owned())
+                .collect(),
+        }
+    }
 }
 
 /// Permissions and Jetty policies map 1:1.
@@ -157,6 +267,16 @@ pub(crate) enum Grantee {
     User(tableau_nodes::User),
 }
 
+impl Grantee {
+    /// Get a human-readable name for this grantee.
+    pub(crate) fn get_name(&self) -> &str {
+        match self {
+            Grantee::Group(g) => &g.name,
+            Grantee::User(g) => &g.email,
+        }
+    }
+}
+
 /// Deserialization helper for Tableau permissions
 #[derive(Deserialize, Debug, Clone)]
 struct Capability {
@@ -186,20 +306,20 @@ impl SerializedPermission {
         // should already have it available.
         let grantee = match self {
             Self {
-                group: Some(IdField { id }),
+                group: Some(IdField { ref id }),
                 ..
             } => Grantee::Group(
                 env.groups
-                    .get(&id)
+                    .get(id)
                     .unwrap_or_else(|| panic!("Group {} not yet in environment", id))
                     .clone(),
             ),
             Self {
-                user: Some(IdField { id }),
+                user: Some(IdField { ref id }),
                 ..
             } => Grantee::User(
                 env.users
-                    .get(&id)
+                    .get(id)
                     .unwrap_or_else(|| panic!("User {} not yet in environment", id))
                     .clone(),
             ),

@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use super::{Permission, Permissionable};
+use super::{Permission, Permissionable, ProjectId, TableauAsset};
 use crate::rest::{self, get_tableau_cual, FetchJson, TableauAssetType};
 
 use anyhow::{Context, Result};
@@ -18,7 +18,7 @@ pub(crate) struct View {
     pub name: String,
     pub workbook_id: String,
     pub owner_id: String,
-    pub project_id: String,
+    pub project_id: ProjectId,
     pub updated_at: String,
     pub permissions: Vec<Permission>,
 }
@@ -44,7 +44,7 @@ fn to_node(val: &serde_json::Value) -> Result<View> {
         id: asset_info.id,
         name: asset_info.name,
         owner_id: asset_info.owner.id,
-        project_id: asset_info.project.id,
+        project_id: ProjectId(asset_info.project.id),
         updated_at: asset_info.updated_at,
         workbook_id: asset_info.workbook.id,
         permissions: Default::default(),
@@ -68,6 +68,10 @@ impl Permissionable for View {
     fn set_permissions(&mut self, permissions: Vec<super::Permission>) {
         self.permissions = permissions;
     }
+
+    fn get_permissions(&self) -> &Vec<Permission> {
+        &self.permissions
+    }
 }
 
 impl View {
@@ -77,7 +81,7 @@ impl View {
         name: String,
         workbook_id: String,
         owner_id: String,
-        project_id: String,
+        project_id: ProjectId,
         updated_at: String,
         permissions: Vec<Permission>,
     ) -> Self {
@@ -120,6 +124,13 @@ impl From<View> for jetty_nodes::Asset {
         )
     }
 }
+
+impl TableauAsset for View {
+    fn get_asset_type(&self) -> TableauAssetType {
+        TableauAssetType::View
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -161,7 +172,7 @@ mod tests {
             "name".to_owned(),
             "workbook_id".to_owned(),
             "owner_id".to_owned(),
-            "project_id".to_owned(),
+            ProjectId("project_id".to_owned()),
             "updated_at".to_owned(),
             vec![],
         );
@@ -176,7 +187,7 @@ mod tests {
             "name".to_owned(),
             "workbook_id".to_owned(),
             "owner_id".to_owned(),
-            "project_id".to_owned(),
+            ProjectId("project_id".to_owned()),
             "updated_at".to_owned(),
             vec![],
         );

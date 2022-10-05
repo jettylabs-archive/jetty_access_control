@@ -40,16 +40,19 @@ pub trait Connector {
 
 /// Enum of identifiers used to resolve user identities
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Hash, PartialEq, Eq)]
 pub enum UserIdentifier {
     /// User's first name
-    FirstName,
+    FirstName(String),
     /// User's last name
-    LastName,
+    LastName(String),
     /// User's full name
-    FullName,
+    FullName(String),
     /// User's email address
-    Email,
+    Email(String),
+    /// Shouldn't be used other than as a default.
+    #[default]
+    Unknown,
 }
 
 /// Enum of known asset types
