@@ -22,3 +22,15 @@ pub(crate) fn get_capabilities_for_asset_type(
         TableauAssetType::View => VIEW_CAPABILITIES,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_capabilities_for_asset_type_works() {
+        let capas = get_capabilities_for_asset_type(TableauAssetType::Datasource);
+        assert!(!capas.is_empty());
+        assert!(!capas[0].is_empty());
+    }
+}
