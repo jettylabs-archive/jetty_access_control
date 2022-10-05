@@ -298,7 +298,7 @@ impl<'x> PermissionManager<'x> {
                                         capa.to_string(),
                                         PermissionMode::Allow,
                                         vec![format!(
-                                            "user is the leader of project {}",
+                                            "user has the project leader role on {}",
                                             parent_project.name
                                         )],
                                     )
