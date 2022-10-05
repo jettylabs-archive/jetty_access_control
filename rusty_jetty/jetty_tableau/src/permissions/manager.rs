@@ -8,9 +8,10 @@ use jetty_core::{
     cual::{Cual, Cualable},
 };
 
+use super::matrix::{InsertOrMerge, Merge};
 use crate::{
     coordinator::Coordinator,
-    nodes::{self, user::SiteRole, OwnedAsset, ProjectId},
+    nodes::{self, user::SiteRole, OwnedAsset, ProjectId, TableauAsset},
     nodes::{Grantee, Permissionable},
 };
 
@@ -19,8 +20,29 @@ pub(crate) struct PermissionManager<'x> {
 }
 
 impl<'x> PermissionManager<'x> {
+    /// Basic constructor.
     pub(crate) fn new(coordinator: &'x Coordinator) -> Self {
         Self { coordinator }
+    }
+
+    /// Crate-public method for getting all effective permissions for an asset
+    /// class.
+    ///
+    /// Gets explicit permissions, combines them with implicit permissions,
+    /// and then combines those with the site-role-specific permissions.
+    pub(crate) fn get_effective_permissions_for_asset<T: OwnedAsset + Permissionable + Cualable>(
+        &self,
+        assets: &HashMap<String, T>,
+    ) -> SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> {
+        let mut all_perms = self.get_explicit_effective_permissions_for_asset(assets);
+        all_perms
+            .merge(self.get_implicit_effective_permissions_for_asset(assets))
+            .expect("merging explicit and implicit permissions");
+        all_perms
+            .merge(self.get_effective_permissions_for_site_roles(assets))
+            .expect("merging explicit/implicit permissions with site role permissions");
+
+        all_perms
     }
 
     /// Given an asset, get all of the user -> permission pairings.
@@ -61,7 +83,100 @@ impl<'x> PermissionManager<'x> {
         user_perm_map
     }
 
-    pub(crate) fn get_effective_permissions_for_asset<T: OwnedAsset + Permissionable + Cualable>(
+    /// Get all superusers from the environment.
+    fn superusers(&self) -> impl Iterator<Item = &nodes::User> {
+        self.coordinator
+            .env
+            .users
+            .values()
+            .filter(|user| match user.site_role {
+                SiteRole::Creator
+                | SiteRole::Explorer
+                | SiteRole::ExplorerCanPublish
+                | SiteRole::ReadOnly
+                | SiteRole::SiteAdministratorExplorer
+                | SiteRole::Viewer
+                | SiteRole::Unlicensed
+                | SiteRole::Unknown => false,
+                SiteRole::ServerAdministrator | SiteRole::SiteAdministratorCreator => true,
+            })
+    }
+
+    /// Get all unlicensed users from the environment.
+    fn unlicensed_users(&self) -> impl Iterator<Item = &nodes::User> {
+        self.coordinator
+            .env
+            .users
+            .values()
+            .filter(|user| match user.site_role {
+                SiteRole::Creator
+                | SiteRole::Explorer
+                | SiteRole::ExplorerCanPublish
+                | SiteRole::ReadOnly
+                | SiteRole::SiteAdministratorExplorer
+                | SiteRole::Viewer
+                | SiteRole::ServerAdministrator
+                | SiteRole::SiteAdministratorCreator => false,
+                SiteRole::Unlicensed | SiteRole::Unknown => true,
+            })
+    }
+
+    /// Get all effective permissions that are based on site role.
+    fn get_effective_permissions_for_site_roles<T: OwnedAsset + Permissionable + Cualable>(
+        &self,
+        assets: &HashMap<String, T>,
+    ) -> SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> {
+        let mut ep: SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> =
+            HashMap::new();
+        for asset in assets.values() {
+            let cual = asset.cual();
+
+            // Superusers
+            let superusers = self.superusers();
+            let asset_capabilities = super::get_capabilities_for_asset_type(asset.get_asset_type());
+            for su in superusers {
+                let effective_permissions = asset_capabilities
+                    .iter()
+                    .map(|capa| {
+                        EffectivePermission::new(
+                            capa.to_string(),
+                            PermissionMode::Allow,
+                            vec![format!("user has site role {:?}", su.site_role)],
+                        )
+                    })
+                    .collect();
+                ep.insert_or_merge(
+                    UserIdentifier::Email(su.email.to_owned()),
+                    HashMap::from([(cual.clone(), effective_permissions)]),
+                );
+            }
+
+            // Unlicensed/unknown users
+            let unlicensed_users = self.unlicensed_users();
+            let asset_capabilities = super::get_capabilities_for_asset_type(asset.get_asset_type());
+            for user in unlicensed_users {
+                let effective_permissions = asset_capabilities
+                    .iter()
+                    .map(|capa| {
+                        EffectivePermission::new(
+                            capa.to_string(),
+                            PermissionMode::Deny,
+                            vec![format!("user has site role {:?}", user.site_role)],
+                        )
+                    })
+                    .collect();
+                ep.insert_or_merge(
+                    UserIdentifier::Email(user.email.to_owned()),
+                    HashMap::from([(cual.clone(), effective_permissions)]),
+                );
+            }
+        }
+        ep
+    }
+
+    /// Get all effective permissions that are explicitly set for the assets
+    /// given.
+    fn get_explicit_effective_permissions_for_asset<T: OwnedAsset + Permissionable + Cualable>(
         &self,
         assets: &HashMap<String, T>,
     ) -> SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> {
@@ -74,121 +189,30 @@ impl<'x> PermissionManager<'x> {
             // We'll go over each of those user -> [permission] mappings to
             // discover effective access.
             user_perm_map.iter().map(|(user, perms)| {
-                // 1. check site role for allow alls and missing licenses.
-                let allow_all = match user.site_role {
-                    SiteRole::Creator
-                    | SiteRole::Explorer
-                    | SiteRole::ExplorerCanPublish
-                    | SiteRole::ReadOnly
-                    | SiteRole::SiteAdministratorExplorer
-                    | SiteRole::Viewer => Some(false),
-                    SiteRole::ServerAdministrator | SiteRole::SiteAdministratorCreator => {
-                        Some(true)
-                    }
-                    SiteRole::Unlicensed | SiteRole::Unknown => None,
-                };
-
-                let final_permissions: HashSet<EffectivePermission> = if let Some(allow) = allow_all
-                {
-                    if allow {
-                        // Site role guarantees access, grant all capabilities.
-                        perms
-                            .iter()
-                            .map(|(_, capa, mode)| {
-                                EffectivePermission::new(
-                                    capa.to_string(),
-                                    PermissionMode::Allow,
-                                    vec![format!("user has site role {:?}", user.site_role)],
-                                )
-                            })
-                            .collect()
-                    } else {
-                        // Need to dig more to figure out effective permission.
-                        // TODO: climb the project hierarchy here to check all parent projects
-                        let ProjectId(project_id) = asset.get_parent_project_id().unwrap();
-                        let parent_project = &self.coordinator.env.projects[&project_id.to_owned()];
-                        let is_project_leader = parent_project
-                            .permissions
-                            .iter()
-                            .find(|p| {
-                                p.has_capability("ProjectLeader", "Allow")
-                                    && p.grantee_user_ids().contains(&user.id)
-                            })
-                            .is_some();
-                        let is_project_owner = parent_project.owner_id == user.id;
-                        if is_project_leader || is_project_owner {
-                            // allow because project leader
-                            perms
-                                .iter()
-                                .map(|(_, capa, mode)| {
-                                    EffectivePermission::new(
-                                        capa.to_string(),
-                                        PermissionMode::Allow,
-                                        vec![format!(
-                                            "user is the {}.",
-                                            if is_project_leader {
-                                                "project leader"
-                                            } else {
-                                                "project owner"
-                                            }
-                                        )],
-                                    )
-                                })
-                                .collect()
-                        } else if asset.get_owner_id() == user.id {
-                            // 3. content (asset) owner, allow
-                            perms
-                                .iter()
-                                .map(|(_, capa, mode)| {
-                                    EffectivePermission::new(
-                                        capa.to_string(),
-                                        PermissionMode::Allow,
-                                        vec![format!("user is the owner of this content.")],
-                                    )
-                                })
-                                .collect()
+                // apply the permission explicitly given
+                let explicit_effective_permissions = perms
+                    .iter()
+                    .map(|(grantee, capa, mode)| {
+                        let grantee_type = if matches!(grantee, Grantee::User(_)) {
+                            "user"
                         } else {
-                            // 4. denied/allowed for user
-                            // 5. denied/allowed for group
-                            // apply the permission explicitly given
-                            perms
-                                .iter()
-                                .map(|(grantee, capa, mode)| {
-                                    let grantee_type = if matches!(grantee, Grantee::User(_)) {
-                                        "user"
-                                    } else {
-                                        "group"
-                                    };
-                                    EffectivePermission::new(
-                                        capa.to_string(),
-                                        PermissionMode::from(mode.as_str()),
-                                        vec![format!(
-                                            "Permission set explicitly on {} {}.",
-                                            grantee_type,
-                                            grantee.get_name()
-                                        )],
-                                    )
-                                })
-                                .collect()
-                        }
-                    }
-                } else {
-                    // No license, deny access to this user.
-                    perms
-                        .iter()
-                        .map(|(_, capa, mode)| {
-                            EffectivePermission::new(
-                                capa.to_string(),
-                                PermissionMode::Deny,
-                                vec![format!("User unlicensed or site role unknown.")],
-                            )
-                        })
-                        .collect()
-                };
-                // Add final_permissions to ep[user][asset]
+                            "group"
+                        };
+                        EffectivePermission::new(
+                            capa.to_string(),
+                            PermissionMode::from(mode.as_str()),
+                            vec![format!(
+                                "Permission set explicitly on {} {}.",
+                                grantee_type,
+                                grantee.get_name()
+                            )],
+                        )
+                    })
+                    .collect();
+                // Add permissions to ep[user][asset]
                 ep.insert(
                     UserIdentifier::Email(user.email.to_owned()),
-                    HashMap::from([(asset.cual().clone(), final_permissions)]),
+                    HashMap::from([(asset.cual().clone(), explicit_effective_permissions)]),
                 );
             });
         });
@@ -230,7 +254,9 @@ impl<'x> PermissionManager<'x> {
         }
     }
 
-    pub(crate) fn get_implicit_permissions_for_asset<T: OwnedAsset + Permissionable + Cualable>(
+    /// Get all effective permissions for permissions implicitly defined by
+    /// content ownership and project leadership.
+    fn get_implicit_effective_permissions_for_asset<T: OwnedAsset + Permissionable + Cualable>(
         &self,
         assets: &HashMap<String, T>,
     ) -> SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> {
@@ -255,37 +281,40 @@ impl<'x> PermissionManager<'x> {
                     )
                 })
                 .collect();
-            // TODO: Check for clashes here.
-            ep.insert(
+            ep.insert_or_merge(
                 UserIdentifier::Email(owner.email.to_owned()),
                 HashMap::from([(asset.cual(), perms)]),
             );
+
             // Project leaders
             for parent_project in self.get_parent_projects_for(asset) {
-                parent_project.permissions.iter().for_each(|perm| {
+                for perm in &parent_project.permissions {
                     if perm.capabilities.contains_key("ProjectLeader") {
-                        let effective_perms: HashSet<EffectivePermission> = asset_capabilities
-                            .iter()
-                            .map(|capa| {
-                                EffectivePermission::new(
-                                    capa.to_string(),
-                                    PermissionMode::Allow,
-                                    vec![format!(
-                                        "user is the leader of project {}",
-                                        parent_project.name
-                                    )],
-                                )
-                            })
-                            .collect();
+                        let leader_effective_permissions: HashSet<EffectivePermission> =
+                            asset_capabilities
+                                .iter()
+                                .map(|capa| {
+                                    EffectivePermission::new(
+                                        capa.to_string(),
+                                        PermissionMode::Allow,
+                                        vec![format!(
+                                            "user has the project leader role on {}",
+                                            parent_project.name
+                                        )],
+                                    )
+                                })
+                                .collect();
                         for grantee_email in perm.grantee_user_emails() {
-                            // TODO: Check for clashes here.
-                            ep.insert(
+                            ep.insert_or_merge(
                                 UserIdentifier::Email(grantee_email),
-                                HashMap::from([(asset.cual(), effective_perms.clone())]),
+                                HashMap::from([(
+                                    asset.cual(),
+                                    leader_effective_permissions.clone(),
+                                )]),
                             );
                         }
                     }
-                });
+                }
             }
         });
         ep

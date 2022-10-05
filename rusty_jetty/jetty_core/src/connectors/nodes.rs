@@ -38,11 +38,14 @@ impl From<&str> for PermissionMode {
     }
 }
 /// An effective permission
-#[derive(Debug, Default, Hash, PartialEq, Eq, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct EffectivePermission {
-    privilege: String,
-    mode: PermissionMode,
-    reasons: Vec<String>,
+    /// The privilege granted/denied for this permission.
+    pub privilege: String,
+    /// The mode for this permission.
+    pub mode: PermissionMode,
+    /// The human-readable reasons this permission was applied.
+    pub reasons: Vec<String>,
 }
 
 impl EffectivePermission {
@@ -55,6 +58,68 @@ impl EffectivePermission {
         }
     }
 }
+
+/// `EffectivePermission`s are hashed solely on the privilege.
+///
+/// This means that
+///
+/// ```text
+///  EffectivePermission{
+///   privilege: "read",
+///   mode: Allow,
+///   reasons: []
+/// }
+/// ```
+///
+/// and
+///
+///
+/// ```text
+///  EffectivePermission{
+///   privilege: "read",
+///   mode: Deny,
+///   reasons: ["some reasons"]
+/// }
+/// ```
+///
+/// are a hash collision and need to be merged to appropriately combine them.
+impl std::hash::Hash for EffectivePermission {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.privilege.hash(state);
+    }
+}
+
+/// `EffectivePermission`s are hashed solely on the privilege.
+///
+/// This means that
+///
+/// ```text
+///  EffectivePermission{
+///   privilege: "read",
+///   mode: Allow,
+///   reasons: []
+/// }
+/// ```
+///
+/// and
+///
+///
+/// ```text
+///  EffectivePermission{
+///   privilege: "read",
+///   mode: Deny,
+///   reasons: ["some reasons"]
+/// }
+/// ```
+///
+/// are considered equal.
+impl PartialEq for EffectivePermission {
+    fn eq(&self, other: &Self) -> bool {
+        self.privilege == other.privilege
+    }
+}
+
+impl Eq for EffectivePermission {}
 
 /// Container for all node data for a given connector
 #[derive(Debug, Default, PartialEq, Eq)]

@@ -47,6 +47,17 @@ impl Project {
             permissions,
         }
     }
+
+    /// Determine whether the given user is the project leader.
+    pub(crate) fn is_leader(&self, user: &super::User) -> bool {
+        self.permissions
+            .iter()
+            .find(|p| {
+                p.has_capability("ProjectLeader", "Allow")
+                    && p.grantee_user_ids().contains(&user.id)
+            })
+            .is_some()
+    }
 }
 
 /// Convert JSON into a project struct

@@ -133,10 +133,6 @@ impl TableauConnector {
         let mut final_eps = HashMap::new();
         let mut flow_eps =
             permission_manager.get_effective_permissions_for_asset(&self.coordinator.env.flows);
-        // TODO: merge the reasons here when there are matching perms
-        flow_eps.extend(
-            permission_manager.get_implicit_permissions_for_asset(&self.coordinator.env.flows),
-        );
         let project_eps =
             permission_manager.get_effective_permissions_for_asset(&self.coordinator.env.projects);
         let lens_eps =

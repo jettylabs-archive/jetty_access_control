@@ -3,6 +3,7 @@
 
 pub(crate) mod consts;
 mod manager;
+mod matrix;
 
 use crate::rest::TableauAssetType;
 use consts::*;
