@@ -38,6 +38,7 @@ use jetty_core::connectors::nodes as jetty_nodes;
 
 use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
 /// A Tableau-created Project ID.
@@ -60,7 +61,6 @@ pub(crate) trait Permissionable: core::fmt::Debug {
         env: &Environment,
     ) -> Result<()> {
         let req = tc.build_request(self.get_endpoint(), None, reqwest::Method::GET)?;
-        println!("{:?}", req);
 
         let resp = req.fetch_json_response(None).await?;
 
@@ -241,13 +241,13 @@ impl From<Permission> for jetty_nodes::Policy {
 
         match val.grantee {
             Grantee::Group(tableau_nodes::Group { id, .. }) => granted_to_groups.insert(id),
-            Grantee::User(tableau_nodes::User { id, .. }) => granted_to_users.insert(id),
+            Grantee::User(tableau_nodes::User { email, .. }) => granted_to_users.insert(email),
         };
 
         jetty_nodes::Policy::new(
             // Leaving names empty for now for policies since they don't have
             // a lot of significance for policies here anyway.
-            "".to_owned(),
+            Uuid::new_v4().to_string(),
             val.capabilities.into_values().collect(),
             // Handled by the caller.
             HashSet::new(),
@@ -261,7 +261,7 @@ impl From<Permission> for jetty_nodes::Policy {
 }
 
 /// Grantee of a Tableau permission
-#[derive(Deserialize, Debug, Clone, Serialize)]
+#[derive(Deserialize, Debug, Clone, Serialize, Hash)]
 pub(crate) enum Grantee {
     Group(tableau_nodes::Group),
     User(tableau_nodes::User),

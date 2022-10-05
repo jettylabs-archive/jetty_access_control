@@ -58,7 +58,7 @@ impl User {
 impl From<User> for jetty_nodes::User {
     fn from(val: User) -> Self {
         jetty_nodes::User::new(
-            val.name,
+            val.email.to_owned(),
             HashSet::from([
                 UserIdentifier::Email(val.email),
                 UserIdentifier::FullName(val.full_name),

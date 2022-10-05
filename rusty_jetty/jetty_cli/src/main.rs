@@ -15,7 +15,7 @@ struct Args {
     #[clap(short, long, value_parser, default_value = "false")]
     visualize: bool,
     /// Connectors to collect for.
-    #[clap(short, long, default_value = "snowflake,tableau,dbt")]
+    #[clap(short, long, default_values_t = vec!["snowflake".to_owned(),"tableau".to_owned(),"dbt".to_owned()])]
     connectors: Vec<String>,
 }
 
