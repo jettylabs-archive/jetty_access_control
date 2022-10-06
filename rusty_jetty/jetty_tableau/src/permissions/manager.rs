@@ -8,7 +8,10 @@ use jetty_core::{
     cual::{Cual, Cualable},
 };
 
-use super::matrix::{InsertOrMerge, Merge};
+use super::{
+    consts::AssetCapabilityMap,
+    matrix::{InsertOrMerge, Merge},
+};
 use crate::{
     coordinator::Coordinator,
     nodes::{self, user::SiteRole, OwnedAsset, ProjectId},
@@ -128,12 +131,15 @@ impl<'x> PermissionManager<'x> {
     ) -> SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> {
         let mut ep: SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> =
             HashMap::new();
+
+        let capability_restrictions_map = AssetCapabilityMap::new();
+
         for asset in assets.values() {
             let cual = asset.cual();
-
-            // Superusers
-            let superusers = self.superusers();
             let asset_capabilities = super::get_capabilities_for_asset_type(asset.get_asset_type());
+
+            // Superusers – allow them through everything.
+            let superusers = self.superusers();
             for su in superusers {
                 let effective_permissions = asset_capabilities
                     .iter()
@@ -151,18 +157,28 @@ impl<'x> PermissionManager<'x> {
                 );
             }
 
-            // Unlicensed/unknown users
-            let unlicensed_users = self.unlicensed_users();
-            let asset_capabilities = super::get_capabilities_for_asset_type(asset.get_asset_type());
-            for user in unlicensed_users {
+            // All other site roles – place restrictions based on their role.
+            for user in self.coordinator.env.users.values() {
+                let restricted_capabilities = capability_restrictions_map
+                    .get(user.site_role, asset.get_asset_type())
+                    .expect(&format!("getting site role {:?} and asset type {:?} from capability restrictions map", user.site_role, asset.get_asset_type()));
+
                 let effective_permissions = asset_capabilities
-                    .iter()
-                    .map(|capa| {
-                        EffectivePermission::new(
-                            capa.to_string(),
-                            PermissionMode::Deny,
-                            vec![format!("user has site role {:?}", user.site_role)],
-                        )
+                    .into_iter()
+                    .filter_map(|&capa| {
+                        if restricted_capabilities.contains(&capa) {
+                            Some(EffectivePermission::new(
+                                capa.to_owned(),
+                                PermissionMode::Deny,
+                                vec![format!(
+                                    "User has site role {:?}, which doesn't allow this capability.",
+                                    user.site_role
+                                )],
+                            ))
+                        } else {
+                            // Not restricted, don't block this capability.
+                            None
+                        }
                     })
                     .collect();
                 ep.insert_or_merge(

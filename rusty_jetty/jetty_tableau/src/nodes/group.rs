@@ -40,9 +40,9 @@ impl Group {
         let group_users = user_ids
             .iter()
             .map(|uid| {
-                users
-                    .get(&uid.id)
-                    .unwrap_or_else(|| panic!("user id {:?} not in tableau users", uid.id))
+                users.get(&uid.id).unwrap_or_else(|| {
+                    panic!("user id {:?} not in tableau users {:?}", uid.id, users)
+                })
             })
             .cloned()
             .collect();
