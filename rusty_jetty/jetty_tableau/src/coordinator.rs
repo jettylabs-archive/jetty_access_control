@@ -63,7 +63,10 @@ pub(crate) trait HasSources {
     ) -> Result<()> {
         let id = self.id().to_owned();
         match env_assets.get(&id) {
-            Some(old_asset) if old_asset.updated_at() == self.updated_at() => anyhow::Ok(()),
+            Some(old_asset) if old_asset.updated_at() == self.updated_at() => {
+                self.set_sources(old_asset.sources());
+                anyhow::Ok(())
+            }
             _ => {
                 let x = self.fetch_sources(coord);
                 self.set_sources(x.await?);

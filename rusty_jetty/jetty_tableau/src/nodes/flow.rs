@@ -178,17 +178,9 @@ impl From<Flow> for jetty_nodes::Asset {
             // Children objects will be handled in their respective nodes.
             HashSet::new(),
             // Flows are derived from their source data.
-            HashSet::from_iter(val.derived_from.iter().map(|c| {
-                get_tableau_cual(TableauAssetType::Datasource, c)
-                    .expect("Getting datasource CUAL for flow")
-                    .uri()
-            })),
+            val.derived_from,
             // Flows can also be used to create other data assets
-            HashSet::from_iter(val.derived_to.iter().map(|c| {
-                get_tableau_cual(TableauAssetType::Datasource, c)
-                    .expect("Getting datasource CUAL for flow")
-                    .uri()
-            })),
+            val.derived_to,
             // No tags at this point.
             HashSet::new(),
         )

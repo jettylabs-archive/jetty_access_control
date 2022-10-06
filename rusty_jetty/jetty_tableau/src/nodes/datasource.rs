@@ -176,7 +176,7 @@ fn to_node(val: &serde_json::Value) -> Result<super::Datasource> {
 }
 
 /// Fetch basic datasource information. Doesn't include permissions or sources. Those need
-/// to be fetched seperately
+/// to be fetched separately
 pub(crate) async fn get_basic_datasources(
     tc: &rest::TableauRestClient,
 ) -> Result<HashMap<String, Datasource>> {
