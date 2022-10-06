@@ -6,13 +6,33 @@ fn main() {
 
     let web_project_path = Path::new(&project_dir).join("web/");
 
+    let output = Command::new("npm")
+        .args(["install"])
+        .current_dir(web_project_path.clone())
+        .output()
+        .unwrap();
+
+    // If this fails, make sure you have npm installed
+    assert!(
+        output.status.success(),
+        "Command failed:\n{}",
+        std::str::from_utf8(&output.stdout).unwrap()
+    );
+
     // Note that there are a number of downsides to this approach, the comments
     // below detail how to improve the portability of these commands.
-    Command::new("yarn")
+    let output = Command::new("npx")
         .args(["quasar", "build"])
         .current_dir(web_project_path)
-        .status()
+        .output()
         .unwrap();
+
+    // If this fails, make sure you have the quasar cli installed
+    assert!(
+        output.status.success(),
+        "Command failed:\n{}",
+        std::str::from_utf8(&output.stdout).unwrap()
+    );
 
     println!("cargo:rerun-if-changed=web/src/");
     println!("cargo:rerun-if-changed=web/public/");
