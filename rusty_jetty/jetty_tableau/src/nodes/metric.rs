@@ -164,7 +164,7 @@ mod tests {
         let mut nodes = get_basic_metrics(&tc.coordinator.rest_client).await?;
         for (_k, v) in &mut nodes {
             v.update_permissions(&tc.coordinator.rest_client, &tc.coordinator.env)
-                .await;
+                .await?;
         }
         for (_k, v) in nodes {
             println!("{:#?}", v);
@@ -173,6 +173,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(unused_must_use)]
     fn test_asset_from_metric_works() {
         let m = Metric::new(
             Cual::new("".to_owned()),
@@ -189,6 +190,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(unused_must_use)]
     fn test_metric_into_asset_works() {
         let m = Metric::new(
             Cual::new("".to_owned()),

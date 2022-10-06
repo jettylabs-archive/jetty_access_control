@@ -140,13 +140,15 @@ mod tests {
                         Default::default(),
                     ),
                 )]),
-            );
+            )
+            .await?;
             println!("{:#?}", v);
         }
         Ok(())
     }
 
     #[test]
+    #[allow(unused_must_use)]
     fn test_jetty_group_from_group_works() {
         let g = Group::new(
             "id".to_owned(),
@@ -164,6 +166,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(unused_must_use)]
     fn test_group_into_jetty_group_works() {
         let g = Group::new(
             "id".to_owned(),

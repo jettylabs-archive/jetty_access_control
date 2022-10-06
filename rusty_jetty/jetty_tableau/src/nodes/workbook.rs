@@ -269,7 +269,7 @@ mod tests {
         let mut workbooks = get_basic_workbooks(&tc.coordinator.rest_client).await?;
         for (_k, v) in &mut workbooks {
             v.update_permissions(&tc.coordinator.rest_client, &tc.coordinator.env)
-                .await;
+                .await?;
         }
         for (_k, v) in workbooks {
             println!("{:#?}", v);
@@ -278,6 +278,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(unused_must_use)]
     fn test_asset_from_workbook_works() {
         let wb = Workbook::new(
             Cual::new("".to_owned()),
@@ -294,6 +295,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(unused_must_use)]
     fn test_workbook_into_asset_works() {
         let wb = Workbook::new(
             Cual::new("".to_owned()),

@@ -236,6 +236,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(unused_must_use)]
     fn test_asset_from_flow_works() {
         set_cual_prefix("", "");
         let l = Flow::new(
@@ -253,6 +254,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(unused_must_use)]
     fn test_flow_into_asset_works() {
         set_cual_prefix("", "");
         let l = Flow::new(

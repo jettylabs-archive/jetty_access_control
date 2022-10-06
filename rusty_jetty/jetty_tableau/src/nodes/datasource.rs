@@ -274,6 +274,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(unused_must_use)]
     fn test_asset_from_datasource_works() {
         set_cual_prefix("", "");
         let ds = Datasource::new(
@@ -292,6 +293,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(unused_must_use)]
     fn test_datasource_into_asset_works() {
         set_cual_prefix("", "");
         let ds = Datasource::new(

@@ -171,6 +171,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(unused_must_use)]
     fn test_asset_from_lens_works() {
         set_cual_prefix("", "");
         let l = Lens::new(
@@ -186,6 +187,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(unused_must_use)]
     fn test_lens_into_asset_works() {
         set_cual_prefix("", "");
         let l = Lens::new(
