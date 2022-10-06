@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use jetty_core::connectors::nodes as jetty_nodes;
 
 /// Representation of a Group
-#[derive(Clone, Default, Debug, Deserialize, Serialize)]
+#[derive(Clone, Default, Debug, Deserialize, Serialize, Hash)]
 pub(crate) struct Group {
     pub id: String,
     pub name: String,
@@ -62,7 +62,7 @@ impl Group {
 impl From<Group> for jetty_nodes::Group {
     fn from(val: Group) -> Self {
         jetty_nodes::Group::new(
-            val.name,
+            val.id.to_owned(),
             HashMap::from([("tableau::id".to_owned(), val.id)]),
             // No nested groups in tableau
             HashSet::new(),

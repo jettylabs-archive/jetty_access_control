@@ -265,26 +265,22 @@ impl<'x> PermissionManager<'x> {
         assets.iter().for_each(|(_, asset)| {
             let asset_capabilities = super::get_capabilities_for_asset_type(asset.get_asset_type());
             // Content owners
-            let owner = self
-                .coordinator
-                .env
-                .users
-                .get(asset.get_owner_id())
-                .expect("getting user from env");
-            let perms = asset_capabilities
-                .iter()
-                .map(|capa| {
-                    EffectivePermission::new(
-                        capa.to_string(),
-                        PermissionMode::Allow,
-                        vec!["user is the owner of this content".to_owned()],
-                    )
-                })
-                .collect();
-            ep.insert_or_merge(
-                UserIdentifier::Email(owner.email.to_owned()),
-                HashMap::from([(asset.cual(), perms)]),
-            );
+            let some_owner = self.coordinator.env.users.get(asset.get_owner_id());
+            if let Some(owner) = some_owner {
+                let perms = asset_capabilities
+                    .iter()
+                    .map(|capa| {
+                        EffectivePermission::new(
+                            capa.to_string(),
+                            PermissionMode::Allow,
+                            vec!["user is the owner of this content".to_owned()],
+                        )
+                    })
+                    .collect();
+                ep.insert_or_merge(
+                    UserIdentifier::Email(owner.email.to_owned()),
+                    HashMap::from([(asset.cual(), perms)]),
+                );
 
             // Project leaders
             for parent_project in self.get_parent_projects_for(asset) {
@@ -315,6 +311,10 @@ impl<'x> PermissionManager<'x> {
                         }
                     }
                 }
+            }
+            } else {
+                // We assume the asset is the default project with the default owner, it's not going to be in the env.
+                println!("Failed getting user {:?} from env. Assuming it's the default project default owner.", asset.get_owner_id());
             }
         });
         ep
