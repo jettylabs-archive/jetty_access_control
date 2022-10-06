@@ -282,33 +282,32 @@ impl<'x> PermissionManager<'x> {
                     HashMap::from([(asset.cual(), perms)]),
                 );
 
-                // Project leaders
-                for parent_project in self.get_parent_projects_for(asset) {
-                    for perm in &parent_project.permissions {
-                        if perm.capabilities.contains_key("ProjectLeader") {
-                            let leader_effective_permissions: HashSet<EffectivePermission> =
-                                asset_capabilities
-                                    .iter()
-                                    .map(|capa| {
-                                        EffectivePermission::new(
-                                            capa.to_string(),
-                                            PermissionMode::Allow,
-                                            vec![format!(
-                                                "user is the leader of project {}",
-                                                parent_project.name
-                                            )],
-                                        )
-                                    })
-                                    .collect();
-                            for grantee_email in perm.grantee_user_emails() {
-                                ep.insert_or_merge(
-                                    UserIdentifier::Email(grantee_email),
-                                    HashMap::from([(
-                                        asset.cual(),
-                                        leader_effective_permissions.clone(),
-                                    )]),
-                                );
-                            }
+            // Project leaders
+            for parent_project in self.get_parent_projects_for(asset) {
+                for perm in &parent_project.permissions {
+                    if perm.capabilities.contains_key("ProjectLeader") {
+                        let leader_effective_permissions: HashSet<EffectivePermission> =
+                            asset_capabilities
+                                .iter()
+                                .map(|capa| {
+                                    EffectivePermission::new(
+                                        capa.to_string(),
+                                        PermissionMode::Allow,
+                                        vec![format!(
+                                            "user has the project leader role on {}",
+                                            parent_project.name
+                                        )],
+                                    )
+                                })
+                                .collect();
+                        for grantee_email in perm.grantee_user_emails() {
+                            ep.insert_or_merge(
+                                UserIdentifier::Email(grantee_email),
+                                HashMap::from([(
+                                    asset.cual(),
+                                    leader_effective_permissions.clone(),
+                                )]),
+                            );
                         }
                     }
                 }

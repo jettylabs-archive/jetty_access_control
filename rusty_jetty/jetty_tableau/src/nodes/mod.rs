@@ -134,7 +134,7 @@ impl GetId for Project {
     }
 }
 
-/// This Macro implements the GetId trait for one or more types that have an `id` field.
+/// This Macro implements the OwnedAsset. Provides utilities to crawl tree of project and content owners.
 macro_rules! impl_OwnedAsset {
     (for $($t:ty),+) => {
         $(impl OwnedAsset for $t {
