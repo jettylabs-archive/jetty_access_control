@@ -81,10 +81,10 @@ fn to_node(val: &serde_json::Value) -> Result<super::Project> {
         id: ProjectId(project_info.id),
         name: project_info.name,
         owner_id: project_info.owner.id,
-        parent_project_id: project_info.parent_project_id.map(|i| ProjectId(i)),
+        parent_project_id: project_info.parent_project_id.map(ProjectId),
         controlling_permissions_project_id: project_info
             .controlling_permissions_project_id
-            .map(|i| ProjectId(i)),
+            .map(ProjectId),
         permissions: Default::default(),
     })
 }

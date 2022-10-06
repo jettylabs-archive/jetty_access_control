@@ -64,7 +64,7 @@ impl<'x> PermissionManager<'x> {
                         if let Some(perms) = user_perm_map.get_mut(&u) {
                             (*perms).push((&perm.grantee, p.0, p.1));
                         } else {
-                            user_perm_map.insert(&u, vec![(&perm.grantee, p.0, p.1)]);
+                            user_perm_map.insert(u, vec![(&perm.grantee, p.0, p.1)]);
                         }
                     }
                     Grantee::Group(g) => {
@@ -73,7 +73,7 @@ impl<'x> PermissionManager<'x> {
                             if let Some(perms) = user_perm_map.get_mut(&user) {
                                 (*perms).push((&perm.grantee, p.0, p.1));
                             } else {
-                                user_perm_map.insert(&user, vec![(&perm.grantee, p.0, p.1)]);
+                                user_perm_map.insert(user, vec![(&perm.grantee, p.0, p.1)]);
                             }
                         }
                     }
@@ -212,7 +212,7 @@ impl<'x> PermissionManager<'x> {
                 // Add permissions to ep[user][asset]
                 ep.insert(
                     UserIdentifier::Email(user.email.to_owned()),
-                    HashMap::from([(asset.cual().clone(), explicit_effective_permissions)]),
+                    HashMap::from([(asset.cual(), explicit_effective_permissions)]),
                 );
             });
         });
@@ -341,7 +341,7 @@ mod tests {
         env.projects = HashMap::from([("".to_owned(), Project::default())]);
         let rest_client = TableauRestClient::new_dummy();
         let coordinator = &Coordinator {
-            env: env,
+            env,
             rest_client,
         };
 

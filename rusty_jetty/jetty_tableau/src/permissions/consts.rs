@@ -1,4 +1,4 @@
-pub(crate) const WORKBOOK_CAPABILITIES: &'static [&'static str] = &[
+pub(crate) const WORKBOOK_CAPABILITIES: &[&str] = &[
     "ViewComments",
     "Filter",
     "CreateRefreshMetrics",
@@ -17,7 +17,7 @@ pub(crate) const WORKBOOK_CAPABILITIES: &'static [&'static str] = &[
     "ExportImage",
 ];
 
-pub(crate) const LENS_CAPABILITIES: &'static [&'static str] = &[
+pub(crate) const LENS_CAPABILITIES: &[&str] = &[
     "ChangeHierarchy",
     "Delete",
     "Write",
@@ -25,7 +25,7 @@ pub(crate) const LENS_CAPABILITIES: &'static [&'static str] = &[
     "ChangePermissions",
 ];
 
-pub(crate) const DATASOURCE_CAPABILITIES: &'static [&'static str] = &[
+pub(crate) const DATASOURCE_CAPABILITIES: &[&str] = &[
     "Connect",
     "ChangeHierarchy",
     "SaveAs",
@@ -36,7 +36,7 @@ pub(crate) const DATASOURCE_CAPABILITIES: &'static [&'static str] = &[
     "ChangePermissions",
 ];
 
-pub(crate) const FLOW_CAPABILITIES: &'static [&'static str] = &[
+pub(crate) const FLOW_CAPABILITIES: &[&str] = &[
     "ChangeHierarchy",
     "Delete",
     "WebAuthoringForFlows",
@@ -47,7 +47,7 @@ pub(crate) const FLOW_CAPABILITIES: &'static [&'static str] = &[
     "ExportXml",
 ];
 
-pub(crate) const METRIC_CAPABILITIES: &'static [&'static str] = &[
+pub(crate) const METRIC_CAPABILITIES: &[&str] = &[
     "ChangeHierarchy",
     "Delete",
     "Write",
@@ -55,10 +55,10 @@ pub(crate) const METRIC_CAPABILITIES: &'static [&'static str] = &[
     "ChangePermissions",
 ];
 
-pub(crate) const PROJECT_CAPABILITIES: &'static [&'static str] =
+pub(crate) const PROJECT_CAPABILITIES: &[&str] =
     &["Read", "Write", "ProjectLeader"];
 
-pub(crate) const VIEW_CAPABILITIES: &'static [&'static str] = &[
+pub(crate) const VIEW_CAPABILITIES: &[&str] = &[
     "ViewComments",
     "Filter",
     "ChangePermissions",

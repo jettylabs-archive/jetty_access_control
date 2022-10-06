@@ -207,8 +207,7 @@ impl Permission {
     pub(crate) fn has_capability(&self, cap: &str, mode: &str) -> bool {
         self.capabilities
             .iter()
-            .find(|(c, m)| c.as_str() == cap && m.as_str() == mode)
-            .is_some()
+            .any(|(c, m)| c.as_str() == cap && m.as_str() == mode)
     }
 
     pub(crate) fn grantee_user_ids(&self) -> Vec<String> {
