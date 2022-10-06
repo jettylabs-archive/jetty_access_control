@@ -224,7 +224,7 @@ mod tests {
     async fn execute_does_not_panic() {
         let mut server = WiremockServer::new();
         server.init().await;
-        mount_default_guard(&server).await;
+        let guard = mount_default_guard(&server).await;
         let creds = SnowflakeCredentials {
             account: "my_account".to_owned(),
             role: "role".to_owned(),
@@ -245,13 +245,14 @@ mod tests {
             })
             .await
             .unwrap();
+        drop(guard);
     }
 
     #[tokio::test]
     async fn query_does_not_panic() {
         let mut server = WiremockServer::new();
         server.init().await;
-        mount_default_guard(&server).await;
+        let guard = mount_default_guard(&server).await;
         let creds = SnowflakeCredentials {
             account: "my_account".to_owned(),
             role: "role".to_owned(),
@@ -272,6 +273,7 @@ mod tests {
             })
             .await
             .unwrap();
+            drop(guard);
     }
 
     #[tokio::test]
