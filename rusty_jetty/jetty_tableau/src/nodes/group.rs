@@ -178,7 +178,7 @@ mod tests {
                 Default::default(),
             )],
         );
-        let a: jetty_nodes::Group = g.into();
+        Into::<jetty_nodes::Group>::into(g);
     }
 
     #[test]

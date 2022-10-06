@@ -406,7 +406,7 @@ impl FetchJson for reqwest::RequestBuilder {
 mod tests {
     use super::*;
     use anyhow::Context;
-    use jetty_core::{connectors::ConnectorClient, jetty};
+    
 
     #[tokio::test]
     async fn test_fetching_token_works() -> Result<()> {

@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     coordinator::{Coordinator, HasSources},
-    file_parse::{flow::FlowDoc},
+    file_parse::flow::FlowDoc,
     rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType},
 };
 
@@ -266,6 +266,6 @@ mod tests {
             Default::default(),
             Default::default(),
         );
-        let a: jetty_nodes::Asset = l.into();
+        Into::<jetty_nodes::Asset>::into(l);
     }
 }

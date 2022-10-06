@@ -128,6 +128,6 @@ mod tests {
             "full_name".to_owned(),
             Default::default(),
         );
-        let a: jetty_nodes::User = u.into();
+        Into::<jetty_nodes::User>::into(u);
     }
 }

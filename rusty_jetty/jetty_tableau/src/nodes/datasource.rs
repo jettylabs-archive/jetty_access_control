@@ -268,7 +268,7 @@ mod tests {
         let datasources = get_basic_datasources(&tc.coordinator.rest_client).await?;
 
         for test_datasource in datasources.values() {
-            let x = test_datasource.fetch_sources(&tc.coordinator).await?;
+            test_datasource.fetch_sources(&tc.coordinator).await?;
         }
         Ok(())
     }
@@ -306,6 +306,6 @@ mod tests {
             vec![],
             vec![],
         );
-        let a: jetty_nodes::Asset = ds.into();
+        Into::<jetty_nodes::Asset>::into(ds);
     }
 }

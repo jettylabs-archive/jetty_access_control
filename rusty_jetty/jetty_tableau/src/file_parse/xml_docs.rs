@@ -221,13 +221,12 @@ fn get_relation_type(node: &roxmltree::Node) -> Result<super::RelationType> {
 mod test {
     use super::parse;
     use std::{
-        collections::{HashMap, HashSet},
         fs,
     };
 
     use anyhow::Result;
 
-    use crate::nodes::{Datasource, Project};
+    
 
     #[test]
     fn new_parse_works() -> Result<()> {

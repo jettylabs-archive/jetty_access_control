@@ -224,7 +224,7 @@ mod tests {
     async fn execute_does_not_panic() {
         let mut server = WiremockServer::new();
         server.init().await;
-        let _guard = mount_default_guard(&server).await;
+        mount_default_guard(&server).await;
         let creds = SnowflakeCredentials {
             account: "my_account".to_owned(),
             role: "role".to_owned(),
@@ -251,7 +251,7 @@ mod tests {
     async fn query_does_not_panic() {
         let mut server = WiremockServer::new();
         server.init().await;
-        let _guard = mount_default_guard(&server).await;
+        mount_default_guard(&server).await;
         let creds = SnowflakeCredentials {
             account: "my_account".to_owned(),
             role: "role".to_owned(),
@@ -280,7 +280,7 @@ mod tests {
         let mut server = WiremockServer::new();
         server.init().await;
         // We will use a custom guard for this one to mock a bad response (500).
-        let _guard = Mock::given(method("POST"))
+        let guard = Mock::given(method("POST"))
             .and(path("/api/v2/statements"))
             .and(body_string_contains("select 2"))
             .respond_with(ResponseTemplate::new(500).set_body_string(r#"{"text": "wiremock"}"#))
@@ -312,6 +312,6 @@ mod tests {
                 .context("query failed")
                 .unwrap()
         );
-        drop(_guard);
+        drop(guard);
     }
 }

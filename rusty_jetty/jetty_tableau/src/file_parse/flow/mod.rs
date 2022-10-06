@@ -263,7 +263,7 @@ mod test {
 
     use crate::{
         nodes::{Datasource, Project, ProjectId},
-        rest::{self, get_tableau_cual},
+        rest::{self},
     };
 
     #[test]

@@ -1,7 +1,4 @@
-
-
 use anyhow::{anyhow, bail, Context, Result};
-
 
 #[derive(Debug, Clone)]
 pub(crate) struct SnowflakeConnectionInfo {
@@ -133,16 +130,6 @@ mod tests {
 
     #[test]
     fn table_to_cuals_correctly() -> Result<()> {
-        let connections = HashMap::from([(
-            "connection_name".to_owned(),
-            crate::file_parse::NamedConnection::Snowflake(super::SnowflakeConnectionInfo {
-                name: "connection_name".to_owned(),
-                db: "MY_DB".to_owned(),
-                server: "HereSaTest.snowflakecomputing.com".to_owned(),
-                schema: "MY_SCHEMA".to_owned(),
-            }),
-        )]);
-
         let table_info = SnowflakeTableInfo {
             table: "[MY_SCHEMA].[MY_TABLE]".to_owned(),
             db: "MY_DB".to_owned(),

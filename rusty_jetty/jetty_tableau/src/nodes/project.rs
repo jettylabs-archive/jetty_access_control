@@ -208,7 +208,6 @@ impl TableauAsset for Project {
 mod tests {
     use super::*;
     use anyhow::{Context, Result};
-    use jetty_core::connectors::nodes;
 
     #[tokio::test]
     async fn test_fetching_projects_works() -> Result<()> {
@@ -264,6 +263,6 @@ mod tests {
             Some(ProjectId("cp_project_id".to_owned())),
             vec![],
         );
-        let a: jetty_nodes::Asset = wb.into();
+        Into::<jetty_nodes::Asset>::into(wb);
     }
 }

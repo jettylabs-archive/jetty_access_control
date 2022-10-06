@@ -201,6 +201,6 @@ mod tests {
             "updated_at".to_owned(),
             vec![],
         );
-        let a: jetty_nodes::Asset = m.into();
+        Into::<jetty_nodes::Asset>::into(m);
     }
 }
