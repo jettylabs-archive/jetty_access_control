@@ -123,7 +123,7 @@ pub(super) fn build_snowflake_connection_info(
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
+    
 
     use super::*;
     use anyhow::Result;

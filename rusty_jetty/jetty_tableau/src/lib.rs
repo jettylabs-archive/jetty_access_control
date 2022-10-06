@@ -9,14 +9,14 @@ mod rest;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 
-use rest::{TableauRestClient};
+use rest::TableauRestClient;
 use serde::Deserialize;
 use serde_json::json;
 
 use jetty_core::{
     connectors::{
+        nodes::ConnectorData,
         nodes::{self as jetty_nodes, EffectivePermission, SparseMatrix},
-        nodes::{ConnectorData},
         ConnectorClient, UserIdentifier,
     },
     cual::{Cual, Cualable},
@@ -24,14 +24,10 @@ use jetty_core::{
     Connector,
 };
 
-use nodes::{
-    asset_to_policy::env_to_jetty_policies,
-};
+use nodes::asset_to_policy::env_to_jetty_policies;
 use permissions::PermissionManager;
 
-use std::{
-    collections::{HashMap, HashSet},
-};
+use std::collections::{HashMap, HashSet};
 
 pub type TableauConfig = HashMap<String, String>;
 
@@ -223,7 +219,6 @@ impl Connector for TableauConnector {
 #[cfg(test)]
 pub(crate) async fn connector_setup() -> Result<crate::TableauConnector> {
     use anyhow::Context;
-    use jetty_core::Connector;
 
     let j = jetty_core::jetty::Jetty::new().context("creating Jetty")?;
     let creds = jetty_core::jetty::fetch_credentials().context("fetching credentials from file")?;

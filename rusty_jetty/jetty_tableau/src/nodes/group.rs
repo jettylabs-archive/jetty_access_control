@@ -4,7 +4,6 @@ use crate::nodes as tableau_nodes;
 use crate::rest::{self, FetchJson};
 
 use anyhow::{Context, Result};
-use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 
 use jetty_core::connectors::nodes as jetty_nodes;

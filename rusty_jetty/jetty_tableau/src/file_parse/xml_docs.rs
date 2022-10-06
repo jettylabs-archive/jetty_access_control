@@ -3,7 +3,6 @@ use std::collections::{HashMap, HashSet};
 use anyhow::{anyhow, bail, Result};
 use regex::Regex;
 
-
 use super::{
     snowflake_common::{self},
     NamedConnection, RelationType,
@@ -157,8 +156,7 @@ fn get_relation(
             let re = Regex::new(r"(<\[Parameters\].*.>)").unwrap();
             let query = re
                 .replace_all(
-                    node
-                        .text()
+                    node.text()
                         .ok_or_else(|| anyhow!("unable to find query text"))?,
                     "tableau__parameter_value",
                 )
@@ -220,19 +218,15 @@ fn get_relation_type(node: &roxmltree::Node) -> Result<super::RelationType> {
 #[cfg(test)]
 mod test {
     use super::parse;
-    use std::{
-        fs,
-    };
+    use std::fs;
 
     use anyhow::Result;
-
-    
 
     #[test]
     fn new_parse_works() -> Result<()> {
         let data = fs::read_to_string("test_data/Iris Workbook.twb").unwrap();
 
-        dbg!(parse(&data));
+        dbg!(parse(&data)?);
 
         Ok(())
     }

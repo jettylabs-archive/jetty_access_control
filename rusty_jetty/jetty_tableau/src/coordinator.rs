@@ -72,8 +72,7 @@ pub(crate) trait HasSources {
                 self.set_sources(x.await?);
                 Ok(())
             }
-        };
-        Ok(())
+        }
     }
 }
 
@@ -293,7 +292,7 @@ mod test {
             .await
             .context("running tableau connector setup")?;
 
-        tc.coordinator.update_env().await;
+        tc.coordinator.update_env().await?;
 
         let total_assets = tc.coordinator.env.datasources.len()
             + tc.coordinator.env.flows.len()

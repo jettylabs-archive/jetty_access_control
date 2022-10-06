@@ -1,9 +1,4 @@
-
-
-use jetty_core::{
-    connectors::nodes as jetty_nodes,
-    cual::{Cualable},
-};
+use jetty_core::connectors::nodes as jetty_nodes;
 
 use super::{Datasource, Flow, Lens, Metric, Project, View, Workbook};
 

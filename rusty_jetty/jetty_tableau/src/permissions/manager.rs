@@ -11,7 +11,7 @@ use jetty_core::{
 use super::matrix::{InsertOrMerge, Merge};
 use crate::{
     coordinator::Coordinator,
-    nodes::{self, user::SiteRole, OwnedAsset, ProjectId, TableauAsset},
+    nodes::{self, user::SiteRole, OwnedAsset, ProjectId},
     nodes::{Grantee, Permissionable},
 };
 
@@ -188,7 +188,7 @@ impl<'x> PermissionManager<'x> {
             let user_perm_map = self.get_user_perms(asset);
             // We'll go over each of those user -> [permission] mappings to
             // discover effective access.
-            user_perm_map.iter().map(|(user, perms)| {
+            user_perm_map.iter().for_each(|(user, perms)| {
                 // apply the permission explicitly given
                 let explicit_effective_permissions = perms
                     .iter()
@@ -340,10 +340,7 @@ mod tests {
         env.users = HashMap::from([("".to_owned(), user)]);
         env.projects = HashMap::from([("".to_owned(), Project::default())]);
         let rest_client = TableauRestClient::new_dummy();
-        let coordinator = &Coordinator {
-            env,
-            rest_client,
-        };
+        let coordinator = &Coordinator { env, rest_client };
 
         let m = PermissionManager::new(coordinator);
 

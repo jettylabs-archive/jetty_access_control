@@ -235,7 +235,7 @@ mod tests {
         let mut nodes = get_basic_datasources(&tc.coordinator.rest_client).await?;
         for (_, v) in &mut nodes {
             v.update_permissions(&tc.coordinator.rest_client, &tc.coordinator.env)
-                .await;
+                .await?;
         }
         for (_, v) in nodes {
             println!("{:#?}", v);

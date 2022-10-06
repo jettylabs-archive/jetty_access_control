@@ -57,7 +57,7 @@ impl InsertOrMerge<Cual, HashSet<EffectivePermission>>
                 .map(|mut existing_effective_permission| {
                     if let Some(new_ep) = new_perms.take(&existing_effective_permission) {
                         // Matched permissions. Merge mode and reasons.
-                        existing_effective_permission.merge(new_ep);
+                        existing_effective_permission.merge(new_ep).unwrap();
                     }
                     existing_effective_permission
                 })
