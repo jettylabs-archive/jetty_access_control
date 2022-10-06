@@ -49,18 +49,21 @@ impl InsertOrMerge<Cual, HashSet<EffectivePermission>>
     for HashMap<Cual, HashSet<EffectivePermission>>
 {
     fn insert_or_merge(&mut self, cual: Cual, new_perms: HashSet<EffectivePermission>) {
+        let mut new_perms = new_perms.clone();
         if let Some(existing_user_asset_perms) = self.get_mut(&cual) {
-            let merged_perms = existing_user_asset_perms
+            let mut merged_perms: HashSet<EffectivePermission> = existing_user_asset_perms
                 .clone()
                 .into_iter()
                 .map(|mut existing_effective_permission| {
-                    if let Some(new_ep) = new_perms.get(&existing_effective_permission) {
+                    if let Some(new_ep) = new_perms.take(&existing_effective_permission) {
                         // Matched permissions. Merge mode and reasons.
                         existing_effective_permission.merge(new_ep.clone());
                     }
                     existing_effective_permission
                 })
                 .collect();
+            // Add the remaining new permissions
+            merged_perms.extend(new_perms);
             *existing_user_asset_perms = merged_perms;
         } else {
             self.insert(cual, new_perms);
@@ -108,5 +111,148 @@ impl Merge<EffectivePermission> for EffectivePermission {
             self.reasons = other.reasons;
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    use jetty_core::connectors::nodes::{EffectivePermission, PermissionMode};
+
+    use anyhow::Result;
+
+    #[test]
+    fn test_merge_effective_permissions_works() -> Result<()> {
+        let mut ep1 = EffectivePermission::new("priv1".to_owned(), PermissionMode::Allow, vec![]);
+        let ep2 = EffectivePermission::new("priv1".to_owned(), PermissionMode::Deny, vec![]);
+        ep1.merge(ep2)?;
+        assert_eq!(ep1.mode, PermissionMode::Deny);
+        Ok(())
+    }
+
+    #[test]
+    fn test_merge_effective_permissions_with_mismatched_privileges_fails() -> Result<()> {
+        let mut ep1 = EffectivePermission::new("priv1".to_owned(), PermissionMode::Allow, vec![]);
+        let ep2 = EffectivePermission::new("priv2".to_owned(), PermissionMode::Deny, vec![]);
+        assert!(ep1.merge(ep2).is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn test_merge_effective_permissions_reason_precedence_is_correct() -> Result<()> {
+        let mut ep1 = EffectivePermission::new(
+            "priv1".to_owned(),
+            PermissionMode::Allow,
+            vec!["reason".to_owned()],
+        );
+        let ep2 = EffectivePermission::new(
+            "priv1".to_owned(),
+            PermissionMode::Deny,
+            vec!["another reason".to_owned()],
+        );
+        ep1.merge(ep2)?;
+        assert_eq!(ep1.reasons, vec!["another reason".to_owned()]);
+        Ok(())
+    }
+
+    #[test]
+    fn test_merge_effective_permissions_merges_reasons_when_mode_matches() -> Result<()> {
+        let mut ep1 = EffectivePermission::new(
+            "priv1".to_owned(),
+            PermissionMode::Allow,
+            vec!["reason".to_owned()],
+        );
+        let ep2 = EffectivePermission::new(
+            "priv1".to_owned(),
+            PermissionMode::Allow,
+            vec!["another reason".to_owned()],
+        );
+        ep1.merge(ep2)?;
+        assert_eq!(
+            ep1.reasons,
+            vec!["reason".to_owned(), "another reason".to_owned()]
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_insert_or_merge_for_matrix_inserts() {
+        let mut matrix = HashMap::new();
+        matrix.insert_or_merge(UserIdentifier::Email("".to_owned()), HashMap::new());
+        assert_eq!(
+            matrix,
+            HashMap::from([(UserIdentifier::Email("".to_owned()), HashMap::new())])
+        );
+    }
+
+    #[test]
+    fn test_insert_or_merge_for_matrix_merges() {
+        let mut matrix = HashMap::from([(
+            UserIdentifier::Email("".to_owned()),
+            HashMap::from([(
+                Cual::new("my_cual".to_owned()),
+                HashSet::from([EffectivePermission::default()]),
+            )]),
+        )]);
+        matrix.insert_or_merge(
+            UserIdentifier::Email("".to_owned()),
+            HashMap::from([(
+                Cual::new("my_cual2".to_owned()),
+                HashSet::from([EffectivePermission::default()]),
+            )]),
+        );
+        assert_eq!(
+            matrix,
+            HashMap::from([(
+                UserIdentifier::Email("".to_owned()),
+                HashMap::from([
+                    (
+                        Cual::new("my_cual2".to_owned()),
+                        HashSet::from([EffectivePermission::default()]),
+                    ),
+                    (
+                        Cual::new("my_cual".to_owned()),
+                        HashSet::from([EffectivePermission::default()]),
+                    )
+                ])
+            )])
+        );
+    }
+
+    #[test]
+    fn test_insert_or_merge_for_matrix_merges_inner() {
+        let mut matrix = HashMap::from([(
+            UserIdentifier::Email("".to_owned()),
+            HashMap::from([(
+                Cual::new("my_cual".to_owned()),
+                HashSet::from([EffectivePermission::default()]),
+            )]),
+        )]);
+        matrix.insert_or_merge(
+            UserIdentifier::Email("".to_owned()),
+            HashMap::from([(
+                Cual::new("my_cual".to_owned()),
+                HashSet::from([EffectivePermission::new(
+                    "priv".to_owned(),
+                    PermissionMode::None,
+                    vec![],
+                )]),
+            )]),
+        );
+        assert_eq!(
+            matrix,
+            HashMap::from([(
+                UserIdentifier::Email("".to_owned()),
+                HashMap::from([(
+                    Cual::new("my_cual".to_owned()),
+                    HashSet::from([
+                        EffectivePermission::default(),
+                        EffectivePermission::new("priv".to_owned(), PermissionMode::None, vec![],)
+                    ]),
+                )])
+            )])
+        );
     }
 }
