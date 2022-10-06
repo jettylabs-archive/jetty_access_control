@@ -23,6 +23,7 @@ yarn-error.log*
 
 # Editor directories and files
 .idea
+.vscode
 *.suo
 *.ntvs*
 *.njsproj
@@ -30,3 +31,5 @@ yarn-error.log*
 
 # yarn lock
 yarn.lock
+
+!/dist/spa/.gitkeep

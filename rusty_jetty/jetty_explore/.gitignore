@@ -23,8 +23,3 @@ Cargo.lock
 **/tableau_env.json
 
 .vscode/
-
-dist/
-
-# include .gitignore to preserce file structure
-!.gitignore
