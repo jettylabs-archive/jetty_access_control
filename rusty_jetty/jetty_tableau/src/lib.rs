@@ -1,4 +1,4 @@
-#![allow(dead_code, unused)]
+#![allow(dead_code)]
 
 mod coordinator;
 mod file_parse;
