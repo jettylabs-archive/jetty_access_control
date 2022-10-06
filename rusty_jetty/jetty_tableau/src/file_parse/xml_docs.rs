@@ -2,10 +2,10 @@ use std::collections::{HashMap, HashSet};
 
 use anyhow::{anyhow, bail, Result};
 use regex::Regex;
-use roxmltree::NodeId;
+
 
 use super::{
-    snowflake_common::{self, build_snowflake_connection_info, SnowflakeQueryInfo},
+    snowflake_common::{self},
     NamedConnection, RelationType,
 };
 

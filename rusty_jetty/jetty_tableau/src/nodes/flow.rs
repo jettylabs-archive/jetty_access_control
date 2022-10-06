@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     coordinator::{Coordinator, HasSources},
-    file_parse::{self, flow::FlowDoc},
+    file_parse::{flow::FlowDoc},
     rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType},
 };
 

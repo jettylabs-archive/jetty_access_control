@@ -340,7 +340,7 @@ impl SerializedPermission {
 /// Converts a JSON Value::Array into the a vector of Tableau assets. Accepts a function to make
 /// the JSON -> asset conversion
 fn to_asset_map<T: GetId + Clone>(
-    tc: &rest::TableauRestClient,
+    _tc: &rest::TableauRestClient,
     val: serde_json::Value,
     f: &dyn Fn(&serde_json::Value) -> Result<T>,
 ) -> Result<HashMap<String, T>> {

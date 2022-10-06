@@ -134,7 +134,7 @@ impl FlowDoc {
         &self,
         node: &serde_json::Value,
         env: &crate::coordinator::Environment,
-        client: &TableauRestClient,
+        _client: &TableauRestClient,
     ) -> Result<HashSet<String>> {
         #[derive(Deserialize)]
         #[serde(rename_all = "camelCase")]
@@ -203,7 +203,7 @@ impl FlowDoc {
         &self,
         node: &serde_json::Value,
         env: &crate::coordinator::Environment,
-        client: &TableauRestClient,
+        _client: &TableauRestClient,
     ) -> Result<HashSet<String>> {
         #[derive(Deserialize)]
         #[serde(rename_all = "camelCase")]

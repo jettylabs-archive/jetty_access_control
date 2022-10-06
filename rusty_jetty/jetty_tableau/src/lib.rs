@@ -8,15 +8,15 @@ mod rest;
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use permissions::get_capabilities_for_asset_type;
-use rest::{TableauAssetType, TableauRestClient};
+
+use rest::{TableauRestClient};
 use serde::Deserialize;
 use serde_json::json;
 
 use jetty_core::{
     connectors::{
         nodes::{self as jetty_nodes, EffectivePermission, SparseMatrix},
-        nodes::{ConnectorData, PermissionMode},
+        nodes::{ConnectorData},
         ConnectorClient, UserIdentifier,
     },
     cual::{Cual, Cualable},
@@ -25,14 +25,12 @@ use jetty_core::{
 };
 
 use nodes::{
-    asset_to_policy::env_to_jetty_policies, user::SiteRole, Grantee, OwnedAsset, Permissionable,
-    ProjectId,
+    asset_to_policy::env_to_jetty_policies,
 };
 use permissions::PermissionManager;
 
 use std::{
     collections::{HashMap, HashSet},
-    hash::Hash,
 };
 
 pub type TableauConfig = HashMap<String, String>;
@@ -131,7 +129,7 @@ impl TableauConnector {
     ) -> SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> {
         let permission_manager = PermissionManager::new(&self.coordinator);
         let mut final_eps = HashMap::new();
-        let mut flow_eps =
+        let flow_eps =
             permission_manager.get_effective_permissions_for_asset(&self.coordinator.env.flows);
         let project_eps =
             permission_manager.get_effective_permissions_for_asset(&self.coordinator.env.projects);

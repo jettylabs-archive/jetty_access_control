@@ -1,9 +1,9 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::rest::{self, FetchJson};
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result};
 use jetty_core::connectors::{
-    nodes::{self as jetty_nodes, EffectivePermission, PermissionMode},
+    nodes::{self as jetty_nodes},
     UserIdentifier,
 };
 use serde::{Deserialize, Serialize};

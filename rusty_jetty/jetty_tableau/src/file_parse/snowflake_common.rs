@@ -1,7 +1,7 @@
-use std::collections::HashMap;
+
 
 use anyhow::{anyhow, bail, Context, Result};
-use regex::Regex;
+
 
 #[derive(Debug, Clone)]
 pub(crate) struct SnowflakeConnectionInfo {
@@ -126,6 +126,8 @@ pub(super) fn build_snowflake_connection_info(
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use super::*;
     use anyhow::Result;
 

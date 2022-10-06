@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     coordinator::{Coordinator, HasSources},
     file_parse::xml_docs,
-    rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType, TableauRestClient},
+    rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType},
 };
 
 use super::{Permissionable, ProjectId, TableauAsset};
