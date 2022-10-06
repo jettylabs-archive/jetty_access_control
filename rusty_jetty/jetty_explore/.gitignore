@@ -24,4 +24,7 @@ Cargo.lock
 
 .vscode/
 
-spa/
+dist/
+
+# include .gitignore to preserce file structure
+!.gitignore
