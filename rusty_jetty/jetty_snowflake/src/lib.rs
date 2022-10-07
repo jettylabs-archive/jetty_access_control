@@ -14,6 +14,7 @@
 //! ```
 
 mod consts;
+mod coordinator;
 mod creds;
 mod cual;
 mod entry_types;
@@ -26,6 +27,8 @@ use rest::{SnowflakeRequestConfig, SnowflakeRestClient, SnowflakeRestConfig};
 
 use std::collections::{HashMap, HashSet};
 use std::iter::zip;
+use std::sync::{Arc, Mutex};
+use std::time::Instant;
 
 use jetty_core::{
     connectors,
@@ -74,17 +77,27 @@ impl Connector for SnowflakeConnector {
     }
 
     async fn get_data(&mut self) -> nodes::ConnectorData {
+        println!("------------------------!!!!!------------------------");
+        let now = Instant::now();
+        // Fetch Snowflake Environment
+        let mut c = coordinator::Coordinator::new(&self);
+        c.get_data().await;
+        println!("Fetched Snowflake Env: {:?}", now.elapsed());
+        println!("------------------------!!!!!------------------------");
         nodes::ConnectorData {
+            // 19 Sec
             groups: self
                 .get_jetty_groups()
                 .await
                 .context("failed to get groups")
                 .unwrap(),
+            // 7 Sec
             users: self
                 .get_jetty_users()
                 .await
                 .context("failed to get users")
                 .unwrap(),
+            // 3.5 Sec
             assets: self
                 .get_jetty_assets()
                 .await
@@ -173,12 +186,36 @@ impl SnowflakeConnector {
             .context("failed to get grants to role")
     }
 
-    /// Get all grants on a role – the "parent" roles.
-    #[cfg(ignore)]
-    pub async fn get_grants_on_role(&self, role_name: &str) -> Result<Vec<Grant>> {
-        self.query_to_obj::<Grant>(&format!("SHOW GRANTS ON ROLE {}", role_name))
+    /// Get all grants to a role – the privileges and "children" roles.
+    pub async fn get_grants_to_role_future(
+        &self,
+        role: &Role,
+        target: Arc<Mutex<&mut Vec<StandardGrant>>>,
+    ) -> Result<()> {
+        let res = self
+            .query_to_obj::<StandardGrant>(&format!("SHOW GRANTS TO ROLE {}", &role.name))
             .await
-            .context("failed to get grants on role")
+            .context("failed to get grants to role")?;
+
+        let mut target = target.lock().unwrap();
+        target.extend(res);
+        Ok(())
+    }
+
+    /// Get all grants of a role
+    pub async fn get_grants_of_role_future(
+        &self,
+        role: &Role,
+        target: Arc<Mutex<&mut Vec<GrantOf>>>,
+    ) -> Result<()> {
+        let res = self
+            .query_to_obj::<GrantOf>(&format!("SHOW GRANTS OF ROLE {}", &role.name))
+            .await
+            .context("failed to get grants of role")?;
+
+        let mut target = target.lock().unwrap();
+        target.extend(res);
+        Ok(())
     }
 
     pub async fn get_future_grants_on_schema(
@@ -197,12 +234,56 @@ impl SnowflakeConnector {
         ))
     }
 
+    /// Get all future grants for a schema
+    pub async fn get_future_grants_of_schema_future(
+        &self,
+        schema: &Schema,
+        target: Arc<Mutex<&mut Vec<FutureGrant>>>,
+    ) -> Result<()> {
+        let res = self
+            .query_to_obj::<FutureGrant>(&format!(
+                "SHOW FUTURE GRANTS IN SCHEMA {}.{}",
+                &schema.database_name, &schema.name
+            ))
+            .await
+            .context(format!(
+                "failed to get future grants on schema {}",
+                &schema.name
+            ))?;
+
+        let mut target = target.lock().unwrap();
+        target.extend(res);
+        Ok(())
+    }
+
     pub async fn get_future_grants_on_db(&self, db_name: &str) -> Result<Vec<FutureGrant>> {
         let query = format!("SHOW FUTURE GRANTS IN DATABASE {}", db_name);
         self.query_to_obj(&query).await.context(format!(
             "failed to get future grants on db {}; query: {}",
             db_name, query
         ))
+    }
+
+    /// Get all future grants for a database
+    pub async fn get_future_grants_of_database_future(
+        &self,
+        database: &Database,
+        target: Arc<Mutex<&mut Vec<FutureGrant>>>,
+    ) -> Result<()> {
+        let res = self
+            .query_to_obj::<FutureGrant>(&format!(
+                "SHOW FUTURE GRANTS IN DATABASE {}",
+                &database.name
+            ))
+            .await
+            .context(format!(
+                "failed to get future grants on database {}",
+                &database.name
+            ))?;
+
+        let mut target = target.lock().unwrap();
+        target.extend(res);
+        Ok(())
     }
 
     /// Get all users.
@@ -219,11 +300,38 @@ impl SnowflakeConnector {
             .context("failed to get roles")
     }
 
+    /// Get all users.
+    pub async fn get_users_future(&self, target: &mut Vec<User>) -> Result<()> {
+        *target = self
+            .query_to_obj::<User>("SHOW USERS")
+            .await
+            .context("failed to get users")?;
+        Ok(())
+    }
+
+    /// Get all roles.
+    pub async fn get_roles_future(&self, target: &mut Vec<Role>) -> Result<()> {
+        *target = self
+            .query_to_obj::<Role>("SHOW ROLES")
+            .await
+            .context("failed to get roles")?;
+        Ok(())
+    }
+
     /// Get all databases.
     pub async fn get_databases(&self) -> Result<Vec<Database>> {
         self.query_to_obj::<Database>("SHOW DATABASES")
             .await
             .context("failed to get databases")
+    }
+
+    /// Get all databases.
+    pub async fn get_databases_future(&self, target: &mut Vec<Database>) -> Result<()> {
+        *target = self
+            .query_to_obj::<Database>("SHOW DATABASES")
+            .await
+            .context("failed to get databases")?;
+        Ok(())
     }
 
     /// Get all warehouses.
@@ -240,6 +348,15 @@ impl SnowflakeConnector {
             .context("failed to get schemas")
     }
 
+    /// Get all schemas.
+    pub async fn get_schemas_future(&self, target: &mut Vec<Schema>) -> Result<()> {
+        *target = self
+            .query_to_obj::<Schema>("SHOW SCHEMAS IN ACCOUNT")
+            .await
+            .context("failed to get schemas")?;
+        Ok(())
+    }
+
     /// Get all views.
     pub async fn get_views(&self) -> Result<Vec<View>> {
         self.query_to_obj::<View>("SHOW VIEWS")
@@ -252,6 +369,25 @@ impl SnowflakeConnector {
         self.query_to_obj::<Table>("SHOW TABLES")
             .await
             .context("failed to get tables")
+    }
+
+    /// Get all tables.
+    pub async fn get_objects_futures(
+        &self,
+        schema: &Schema,
+        target: Arc<Mutex<&mut Vec<Object>>>,
+    ) -> Result<()> {
+        let query = format!(
+            "SHOW OBJECTS IN SCHEMA {}.{}",
+            &schema.database_name, &schema.name
+        );
+        let res = self
+            .query_to_obj::<Object>(&query)
+            .await
+            .context("failed to get tables")?;
+        let mut target = target.lock().unwrap();
+        target.extend(res);
+        Ok(())
     }
 
     /// Execute the given query and deserialize the result into the given type.
