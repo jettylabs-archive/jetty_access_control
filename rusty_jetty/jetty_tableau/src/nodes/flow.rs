@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     coordinator::{Coordinator, HasSources},
-    file_parse::{self, flow::FlowDoc},
+    file_parse::flow::FlowDoc,
     rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType},
 };
 
@@ -214,7 +214,7 @@ mod tests {
         let mut nodes = get_basic_flows(&tc.coordinator.rest_client).await?;
         for (_k, v) in &mut nodes {
             v.update_permissions(&tc.coordinator.rest_client, &tc.coordinator.env)
-                .await;
+                .await?;
         }
         for (_k, v) in nodes {
             println!("{:#?}", v);
@@ -236,6 +236,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(unused_must_use)]
     fn test_asset_from_flow_works() {
         set_cual_prefix("", "");
         let l = Flow::new(
@@ -253,6 +254,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(unused_must_use)]
     fn test_flow_into_asset_works() {
         set_cual_prefix("", "");
         let l = Flow::new(
@@ -266,6 +268,6 @@ mod tests {
             Default::default(),
             Default::default(),
         );
-        let a: jetty_nodes::Asset = l.into();
+        Into::<jetty_nodes::Asset>::into(l);
     }
 }

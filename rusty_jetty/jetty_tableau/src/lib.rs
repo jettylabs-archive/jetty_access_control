@@ -1,4 +1,4 @@
-#![allow(dead_code, unused)]
+#![allow(dead_code)]
 
 mod coordinator;
 mod file_parse;
@@ -8,15 +8,15 @@ mod rest;
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use permissions::get_capabilities_for_asset_type;
-use rest::{TableauAssetType, TableauRestClient};
+
+use rest::TableauRestClient;
 use serde::Deserialize;
 use serde_json::json;
 
 use jetty_core::{
     connectors::{
+        nodes::ConnectorData,
         nodes::{self as jetty_nodes, EffectivePermission, SparseMatrix},
-        nodes::{ConnectorData, PermissionMode},
         ConnectorClient, UserIdentifier,
     },
     cual::{Cual, Cualable},
@@ -24,16 +24,10 @@ use jetty_core::{
     Connector,
 };
 
-use nodes::{
-    asset_to_policy::env_to_jetty_policies, user::SiteRole, Grantee, OwnedAsset, Permissionable,
-    ProjectId,
-};
+use nodes::asset_to_policy::env_to_jetty_policies;
 use permissions::PermissionManager;
 
-use std::{
-    collections::{HashMap, HashSet},
-    hash::Hash,
-};
+use std::collections::{HashMap, HashSet};
 
 pub type TableauConfig = HashMap<String, String>;
 
@@ -131,7 +125,7 @@ impl TableauConnector {
     ) -> SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> {
         let permission_manager = PermissionManager::new(&self.coordinator);
         let mut final_eps = HashMap::new();
-        let mut flow_eps =
+        let flow_eps =
             permission_manager.get_effective_permissions_for_asset(&self.coordinator.env.flows);
         let project_eps =
             permission_manager.get_effective_permissions_for_asset(&self.coordinator.env.projects);
@@ -225,7 +219,6 @@ impl Connector for TableauConnector {
 #[cfg(test)]
 pub(crate) async fn connector_setup() -> Result<crate::TableauConnector> {
     use anyhow::Context;
-    use jetty_core::Connector;
 
     let j = jetty_core::jetty::Jetty::new().context("creating Jetty")?;
     let creds = jetty_core::jetty::fetch_credentials().context("fetching credentials from file")?;

@@ -1,5 +1,5 @@
 use std::collections::HashSet;
-use std::ops::IndexMut;
+
 use std::pin::Pin;
 use std::{collections::HashMap, fs, io};
 
@@ -10,9 +10,9 @@ use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 
 use crate::nodes::{self, Permissionable};
-use crate::rest::TableauRestClient;
+
+use crate::rest;
 use crate::TableauCredentials;
-use crate::{rest, TableauConnector};
 
 /// Number of assets to download concurrently
 const CONCURRENT_ASSET_DOWNLOADS: usize = 25;
@@ -72,8 +72,7 @@ pub(crate) trait HasSources {
                 self.set_sources(x.await?);
                 Ok(())
             }
-        };
-        Ok(())
+        }
     }
 }
 
@@ -169,7 +168,8 @@ impl Coordinator {
             self.get_source_futures_from_map(&mut new_env.workbooks, &self.env.workbooks),
         ];
 
-        let source_fetches = futures::stream::iter(source_futures.into_iter().flatten())
+        // Source fetches
+        futures::stream::iter(source_futures.into_iter().flatten())
             .buffer_unordered(CONCURRENT_ASSET_DOWNLOADS)
             .collect::<Vec<_>>()
             .await;
@@ -187,14 +187,14 @@ impl Coordinator {
             self.get_permission_futures_from_map(&mut new_env.workbooks, &new_env_clone),
         ];
 
-        let permissions_fetches = futures::stream::iter(permission_futures.into_iter().flatten())
+        // Permission fetches
+        futures::stream::iter(permission_futures.into_iter().flatten())
             .buffer_unordered(CONCURRENT_METADATA_FETCHES)
             .collect::<Vec<_>>()
             .await;
 
         // get group membership
-        let group_results = self
-            .get_groups_users(&mut new_env.groups, &new_env.users)
+        self.get_groups_users(&mut new_env.groups, &new_env.users)
             .await;
 
         // update self.env
@@ -292,7 +292,7 @@ mod test {
             .await
             .context("running tableau connector setup")?;
 
-        tc.coordinator.update_env().await;
+        tc.coordinator.update_env().await?;
 
         let total_assets = tc.coordinator.env.datasources.len()
             + tc.coordinator.env.flows.len()

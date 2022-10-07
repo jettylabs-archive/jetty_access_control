@@ -1,9 +1,9 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::rest::{self, FetchJson};
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result};
 use jetty_core::connectors::{
-    nodes::{self as jetty_nodes, EffectivePermission, PermissionMode},
+    nodes::{self as jetty_nodes},
     UserIdentifier,
 };
 use serde::{Deserialize, Serialize};
@@ -106,6 +106,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(unused_must_use)]
     fn test_jetty_user_from_user_works() {
         let u = User::new(
             "id".to_owned(),
@@ -119,6 +120,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(unused_must_use)]
     fn test_user_into_jetty_user_works() {
         let u = User::new(
             "id".to_owned(),
@@ -128,6 +130,6 @@ mod tests {
             "full_name".to_owned(),
             Default::default(),
         );
-        let a: jetty_nodes::User = u.into();
+        Into::<jetty_nodes::User>::into(u);
     }
 }

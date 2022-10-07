@@ -4,7 +4,6 @@ use crate::nodes as tableau_nodes;
 use crate::rest::{self, FetchJson};
 
 use anyhow::{Context, Result};
-use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 
 use jetty_core::connectors::nodes as jetty_nodes;
@@ -141,13 +140,15 @@ mod tests {
                         Default::default(),
                     ),
                 )]),
-            );
+            )
+            .await?;
             println!("{:#?}", v);
         }
         Ok(())
     }
 
     #[test]
+    #[allow(unused_must_use)]
     fn test_jetty_group_from_group_works() {
         let g = Group::new(
             "id".to_owned(),
@@ -165,6 +166,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(unused_must_use)]
     fn test_group_into_jetty_group_works() {
         let g = Group::new(
             "id".to_owned(),
@@ -178,7 +180,7 @@ mod tests {
                 Default::default(),
             )],
         );
-        let a: jetty_nodes::Group = g.into();
+        Into::<jetty_nodes::Group>::into(g);
     }
 
     #[test]

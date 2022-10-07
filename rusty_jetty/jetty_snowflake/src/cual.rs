@@ -22,7 +22,7 @@ pub(crate) fn set_cual_account_name(account_name: &str) {
         INIT_CUAL_ACCOUNT_NAME.call_once(|| {
             CUAL_ACCOUNT_NAME = format!(
                 "{}.snowflakecomputing.com",
-                account_name.to_lowercase().to_owned()
+                account_name.to_lowercase()
             )
         });
     }
