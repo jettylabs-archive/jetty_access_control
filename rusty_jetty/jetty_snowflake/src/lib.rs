@@ -18,12 +18,18 @@ mod coordinator;
 mod creds;
 mod cual;
 mod entry_types;
+mod ep;
 mod rest;
 
 use cual::{cual, get_cual_account_name, set_cual_account_name, Cual};
-pub use entry_types::*;
+use entry_types::{
+    Database, FutureGrant, Grant, GrantOf, GrantType, Object, Role, RoleGrant, RoleName, Schema,
+    StandardGrant, Table, User, View, Warehouse,
+};
+use ep::get_effective_permissions;
 use jetty_core::cual::Cualable;
 use rest::{SnowflakeRequestConfig, SnowflakeRestClient, SnowflakeRestConfig};
+use serde::de::value::MapDeserializer;
 
 use std::collections::{HashMap, HashSet};
 use std::iter::zip;
@@ -40,7 +46,6 @@ use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::Value as JsonValue;
-use structmap::{value::Value, FromMap, GenericMap};
 
 /// The main Snowflake Connector struct.
 ///
@@ -113,7 +118,7 @@ impl Connector for SnowflakeConnector {
                 .await
                 .context("failed to get policies")
                 .unwrap(),
-            effective_permissions: HashMap::new(),
+            effective_permissions: get_effective_permissions(&c.env),
         }
     }
 
@@ -187,13 +192,14 @@ impl SnowflakeConnector {
     }
 
     /// Get all grants to a role – the privileges and "children" roles.
-    pub async fn get_grants_to_role_future(
+    pub(crate) async fn get_grants_to_role_future(
         &self,
         role: &Role,
         target: Arc<Mutex<&mut Vec<StandardGrant>>>,
     ) -> Result<()> {
+        let RoleName(role_name) = &role.name;
         let res = self
-            .query_to_obj::<StandardGrant>(&format!("SHOW GRANTS TO ROLE {}", &role.name))
+            .query_to_obj::<StandardGrant>(&format!("SHOW GRANTS TO ROLE {}", &role_name))
             .await
             .context("failed to get grants to role")?;
 
@@ -203,13 +209,14 @@ impl SnowflakeConnector {
     }
 
     /// Get all grants of a role
-    pub async fn get_grants_of_role_future(
+    pub(crate) async fn get_grants_of_role_future(
         &self,
         role: &Role,
         target: Arc<Mutex<&mut Vec<GrantOf>>>,
     ) -> Result<()> {
+        let RoleName(role_name) = &role.name;
         let res = self
-            .query_to_obj::<GrantOf>(&format!("SHOW GRANTS OF ROLE {}", &role.name))
+            .query_to_obj::<GrantOf>(&format!("SHOW GRANTS OF ROLE {}", &role_name))
             .await
             .context("failed to get grants of role")?;
 
@@ -294,7 +301,7 @@ impl SnowflakeConnector {
     }
 
     /// Get all roles.
-    pub async fn get_roles(&self) -> Result<Vec<Role>> {
+    pub(crate) async fn get_roles(&self) -> Result<Vec<Role>> {
         self.query_to_obj::<Role>("SHOW ROLES")
             .await
             .context("failed to get roles")
@@ -310,7 +317,7 @@ impl SnowflakeConnector {
     }
 
     /// Get all roles.
-    pub async fn get_roles_future(&self, target: &mut Vec<Role>) -> Result<()> {
+    pub(crate) async fn get_roles_future(&self, target: &mut Vec<Role>) -> Result<()> {
         *target = self
             .query_to_obj::<Role>("SHOW ROLES")
             .await
@@ -393,7 +400,7 @@ impl SnowflakeConnector {
     /// Execute the given query and deserialize the result into the given type.
     pub async fn query_to_obj<T>(&self, query: &str) -> Result<Vec<T>>
     where
-        T: FromMap,
+        T: for<'de> Deserialize<'de>,
     {
         let result = self
             .rest_client
@@ -413,15 +420,8 @@ impl SnowflakeConnector {
             panic!("Unexpected partitioned return value: {}", info);
         }
         let rows_data = rows_value["data"].clone();
-        let rows: Vec<Vec<Value>> = serde_json::from_value::<Vec<Vec<Option<String>>>>(rows_data)
-            .context("failed to deserialize rows")?
-            .iter()
-            .map(|i| {
-                i.iter()
-                    .map(|x| Value::new(x.clone().unwrap_or_default()))
-                    .collect()
-            })
-            .collect();
+        let rows: Vec<Vec<JsonValue>> =
+            serde_json::from_value(rows_data).context("failed to deserialize rows")?;
         let fields_intermediate: Vec<SnowflakeField> =
             serde_json::from_value(rows_value["resultSetMetaData"]["rowType"].clone())
                 .context("failed to deserialize fields")?;
@@ -430,10 +430,9 @@ impl SnowflakeConnector {
             .iter()
             .map(|i| {
                 // Zip field - i
-                let map: GenericMap = zip(fields.clone(), i.clone()).collect();
-                map
+                let vals: HashMap<String, JsonValue> = zip(fields.clone(), i.clone()).collect();
+                T::deserialize(MapDeserializer::new(vals.into_iter())).unwrap()
             })
-            .map(|i| T::from_genericmap(i))
             .collect())
     }
 
@@ -479,8 +478,9 @@ impl SnowflakeConnector {
         let mut res = vec![];
         // Role grants
         for role in self.get_roles().await? {
+            let RoleName(role_name) = role.name;
             let grants_to_role: Vec<_> = self
-                .get_grants_to_role(&role.name)
+                .get_grants_to_role(&role_name)
                 .await?
                 .iter()
                 .map(|g| GrantType::Standard(g.clone()))
@@ -527,8 +527,9 @@ impl SnowflakeConnector {
     async fn get_jetty_groups(&self) -> Result<Vec<nodes::Group>> {
         let mut res = vec![];
         for role in self.get_roles().await.context("failed to get roles")? {
+            let RoleName(role_name) = role.name;
             let sub_roles = self
-                .get_grants_to_role(&role.name)
+                .get_grants_to_role(&role_name)
                 .await?
                 .iter()
                 // Only get subgroups
@@ -536,7 +537,7 @@ impl SnowflakeConnector {
                 .map(|g| g.name.to_owned())
                 .collect();
             res.push(nodes::Group::new(
-                role.name.to_owned(),
+                role_name.to_owned(),
                 HashMap::new(),
                 // We only handle parent relationships. The resulting
                 // child relationships are handled by Jetty.

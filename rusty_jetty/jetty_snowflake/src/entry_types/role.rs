@@ -1,11 +1,15 @@
-use serde::Deserialize;
-use serde_tuple::Serialize_tuple;
-use structmap::FromMap;
-use structmap_derive::FromMap;
+use serde::{Deserialize, Serialize};
+
+/// Wrapper struct for role names.
+///
+/// These are globally unique within a Snowflake account.
+#[derive(Clone, Default, Serialize, Deserialize, Debug)]
+#[repr(transparent)]
+pub(crate) struct RoleName(pub(crate) String);
 
 /// Snowflake Role entry.
-#[derive(FromMap, Clone, Default, Deserialize, Serialize_tuple, Debug)]
-pub struct Role {
+#[derive(Clone, Default, Serialize, Deserialize, Debug)]
+pub(crate) struct Role {
     /// The role name in Snowflake.
-    pub name: String,
+    pub(crate) name: RoleName,
 }

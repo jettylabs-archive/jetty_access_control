@@ -15,21 +15,21 @@ const CONCURRENT_METADATA_FETCHES: usize = 15;
 /// Environment is a collection of objects pulled right out of Snowflake.
 /// We process them to make jetty nodes and edges.
 #[derive(Default, Debug)]
-struct Environment {
-    databases: Vec<entry_types::Database>,
-    schemas: Vec<entry_types::Schema>,
-    objects: Vec<entry_types::Object>,
-    users: Vec<entry_types::User>,
-    roles: Vec<entry_types::Role>,
-    standard_grants: Vec<entry_types::StandardGrant>,
-    future_grants: Vec<entry_types::FutureGrant>,
-    role_grants: Vec<entry_types::GrantOf>,
+pub(crate) struct Environment {
+    pub(crate) databases: Vec<entry_types::Database>,
+    pub(crate) schemas: Vec<entry_types::Schema>,
+    pub(crate) objects: Vec<entry_types::Object>,
+    pub(crate) users: Vec<entry_types::User>,
+    pub(crate) roles: Vec<entry_types::Role>,
+    pub(crate) standard_grants: Vec<entry_types::StandardGrant>,
+    pub(crate) future_grants: Vec<entry_types::FutureGrant>,
+    pub(crate) role_grants: Vec<entry_types::GrantOf>,
 }
 
 // Now lets start filling up the environment
 
 pub(super) struct Coordinator<'a> {
-    env: Environment,
+    pub(crate) env: Environment,
     conn: &'a super::SnowflakeConnector,
 }
 

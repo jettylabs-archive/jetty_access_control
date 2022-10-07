@@ -15,12 +15,12 @@ mod warehouse;
 
 pub use asset::Asset;
 pub use database::Database;
-pub use entry::Entry;
+pub(crate) use entry::Entry;
 pub use grant::GrantType;
 pub(crate) use grant::{FutureGrant, Grant, StandardGrant};
 pub use grant_of::GrantOf;
 pub use object::Object;
-pub use role::Role;
+pub(crate) use role::{Role, RoleName};
 pub use role_grant::RoleGrant;
 pub use schema::Schema;
 pub use table::Table;

@@ -1,11 +1,13 @@
 use serde::Serialize;
 
+use super::Asset;
+
 /// Marker trait for Snowflake Entries
 #[derive(Clone, Serialize)]
 #[serde(untagged)]
-pub enum Entry {
+pub(crate) enum Entry {
     Role(crate::Role),
     User(crate::User),
-    Asset(crate::Asset),
+    Asset(Asset),
     Grant(crate::GrantType),
 }

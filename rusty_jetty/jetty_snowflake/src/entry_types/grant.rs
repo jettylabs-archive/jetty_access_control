@@ -4,8 +4,6 @@ use std::collections::HashSet;
 
 use jetty_core::connectors::nodes;
 use serde::{Deserialize, Serialize};
-use structmap::FromMap;
-use structmap_derive::FromMap;
 
 use crate::cual::cual_from_snowflake_obj_name;
 
@@ -66,7 +64,7 @@ impl Grant for GrantType {
 }
 
 /// Snowflake Grant entry.
-#[derive(FromMap, Default, Deserialize, Serialize, Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Default, Deserialize, Serialize, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct StandardGrant {
     // The role name or fully-qualified asset name this grant grants access to.
     pub name: String,
@@ -118,7 +116,6 @@ impl Grant for StandardGrant {
 #[cfg(test)]
 mod tests {
 
-    
     use anyhow::Result;
 
     use super::*;

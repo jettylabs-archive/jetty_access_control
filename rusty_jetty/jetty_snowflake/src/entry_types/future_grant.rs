@@ -3,8 +3,6 @@ use std::collections::HashSet;
 use jetty_core::connectors::nodes;
 
 use serde::{Deserialize, Serialize};
-use structmap::FromMap;
-use structmap_derive::FromMap;
 
 use crate::cual::cual_from_snowflake_obj_name;
 
@@ -14,7 +12,7 @@ use super::grant::Grant;
 ///
 /// Future grants differ from regular grant objects in that they apply to
 /// the parents of currently unnamed assets – ones that will be created later.
-#[derive(FromMap, Default, Deserialize, Serialize, Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Default, Deserialize, Serialize, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct FutureGrant {
     /// The future grant name in Snowflake.
     /// This typically looks something like
