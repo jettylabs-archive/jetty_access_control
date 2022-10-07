@@ -76,7 +76,7 @@ impl Connector for SnowflakeConnector {
 
     async fn get_data(&mut self) -> nodes::ConnectorData {
         // Fetch Snowflake Environment
-        let mut c = coordinator::Coordinator::new(&self);
+        let mut c = coordinator::Coordinator::new(self);
         c.get_data().await
     }
 
@@ -320,7 +320,7 @@ impl SnowflakeConnector {
             .collect())
     }
 
-    fn grants_to_policies(&self, grants: &Vec<GrantType>) -> Vec<nodes::Policy> {
+    fn grants_to_policies(&self, grants: &[GrantType]) -> Vec<nodes::Policy> {
         grants
             .iter()
             .filter(|g| consts::ASSET_TYPES.contains(&g.granted_on()))
