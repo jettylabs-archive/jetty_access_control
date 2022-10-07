@@ -105,25 +105,6 @@ impl<'x> PermissionManager<'x> {
             })
     }
 
-    /// Get all unlicensed users from the environment.
-    fn unlicensed_users(&self) -> impl Iterator<Item = &nodes::User> {
-        self.coordinator
-            .env
-            .users
-            .values()
-            .filter(|user| match user.site_role {
-                SiteRole::Creator
-                | SiteRole::Explorer
-                | SiteRole::ExplorerCanPublish
-                | SiteRole::ReadOnly
-                | SiteRole::SiteAdministratorExplorer
-                | SiteRole::Viewer
-                | SiteRole::ServerAdministrator
-                | SiteRole::SiteAdministratorCreator => false,
-                SiteRole::Unlicensed | SiteRole::Unknown => true,
-            })
-    }
-
     /// Get all effective permissions that are based on site role.
     fn get_effective_permissions_for_site_roles<T: OwnedAsset + Permissionable + Cualable>(
         &self,
