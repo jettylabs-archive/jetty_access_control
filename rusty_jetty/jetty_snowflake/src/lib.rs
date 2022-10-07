@@ -146,10 +146,7 @@ impl SnowflakeConnector {
             .await
             .context("failed to get grants to role")?;
 
-        let mut target = target
-            .lock()
-            .context("failed due to poisoned mutex")
-            .unwrap();
+        let mut target = target.lock().unwrap();
         target.extend(res);
         Ok(())
     }
@@ -165,10 +162,7 @@ impl SnowflakeConnector {
             .await
             .context("failed to get grants of role")?;
 
-        let mut target = target
-            .lock()
-            .context("failed due to poisoned mutex")
-            .unwrap();
+        let mut target = target.lock().unwrap();
         target.extend(res);
         Ok(())
     }
@@ -190,10 +184,7 @@ impl SnowflakeConnector {
                 &schema.name
             ))?;
 
-        let mut target = target
-            .lock()
-            .context("failed due to poisoned mutex")
-            .unwrap();
+        let mut target = target.lock().unwrap();
         target.extend(res);
         Ok(())
     }
@@ -215,10 +206,7 @@ impl SnowflakeConnector {
                 &database.name
             ))?;
 
-        let mut target = target
-            .lock()
-            .context("failed due to poisoned mutex")
-            .unwrap();
+        let mut target = target.lock().unwrap();
         target.extend(res);
         Ok(())
     }
@@ -280,10 +268,7 @@ impl SnowflakeConnector {
             .query_to_obj::<Object>(&query)
             .await
             .context("failed to get tables")?;
-        let mut target = target
-            .lock()
-            .context("failed due to poisoned mutex")
-            .unwrap();
+        let mut target = target.lock().unwrap();
         target.extend(res);
         Ok(())
     }
