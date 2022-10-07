@@ -3,8 +3,7 @@ use std::sync::Once;
 use anyhow::{bail, Context, Ok, Result};
 
 use jetty_core::{
-    connectors::AssetType,
-    cual::{Cual, Cualable},
+    cual::{Cual},
 };
 
 static mut CUAL_PREFIX: String = String::new();

@@ -49,7 +49,7 @@ impl InsertOrMerge<Cual, HashSet<EffectivePermission>>
     for HashMap<Cual, HashSet<EffectivePermission>>
 {
     fn insert_or_merge(&mut self, cual: Cual, new_perms: HashSet<EffectivePermission>) {
-        let mut new_perms = new_perms.clone();
+        let mut new_perms = new_perms;
         if let Some(existing_user_asset_perms) = self.get_mut(&cual) {
             let mut merged_perms: HashSet<EffectivePermission> = existing_user_asset_perms
                 .clone()
@@ -57,7 +57,7 @@ impl InsertOrMerge<Cual, HashSet<EffectivePermission>>
                 .map(|mut existing_effective_permission| {
                     if let Some(new_ep) = new_perms.take(&existing_effective_permission) {
                         // Matched permissions. Merge mode and reasons.
-                        existing_effective_permission.merge(new_ep.clone());
+                        existing_effective_permission.merge(new_ep).unwrap();
                     }
                     existing_effective_permission
                 })
@@ -99,7 +99,7 @@ impl Merge<SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>>>
 impl Merge<EffectivePermission> for EffectivePermission {
     /// Should only be called for EffectivePermissions with the same privilege.
     fn merge(&mut self, other: EffectivePermission) -> Result<()> {
-        if !(self.privilege == other.privilege) {
+        if self.privilege != other.privilege {
             bail!("effective permission privileges didn't match");
         } else if self.mode == other.mode {
             // If the mode is the same, we can combine

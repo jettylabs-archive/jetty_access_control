@@ -11,7 +11,7 @@ use jetty_core::{
 use super::matrix::{InsertOrMerge, Merge};
 use crate::{
     coordinator::Coordinator,
-    nodes::{self, user::SiteRole, OwnedAsset, ProjectId, TableauAsset},
+    nodes::{self, user::SiteRole, OwnedAsset, ProjectId},
     nodes::{Grantee, Permissionable},
 };
 
@@ -64,7 +64,7 @@ impl<'x> PermissionManager<'x> {
                         if let Some(perms) = user_perm_map.get_mut(&u) {
                             (*perms).push((&perm.grantee, p.0, p.1));
                         } else {
-                            user_perm_map.insert(&u, vec![(&perm.grantee, p.0, p.1)]);
+                            user_perm_map.insert(u, vec![(&perm.grantee, p.0, p.1)]);
                         }
                     }
                     Grantee::Group(g) => {
@@ -73,7 +73,7 @@ impl<'x> PermissionManager<'x> {
                             if let Some(perms) = user_perm_map.get_mut(&user) {
                                 (*perms).push((&perm.grantee, p.0, p.1));
                             } else {
-                                user_perm_map.insert(&user, vec![(&perm.grantee, p.0, p.1)]);
+                                user_perm_map.insert(user, vec![(&perm.grantee, p.0, p.1)]);
                             }
                         }
                     }
@@ -188,7 +188,7 @@ impl<'x> PermissionManager<'x> {
             let user_perm_map = self.get_user_perms(asset);
             // We'll go over each of those user -> [permission] mappings to
             // discover effective access.
-            user_perm_map.iter().map(|(user, perms)| {
+            user_perm_map.iter().for_each(|(user, perms)| {
                 // apply the permission explicitly given
                 let explicit_effective_permissions = perms
                     .iter()
@@ -212,7 +212,7 @@ impl<'x> PermissionManager<'x> {
                 // Add permissions to ep[user][asset]
                 ep.insert(
                     UserIdentifier::Email(user.email.to_owned()),
-                    HashMap::from([(asset.cual().clone(), explicit_effective_permissions)]),
+                    HashMap::from([(asset.cual(), explicit_effective_permissions)]),
                 );
             });
         });
@@ -340,10 +340,7 @@ mod tests {
         env.users = HashMap::from([("".to_owned(), user)]);
         env.projects = HashMap::from([("".to_owned(), Project::default())]);
         let rest_client = TableauRestClient::new_dummy();
-        let coordinator = &Coordinator {
-            env: env,
-            rest_client,
-        };
+        let coordinator = &Coordinator { env, rest_client };
 
         let m = PermissionManager::new(coordinator);
 

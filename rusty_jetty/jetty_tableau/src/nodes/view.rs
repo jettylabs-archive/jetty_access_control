@@ -156,7 +156,7 @@ mod tests {
         let mut views = get_basic_views(&tc.coordinator.rest_client).await?;
         for (_k, v) in &mut views {
             v.update_permissions(&tc.coordinator.rest_client, &tc.coordinator.env)
-                .await;
+                .await?;
         }
         for (_k, v) in views {
             println!("{:#?}", v);
@@ -165,6 +165,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(unused_must_use)]
     fn test_asset_from_view_works() {
         let v = View::new(
             Cual::new("".to_owned()),
@@ -180,6 +181,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(unused_must_use)]
     fn test_view_into_asset_works() {
         let v = View::new(
             Cual::new("".to_owned()),
@@ -191,6 +193,6 @@ mod tests {
             "updated_at".to_owned(),
             vec![],
         );
-        let a: jetty_nodes::Asset = v.into();
+        Into::<jetty_nodes::Asset>::into(v);
     }
 }

@@ -5,7 +5,6 @@ mod cual;
 
 use std::{
     io::{Cursor, Read},
-    sync::Once,
 };
 
 use super::*;
@@ -19,7 +18,7 @@ pub(crate) use cual::{get_tableau_cual, TableauAssetType};
 
 use anyhow::{bail, Context};
 use async_trait::async_trait;
-use bytes::{Buf, Bytes};
+use bytes::{Bytes};
 use serde::Serialize;
 
 
@@ -407,7 +406,7 @@ impl FetchJson for reqwest::RequestBuilder {
 mod tests {
     use super::*;
     use anyhow::Context;
-    use jetty_core::{connectors::ConnectorClient, jetty};
+    
 
     #[tokio::test]
     async fn test_fetching_token_works() -> Result<()> {

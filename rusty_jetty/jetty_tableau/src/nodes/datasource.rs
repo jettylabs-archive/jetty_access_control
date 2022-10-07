@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     coordinator::{Coordinator, HasSources},
     file_parse::xml_docs,
-    rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType, TableauRestClient},
+    rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType},
 };
 
 use super::{Permissionable, ProjectId, TableauAsset};
@@ -235,7 +235,7 @@ mod tests {
         let mut nodes = get_basic_datasources(&tc.coordinator.rest_client).await?;
         for (_, v) in &mut nodes {
             v.update_permissions(&tc.coordinator.rest_client, &tc.coordinator.env)
-                .await;
+                .await?;
         }
         for (_, v) in nodes {
             println!("{:#?}", v);
@@ -268,12 +268,13 @@ mod tests {
         let datasources = get_basic_datasources(&tc.coordinator.rest_client).await?;
 
         for test_datasource in datasources.values() {
-            let x = test_datasource.fetch_sources(&tc.coordinator).await?;
+            test_datasource.fetch_sources(&tc.coordinator).await?;
         }
         Ok(())
     }
 
     #[test]
+    #[allow(unused_must_use)]
     fn test_asset_from_datasource_works() {
         set_cual_prefix("", "");
         let ds = Datasource::new(
@@ -292,6 +293,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(unused_must_use)]
     fn test_datasource_into_asset_works() {
         set_cual_prefix("", "");
         let ds = Datasource::new(
@@ -306,6 +308,6 @@ mod tests {
             vec![],
             vec![],
         );
-        let a: jetty_nodes::Asset = ds.into();
+        Into::<jetty_nodes::Asset>::into(ds);
     }
 }

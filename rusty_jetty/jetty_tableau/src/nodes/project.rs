@@ -81,10 +81,10 @@ fn to_node(val: &serde_json::Value) -> Result<super::Project> {
         id: ProjectId(project_info.id),
         name: project_info.name,
         owner_id: project_info.owner.id,
-        parent_project_id: project_info.parent_project_id.map(|i| ProjectId(i)),
+        parent_project_id: project_info.parent_project_id.map(ProjectId),
         controlling_permissions_project_id: project_info
             .controlling_permissions_project_id
-            .map(|i| ProjectId(i)),
+            .map(ProjectId),
         permissions: Default::default(),
     })
 }
@@ -208,7 +208,6 @@ impl TableauAsset for Project {
 mod tests {
     use super::*;
     use anyhow::{Context, Result};
-    use jetty_core::connectors::nodes;
 
     #[tokio::test]
     async fn test_fetching_projects_works() -> Result<()> {
@@ -231,7 +230,7 @@ mod tests {
         let mut nodes = get_basic_projects(&tc.coordinator.rest_client).await?;
         for (_k, v) in &mut nodes {
             v.update_permissions(&tc.coordinator.rest_client, &tc.coordinator.env)
-                .await;
+                .await?;
         }
         for (_k, v) in nodes {
             println!("{:#?}", v);
@@ -240,6 +239,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(unused_must_use)]
     fn test_asset_from_project_works() {
         let wb = Project::new(
             Cual::new("".to_owned()),
@@ -254,6 +254,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(unused_must_use)]
     fn test_project_into_asset_works() {
         let wb = Project::new(
             Cual::new("".to_owned()),
@@ -264,6 +265,6 @@ mod tests {
             Some(ProjectId("cp_project_id".to_owned())),
             vec![],
         );
-        let a: jetty_nodes::Asset = wb.into();
+        Into::<jetty_nodes::Asset>::into(wb);
     }
 }

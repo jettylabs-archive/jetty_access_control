@@ -193,6 +193,6 @@ mod tests {
             grant_on: "grant_on".to_owned(),
             grantee_name: "grantee_name".to_owned(),
         };
-        let _: nodes::Policy = g.into_policy(HashSet::from(["priv".to_owned()]));
+        g.into_policy(HashSet::from(["priv".to_owned()]));
     }
 }

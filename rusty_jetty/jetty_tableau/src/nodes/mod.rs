@@ -207,8 +207,7 @@ impl Permission {
     pub(crate) fn has_capability(&self, cap: &str, mode: &str) -> bool {
         self.capabilities
             .iter()
-            .find(|(c, m)| c.as_str() == cap && m.as_str() == mode)
-            .is_some()
+            .any(|(c, m)| c.as_str() == cap && m.as_str() == mode)
     }
 
     pub(crate) fn grantee_user_ids(&self) -> Vec<String> {
@@ -341,7 +340,7 @@ impl SerializedPermission {
 /// Converts a JSON Value::Array into the a vector of Tableau assets. Accepts a function to make
 /// the JSON -> asset conversion
 fn to_asset_map<T: GetId + Clone>(
-    tc: &rest::TableauRestClient,
+    _tc: &rest::TableauRestClient,
     val: serde_json::Value,
     f: &dyn Fn(&serde_json::Value) -> Result<T>,
 ) -> Result<HashMap<String, T>> {
