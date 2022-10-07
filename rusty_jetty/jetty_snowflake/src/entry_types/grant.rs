@@ -97,8 +97,6 @@ impl Grant for StandardGrant {
     fn into_policy(self, all_privileges: HashSet<String>) -> nodes::Policy {
         let cual = cual_from_snowflake_obj_name(self.granted_on_name()).unwrap();
 
-        let mut joined_privileges: Vec<_> = all_privileges.iter().cloned().collect();
-        joined_privileges.sort();
         nodes::Policy::new(
             format!("snowflake.{}.{}", self.role_name(), self.granted_on_name()),
             all_privileges,
@@ -118,7 +116,6 @@ impl Grant for StandardGrant {
 #[cfg(test)]
 mod tests {
 
-    
     use anyhow::Result;
 
     use super::*;

@@ -6,7 +6,7 @@ use jetty_core::cual::Cualable;
 // Reexport for convenience.
 pub use jetty_core::cual::Cual;
 
-use crate::{Database, Schema, Table, View};
+use crate::{Database, Object, Schema, Table, View};
 
 static mut CUAL_ACCOUNT_NAME: String = String::new();
 static INIT_CUAL_ACCOUNT_NAME: Once = Once::new();
@@ -75,9 +75,7 @@ pub(crate) fn cual_from_snowflake_obj_name(name: &str) -> Result<Cual> {
         .map(|p| {
             if p.starts_with('"') {
                 // Remove the quotes and return the contained part as-is.
-                p.trim_start_matches('"')
-                    .trim_end_matches('"')
-                    .to_owned()
+                p.trim_start_matches('"').trim_end_matches('"').to_owned()
             } else {
                 // Not quoted – we can just capitalize it (only for
                 // Snowflake).
@@ -98,6 +96,13 @@ pub(crate) fn cual_from_snowflake_obj_name(name: &str) -> Result<Cual> {
 }
 
 impl Cualable for Table {
+    /// Get the CUAL that points to this table or view.
+    fn cual(&self) -> Cual {
+        cual!(self.database_name, self.schema_name, self.name)
+    }
+}
+
+impl Cualable for Object {
     /// Get the CUAL that points to this table or view.
     fn cual(&self) -> Cual {
         cual!(self.database_name, self.schema_name, self.name)
