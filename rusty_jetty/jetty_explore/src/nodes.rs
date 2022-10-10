@@ -1,12 +1,8 @@
 use std::sync::Arc;
 
 use axum::{routing::get, Extension, Json, Router};
-use jetty_core::{
-    access_graph::{AccessGraph, JettyNode},
-    connectors::nodes,
-};
+use jetty_core::access_graph::{AccessGraph, JettyNode};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
 
 /// Return a router to handle all group-related requests
 pub(super) fn router() -> Router {
