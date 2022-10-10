@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::sync::RwLock;
 use std::{boxed::Box, collections::HashSet};
 
 use jetty_core::{
@@ -186,7 +185,7 @@ impl WiremockServer {
 
 struct TestHarness<T: Connector> {
     _input: TestInput,
-    _mock_server: RwLock<WiremockServer>,
+    _mock_server: WiremockServer,
     connector: Box<T>,
 }
 
@@ -215,7 +214,7 @@ async fn construct_connector_from(input: &TestInput) -> TestHarness<SnowflakeCon
     ]);
     TestHarness {
         _input: input.clone(),
-        _mock_server: RwLock::new(wiremock_server),
+        _mock_server: wiremock_server,
         connector: SnowflakeConnector::new(
             &ConnectorConfig::default(),
             &creds,
