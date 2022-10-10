@@ -45,7 +45,7 @@ pub(super) struct Coordinator<'a> {
 }
 
 #[derive(Hash, Eq, PartialEq)]
-enum Grantee {
+pub(crate) enum Grantee {
     User(String),
     Role(String),
 }

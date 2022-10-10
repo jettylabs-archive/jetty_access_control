@@ -14,4 +14,8 @@ impl Object {
     pub(crate) fn fqn(&self) -> String {
         format!("{}.{}.{}", self.database_name, self.schema_name, self.name)
     }
+
+    pub(crate) fn schema_fqn(&self) -> String {
+        format!("{}.{}", self.database_name, self.schema_name)
+    }
 }

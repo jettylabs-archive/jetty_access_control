@@ -96,6 +96,7 @@ impl SnowflakeRestClient {
     /// Otherwise, the standard account configuration
     /// is used
     fn get_url(&self) -> String {
+        println!("creds are {:?}", self.credentials);
         self.credentials.url.to_owned().unwrap_or_else(|| {
             format![
                 "https://{}.snowflakecomputing.com/api/v2/statements",
@@ -273,7 +274,7 @@ mod tests {
             })
             .await
             .unwrap();
-            drop(guard);
+        drop(guard);
     }
 
     #[tokio::test]

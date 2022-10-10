@@ -303,11 +303,12 @@ impl SnowflakeConnector {
         }
         let rows_data = rows_value["data"].clone();
         let rows: Vec<Vec<JsonValue>> =
-            serde_json::from_value(rows_data).context("failed to deserialize rows")?;
+            serde_json::from_value(rows_data.clone()).context("failed to deserialize rows")?;
         let fields_intermediate: Vec<SnowflakeField> =
             serde_json::from_value(rows_value["resultSetMetaData"]["rowType"].clone())
                 .context("failed to deserialize fields")?;
         let fields: Vec<String> = fields_intermediate.iter().map(|i| i.name.clone()).collect();
+        println!("rows {:?}", &result);
         Ok(rows
             .iter()
             .map(|i| {
