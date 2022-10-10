@@ -61,7 +61,7 @@ impl Group {
 impl From<Group> for jetty_nodes::Group {
     fn from(val: Group) -> Self {
         jetty_nodes::Group::new(
-            val.id.to_owned(),
+            val.name.to_owned(),
             HashMap::from([("tableau::id".to_owned(), val.id)]),
             // No nested groups in tableau
             HashSet::new(),
