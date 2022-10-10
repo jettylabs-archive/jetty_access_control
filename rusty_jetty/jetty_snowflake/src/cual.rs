@@ -74,7 +74,7 @@ pub(crate) fn cual_from_snowflake_obj_name(name: &str) -> Result<Cual> {
                 p.replace("\"\"\"", "\"")
             } else if p.starts_with('"') {
                 // Remove the quotes and return the contained part as-is.
-                strip_start_and_end(p.to_owned(), '"', '"')
+                p.trim_matches('"').to_owned()
             } else {
                 // Not quoted – we can just capitalize it (only for
                 // Snowflake).
@@ -126,15 +126,6 @@ impl Cualable for Database {
     /// Get the CUAL that points to this database.
     fn cual(&self) -> Cual {
         cual!(self.name)
-    }
-}
-
-/// Helper to strip a single instance the given characters from the start and end of a string
-fn strip_start_and_end(val: String, start: char, end: char) -> String {
-    if let Some(s) = val.strip_prefix(start).and_then(|v| v.strip_suffix(end)) {
-        s.to_owned()
-    } else {
-        val
     }
 }
 
