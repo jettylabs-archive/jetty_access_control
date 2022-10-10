@@ -1,7 +1,10 @@
 use std::sync::Arc;
 
 use axum::{routing::get, Extension, Json, Router};
-use jetty_core::{access_graph::AccessGraph, connectors::nodes};
+use jetty_core::{
+    access_graph::{AccessGraph, JettyNode},
+    connectors::nodes,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
@@ -79,16 +82,28 @@ async fn get_tags(Extension(ag): Extension<Arc<AccessGraph>>) -> Json<Vec<Node>>
     Json(nodes)
 }
 
+/// Pull all the nodes out of the graph and convert them in to a format that
+/// explore can use.
 fn get_all_nodes(ag: Arc<AccessGraph>) -> Vec<Node> {
     ag.get_nodes()
-        .map(|(_, n)| Node {
-            r#type: n.get_node_type(),
-            name: n.get_node_name(),
-            platforms: n
-                .get_node_connectors()
-                .iter()
-                .map(|n| n.to_owned())
-                .collect(),
+        .map(|(_, n)| {
+            let node_type = match n {
+                JettyNode::Group(_) => "group".to_owned(),
+                JettyNode::User(_) => "user".to_owned(),
+                JettyNode::Asset(_) => "asset".to_owned(),
+                JettyNode::Tag(_) => "tag".to_owned(),
+                JettyNode::Policy(_) => "policy".to_owned(),
+            };
+
+            Node {
+                r#type: node_type,
+                name: n.get_node_name(),
+                platforms: n
+                    .get_node_connectors()
+                    .iter()
+                    .map(|n| n.to_owned())
+                    .collect(),
+            }
         })
         .collect()
 }

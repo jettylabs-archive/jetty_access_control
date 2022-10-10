@@ -239,17 +239,6 @@ pub enum JettyNode {
 
 impl JettyNode {
     /// Get the type (as a string) of the node.
-    pub fn get_node_type(&self) -> String {
-        match &self {
-            JettyNode::Group(_) => "group".to_owned(),
-            JettyNode::User(_) => "user".to_owned(),
-            JettyNode::Asset(_) => "asset".to_owned(),
-            JettyNode::Tag(_) => "tag".to_owned(),
-            JettyNode::Policy(_) => "policy".to_owned(),
-        }
-    }
-
-    /// Get the type (as a string) of the node.
     pub fn get_node_name(&self) -> String {
         match &self {
             JettyNode::Group(g) => g.name.to_owned(),
