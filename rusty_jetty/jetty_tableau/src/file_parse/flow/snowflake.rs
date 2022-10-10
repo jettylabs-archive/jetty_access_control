@@ -139,12 +139,3 @@ pub(super) fn get_input_query_cuals(
     relations.extend(snowflake_table.to_cuals()?);
     Ok(relations)
 }
-
-/// Trim the given characters from the start and end of a string
-fn strip_start_and_end(val: String, start: char, end: char) -> String {
-    if let Some(s) = val.strip_prefix(start).and_then(|v| v.strip_suffix(end)) {
-        s.to_owned()
-    } else {
-        val
-    }
-}

@@ -20,10 +20,7 @@ static INIT_CUAL_ACCOUNT_NAME: Once = Once::new();
 pub(crate) fn set_cual_account_name(account_name: &str) {
     unsafe {
         INIT_CUAL_ACCOUNT_NAME.call_once(|| {
-            CUAL_ACCOUNT_NAME = format!(
-                "{}.snowflakecomputing.com",
-                account_name.to_lowercase()
-            )
+            CUAL_ACCOUNT_NAME = format!("{}.snowflakecomputing.com", account_name.to_lowercase())
         });
     }
 }
@@ -73,9 +70,11 @@ pub(crate) fn cual_from_snowflake_obj_name(name: &str) -> Result<Cual> {
     let parts: Vec<_> = name
         .split('.')
         .map(|p| {
-            if p.starts_with('"') {
+            if p.starts_with("\"\"\"") {
+                p.replace("\"\"\"", "\"")
+            } else if p.starts_with('"') {
                 // Remove the quotes and return the contained part as-is.
-                p.trim_start_matches('"').trim_end_matches('"').to_owned()
+                strip_start_and_end(p.to_owned(), '"', '"')
             } else {
                 // Not quoted – we can just capitalize it (only for
                 // Snowflake).
@@ -127,6 +126,15 @@ impl Cualable for Database {
     /// Get the CUAL that points to this database.
     fn cual(&self) -> Cual {
         cual!(self.name)
+    }
+}
+
+/// Helper to strip a single instance the given characters from the start and end of a string
+fn strip_start_and_end(val: String, start: char, end: char) -> String {
+    if let Some(s) = val.strip_prefix(start).and_then(|v| v.strip_suffix(end)) {
+        s.to_owned()
+    } else {
+        val
     }
 }
 
