@@ -396,6 +396,7 @@ impl AccessGraph {
         Ok(())
     }
 
+    /// Add nodes to the graph and add edges to the edge cache
     fn register_nodes_and_edges<T: NodeHelper>(
         &mut self,
         nodes: &Vec<T>,
