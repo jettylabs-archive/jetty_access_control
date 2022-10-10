@@ -2,13 +2,12 @@ use std::sync::Once;
 
 use anyhow::{bail, Context, Ok, Result};
 
-use jetty_core::{
-    cual::{Cual},
-};
+use jetty_core::cual::Cual;
 
 static mut CUAL_PREFIX: String = String::new();
 static INIT_CUAL_PREFIX: Once = Once::new();
 
+#[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub(crate) enum TableauAssetType {
     Project,
     Datasource,

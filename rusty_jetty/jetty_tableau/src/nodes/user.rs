@@ -8,7 +8,7 @@ use jetty_core::connectors::{
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize, Clone, Default, Debug, Hash, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Clone, Copy, Default, Debug, Hash, PartialEq, Eq)]
 pub(crate) enum SiteRole {
     Creator,
     Explorer,
