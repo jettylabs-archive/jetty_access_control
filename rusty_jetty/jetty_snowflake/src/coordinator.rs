@@ -14,6 +14,7 @@ use jetty_core::cual::Cualable;
 
 use super::cual::{cual, get_cual_account_name, Cual};
 use crate::entry_types;
+use crate::entry_types::ObjectKind;
 use crate::entry_types::RoleName;
 use crate::Grant;
 use crate::GrantType;
@@ -258,9 +259,9 @@ impl<'a> Coordinator<'a> {
     fn get_jetty_assets(&self) -> Vec<nodes::Asset> {
         let mut res = vec![];
         for object in &self.env.objects {
-            let object_type = match &object.kind[..] {
-                "TABLE" => connectors::AssetType::DBTable,
-                "VIEW" => connectors::AssetType::DBView,
+            let object_type = match object.kind {
+                ObjectKind::Table => connectors::AssetType::DBTable,
+                ObjectKind::View => connectors::AssetType::DBView,
                 _ => connectors::AssetType::Other,
             };
 

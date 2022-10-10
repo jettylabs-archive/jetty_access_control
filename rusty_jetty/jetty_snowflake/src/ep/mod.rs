@@ -81,7 +81,7 @@ impl<'a> EffectivePermissionMap<'a> {
         let has_schema_usage = schema_grants.iter().find(|g| g.privilege == "USAGE").is_some();
 
         if !has_any_db_grant || !has_schema_usage{
-            // Deny access. Early return.
+            // TODO: Deny access. Early return.
         }
 
         // resolve conflicts and return all effective privileges.

@@ -19,7 +19,7 @@ pub use entry::Entry;
 pub use grant::GrantType;
 pub use grant::{FutureGrant, Grant, StandardGrant};
 pub use grant_of::GrantOf;
-pub use object::Object;
+pub use object::{Object, ObjectKind};
 pub use role::{Role, RoleName};
 pub use role_grant::RoleGrant;
 pub use schema::Schema;

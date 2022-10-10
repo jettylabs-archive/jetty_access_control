@@ -1,5 +1,12 @@
 use serde::{Deserialize, Serialize};
 
+/// A type of object.
+#[derive(Clone, Default, Deserialize, Serialize, Debug)]
+pub enum ObjectKind {
+    #[default]
+    Table,
+    View,
+}
 /// Snowflake Table entry.
 #[derive(Clone, Default, Deserialize, Serialize, Debug)]
 pub struct Object {
@@ -7,7 +14,7 @@ pub struct Object {
     pub name: String,
     pub schema_name: String,
     pub database_name: String,
-    pub kind: String,
+    pub kind: ObjectKind,
 }
 
 impl Object {
