@@ -8,14 +8,15 @@ mod users;
 use std::net::SocketAddr;
 
 use axum::{routing::get, Json, Router};
-
 use serde_json::{json, Value};
 use time::OffsetDateTime;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-#[tokio::main]
-async fn main() {
+use jetty_core::access_graph;
+
+/// Launch the Jetty Explore web ui and accompanying server
+pub async fn explore_web_ui(_: access_graph::AccessGraph) {
     tracing_subscriber::registry()
         .with(tracing_subscriber::EnvFilter::new(
             std::env::var("RUST_LOG")

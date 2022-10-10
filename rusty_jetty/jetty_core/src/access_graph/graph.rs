@@ -10,11 +10,13 @@ use graphviz_rust::printer::PrinterContext;
 use petgraph::stable_graph::NodeIndex;
 
 use petgraph::{dot, stable_graph::StableDiGraph};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use super::{EdgeType, JettyNode, NodeName};
 
 /// The main graph wrapper
+#[derive(Serialize, Deserialize)]
 pub struct Graph {
     pub(crate) graph: StableDiGraph<JettyNode, EdgeType>,
     /// A map of node identifiers to indicies

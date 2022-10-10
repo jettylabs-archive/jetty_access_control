@@ -12,5 +12,6 @@ dirs = "4.0.0"
 serde = { version = "1.0.144", features = ["derive"] }
 yaml-peg = { version = "1.0.4", features = ["serde"] }
 graphviz-rust = "0.2.1"
-petgraph = "0.6.2"
+petgraph = { version = "0.6.2", features = ["serde-1"] }
 derivative = "2.2.0"
+bincode = "1.3.3"

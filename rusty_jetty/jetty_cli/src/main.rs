@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use anyhow::{bail, Context, Result};
-use clap::Parser;
+use clap::{Parser, Subcommand};
 
 use jetty_core::{
     access_graph::AccessGraph, connectors::ConnectorClient, fetch_credentials, Connector, Jetty,
@@ -11,29 +11,59 @@ use jetty_core::{
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 struct Args {
-    /// Visualize the graph in an SVG file.
-    #[clap(short, long, value_parser, default_value = "false")]
-    visualize: bool,
-    /// Connectors to collect for.
-    #[clap(short, long, use_value_delimiter=true, value_delimiter=',', default_values_t = vec!["snowflake".to_owned(),"tableau".to_owned(),"dbt".to_owned()])]
-    connectors: Vec<String>,
+    #[clap(subcommand)]
+    command: JettyCommand,
+}
+
+#[derive(Subcommand, Debug)]
+enum JettyCommand {
+    Fetch {
+        /// Visualize the graph in an SVG file.
+        #[clap(short, long, value_parser, default_value = "false")]
+        visualize: bool,
+        /// Connectors to collect for.
+        #[clap(short, long, use_value_delimiter=true, value_delimiter=',', default_values_t = vec!["snowflake".to_owned(),"tableau".to_owned(),"dbt".to_owned()])]
+        connectors: Vec<String>,
+    },
+    Explore,
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Args::parse();
 
+    match &args.command {
+        JettyCommand::Fetch {
+            visualize,
+            connectors,
+        } => {
+            fetch(connectors, visualize).await?;
+        }
+
+        JettyCommand::Explore => match AccessGraph::deserialize_graph() {
+            Ok(g) => jetty_explore::explore_web_ui(g).await,
+            Err(e) => println!(
+                "Unable to find saved graph. Try running `jetty fetch`\nError: {}",
+                e
+            ),
+        },
+    }
+
+    Ok(())
+}
+
+async fn fetch(connectors: &Vec<String>, visualize: &bool) -> Result<()> {
     let jetty = Jetty::new()?;
     let creds = fetch_credentials()?;
 
-    if args.connectors.is_empty() {
+    if connectors.is_empty() {
         println!("No connectors, huh?");
         bail!("Select a connector");
     }
 
     let mut data_from_connectors = vec![];
 
-    if args.connectors.contains(&"dbt".to_owned()) {
+    if connectors.contains(&"dbt".to_owned()) {
         println!("initializing dbt");
         let now = Instant::now();
         // Initialize connectors
@@ -56,7 +86,7 @@ async fn main() -> Result<()> {
         data_from_connectors.push(dbt_pcd);
     }
 
-    if args.connectors.contains(&"snowflake".to_owned()) {
+    if connectors.contains(&"snowflake".to_owned()) {
         println!("intializing snowflake");
         let now = Instant::now();
         let mut snow = jetty_snowflake::SnowflakeConnector::new(
@@ -81,7 +111,7 @@ async fn main() -> Result<()> {
         data_from_connectors.push(snow_pcd);
     }
 
-    if args.connectors.contains(&"tableau".to_owned()) {
+    if connectors.contains(&"tableau".to_owned()) {
         println!("initializing tableau");
         let now = Instant::now();
         let mut tab = jetty_tableau::TableauConnector::new(
@@ -112,7 +142,9 @@ async fn main() -> Result<()> {
         now.elapsed().as_secs_f32()
     );
 
-    if args.visualize {
+    ag.serialize_graph()?;
+
+    if *visualize {
         println!("visualizing access graph");
         let now = Instant::now();
         ag.visualize("/tmp/graph.svg")
@@ -123,7 +155,7 @@ async fn main() -> Result<()> {
         );
     } else {
         println!("Skipping visualization.")
-    }
+    };
 
     Ok(())
 }

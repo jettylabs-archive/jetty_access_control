@@ -18,12 +18,17 @@ use core::hash::Hash;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt::Debug;
+use std::fs::File;
+use std::io::{BufWriter, Write};
 
 use anyhow::{anyhow, Context, Result};
+use serde::Deserialize;
+use serde::Serialize;
+
+const SAVED_GRAPH_PATH: &str = "jetty_graph";
 
 /// Attributes associated with a User node
-
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub(crate) struct UserAttributes {
     name: String,
     identifiers: HashSet<connectors::UserIdentifier>,
@@ -67,7 +72,7 @@ impl UserAttributes {
 
 /// Attributes associated with a Group node
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub(crate) struct GroupAttributes {
     name: String,
     metadata: HashMap<String, String>,
@@ -89,7 +94,7 @@ impl GroupAttributes {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub(crate) struct AssetAttributes {
     cual: Cual,
     asset_type: AssetType,
@@ -126,7 +131,7 @@ impl AssetAttributes {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub(crate) struct TagAttributes {
     name: String,
     value: Option<String>,
@@ -163,7 +168,7 @@ impl TagAttributes {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub(crate) struct PolicyAttributes {
     name: String,
     privileges: HashSet<String>,
@@ -213,7 +218,7 @@ impl PolicyAttributes {
 }
 
 /// Enum of node types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub(crate) enum JettyNode {
     /// Group node
     Group(GroupAttributes),
@@ -268,7 +273,7 @@ impl JettyNode {
 }
 
 /// Enum of edge types
-#[derive(PartialEq, Eq, Hash, Debug, Copy, Clone, Default)]
+#[derive(PartialEq, Eq, Hash, Debug, Copy, Clone, Default, Serialize, Deserialize)]
 pub(crate) enum EdgeType {
     MemberOf,
     Includes,
@@ -305,7 +310,7 @@ fn get_edge_type_pair(edge_type: &EdgeType) -> EdgeType {
 }
 
 /// Mapping of node identifiers (like asset name) to their id in the graph
-#[derive(PartialEq, Eq, Hash, Clone, Debug)]
+#[derive(PartialEq, Eq, Hash, Clone, Debug, Serialize, Deserialize)]
 pub enum NodeName {
     /// User node
     User(String),
@@ -319,7 +324,7 @@ pub enum NodeName {
     Tag(String),
 }
 
-#[derive(Hash, Eq, PartialEq, Debug, Clone)]
+#[derive(Hash, Eq, PartialEq, Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct JettyEdge {
     from: NodeName,
     to: NodeName,
@@ -338,6 +343,7 @@ impl JettyEdge {
 }
 
 /// Representation of data access state
+#[derive(Serialize, Deserialize)]
 pub struct AccessGraph {
     /// The graph itself
     graph: graph::Graph,
@@ -400,6 +406,21 @@ impl AccessGraph {
     /// Convenience fn to visualize the graph.
     pub fn visualize(&self, path: &str) -> Result<String> {
         self.graph.visualize(path)
+    }
+
+    /// Write the graph to disk
+    pub fn serialize_graph(&self) -> Result<()> {
+        let f = File::create(SAVED_GRAPH_PATH).context("creating file")?;
+        let f = BufWriter::new(f);
+        bincode::serialize_into(f, &self).context("serializing graph into file")?;
+        Ok(())
+    }
+
+    /// Read the graph from disk
+    pub fn deserialize_graph() -> Result<Self> {
+        let f = File::open(SAVED_GRAPH_PATH).context("opening graph file")?;
+        let decoded = bincode::deserialize_from(f).context("deserializing graph from file")?;
+        Ok(decoded)
     }
 }
 
