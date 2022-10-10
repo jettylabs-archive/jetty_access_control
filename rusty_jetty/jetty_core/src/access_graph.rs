@@ -373,6 +373,11 @@ impl AccessGraph {
         Ok(ag)
     }
 
+    /// Get last modified date for access graph as a Unix timestamp (seconds resolution)
+    pub fn get_last_modified(&self) -> i64 {
+        self.last_modified
+    }
+
     pub(crate) fn add_nodes(&mut self, data: &ProcessedConnectorData) -> Result<()> {
         self.register_nodes_and_edges(&data.data.groups, &data.connector)?;
         self.register_nodes_and_edges(&data.data.users, &data.connector)?;
