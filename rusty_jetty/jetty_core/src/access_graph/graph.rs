@@ -17,7 +17,7 @@ use super::{EdgeType, JettyNode, NodeName};
 
 /// The main graph wrapper
 #[derive(Serialize, Deserialize)]
-pub struct Graph {
+pub(crate) struct Graph {
     pub(crate) graph: StableDiGraph<JettyNode, EdgeType>,
     /// A map of node identifiers to indicies
     pub(crate) nodes: HashMap<NodeName, NodeIndex>,

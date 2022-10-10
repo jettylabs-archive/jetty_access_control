@@ -9,7 +9,6 @@ use std::{net::SocketAddr, sync::Arc};
 
 use axum::{extract::Extension, routing::get, Json, Router};
 use serde_json::{json, Value};
-use time::OffsetDateTime;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 

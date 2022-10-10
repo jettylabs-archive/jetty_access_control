@@ -3,6 +3,7 @@
 //! `access_graph` is a library for modeling data access permissions and metadata as a graph.
 
 pub mod explore;
+pub mod explore2;
 pub mod graph;
 mod helpers;
 #[cfg(test)]
@@ -30,7 +31,7 @@ const SAVED_GRAPH_PATH: &str = "jetty_graph";
 
 /// Attributes associated with a User node
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub(crate) struct UserAttributes {
+pub struct UserAttributes {
     name: String,
     identifiers: HashSet<connectors::UserIdentifier>,
     other_identifiers: HashSet<String>,
@@ -74,7 +75,7 @@ impl UserAttributes {
 /// Attributes associated with a Group node
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub(crate) struct GroupAttributes {
+pub struct GroupAttributes {
     name: String,
     metadata: HashMap<String, String>,
     connectors: HashSet<String>,
@@ -95,8 +96,9 @@ impl GroupAttributes {
     }
 }
 
+/// A struct defining the attributes of an asset
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub(crate) struct AssetAttributes {
+pub struct AssetAttributes {
     cual: Cual,
     asset_type: AssetType,
     metadata: HashMap<String, String>,
@@ -132,8 +134,9 @@ impl AssetAttributes {
     }
 }
 
+/// A struct describing the attributes of a Tag
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub(crate) struct TagAttributes {
+pub struct TagAttributes {
     name: String,
     value: Option<String>,
     pass_through_hierarchy: bool,
@@ -169,8 +172,9 @@ impl TagAttributes {
     }
 }
 
+/// A struct describing the attributes of a policy
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub(crate) struct PolicyAttributes {
+pub struct PolicyAttributes {
     name: String,
     privileges: HashSet<String>,
     pass_through_hierarchy: bool,
@@ -220,7 +224,7 @@ impl PolicyAttributes {
 
 /// Enum of node types
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub(crate) enum JettyNode {
+pub enum JettyNode {
     /// Group node
     Group(GroupAttributes),
     /// User node
@@ -234,6 +238,39 @@ pub(crate) enum JettyNode {
 }
 
 impl JettyNode {
+    /// Get the type (as a string) of the node.
+    pub fn get_node_type(&self) -> String {
+        match &self {
+            JettyNode::Group(_) => "group".to_owned(),
+            JettyNode::User(_) => "user".to_owned(),
+            JettyNode::Asset(_) => "asset".to_owned(),
+            JettyNode::Tag(_) => "tag".to_owned(),
+            JettyNode::Policy(_) => "policy".to_owned(),
+        }
+    }
+
+    /// Get the type (as a string) of the node.
+    pub fn get_node_name(&self) -> String {
+        match &self {
+            JettyNode::Group(g) => g.name.to_owned(),
+            JettyNode::User(u) => u.name.to_owned(),
+            JettyNode::Asset(a) => a.cual.uri(),
+            JettyNode::Tag(t) => t.name.to_owned(),
+            JettyNode::Policy(p) => p.name.to_owned(),
+        }
+    }
+
+    /// Get a Vec of the connectors for a node
+    pub fn get_node_connectors(&self) -> HashSet<String> {
+        match &self {
+            JettyNode::Group(g) => g.connectors.to_owned(),
+            JettyNode::User(u) => u.connectors.to_owned(),
+            JettyNode::Asset(a) => a.connectors.to_owned(),
+            JettyNode::Tag(t) => t.connectors.to_owned(),
+            JettyNode::Policy(p) => p.connectors.to_owned(),
+        }
+    }
+
     #[allow(dead_code)]
     fn merge_nodes(&self, new_node: &JettyNode) -> Result<JettyNode> {
         match (&self, new_node) {
@@ -347,7 +384,7 @@ impl JettyEdge {
 #[derive(Serialize, Deserialize)]
 pub struct AccessGraph {
     /// The graph itself
-    graph: graph::Graph,
+    pub(crate) graph: graph::Graph,
     edge_cache: HashSet<JettyEdge>,
     /// Unix timestamp of when the graph was built
     last_modified: i64,
