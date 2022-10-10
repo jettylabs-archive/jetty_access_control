@@ -24,6 +24,7 @@ use std::io::{BufWriter, Write};
 use anyhow::{anyhow, Context, Result};
 use serde::Deserialize;
 use serde::Serialize;
+use time::OffsetDateTime;
 
 const SAVED_GRAPH_PATH: &str = "jetty_graph";
 
@@ -348,8 +349,8 @@ pub struct AccessGraph {
     /// The graph itself
     graph: graph::Graph,
     edge_cache: HashSet<JettyEdge>,
-    #[allow(dead_code)]
-    last_modified: usize,
+    /// Unix timestamp of when the graph was built
+    last_modified: i64,
 }
 
 impl AccessGraph {
@@ -368,6 +369,7 @@ impl AccessGraph {
             ag.add_nodes(&connector_data)?;
             ag.add_edges()?;
         }
+        ag.last_modified = OffsetDateTime::now_utc().unix_timestamp();
         Ok(ag)
     }
 

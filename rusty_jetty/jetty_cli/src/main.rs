@@ -141,7 +141,6 @@ async fn fetch(connectors: &Vec<String>, visualize: &bool) -> Result<()> {
         "access graph creation took {} seconds",
         now.elapsed().as_secs_f32()
     );
-
     ag.serialize_graph()?;
 
     if *visualize {
