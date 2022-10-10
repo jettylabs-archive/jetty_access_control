@@ -3,13 +3,13 @@ use serde::{Deserialize, Serialize};
 /// Wrapper struct for role names.
 ///
 /// These are globally unique within a Snowflake account.
-#[derive(Clone, Default, Serialize, Deserialize, Debug)]
+#[derive(Clone, Default, Serialize, Deserialize, Debug, PartialEq, Eq, Hash)]
 #[repr(transparent)]
-pub(crate) struct RoleName(pub(crate) String);
+pub struct RoleName(pub String);
 
 /// Snowflake Role entry.
 #[derive(Clone, Default, Serialize, Deserialize, Debug)]
-pub(crate) struct Role {
+pub struct Role {
     /// The role name in Snowflake.
-    pub(crate) name: RoleName,
+    pub name: RoleName,
 }

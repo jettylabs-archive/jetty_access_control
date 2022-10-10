@@ -21,24 +21,21 @@ mod entry_types;
 mod ep;
 mod rest;
 
-use cual::{cual, get_cual_account_name, set_cual_account_name, Cual};
-use entry_types::{
-    Database, FutureGrant, Grant, GrantOf, GrantType, Object, Role, RoleGrant, RoleName, Schema,
+use cual::set_cual_account_name;
+pub use entry_types::{
+    Asset, Database, Entry, FutureGrant, Grant, GrantOf, GrantType, Object, Role, RoleName, Schema,
     StandardGrant, Table, User, View, Warehouse,
 };
-use ep::get_effective_permissions;
-use jetty_core::cual::Cualable;
 use rest::{SnowflakeRequestConfig, SnowflakeRestClient, SnowflakeRestConfig};
 use serde::de::value::MapDeserializer;
 
 use std::collections::{HashMap, HashSet};
 use std::iter::zip;
 use std::sync::{Arc, Mutex};
-use std::time::Instant;
 
 use jetty_core::{
     connectors,
-    connectors::{nodes, Connector, UserIdentifier},
+    connectors::{nodes, Connector},
     jetty::{ConnectorConfig, CredentialsBlob},
 };
 
@@ -82,44 +79,9 @@ impl Connector for SnowflakeConnector {
     }
 
     async fn get_data(&mut self) -> nodes::ConnectorData {
-        println!("------------------------!!!!!------------------------");
-        let now = Instant::now();
         // Fetch Snowflake Environment
-        let mut c = coordinator::Coordinator::new(&self);
-        c.get_data().await;
-        println!("Fetched Snowflake Env: {:?}", now.elapsed());
-        println!("------------------------!!!!!------------------------");
-        nodes::ConnectorData {
-            // 19 Sec
-            groups: self
-                .get_jetty_groups()
-                .await
-                .context("failed to get groups")
-                .unwrap(),
-            // 7 Sec
-            users: self
-                .get_jetty_users()
-                .await
-                .context("failed to get users")
-                .unwrap(),
-            // 3.5 Sec
-            assets: self
-                .get_jetty_assets()
-                .await
-                .context("failed to get assets")
-                .unwrap(),
-            tags: self
-                .get_jetty_tags()
-                .await
-                .context("failed to get tags")
-                .unwrap(),
-            policies: self
-                .get_jetty_policies()
-                .await
-                .context("failed to get policies")
-                .unwrap(),
-            effective_permissions: get_effective_permissions(&c.env),
-        }
+        let mut c = coordinator::Coordinator::new(self);
+        c.get_data().await
     }
 
     /// Validates the configs and bootstraps a Snowflake connection.
@@ -177,20 +139,6 @@ impl Connector for SnowflakeConnector {
 }
 
 impl SnowflakeConnector {
-    /// Get all grants to a user
-    pub async fn get_grants_to_user(&self, user_name: &str) -> Result<Vec<RoleGrant>> {
-        self.query_to_obj::<RoleGrant>(&format!("SHOW GRANTS TO USER {}", user_name))
-            .await
-            .context("failed to get grants to user")
-    }
-
-    /// Get all grants to a role – the privileges and "children" roles.
-    pub async fn get_grants_to_role(&self, role_name: &str) -> Result<Vec<StandardGrant>> {
-        self.query_to_obj::<StandardGrant>(&format!("SHOW GRANTS TO ROLE {}", role_name))
-            .await
-            .context("failed to get grants to role")
-    }
-
     /// Get all grants to a role – the privileges and "children" roles.
     pub(crate) async fn get_grants_to_role_future(
         &self,
@@ -225,22 +173,6 @@ impl SnowflakeConnector {
         Ok(())
     }
 
-    pub async fn get_future_grants_on_schema(
-        &self,
-        database_name: &str,
-        schema_name: &str,
-    ) -> Result<Vec<FutureGrant>> {
-        self.query_to_obj(&format!(
-            "SHOW FUTURE GRANTS IN SCHEMA {}.{}",
-            database_name, schema_name
-        ))
-        .await
-        .context(format!(
-            "failed to get future grants on schema {}",
-            schema_name
-        ))
-    }
-
     /// Get all future grants for a schema
     pub async fn get_future_grants_of_schema_future(
         &self,
@@ -261,14 +193,6 @@ impl SnowflakeConnector {
         let mut target = target.lock().unwrap();
         target.extend(res);
         Ok(())
-    }
-
-    pub async fn get_future_grants_on_db(&self, db_name: &str) -> Result<Vec<FutureGrant>> {
-        let query = format!("SHOW FUTURE GRANTS IN DATABASE {}", db_name);
-        self.query_to_obj(&query).await.context(format!(
-            "failed to get future grants on db {}; query: {}",
-            db_name, query
-        ))
     }
 
     /// Get all future grants for a database
@@ -294,20 +218,6 @@ impl SnowflakeConnector {
     }
 
     /// Get all users.
-    pub async fn get_users(&self) -> Result<Vec<User>> {
-        self.query_to_obj::<User>("SHOW USERS")
-            .await
-            .context("failed to get users")
-    }
-
-    /// Get all roles.
-    pub(crate) async fn get_roles(&self) -> Result<Vec<Role>> {
-        self.query_to_obj::<Role>("SHOW ROLES")
-            .await
-            .context("failed to get roles")
-    }
-
-    /// Get all users.
     pub async fn get_users_future(&self, target: &mut Vec<User>) -> Result<()> {
         *target = self
             .query_to_obj::<User>("SHOW USERS")
@@ -323,13 +233,6 @@ impl SnowflakeConnector {
             .await
             .context("failed to get roles")?;
         Ok(())
-    }
-
-    /// Get all databases.
-    pub async fn get_databases(&self) -> Result<Vec<Database>> {
-        self.query_to_obj::<Database>("SHOW DATABASES")
-            .await
-            .context("failed to get databases")
     }
 
     /// Get all databases.
@@ -349,33 +252,12 @@ impl SnowflakeConnector {
     }
 
     /// Get all schemas.
-    pub async fn get_schemas(&self) -> Result<Vec<Schema>> {
-        self.query_to_obj::<Schema>("SHOW SCHEMAS IN ACCOUNT")
-            .await
-            .context("failed to get schemas")
-    }
-
-    /// Get all schemas.
     pub async fn get_schemas_future(&self, target: &mut Vec<Schema>) -> Result<()> {
         *target = self
             .query_to_obj::<Schema>("SHOW SCHEMAS IN ACCOUNT")
             .await
             .context("failed to get schemas")?;
         Ok(())
-    }
-
-    /// Get all views.
-    pub async fn get_views(&self) -> Result<Vec<View>> {
-        self.query_to_obj::<View>("SHOW VIEWS")
-            .await
-            .context("failed to get views")
-    }
-
-    /// Get all tables.
-    pub async fn get_tables(&self) -> Result<Vec<Table>> {
-        self.query_to_obj::<Table>("SHOW TABLES")
-            .await
-            .context("failed to get tables")
     }
 
     /// Get all tables.
@@ -436,7 +318,7 @@ impl SnowflakeConnector {
             .collect())
     }
 
-    async fn grants_to_policies(&self, grants: &[GrantType]) -> Vec<Option<nodes::Policy>> {
+    fn grants_to_policies(&self, grants: &[GrantType]) -> Vec<nodes::Policy> {
         grants
             .iter()
             .filter(|g| consts::ASSET_TYPES.contains(&g.granted_on()))
@@ -454,7 +336,7 @@ impl SnowflakeConnector {
                 },
             )
             .iter()
-            .map(|(_asset_name, grants)| {
+            .filter_map(|(_asset_name, grants)| {
                 // When we read, a policy will get created for each unique
                 // role/user, asset combination. All privileges will be bunched together
                 // for that combination.
@@ -472,185 +354,5 @@ impl SnowflakeConnector {
                 Some(final_grant.into_policy(privileges))
             })
             .collect::<Vec<_>>()
-    }
-
-    async fn get_jetty_policies(&self) -> Result<Vec<nodes::Policy>> {
-        let mut res = vec![];
-        // Role grants
-        for role in self.get_roles().await? {
-            let RoleName(role_name) = role.name;
-            let grants_to_role: Vec<_> = self
-                .get_grants_to_role(&role_name)
-                .await?
-                .iter()
-                .map(|g| GrantType::Standard(g.clone()))
-                .collect();
-            let mut policies_for_role = self.grants_to_policies(&grants_to_role).await;
-            res.append(&mut policies_for_role)
-        }
-        // Future grants on databases
-        for db in self.get_databases().await? {
-            let grants_to_db: Vec<GrantType> = self
-                .get_future_grants_on_db(&db.name)
-                .await?
-                .iter()
-                .map(|g| GrantType::Future(g.clone()))
-                .collect();
-            let mut policies_for_db = self.grants_to_policies(&grants_to_db).await;
-            res.append(&mut policies_for_db);
-        }
-        // Future grants on schemas
-        for schema in self.get_schemas().await? {
-            let grants_to_schema: Vec<GrantType> = self
-                .get_future_grants_on_schema(&schema.database_name, &schema.name)
-                .await?
-                .iter()
-                .map(|g| GrantType::Future(g.clone()))
-                .collect();
-            let mut policies_for_schema = self.grants_to_policies(&grants_to_schema).await;
-            res.append(&mut policies_for_schema);
-        }
-        let res = res
-            .iter()
-            // TODO: This is disgusting, we should fix it.
-            .filter_map(|x| x.as_ref())
-            .cloned()
-            .collect();
-        Ok(res)
-    }
-
-    /// Enterprise-only feature. We'll have to do something about that at some point.
-    async fn get_jetty_tags(&self) -> Result<Vec<nodes::Tag>> {
-        Ok(vec![])
-    }
-
-    async fn get_jetty_groups(&self) -> Result<Vec<nodes::Group>> {
-        let mut res = vec![];
-        for role in self.get_roles().await.context("failed to get roles")? {
-            let RoleName(role_name) = role.name;
-            let sub_roles = self
-                .get_grants_to_role(&role_name)
-                .await?
-                .iter()
-                // Only get subgroups
-                .filter(|g| g.granted_on == "ROLE")
-                .map(|g| g.name.to_owned())
-                .collect();
-            res.push(nodes::Group::new(
-                role_name.to_owned(),
-                HashMap::new(),
-                // We only handle parent relationships. The resulting
-                // child relationships are handled by Jetty.
-                HashSet::new(),
-                // Included users are handled in get_jetty_users
-                HashSet::new(),
-                sub_roles,
-                // Policies applied are handled in get_jetty_policies
-                HashSet::new(),
-            ));
-        }
-        Ok(res)
-    }
-
-    async fn get_jetty_users(&self) -> Result<Vec<nodes::User>> {
-        let mut res = vec![];
-        for user in self.get_users().await? {
-            let user_roles = self.get_grants_to_user(&user.name).await?;
-            res.push(nodes::User::new(
-                user.name,
-                HashSet::from([
-                    UserIdentifier::Email(user.email),
-                    UserIdentifier::FirstName(user.first_name),
-                    UserIdentifier::LastName(user.last_name),
-                ]),
-                HashSet::from([user.display_name, user.login_name]),
-                HashMap::new(),
-                user_roles.iter().map(|role| role.role.clone()).collect(),
-                // Policies applied are handled in get_jetty_policies
-                HashSet::new(),
-            ));
-        }
-        Ok(res)
-    }
-
-    async fn get_jetty_assets(&self) -> Result<Vec<nodes::Asset>> {
-        let mut res = vec![];
-        for table in self.get_tables().await? {
-            res.push(nodes::Asset::new(
-                table.cual(),
-                "".to_owned(),
-                connectors::AssetType::DBTable,
-                HashMap::new(),
-                // Policies applied are handled in get_jetty_policies
-                HashSet::new(),
-                HashSet::from([cual!(table.database_name, table.schema_name).uri()]),
-                // Handled in child_of for parents.
-                HashSet::new(),
-                // We aren't extracting lineage from Snowflake right now.
-                HashSet::new(),
-                HashSet::new(),
-                HashSet::new(),
-            ));
-        }
-
-        for view in self.get_views().await? {
-            res.push(nodes::Asset::new(
-                view.cual(),
-                format!("{}.{}.{}", view.database_name, view.schema_name, view.name),
-                connectors::AssetType::DBView,
-                HashMap::new(),
-                // Policies applied are handled in get_jetty_policies
-                HashSet::new(),
-                HashSet::from([cual!(&view.database_name, &view.schema_name).uri()]),
-                // Handled in child_of for parents.
-                HashSet::new(),
-                // We aren't extracting lineage from Snowflake right now.
-                HashSet::new(),
-                HashSet::new(),
-                HashSet::new(),
-            ));
-        }
-
-        let schemas = self.get_schemas().await?;
-
-        for schema in schemas {
-            // TODO: Get subassets
-            res.push(nodes::Asset::new(
-                schema.cual(),
-                format!("{}.{}", schema.database_name, schema.name),
-                connectors::AssetType::DBSchema,
-                HashMap::new(),
-                // Policies applied are handled in get_jetty_policies
-                HashSet::new(),
-                HashSet::from([cual!(schema.database_name).uri()]),
-                // Handled in child_of for parents.
-                HashSet::new(),
-                // We aren't extracting lineage from Snowflake right now.
-                HashSet::new(),
-                HashSet::new(),
-                HashSet::new(),
-            ));
-        }
-
-        for db in self.get_databases().await? {
-            // TODO: Get subassets
-            res.push(nodes::Asset::new(
-                db.cual(),
-                db.name,
-                connectors::AssetType::DBDB,
-                HashMap::new(),
-                // Policies applied are handled in get_jetty_policies
-                HashSet::new(),
-                HashSet::new(),
-                // Handled in child_of for parents.
-                HashSet::new(),
-                // We aren't extracting lineage from Snowflake right now.
-                HashSet::new(),
-                HashSet::new(),
-                HashSet::new(),
-            ));
-        }
-
-        Ok(res)
     }
 }

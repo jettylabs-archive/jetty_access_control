@@ -9,7 +9,7 @@ use jetty_core::{
     jetty::ConnectorConfig,
     Connector,
 };
-use jetty_snowflake::SnowflakeConnector;
+use jetty_snowflake::{RoleName, SnowflakeConnector};
 
 use serde::Serialize;
 
@@ -237,7 +237,7 @@ async fn input_produces_correct_results() {
     }];
     let input = TestInput {
         entries: vec![jetty_snowflake::Entry::Role(jetty_snowflake::Role {
-            name: "my_role".to_owned(),
+            name: RoleName("my_role".to_owned()),
         })],
         // users: vec![jetty_snowflake::User {
         //     name: "my_user".to_owned(),
