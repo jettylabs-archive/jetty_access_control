@@ -19,7 +19,7 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::fs::File;
-use std::io::{BufWriter, Write};
+use std::io::BufWriter;
 
 use anyhow::{anyhow, Context, Result};
 use serde::Deserialize;
