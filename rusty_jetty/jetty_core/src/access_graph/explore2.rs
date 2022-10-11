@@ -1,15 +1,10 @@
 //! Utilities for exploration of the graph.
 //!
 
-use std::hash::Hash;
-use std::{collections::HashSet, iter::from_fn};
+use std::collections::HashSet;
 
 use indexmap::IndexSet;
-use petgraph::{
-    stable_graph::NodeIndex,
-    visit::{IntoNeighborsDirected, IntoNodeReferences, NodeCount},
-    Direction,
-};
+use petgraph::{stable_graph::NodeIndex, visit::IntoNodeReferences, Direction};
 
 use super::{AccessGraph, EdgeType, JettyNode, NodeName};
 
@@ -242,11 +237,9 @@ impl AccessGraph {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::{HashMap, HashSet};
 
     use crate::{
         access_graph::{AssetAttributes, GroupAttributes, PolicyAttributes, UserAttributes},
-        connectors::AssetType,
         cual::Cual,
     };
 
