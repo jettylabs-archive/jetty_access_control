@@ -32,7 +32,7 @@ impl AccessGraph {
         min_depth: Option<usize>,
         max_depth: Option<usize>,
     ) -> Vec<JettyNode> {
-        let idx = self.graph.nodes.get(&from).unwrap();
+        let idx = self.graph.nodes.get(from).unwrap();
 
         let max_depth = if let Some(l) = max_depth {
             l

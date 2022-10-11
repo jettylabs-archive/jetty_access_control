@@ -30,7 +30,7 @@ use time::OffsetDateTime;
 const SAVED_GRAPH_PATH: &str = "jetty_graph";
 
 /// Attributes associated with a User node
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UserAttributes {
     name: String,
     identifiers: HashSet<connectors::UserIdentifier>,
@@ -74,7 +74,7 @@ impl UserAttributes {
 
 /// Attributes associated with a Group node
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GroupAttributes {
     name: String,
     metadata: HashMap<String, String>,
@@ -97,7 +97,7 @@ impl GroupAttributes {
 }
 
 /// A struct defining the attributes of an asset
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AssetAttributes {
     cual: Cual,
     asset_type: AssetType,
@@ -135,7 +135,7 @@ impl AssetAttributes {
 }
 
 /// A struct describing the attributes of a Tag
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TagAttributes {
     name: String,
     value: Option<String>,
@@ -173,7 +173,7 @@ impl TagAttributes {
 }
 
 /// A struct describing the attributes of a policy
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PolicyAttributes {
     name: String,
     privileges: HashSet<String>,
@@ -223,7 +223,7 @@ impl PolicyAttributes {
 }
 
 /// Enum of node types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum JettyNode {
     /// Group node
     Group(GroupAttributes),
