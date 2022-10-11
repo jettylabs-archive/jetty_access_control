@@ -1,16 +1,11 @@
 //! Utilities for exploration of the graph.
 //!
 
-use std::{collections::HashSet, iter::from_fn, thread::current};
+use std::collections::HashSet;
 
-use indexmap::IndexSet;
-use petgraph::{
-    stable_graph::NodeIndex,
-    visit::{IntoEdgesDirected, IntoNodeReferences, NodeRef},
-    Direction,
-};
+use petgraph::{stable_graph::NodeIndex, visit::IntoNodeReferences, Direction};
 
-use super::{AccessGraph, EdgeType, JettyEdge, JettyNode, NodeName};
+use super::{AccessGraph, EdgeType, JettyNode, NodeName};
 
 impl AccessGraph {
     /// Get all nodes from the graph
