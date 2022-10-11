@@ -22,7 +22,6 @@ impl AccessGraph {
     /// `output_matcher` is a function that must return true for a node to be a destination
     /// `min_depth` is the minimum depth at which a target may be found
     /// `max_depth` is how deep to search for children. If None, will continue until it runs out of children to visit.
-
     pub fn get_matching_children(
         &self,
         from: &NodeName,
