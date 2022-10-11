@@ -1,12 +1,28 @@
 //! Utilities for exploration of the graph.
 //!
 
-use std::collections::HashSet;
+use std::{collections::HashSet, fmt::Display};
 
 use indexmap::IndexSet;
 use petgraph::{stable_graph::NodeIndex, visit::IntoNodeReferences, Direction};
 
 use super::{AccessGraph, EdgeType, JettyNode, NodeName};
+
+struct NodePath(Vec<JettyNode>);
+
+impl Display for NodePath {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            self.0
+                .iter()
+                .map(|n| n.get_string_name())
+                .collect::<Vec<_>>()
+                .join(" ⇨ ")
+        )
+    }
+}
 
 impl AccessGraph {
     /// Get all nodes from the graph
@@ -132,7 +148,7 @@ impl AccessGraph {
         passthrough_matcher: fn(&JettyNode) -> bool,
         min_depth: Option<usize>,
         max_depth: Option<usize>,
-    ) -> Vec<Vec<JettyNode>> {
+    ) -> Vec<NodePath> {
         let from_idx = self.graph.nodes.get(from).unwrap();
         let to_idx = self.graph.nodes.get(to).unwrap();
 
@@ -175,7 +191,7 @@ impl AccessGraph {
         max_depth: usize,
         current_depth: usize,
         visited: &mut IndexSet<NodeIndex>,
-        results: &mut Vec<Vec<JettyNode>>,
+        results: &mut Vec<NodePath>,
     ) {
         let legal_connections = self
             .graph
@@ -208,7 +224,7 @@ impl AccessGraph {
                         .cloned()
                         .map(|i| self.graph.graph[i].to_owned())
                         .collect::<Vec<_>>();
-                    results.push(path);
+                    results.push(NodePath(path));
                     visited.pop();
                     continue;
                 }
@@ -427,6 +443,7 @@ mod tests {
             None,
             None,
         );
+        a.iter().for_each(|p| println!("{}", &p));
         assert_eq!(a.len(), 2);
 
         Ok(())
