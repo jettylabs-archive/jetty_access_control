@@ -8,6 +8,8 @@ use dirs::home_dir;
 use serde::Deserialize;
 use yaml_peg::serde as yaml;
 
+use crate::access_graph;
+
 /// Struct representing the jetty_config.yaml file.
 #[allow(dead_code)]
 #[derive(Deserialize, Debug)]
@@ -69,6 +71,8 @@ impl Jetty {
     /// Convenience method for struct creation. Uses the default location for
     /// config files.
     pub fn new() -> Result<Self> {
+        // load a saved access graph or create an empty one
+
         Ok(Jetty {
             config: JettyConfig::new()?,
         })
