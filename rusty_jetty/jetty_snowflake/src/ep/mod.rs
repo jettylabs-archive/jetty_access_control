@@ -1,6 +1,8 @@
 //! Effective Permissions
 //!
 
+mod consts;
+
 use std::collections::{HashMap, HashSet};
 
 use jetty_core::{
@@ -8,12 +10,12 @@ use jetty_core::{
         nodes::{EffectivePermission, SparseMatrix, PermissionMode},
         UserIdentifier,
     },
-    cual::Cual,
+    cual::{Cual},
 };
 
 use crate::{coordinator::{Environment, Grantee}, GrantOf, Object, Role, RoleName, User, Grant};
 
-struct EffectivePermissionMap<'a> {
+pub(crate)struct EffectivePermissionMap<'a> {
     matrix: SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>>,
     roles: &'a Vec<Role>,
     role_map: HashMap<usize, HashSet<usize>>,
@@ -50,12 +52,12 @@ impl<'a> EffectivePermissionMap<'a> {
         res
     }
 
-    fn get_effective_permissions_for_object<'b>(
+    pub(crate) fn get_effective_permissions_for_object<'b>(
         &self,
         env: &'b Environment,
         user: &'b User,
         object: &'b Object,
-    ) -> impl Iterator<Item = EffectivePermission > + 'b {
+    ) -> HashSet<EffectivePermission> {
         let user_roles = self.get_recursive_roles(user);
         // Get the db + schema permissions for this object.
         let db_grants:Vec<_>= env.standard_grants.iter().filter(|sg| {
@@ -81,7 +83,14 @@ impl<'a> EffectivePermissionMap<'a> {
         let has_schema_usage = schema_grants.iter().find(|g| g.privilege == "USAGE").is_some();
 
         if !has_any_db_grant || !has_schema_usage{
-            // TODO: Deny access. Early return.
+            // TODO: Deny access. Return early with effective permissions for each privilege on the object.
+            let privileges = match object.kind{
+                crate::entry_types::ObjectKind::Table => consts::TABLE_PRIVILEGES,
+                crate::entry_types::ObjectKind::View => consts::VIEW_PRIVILEGES,
+            };
+            return privileges.into_iter().map(|&p|{
+                EffectivePermission::new(p.to_owned(), PermissionMode::Deny, vec!["User does not have usage on the parent db and schema.".to_owned()])
+            }).collect();
         }
 
         // resolve conflicts and return all effective privileges.
@@ -89,7 +98,7 @@ impl<'a> EffectivePermissionMap<'a> {
             sg.granted_on_name() == object.fqn() && user_roles.contains(&RoleName(sg.role_name().to_owned()))
         }).fold(HashMap::new(),|mut map, grant|{
             if let Some(entry) = map.get(&grant.privilege){
-                match entry.privilege{
+                match (&object.kind, &entry.privilege){
                 // resolve conflicts
                 _ => ()
                 };
@@ -99,7 +108,7 @@ impl<'a> EffectivePermissionMap<'a> {
             map
         });
 
-        object_grants.into_values()
+        object_grants.into_values().collect()
     }
 }
 
@@ -153,11 +162,3 @@ fn get_direct_parents<'a>(
         }
     })
 }
-
-pub(crate) fn get_effective_permissions(
-    env: &Environment,
-) -> SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> {
-    let mut res = HashMap::new();
-    res
-}
-
