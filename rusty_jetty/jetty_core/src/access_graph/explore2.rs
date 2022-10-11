@@ -423,7 +423,7 @@ mod tests {
             &NodeName::User("user".to_owned()),
             &NodeName::Group("group1".to_owned()),
             |_| true,
-            |n| n.get_string_name() == "group2".to_owned(),
+            |n| n.get_string_name() == *"group2",
             None,
             None,
         );
