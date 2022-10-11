@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::{sync::Arc, time::Instant};
 
 use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
@@ -41,7 +41,7 @@ async fn main() -> Result<()> {
         }
 
         JettyCommand::Explore => match AccessGraph::deserialize_graph() {
-            Ok(g) => jetty_explore::explore_web_ui(g).await,
+            Ok(ag) => jetty_explore::explore_web_ui(Arc::new(ag)).await,
             Err(e) => println!(
                 "Unable to find saved graph. Try running `jetty fetch`\nError: {}",
                 e
