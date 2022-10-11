@@ -9,9 +9,11 @@ use jetty_core::{
     jetty::ConnectorConfig,
     Connector,
 };
-use jetty_snowflake::SnowflakeConnector;
+use jetty_snowflake::{RoleName, SnowflakeConnector};
 
+use anyhow::Context;
 use serde::Serialize;
+use serde_json::Value;
 
 use wiremock::matchers::{body_string_contains, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -33,7 +35,7 @@ struct SnowflakeRowTypeFields {
 struct SnowflakeResult {
     #[serde(rename = "resultSetMetaData")]
     result_set_metadata: SnowflakeRowTypeFields,
-    data: Vec<jetty_snowflake::Entry>,
+    data: Vec<Vec<Option<String>>>,
 }
 
 /// Make a json body for the types from the input with the given pattern.
@@ -45,15 +47,37 @@ macro_rules! body_for {
                     name: stringify!($field).to_owned(),
                 }),+],
             },
+            // Snowflake returns objects as arrays, so we need to do the same for testing.
+            // Example: https://tinyurl.com/object-to-string-rust
             data: $input
                 .entries
                 .iter()
-                .filter(|e| matches!(e, $entry_type))
-                // .filter(|e| matches!(e, jetty_snowflake::Entry::Role(_)))
-                .cloned()
+                .filter_map(|entry| {
+                    // Only keep entries of this type.
+                    if !matches!(entry, $entry_type){
+                        return None;
+                    }
+
+                    if let Value::Object(obj) = serde_json::to_value(entry).unwrap(){
+                        let vals = obj.values().cloned().map(|i|{
+
+                            if let serde_json::Value::String(v) = i {
+                                // Snowflake returns Option<String>.
+                                Some(v)
+                            } else {
+                                // Shouldn't happen
+                                panic!("bad entry field for snowflake body")
+                            }
+                        }).collect::<Vec<_>>();
+                        Some(vals)
+                    }else{
+                        // Shouldn't happen
+                        panic!("bad entry for snowflake body")
+                    }
+                })
                 .collect(),
-        })
-        .unwrap()
+            })
+        .context("building json body").unwrap()
     };
 }
 
@@ -237,7 +261,7 @@ async fn input_produces_correct_results() {
     }];
     let input = TestInput {
         entries: vec![jetty_snowflake::Entry::Role(jetty_snowflake::Role {
-            name: "my_role".to_owned(),
+            name: RoleName("my_role".to_owned()),
         })],
         // users: vec![jetty_snowflake::User {
         //     name: "my_user".to_owned(),

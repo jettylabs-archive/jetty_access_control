@@ -10,10 +10,11 @@ use jetty_core::connectors;
 use jetty_core::connectors::nodes;
 use jetty_core::connectors::UserIdentifier;
 
-use super::cual::{cual, get_cual_account_name, Cual};
 use jetty_core::cual::Cualable;
 
+use super::cual::{cual, get_cual_account_name, Cual};
 use crate::entry_types;
+use crate::entry_types::RoleName;
 use crate::Grant;
 use crate::GrantType;
 
@@ -24,29 +25,27 @@ const CONCURRENT_METADATA_FETCHES: usize = 15;
 /// Environment is a collection of objects pulled right out of Snowflake.
 /// We process them to make jetty nodes and edges.
 #[derive(Default, Debug)]
-struct Environment {
-    databases: Vec<entry_types::Database>,
-    schemas: Vec<entry_types::Schema>,
-    objects: Vec<entry_types::Object>,
-    users: Vec<entry_types::User>,
-    roles: Vec<entry_types::Role>,
-    standard_grants: Vec<entry_types::StandardGrant>,
-    future_grants: Vec<entry_types::FutureGrant>,
-    role_grants: Vec<entry_types::GrantOf>,
+pub(crate) struct Environment {
+    pub(crate) databases: Vec<entry_types::Database>,
+    pub(crate) schemas: Vec<entry_types::Schema>,
+    pub(crate) objects: Vec<entry_types::Object>,
+    pub(crate) users: Vec<entry_types::User>,
+    pub(crate) roles: Vec<entry_types::Role>,
+    pub(crate) standard_grants: Vec<entry_types::StandardGrant>,
+    pub(crate) future_grants: Vec<entry_types::FutureGrant>,
+    pub(crate) role_grants: Vec<entry_types::GrantOf>,
 }
 
 // Now lets start filling up the environment
 
-type RoleName = String;
-
 pub(super) struct Coordinator<'a> {
-    env: Environment,
+    pub(crate) env: Environment,
     conn: &'a super::SnowflakeConnector,
     role_grants: HashMap<Grantee, HashSet<RoleName>>,
 }
 
 #[derive(Hash, Eq, PartialEq)]
-enum Grantee {
+pub(crate) enum Grantee {
     User(String),
     Role(String),
 }
@@ -205,9 +204,14 @@ impl<'a> Coordinator<'a> {
     }
 
     /// Helper fn to get role grants for a grantee
-    fn get_role_grants(&self, grantee: &Grantee) -> HashSet<RoleName> {
+    fn get_role_grant_names(&self, grantee: &Grantee) -> HashSet<String> {
         if let Some(g) = self.role_grants.get(grantee) {
-            g.to_owned()
+            g.iter()
+                .map(|r| {
+                    let RoleName(role_name) = r;
+                    role_name.to_owned()
+                })
+                .collect()
         } else {
             HashSet::new()
         }
@@ -217,10 +221,11 @@ impl<'a> Coordinator<'a> {
     fn get_jetty_groups(&self) -> Vec<nodes::Group> {
         let mut res = vec![];
         for role in &self.env.roles {
+            let RoleName(role_name) = &role.name;
             res.push(nodes::Group::new(
-                role.name.to_owned(),
+                role_name.to_owned(),
                 HashMap::new(),
-                self.get_role_grants(&Grantee::Role(role.name.to_owned())),
+                self.get_role_grant_names(&Grantee::Role(role_name.to_owned())),
                 HashSet::new(),
                 HashSet::new(),
                 HashSet::new(),
@@ -242,7 +247,7 @@ impl<'a> Coordinator<'a> {
                 ]),
                 HashSet::from([user.display_name.to_owned(), user.login_name.to_owned()]),
                 HashMap::new(),
-                self.get_role_grants(&Grantee::User(user.name.to_owned())),
+                self.get_role_grant_names(&Grantee::User(user.name.to_owned())),
                 HashSet::new(),
             ))
         }

@@ -1,11 +1,9 @@
-pub(crate) use super::future_grant::FutureGrant;
+pub use super::future_grant::FutureGrant;
 
 use std::collections::HashSet;
 
 use jetty_core::connectors::nodes;
 use serde::{Deserialize, Serialize};
-use structmap::FromMap;
-use structmap_derive::FromMap;
 
 use crate::cual::cual_from_snowflake_obj_name;
 
@@ -15,7 +13,7 @@ pub enum GrantType {
     Future(super::future_grant::FutureGrant),
 }
 
-pub(crate) trait Grant {
+pub trait Grant {
     fn granted_on_name(&self) -> &str;
     fn role_name(&self) -> &str;
     fn privilege(&self) -> &str;
@@ -66,7 +64,7 @@ impl Grant for GrantType {
 }
 
 /// Snowflake Grant entry.
-#[derive(FromMap, Default, Deserialize, Serialize, Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Default, Deserialize, Serialize, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct StandardGrant {
     // The role name or fully-qualified asset name this grant grants access to.
     pub name: String,
