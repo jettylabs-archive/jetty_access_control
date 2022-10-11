@@ -1,4 +1,4 @@
-use std::collections::{HashSet};
+use std::collections::HashSet;
 
 use anyhow::Result;
 use serde::Deserialize;
@@ -75,20 +75,25 @@ pub(super) fn get_output_table_cuals(
     let table_info: TableInfo = serde_json::from_value(node.to_owned())?;
     let server = get_server_info(doc, &table_info.connection_id)?;
 
-    let mut table = table_info.attributes.tablename;
-    // Fix up the table name:
-    if table.starts_with('"') {
-        table = table.trim_matches('"').to_owned();
-    } else if table.starts_with('\'') {
-        table = table.trim_matches('\'').to_owned();
-    } else if table.starts_with('[') {
-        table = table.trim_matches('[').to_owned();
-        table = table.trim_matches(']').to_owned();
-    } else if table.starts_with('`') {
-        table = table.trim_matches('`').to_owned();
-    } else {
-        table = table.to_uppercase();
-    }
+    let table = table_info.attributes.tablename;
+
+    // It turns out that when writing tables to the db, flows actually use the tableau name as if it
+    // were quoted, which is what we want to do, so this code double-escapes quotes causes errors:
+
+    // // Fix up the table name:
+    // if table.starts_with('"') {
+    //     // this uses a simple wrapper around strip to make
+    //     // it work like trim_matches, but only with single match
+    //     table = strip_start_and_end(table, '"', '"');
+    // } else if table.starts_with('\'') {
+    //     table = strip_start_and_end(table, '\'', '\'');
+    // } else if table.starts_with('[') {
+    //     table = strip_start_and_end(table, '[', ']');
+    // } else if table.starts_with('`') {
+    //     table = strip_start_and_end(table, '`', '`');
+    // } else {
+    //     table = table.to_uppercase();
+    // }
 
     let snowflake_table = crate::file_parse::snowflake_common::SnowflakeTableInfo {
         table,

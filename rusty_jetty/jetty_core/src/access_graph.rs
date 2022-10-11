@@ -19,7 +19,7 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::fs::File;
-use std::io::{BufWriter, Write};
+use std::io::BufWriter;
 
 use anyhow::{anyhow, Context, Result};
 use serde::Deserialize;
@@ -373,6 +373,11 @@ impl AccessGraph {
         Ok(ag)
     }
 
+    /// Get last modified date for access graph as a Unix timestamp (seconds resolution)
+    pub fn get_last_modified(&self) -> i64 {
+        self.last_modified
+    }
+
     pub(crate) fn add_nodes(&mut self, data: &ProcessedConnectorData) -> Result<()> {
         self.register_nodes_and_edges(&data.data.groups, &data.connector)?;
         self.register_nodes_and_edges(&data.data.users, &data.connector)?;
@@ -391,6 +396,7 @@ impl AccessGraph {
         Ok(())
     }
 
+    /// Add nodes to the graph and add edges to the edge cache
     fn register_nodes_and_edges<T: NodeHelper>(
         &mut self,
         nodes: &Vec<T>,
