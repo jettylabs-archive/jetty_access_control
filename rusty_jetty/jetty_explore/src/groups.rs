@@ -1,4 +1,4 @@
-use axum::{routing::get, Json, Router};
+use axum::{extract::Path, routing::get, Json, Router};
 use serde_json::{json, Value};
 
 /// Return a router to handle all group-related requests
@@ -18,7 +18,9 @@ pub(super) fn router() -> Router {
 }
 
 /// Return the groups that this group is a direct member of
-async fn direct_groups_handler() -> Json<Value> {
+async fn direct_groups_handler(Path(node_id): Path<String>) -> Json<Value> {
+
+  
     Json(json! {
     [
         {

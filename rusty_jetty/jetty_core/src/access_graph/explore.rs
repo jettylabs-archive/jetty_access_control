@@ -77,7 +77,7 @@ mod tests {
 
     use crate::{
         access_graph::{
-            test_util::new_graph_with, AssetAttributes, PolicyAttributes, UserAttributes,
+            test_util::new_graph_with, AssetAttributes, EdgeType, PolicyAttributes, UserAttributes,
         },
         connectors::AssetType,
         cual::Cual,
@@ -104,10 +104,12 @@ mod tests {
                 (
                     NodeName::User("user".to_owned()),
                     NodeName::Policy("policy".to_owned()),
+                    EdgeType::default(),
                 ),
                 (
                     NodeName::Policy("policy".to_owned()),
                     NodeName::Asset("my_cual".to_owned()),
+                    EdgeType::default(),
                 ),
             ],
         )?;
@@ -138,10 +140,12 @@ mod tests {
                 (
                     NodeName::Policy("policy".to_owned()),
                     NodeName::User("user".to_owned()),
+                    EdgeType::default(),
                 ),
                 (
                     NodeName::Asset("my_cual".to_owned()),
                     NodeName::Policy("policy".to_owned()),
+                    EdgeType::default(),
                 ),
             ],
         )?;

@@ -11,7 +11,7 @@ use super::{graph::Graph, EdgeType, JettyEdge, JettyNode, NodeName};
 /// quickly.
 pub(crate) fn new_graph_with(
     nodes: &[&JettyNode],
-    edges: &[(NodeName, NodeName)],
+    edges: &[(NodeName, NodeName, EdgeType)],
 ) -> Result<Graph> {
     let mut graph = new_graph();
 

@@ -301,19 +301,32 @@ impl JettyNode {
 
 /// Enum of edge types
 #[derive(PartialEq, Eq, Hash, Debug, Copy, Clone, Default, Serialize, Deserialize)]
-pub(crate) enum EdgeType {
+pub enum EdgeType {
+    /// user|group -> is a member of -> group
     MemberOf,
+    /// group -> includes, as members -> user|group
     Includes,
+    /// group|user -> has permission granted by -> policy
     GrantedBy,
+    /// asset -> hierarchical child of -> asset
     ChildOf,
+    /// asset -> hierarchical parent of -> asset
     ParentOf,
+    /// asset -> derived via lineage from -> asset
     DerivedFrom,
+    /// asset -> parent, via lineage, of -> asset
     DerivedTo,
+    /// asset -> tagged with -> tag
     TaggedAs,
+    /// asset ->
     GovernedBy,
+    /// tag -> applied to -> asset
     AppliedTo,
+    /// policy -> governs -> asset
     Governs,
+    /// policy -> granted_to -> user|group
     GrantedTo,
+    /// anything else
     #[default]
     Other,
 }
@@ -397,6 +410,21 @@ impl AccessGraph {
         }
         ag.last_modified = OffsetDateTime::now_utc().unix_timestamp();
         Ok(ag)
+    }
+
+    #[cfg(test)]
+    /// New graph
+    pub fn new_dummy(nodes: &[&JettyNode], edges: &[(NodeName, NodeName, EdgeType)]) -> Self {
+        use self::test_util::new_graph_with;
+
+        let mut ag = AccessGraph {
+            graph: new_graph_with(nodes, edges).unwrap(),
+            edge_cache: HashSet::new(),
+            last_modified: 0,
+        };
+
+        ag.last_modified = OffsetDateTime::now_utc().unix_timestamp();
+        ag
     }
 
     /// Get last modified date for access graph as a Unix timestamp (seconds resolution)
