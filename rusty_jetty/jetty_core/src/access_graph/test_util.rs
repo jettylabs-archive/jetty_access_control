@@ -22,7 +22,7 @@ pub(crate) fn new_graph_with(
         graph.add_edge(JettyEdge::new(
             edge.0.clone(),
             edge.1.clone(),
-            EdgeType::default(),
+            edge.2.clone(),
         ))?;
     }
 

@@ -74,7 +74,7 @@ impl UserAttributes {
 
 /// Attributes associated with a Group node
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct GroupAttributes {
     name: String,
     metadata: HashMap<String, String>,
@@ -93,6 +93,14 @@ impl GroupAttributes {
             metadata,
             connectors,
         })
+    }
+    /// Convenience constructor for testing
+    #[cfg(test)]
+    fn new(name: String) -> Self {
+        Self {
+            name,
+            ..Default::default()
+        }
     }
 }
 
@@ -239,7 +247,7 @@ pub enum JettyNode {
 
 impl JettyNode {
     /// Get the type (as a string) of the node.
-    pub fn get_node_name(&self) -> String {
+    pub fn get_string_name(&self) -> String {
         match &self {
             JettyNode::Group(g) => g.name.to_owned(),
             JettyNode::User(u) => u.name.to_owned(),
