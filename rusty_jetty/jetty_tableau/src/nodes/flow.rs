@@ -81,7 +81,7 @@ impl HasSources for Flow {
     }
 
     fn sources(&self) -> (HashSet<String>, HashSet<String>) {
-        (self.derived_from.to_owned(), self.derived_from.to_owned())
+        (self.derived_from.to_owned(), self.derived_to.to_owned())
     }
 
     async fn fetch_sources(

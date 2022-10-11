@@ -4,7 +4,8 @@ use serde::{Deserialize, Serialize};
 ///
 /// These are globally unique within a Snowflake account.
 #[derive(Clone, Default, Serialize, Deserialize, Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[serde(transparent)]
+
 pub struct RoleName(pub String);
 
 /// Snowflake Role entry.

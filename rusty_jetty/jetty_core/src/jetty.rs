@@ -8,8 +8,6 @@ use dirs::home_dir;
 use serde::Deserialize;
 use yaml_peg::serde as yaml;
 
-use crate::access_graph;
-
 /// Struct representing the jetty_config.yaml file.
 #[allow(dead_code)]
 #[derive(Deserialize, Debug)]

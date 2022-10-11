@@ -302,8 +302,11 @@ impl SnowflakeConnector {
             panic!("Unexpected partitioned return value: {}", info);
         }
         let rows_data = rows_value["data"].clone();
-        let rows: Vec<HashMap<String, JsonValue>> =
-            serde_json::from_value(rows_data.clone()).context("failed to deserialize rows")?;
+        let rows: Vec<Vec<String>> = serde_json::from_value::<Vec<Vec<Option<String>>>>(rows_data)
+            .context("failed to deserialize rows")?
+            .into_iter()
+            .map(|v| v.iter().map(|f| f.clone().unwrap_or_default()).collect())
+            .collect();
         let fields_intermediate: Vec<SnowflakeField> =
             serde_json::from_value(rows_value["resultSetMetaData"]["rowType"].clone())
                 .context("failed to deserialize fields")?;
@@ -312,11 +315,13 @@ impl SnowflakeConnector {
             .into_iter()
             .map(|i| {
                 // Zip field - i
-                let vals: HashMap<String, JsonValue> =
-                    zip(fields.clone(), i.into_values()).collect();
-                T::deserialize(MapDeserializer::new(vals.into_iter()))
-                    .context("couldn't deserialize")
-                    .unwrap()
+                let vals: HashMap<String, String> = zip(fields.clone(), i).collect();
+                T::deserialize(MapDeserializer::<
+                    std::collections::hash_map::IntoIter<std::string::String, std::string::String>,
+                    serde::de::value::Error,
+                >::new(vals.into_iter()))
+                .context("couldn't deserialize")
+                .unwrap()
             })
             .collect())
     }
