@@ -5,6 +5,7 @@ pub mod nodes;
 
 use anyhow::Result;
 use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     connectors::nodes::ConnectorData,
@@ -40,7 +41,7 @@ pub trait Connector {
 
 /// Enum of identifiers used to resolve user identities
 
-#[derive(Debug, Default, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub enum UserIdentifier {
     /// User's first name
     FirstName(String),
@@ -57,7 +58,7 @@ pub enum UserIdentifier {
 
 /// Enum of known asset types
 
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AssetType {
     /// Database Table
     DBTable,
