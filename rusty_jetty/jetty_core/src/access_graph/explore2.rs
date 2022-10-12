@@ -1,6 +1,7 @@
 //! Utilities for exploration of the graph.
 //!
 
+mod extract_graph;
 mod matching_children;
 mod matching_paths;
 mod matching_paths_to_children;
