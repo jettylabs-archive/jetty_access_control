@@ -42,7 +42,7 @@ const props = defineProps(["node"]);
 const columns = [
   {
     name: "name",
-    label: "Group Name",
+    label: "User",
     field: "name",
     sortable: true,
     align: "left",
