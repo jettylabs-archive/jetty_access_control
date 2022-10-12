@@ -1,7 +1,9 @@
 //! Utilities for exploration of the graph.
 //!
 
+mod accessable_assets;
 mod extract_graph;
+mod get_node;
 mod matching_children;
 mod matching_paths;
 mod matching_paths_to_children;
@@ -27,6 +29,16 @@ impl Display for NodePath {
                 .collect::<Vec<_>>()
                 .join(" ⇨ ")
         )
+    }
+}
+
+/// A DiGraph derived from an AccessGraph
+pub struct SubGraph(petgraph::graph::DiGraph<JettyNode, EdgeType>);
+
+impl SubGraph {
+    /// return the dot graph representation of a SubGraph
+    pub fn dot(&self) -> petgraph::dot::Dot<&petgraph::Graph<JettyNode, EdgeType>> {
+        petgraph::dot::Dot::new(&self.0)
     }
 }
 

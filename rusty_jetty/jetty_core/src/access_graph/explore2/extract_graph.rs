@@ -5,9 +5,8 @@ use std::collections::HashMap;
 
 use petgraph::{stable_graph::NodeIndex, visit::EdgeRef};
 
+use super::SubGraph;
 use crate::access_graph::{AccessGraph, EdgeType, JettyNode, NodeName};
-
-pub struct SubGraph(petgraph::graph::DiGraph<JettyNode, EdgeType>);
 
 impl AccessGraph {
     /// Extract the graph surrounding a node to max_depth
@@ -75,13 +74,6 @@ impl AccessGraph {
         }
     }
 }
-
-impl SubGraph {
-    pub fn dot(&self) -> petgraph::dot::Dot<&petgraph::Graph<JettyNode, EdgeType>> {
-        petgraph::dot::Dot::new(&self.0)
-    }
-}
-
 #[cfg(test)]
 mod tests {
 

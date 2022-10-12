@@ -1,4 +1,10 @@
-use axum::{routing::get, Json, Router};
+use std::sync::Arc;
+
+use axum::{extract::Path, routing::get, Extension, Json, Router};
+use jetty_core::{
+    access_graph::{self, NodeName},
+    connectors::UserIdentifier,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
@@ -16,48 +22,47 @@ pub(super) fn router() -> Router {
 
 /// Struct used to return asset access information
 #[derive(Serialize, Deserialize)]
-struct UserAssets {
+struct UserAssetsResponse {
     name: String,
-    privileges: Vec<Privilege>,
-    platform: String,
+    privileges: Vec<PrivilegeResponse>,
+    connector: String,
 }
 
 #[derive(Serialize, Deserialize)]
-struct Privilege {
+struct PrivilegeResponse {
     name: String,
     explanations: Vec<String>,
 }
 
 /// Return information about a user's access to assets, including privilege and explanation
-async fn assets_handler() -> Json<Vec<UserAssets>> {
-    let val = json!(
-    [
-        {
-            "name": "Frozen Yogurt",
-            "privileges": [
-            {
-                "name": "p1",
-                "explanations": [
-                "what happens we have really long explanations what happens we have really long explanations",
-                "what happens we have really long",
-                ],
-            },
-            { "name": "p2", "explanations": ["reason 1", "reason 2"] },
-            { "name": "p3", "explanations": ["reason 1", "reason 2"] },
-            ],
-            "platform": "tableau",
-        },
-        {
-            "name": "Ice cream sandwich",
-            "privileges": [{ "name": "p1", "explanations": ["reason 1", "reason 2"] }],
-            "platform": "snowflake",
-        },
-    ]
-    );
+async fn assets_handler(
+    Path(node_id): Path<String>,
+    Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
+) -> Json<Vec<UserAssetsResponse>> {
+    // use the effective permissions to get all the assets that a user has access to
+    let assets_and_permissions = ag.get_user_accessible_assets(&UserIdentifier::Email(node_id));
+    // get the name and connectors from each asset
 
-    let user_asset_info: Vec<UserAssets> = serde_json::from_value(val).unwrap();
-
-    Json(user_asset_info)
+    Json(
+        assets_and_permissions
+            .iter()
+            // get the JettyNodes for all of the accessible assets
+            .map(|(k, v)| (ag.get_node(&NodeName::Asset(k.to_string())).unwrap(), v))
+            // adding second map for clarity
+            // build Vec of UserAssetResponse structs
+            .map(|(k, v)| UserAssetsResponse {
+                name: k.get_string_name(),
+                privileges: v
+                    .iter()
+                    .map(|p| PrivilegeResponse {
+                        name: p.privilege.to_owned(),
+                        explanations: p.reasons.to_owned(),
+                    })
+                    .collect(),
+                connector: k.get_node_connectors().iter().next().unwrap().to_owned(),
+            })
+            .collect(),
+    )
 }
 
 /// Return information about a users access to tagged assets, grouped by tag
