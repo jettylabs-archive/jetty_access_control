@@ -8,7 +8,9 @@ use petgraph::{stable_graph::NodeIndex, visit::IntoNodeReferences, Direction};
 
 use super::{AccessGraph, EdgeType, JettyNode, NodeName};
 
-struct NodePath(Vec<JettyNode>);
+/// A path from one node to another, including start and end nodes.
+/// Inside, it's a Vec<JettyNode>
+pub struct NodePath(Vec<JettyNode>);
 
 impl Display for NodePath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -140,7 +142,9 @@ impl AccessGraph {
         }
     }
 
-    fn all_matching_simple_paths(
+    /// Return all the matching paths from one node to another. Specify filter functions
+    /// to match edges and passthrough nodes
+    pub fn all_matching_simple_paths(
         &self,
         from: &NodeName,
         to: &NodeName,

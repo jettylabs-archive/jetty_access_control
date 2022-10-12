@@ -76,9 +76,12 @@ impl UserAttributes {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct GroupAttributes {
-    name: String,
-    metadata: HashMap<String, String>,
-    connectors: HashSet<String>,
+    /// Name of group
+    pub name: String,
+    /// k-v pairs of group metadata
+    pub metadata: HashMap<String, String>,
+    /// All the connectors the group is present in
+    pub connectors: HashSet<String>,
 }
 
 impl GroupAttributes {
