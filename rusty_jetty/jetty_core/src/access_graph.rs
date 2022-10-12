@@ -484,13 +484,13 @@ impl AccessGraph {
     pub fn new_dummy(nodes: &[&JettyNode], edges: &[(NodeName, NodeName, EdgeType)]) -> Self {
         use self::test_util::new_graph_with;
 
-        let ag = AccessGraph {
+        
+
+        AccessGraph {
             graph: new_graph_with(nodes, edges).unwrap(),
             edge_cache: HashSet::new(),
             last_modified: OffsetDateTime::now_utc(),
-        };
-
-        ag
+        }
     }
 
     /// Get last modified date for access graph
