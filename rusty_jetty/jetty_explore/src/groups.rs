@@ -2,8 +2,15 @@ use std::{collections::HashSet, sync::Arc};
 
 use axum::{extract::Path, routing::get, Extension, Json, Router};
 use jetty_core::access_graph::{self, EdgeType, JettyNode, NodeName};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use serde_json::{json, Value};
+
+#[derive(Serialize)]
+pub(crate) struct GroupWithPathResponse {
+    name: String,
+    connectors: HashSet<String>,
+    membership_paths: Vec<String>,
+}
 
 /// Return a router to handle all group-related requests
 pub(super) fn router() -> Router {
@@ -57,14 +64,7 @@ async fn direct_groups_handler(
 async fn inherited_groups_handler(
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
-) -> Json<Value> {
-    #[derive(Serialize, Deserialize)]
-    struct GroupWithPath {
-        name: String,
-        connectors: HashSet<String>,
-        membership_paths: Vec<String>,
-    }
-
+) -> Json<Vec<GroupWithPathResponse>> {
     let from = NodeName::Group(node_id);
 
     let res = ag.all_matching_simple_paths_to_children(
@@ -80,7 +80,7 @@ async fn inherited_groups_handler(
         .into_iter()
         .filter_map(|(n, p)| {
             if let JettyNode::Group(g) = n {
-                Some(GroupWithPath {
+                Some(GroupWithPathResponse {
                     name: g.name.to_owned(),
                     connectors: g.connectors,
                     membership_paths: p.iter().map(|p| p.to_string()).collect(),
@@ -90,7 +90,7 @@ async fn inherited_groups_handler(
             }
         })
         .collect::<Vec<_>>();
-    Json(serde_json::to_value(&group_attributes).unwrap())
+    Json(group_attributes)
 }
 
 /// Return the groups that are direct members of this group
