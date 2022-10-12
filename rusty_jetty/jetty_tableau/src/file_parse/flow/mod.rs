@@ -387,9 +387,9 @@ mod test {
                     "{}/datasource/de1c1844-2ce6-480d-8016-afc7be49827e",
                     &cual_prefix
                 ),
-                "snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/GOLD/TABLEAU_SPECIAL"
+                "snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/GOLD/tableau_special"
                     .to_owned(),
-                "snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/RAW/Special%20Name"
+                "snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/RAW/%22Special%20Name%22"
                     .to_owned(),
                 format!(
                     "{}/datasource/a27d260d-9ff9-4707-82fd-e66cda23275d",
