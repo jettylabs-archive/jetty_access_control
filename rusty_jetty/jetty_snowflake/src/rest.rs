@@ -273,7 +273,7 @@ mod tests {
             })
             .await
             .unwrap();
-            drop(guard);
+        drop(guard);
     }
 
     #[tokio::test]

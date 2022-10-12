@@ -18,11 +18,16 @@ mod coordinator;
 mod creds;
 mod cual;
 mod entry_types;
+mod ep;
 mod rest;
 
 use cual::set_cual_account_name;
-pub use entry_types::*;
+pub use entry_types::{
+    Asset, Database, Entry, FutureGrant, Grant, GrantOf, GrantType, Object, Role, RoleName, Schema,
+    StandardGrant, Table, User, View, Warehouse,
+};
 use rest::{SnowflakeRequestConfig, SnowflakeRestClient, SnowflakeRestConfig};
+use serde::de::value::MapDeserializer;
 
 use std::collections::{HashMap, HashSet};
 use std::iter::zip;
@@ -38,7 +43,6 @@ use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::Value as JsonValue;
-use structmap::{value::Value, FromMap, GenericMap};
 
 /// The main Snowflake Connector struct.
 ///
@@ -136,13 +140,14 @@ impl Connector for SnowflakeConnector {
 
 impl SnowflakeConnector {
     /// Get all grants to a role – the privileges and "children" roles.
-    pub async fn get_grants_to_role_future(
+    pub(crate) async fn get_grants_to_role_future(
         &self,
         role: &Role,
         target: Arc<Mutex<&mut Vec<StandardGrant>>>,
     ) -> Result<()> {
+        let RoleName(role_name) = &role.name;
         let res = self
-            .query_to_obj::<StandardGrant>(&format!("SHOW GRANTS TO ROLE {}", &role.name))
+            .query_to_obj::<StandardGrant>(&format!("SHOW GRANTS TO ROLE {}", &role_name))
             .await
             .context("failed to get grants to role")?;
 
@@ -152,13 +157,14 @@ impl SnowflakeConnector {
     }
 
     /// Get all grants of a role
-    pub async fn get_grants_of_role_future(
+    pub(crate) async fn get_grants_of_role_future(
         &self,
         role: &Role,
         target: Arc<Mutex<&mut Vec<GrantOf>>>,
     ) -> Result<()> {
+        let RoleName(role_name) = &role.name;
         let res = self
-            .query_to_obj::<GrantOf>(&format!("SHOW GRANTS OF ROLE {}", &role.name))
+            .query_to_obj::<GrantOf>(&format!("SHOW GRANTS OF ROLE {}", &role_name))
             .await
             .context("failed to get grants of role")?;
 
@@ -221,7 +227,7 @@ impl SnowflakeConnector {
     }
 
     /// Get all roles.
-    pub async fn get_roles_future(&self, target: &mut Vec<Role>) -> Result<()> {
+    pub(crate) async fn get_roles_future(&self, target: &mut Vec<Role>) -> Result<()> {
         *target = self
             .query_to_obj::<Role>("SHOW ROLES")
             .await
@@ -276,7 +282,7 @@ impl SnowflakeConnector {
     /// Execute the given query and deserialize the result into the given type.
     pub async fn query_to_obj<T>(&self, query: &str) -> Result<Vec<T>>
     where
-        T: FromMap,
+        T: for<'de> Deserialize<'de>,
     {
         let result = self
             .rest_client
@@ -296,27 +302,27 @@ impl SnowflakeConnector {
             panic!("Unexpected partitioned return value: {}", info);
         }
         let rows_data = rows_value["data"].clone();
-        let rows: Vec<Vec<Value>> = serde_json::from_value::<Vec<Vec<Option<String>>>>(rows_data)
+        let rows: Vec<Vec<String>> = serde_json::from_value::<Vec<Vec<Option<String>>>>(rows_data)
             .context("failed to deserialize rows")?
-            .iter()
-            .map(|i| {
-                i.iter()
-                    .map(|x| Value::new(x.clone().unwrap_or_default()))
-                    .collect()
-            })
+            .into_iter()
+            .map(|v| v.iter().map(|f| f.clone().unwrap_or_default()).collect())
             .collect();
         let fields_intermediate: Vec<SnowflakeField> =
             serde_json::from_value(rows_value["resultSetMetaData"]["rowType"].clone())
                 .context("failed to deserialize fields")?;
         let fields: Vec<String> = fields_intermediate.iter().map(|i| i.name.clone()).collect();
         Ok(rows
-            .iter()
+            .into_iter()
             .map(|i| {
                 // Zip field - i
-                let map: GenericMap = zip(fields.clone(), i.clone()).collect();
-                map
+                let vals: HashMap<String, String> = zip(fields.clone(), i).collect();
+                T::deserialize(MapDeserializer::<
+                    std::collections::hash_map::IntoIter<std::string::String, std::string::String>,
+                    serde::de::value::Error,
+                >::new(vals.into_iter()))
+                .context("couldn't deserialize")
+                .unwrap()
             })
-            .map(|i| T::from_genericmap(i))
             .collect())
     }
 
