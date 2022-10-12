@@ -34,11 +34,16 @@ const SAVED_GRAPH_PATH: &str = "jetty_graph";
 /// Attributes associated with a User node
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UserAttributes {
-    name: String,
-    identifiers: HashSet<connectors::UserIdentifier>,
-    other_identifiers: HashSet<String>,
-    metadata: HashMap<String, String>,
-    connectors: HashSet<String>,
+    /// User name
+    pub name: String,
+    /// Specific user identifiers
+    pub identifiers: HashSet<connectors::UserIdentifier>,
+    /// Misc user identifiers
+    pub other_identifiers: HashSet<String>,
+    /// K-V pairs of user-specific metadata
+    pub metadata: HashMap<String, String>,
+    /// Connectors the user is present in
+    pub connectors: HashSet<String>,
 }
 
 impl Hash for UserAttributes {

@@ -6,7 +6,7 @@ use serde::Serialize;
 use serde_json::{json, Value};
 
 #[derive(Serialize)]
-pub(crate) struct GroupWithPathResponse {
+pub(crate) struct ObjectWithPathResponse {
     name: String,
     connectors: HashSet<String>,
     membership_paths: Vec<String>,
@@ -64,7 +64,7 @@ async fn direct_groups_handler(
 async fn inherited_groups_handler(
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
-) -> Json<Vec<GroupWithPathResponse>> {
+) -> Json<Vec<ObjectWithPathResponse>> {
     let from = NodeName::Group(node_id);
 
     let res = ag.all_matching_simple_paths_to_children(
@@ -80,7 +80,7 @@ async fn inherited_groups_handler(
         .into_iter()
         .filter_map(|(n, p)| {
             if let JettyNode::Group(g) = n {
-                Some(GroupWithPathResponse {
+                Some(ObjectWithPathResponse {
                     name: g.name.to_owned(),
                     connectors: g.connectors,
                     membership_paths: p.iter().map(|p| p.to_string()).collect(),
@@ -94,53 +94,97 @@ async fn inherited_groups_handler(
 }
 
 /// Return the groups that are direct members of this group
-async fn direct_members_groups_handler() -> Json<Value> {
-    Json(json! {
-    [
-        {
-          "name": "Frozen Yogurt",
-          "platforms": ["snowflake"],
-        },
-        {
-          "name": "Ice cream sandwich",
-          "platforms": ["Tableau"],
-        },
-      ]
+async fn direct_members_groups_handler(
+    Path(node_id): Path<String>,
+    Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
+) -> Json<Vec<access_graph::GroupAttributes>> {
+    let from = NodeName::Group(node_id);
+
+    println!("{:?}", ag.extract_graph(&from, 1).dot());
+
+    let group_nodes = ag.get_matching_children(
+        &from,
+        |n| matches!(n, EdgeType::Includes),
+        |n| matches!(n, JettyNode::Group(_)),
+        |n| matches!(n, JettyNode::Group(_)),
+        None,
+        Some(1),
+    );
+
+    let group_attributes = group_nodes
+        .into_iter()
+        .filter_map(|n| {
+            if let JettyNode::Group(g) = n {
+                Some(g)
+            } else {
+                None
+            }
         })
+        .collect::<Vec<_>>();
+
+    Json(group_attributes)
 }
 
 /// Return the users that are direct members of this group
-async fn direct_members_users_handler() -> Json<Value> {
-    Json(json! {
-    [
-        {
-          "name": "Frozen Yogurt",
-          "platforms": ["snowflake"],
-        },
-        {
-          "name": "Ice cream sandwich",
-          "platforms": ["Tableau"],
-        },
-      ]
+async fn direct_members_users_handler(
+    Path(node_id): Path<String>,
+    Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
+) -> Json<Vec<access_graph::UserAttributes>> {
+    let from = NodeName::Group(node_id);
+
+    println!("{:?}", ag.extract_graph(&from, 1).dot());
+
+    let group_nodes = ag.get_matching_children(
+        &from,
+        |n| matches!(n, EdgeType::Includes),
+        |n| matches!(n, JettyNode::Group(_)),
+        |n| matches!(n, JettyNode::User(_)),
+        None,
+        Some(1),
+    );
+
+    let user_attributes = group_nodes
+        .into_iter()
+        .filter_map(|n| {
+            if let JettyNode::User(u) = n {
+                Some(u)
+            } else {
+                None
+            }
         })
+        .collect::<Vec<_>>();
+    Json(user_attributes)
 }
 
 /// Return all users that are members of the group, directly or through inheritance
-async fn all_members_handler() -> Json<Value> {
-    Json(json! {
-    [
-        {
-          "name": "Frozen Yogurt",
-          "platforms": ["snowflake", "tableau"],
-          "membership_paths": ["group 1 > group 2 > group name",
-          "Direct Access"]
-        },
-        {
-          "name": "Ice cream sandwich yum",
-          "platforms": ["snowflake", "tableau"],
-          "membership_paths": ["group 1 > group 2 > group name",
-          "Direct Access"]
-        },
-      ]
+async fn all_members_handler(
+    Path(node_id): Path<String>,
+    Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
+) -> Json<Vec<ObjectWithPathResponse>> {
+    let from = NodeName::Group(node_id);
+
+    let res = ag.all_matching_simple_paths_to_children(
+        &from,
+        |n| matches!(n, EdgeType::Includes),
+        |n| matches!(n, JettyNode::Group(_)),
+        |n| matches!(n, JettyNode::User(_)),
+        None,
+        None,
+    );
+
+    let group_attributes = res
+        .into_iter()
+        .filter_map(|(n, p)| {
+            if let JettyNode::User(u) = n {
+                Some(ObjectWithPathResponse {
+                    name: u.name.to_owned(),
+                    connectors: u.connectors,
+                    membership_paths: p.iter().map(|p| p.to_string()).collect(),
+                })
+            } else {
+                None
+            }
         })
+        .collect::<Vec<_>>();
+    Json(group_attributes)
 }
