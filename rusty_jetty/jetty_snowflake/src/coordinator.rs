@@ -354,7 +354,7 @@ impl<'a> Coordinator<'a> {
         &self,
     ) -> SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> {
         let mut res = HashMap::new();
-        let ep_map = EffectivePermissionMap::new(&self.env, &self.role_grants);
+        let ep_map = EffectivePermissionMap::new(&self.role_grants);
 
         // The runtime performance here can definitely be improved, but this is
         // a workable naive approach for now.

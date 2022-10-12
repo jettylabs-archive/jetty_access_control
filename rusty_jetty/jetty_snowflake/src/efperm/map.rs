@@ -1,64 +1,44 @@
 use std::collections::{HashMap, HashSet};
 
-use jetty_core::{
-    connectors::{
-        nodes::{EffectivePermission, PermissionMode, SparseMatrix},
-        UserIdentifier,
-    },
-    cual::Cual,
-};
+use jetty_core::connectors::nodes::{EffectivePermission, PermissionMode};
 
 use crate::{
     coordinator::{Environment, Grantee},
     entry_types::ObjectKind,
-    Asset, Grant, Object, Role, RoleName, User,
+    Asset, Grant, Object, RoleName, User,
 };
 
-use super::{
-    privilege::{TABLE_PRIVILEGES, VIEW_PRIVILEGES},
-    role_tree::create_role_tree,
-};
+use super::privilege::{TABLE_PRIVILEGES, VIEW_PRIVILEGES};
 
 pub(crate) struct EffectivePermissionMap<'a> {
-    matrix: SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>>,
-    roles: &'a Vec<Role>,
-    role_map: HashMap<usize, HashSet<usize>>,
     role_grants: &'a HashMap<Grantee, HashSet<RoleName>>,
 }
 
 impl<'a> EffectivePermissionMap<'a> {
-    pub(crate) fn new(
-        env: &'a Environment,
-        role_grants: &'a HashMap<Grantee, HashSet<RoleName>>,
-    ) -> Self {
-        Self {
-            matrix: HashMap::new(),
-            roles: &env.roles,
-            role_map: create_role_tree(&env.roles, &env.role_grants),
-            role_grants,
-        }
+    pub(crate) fn new(role_grants: &'a HashMap<Grantee, HashSet<RoleName>>) -> Self {
+        Self { role_grants }
+    }
+
+    fn get_direct_parents(&self, grantee: &Grantee) -> HashSet<RoleName> {
+        self.role_grants.get(grantee).cloned().unwrap_or_default()
     }
 
     fn get_recursive_roles(&'a self, user: &User) -> HashSet<RoleName> {
         // Get the direct grants first.
-        let direct_grants = self
-            .role_grants
-            .get(&Grantee::User(user.name.to_owned()))
-            .cloned()
-            .unwrap_or_default();
+        let direct_grants = self.get_direct_parents(&Grantee::User(user.name.to_owned()));
         let mut res = HashSet::new();
         // Get recursive grants for each of the direct ones.
+        for role in &direct_grants {
+            res.extend(self.get_recursive_roles_for_role(&role));
+        }
+        res.extend(direct_grants);
         res
     }
 
     fn get_recursive_roles_for_role(&self, RoleName(role): &RoleName) -> HashSet<RoleName> {
         let mut res = HashSet::new();
         // Get the direct grants for this role.
-        let direct_grants = self
-            .role_grants
-            .get(&Grantee::Role(role.to_owned()))
-            .cloned()
-            .unwrap_or_default();
+        let direct_grants = self.get_direct_parents(&Grantee::Role(role.to_owned()));
         // Get the recursive parents for each parent role.
         for role in &direct_grants {
             res.extend(self.get_recursive_roles_for_role(&role).into_iter());
@@ -189,4 +169,65 @@ fn get_effective_permissions_for_all_privileges(
         .into_iter()
         .map(|&p| EffectivePermission::new(p.to_owned(), mode.clone(), reasons.clone()))
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{Database, Schema};
+
+    use super::*;
+
+    fn get_test_role_grants() -> HashMap<Grantee, HashSet<RoleName>> {
+        HashMap::from([
+            (
+                Grantee::User("user1".to_owned()),
+                HashSet::from([RoleName("role1".to_owned()), RoleName("role2".to_owned())]),
+            ),
+            (
+                Grantee::User("user2".to_owned()),
+                HashSet::from([RoleName("role2".to_owned())]),
+            ),
+        ])
+    }
+
+    #[test]
+    fn test_map_creation_empty_works() {
+        let role_grants = HashMap::new();
+        let ep_map = EffectivePermissionMap::new(&role_grants);
+        assert_eq!(
+            ep_map.get_effective_permissions_for_asset(
+                &Environment::default(),
+                &User::default(),
+                &Asset::default()
+            ),
+            HashSet::new()
+        );
+    }
+
+    #[test]
+    fn test_map_db_effective_permissions_works() {
+        let role_grants = get_test_role_grants();
+        let ep_map = EffectivePermissionMap::new(&role_grants);
+
+        let db = Database::new("db".to_owned());
+        let mut env = Environment::default();
+        env.databases = vec![db.clone()];
+        let user = User::default();
+        let eps = ep_map.get_effective_permissions_for_asset(&env, &user, &Asset::Database(db));
+        assert_eq!(eps, HashSet::new());
+    }
+
+    #[test]
+    fn test_map_schema_effective_permissions_works() {
+        let role_grants = get_test_role_grants();
+        let ep_map = EffectivePermissionMap::new(&role_grants);
+
+        let db = Database::new("db".to_owned());
+        let schema = Schema::new("db".to_owned(), "schema".to_owned());
+        let mut env = Environment::default();
+        env.databases = vec![db.clone()];
+        let user = User::default();
+        let eps = ep_map.get_effective_permissions_for_asset(&env, &user, &Asset::Schema(schema));
+        assert_eq!(eps, HashSet::new());
+    }
 }
