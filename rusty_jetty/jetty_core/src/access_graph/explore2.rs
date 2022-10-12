@@ -1,11 +1,28 @@
 //! Utilities for exploration of the graph.
 //!
 
-use std::collections::HashSet;
+use std::{collections::HashSet, fmt::Display};
 
+use indexmap::IndexSet;
 use petgraph::{stable_graph::NodeIndex, visit::IntoNodeReferences, Direction};
 
 use super::{AccessGraph, EdgeType, JettyNode, NodeName};
+
+struct NodePath(Vec<JettyNode>);
+
+impl Display for NodePath {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            self.0
+                .iter()
+                .map(|n| n.get_string_name())
+                .collect::<Vec<_>>()
+                .join(" ⇨ ")
+        )
+    }
+}
 
 impl AccessGraph {
     /// Get all nodes from the graph
@@ -121,15 +138,123 @@ impl AccessGraph {
             }
         }
     }
+
+    fn all_matching_simple_paths(
+        &self,
+        from: &NodeName,
+        to: &NodeName,
+        edge_matcher: fn(&EdgeType) -> bool,
+        passthrough_matcher: fn(&JettyNode) -> bool,
+        min_depth: Option<usize>,
+        max_depth: Option<usize>,
+    ) -> Vec<NodePath> {
+        let from_idx = self.graph.nodes.get(from).unwrap();
+        let to_idx = self.graph.nodes.get(to).unwrap();
+
+        let max_depth = if let Some(l) = max_depth {
+            l
+        } else {
+            self.graph.graph.node_count() - 1
+        };
+
+        let min_depth = min_depth.unwrap_or(0);
+
+        // list of visited nodes
+        let mut visited = IndexSet::from([(from_idx.to_owned())]);
+        let mut results = vec![];
+
+        self.all_matching_simple_paths_recursive(
+            *from_idx,
+            *to_idx,
+            edge_matcher,
+            passthrough_matcher,
+            min_depth,
+            max_depth,
+            0,
+            &mut visited,
+            &mut results,
+        );
+
+        results
+    }
+
+    /// Returns a Vec of Vec<JettyNodes> representing the matching non-cyclic paths
+    /// between two nodes
+    fn all_matching_simple_paths_recursive(
+        &self,
+        from_idx: NodeIndex,
+        to_idx: NodeIndex,
+        edge_matcher: fn(&EdgeType) -> bool,
+        passthrough_matcher: fn(&JettyNode) -> bool,
+        min_depth: usize,
+        max_depth: usize,
+        current_depth: usize,
+        visited: &mut IndexSet<NodeIndex>,
+        results: &mut Vec<NodePath>,
+    ) {
+        let legal_connections = self
+            .graph
+            .graph
+            .edges_directed(from_idx, Direction::Outgoing)
+            .filter(|e| edge_matcher(e.weight()))
+            .map(|e| petgraph::visit::EdgeRef::target(&e));
+
+        // Update depth because we're now looking at the children
+        let current_depth = current_depth + 1;
+
+        // Did we go too deep?
+        if current_depth > max_depth {
+            return;
+        }
+
+        for child in legal_connections {
+            // Has it already been inserted?
+            if !visited.insert(child) {
+                continue;
+            }
+
+            // Are we beyond the minimum depth?
+            if current_depth >= min_depth {
+                // is it the target node? if so, add the path to the results, pop
+                // the node from visited and carry on with the next child
+                if child == to_idx {
+                    let path = visited
+                        .iter()
+                        .cloned()
+                        .map(|i| self.graph.graph[i].to_owned())
+                        .collect::<Vec<_>>();
+                    results.push(NodePath(path));
+                    visited.pop();
+                    continue;
+                }
+            }
+
+            // Get the node we're looking at
+            let node_weight = &self.graph.graph[child];
+            // Is it a passthrough type?
+            if passthrough_matcher(node_weight) {
+                self.all_matching_simple_paths_recursive(
+                    child,
+                    to_idx,
+                    edge_matcher,
+                    passthrough_matcher,
+                    min_depth,
+                    max_depth,
+                    current_depth,
+                    visited,
+                    results,
+                );
+            }
+            visited.pop();
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::collections::{HashMap, HashSet};
 
     use crate::{
-        access_graph::{AssetAttributes, PolicyAttributes, UserAttributes},
-        connectors::AssetType,
+        access_graph::{AssetAttributes, GroupAttributes, PolicyAttributes, UserAttributes},
         cual::Cual,
     };
 
@@ -138,17 +263,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn follow_passthrough_works() -> Result<()> {
-        let test_asset = JettyNode::Asset(AssetAttributes {
-            cual: Cual::new("my_cual".to_owned()),
-            asset_type: AssetType::default(),
-            metadata: HashMap::new(),
-            connectors: HashSet::new(),
-        });
-
+    fn get_matching_children_works() -> Result<()> {
         let ag = AccessGraph::new_dummy(
             &[
-                &test_asset,
+                &JettyNode::Asset(AssetAttributes::new(Cual::new("my_cual".to_owned()))),
                 &JettyNode::Policy(PolicyAttributes::new("policy".to_owned())),
                 &JettyNode::User(UserAttributes::new("user".to_owned())),
             ],
@@ -169,7 +287,7 @@ mod tests {
         // Test Edge Matching
         let a = ag.get_matching_children(
             &NodeName::User("user".to_owned()),
-            |n| matches!(n, EdgeType::GrantedBy),
+            |n| matches!(n, EdgeType::MemberOf),
             |_| true,
             |_| true,
             None,
@@ -202,7 +320,7 @@ mod tests {
         // Test passthrough matching
         let a = ag.get_matching_children(
             &NodeName::User("user".to_owned()),
-            |n| matches!(n, EdgeType::Other),
+            |_| true,
             |n| matches!(n, JettyNode::Policy(_)),
             |n| matches!(n, JettyNode::Asset(_)),
             None,
@@ -219,6 +337,114 @@ mod tests {
             None,
         );
         assert_eq!(a.len(), 0);
+        Ok(())
+    }
+
+    #[test]
+    fn get_matching_simple_paths_works() -> Result<()> {
+        let ag = AccessGraph::new_dummy(
+            &[
+                &JettyNode::User(UserAttributes::new("user".to_owned())),
+                &JettyNode::Group(GroupAttributes::new("group1".to_owned())),
+                &JettyNode::Group(GroupAttributes::new("group2".to_owned())),
+                &JettyNode::Group(GroupAttributes::new("group3".to_owned())),
+                &JettyNode::Group(GroupAttributes::new("group4".to_owned())),
+            ],
+            &[
+                (
+                    NodeName::User("user".to_owned()),
+                    NodeName::Group("group1".to_owned()),
+                    EdgeType::MemberOf,
+                ),
+                (
+                    NodeName::User("user".to_owned()),
+                    NodeName::Group("group2".to_owned()),
+                    EdgeType::MemberOf,
+                ),
+                (
+                    NodeName::Group("group2".to_owned()),
+                    NodeName::Group("group1".to_owned()),
+                    EdgeType::MemberOf,
+                ),
+                (
+                    NodeName::Group("group2".to_owned()),
+                    NodeName::Group("group3".to_owned()),
+                    EdgeType::MemberOf,
+                ),
+                (
+                    NodeName::Group("group2".to_owned()),
+                    NodeName::Group("group4".to_owned()),
+                    EdgeType::MemberOf,
+                ),
+                (
+                    NodeName::Group("group3".to_owned()),
+                    NodeName::Group("group4".to_owned()),
+                    EdgeType::MemberOf,
+                ),
+                (
+                    NodeName::Group("group4".to_owned()),
+                    NodeName::Group("group1".to_owned()),
+                    EdgeType::MemberOf,
+                ),
+            ],
+        );
+
+        // Test path generation
+        let a = ag.all_matching_simple_paths(
+            &NodeName::User("user".to_owned()),
+            &NodeName::Group("group1".to_owned()),
+            |_| true,
+            |_| true,
+            None,
+            None,
+        );
+        assert_eq!(a.len(), 4);
+
+        // Test depth limits
+        let a = ag.all_matching_simple_paths(
+            &NodeName::User("user".to_owned()),
+            &NodeName::Group("group1".to_owned()),
+            |_| true,
+            |_| true,
+            Some(2),
+            Some(3),
+        );
+        assert_eq!(a.len(), 2);
+
+        // Test depth limits again
+        let a = ag.all_matching_simple_paths(
+            &NodeName::User("user".to_owned()),
+            &NodeName::Group("group1".to_owned()),
+            |_| true,
+            |_| true,
+            Some(2),
+            Some(2),
+        );
+        assert_eq!(a.len(), 1);
+
+        // Test edge matching
+        let a = ag.all_matching_simple_paths(
+            &NodeName::User("user".to_owned()),
+            &NodeName::Group("group1".to_owned()),
+            |n| matches!(n, EdgeType::Other),
+            |_| true,
+            None,
+            None,
+        );
+        assert_eq!(a.len(), 0);
+
+        // Test passthrough matching
+        let a = ag.all_matching_simple_paths(
+            &NodeName::User("user".to_owned()),
+            &NodeName::Group("group1".to_owned()),
+            |_| true,
+            |n| n.get_string_name() == *"group2",
+            None,
+            None,
+        );
+        a.iter().for_each(|p| println!("{}", &p));
+        assert_eq!(a.len(), 2);
+
         Ok(())
     }
 }

@@ -93,7 +93,7 @@ fn get_all_nodes(ag: Arc<AccessGraph>) -> Vec<Node> {
 
             Node {
                 r#type: node_type,
-                name: n.get_node_name(),
+                name: n.get_string_name(),
                 platforms: n
                     .get_node_connectors()
                     .iter()

@@ -67,5 +67,5 @@ pub async fn explore_web_ui(ag: Arc<access_graph::AccessGraph>) {
 async fn last_fetch_handler(
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Value> {
-    Json(json! { {"last_fetch_timestamp": ag.get_last_modified()} })
+    Json(json! { {"last_fetch_timestamp": ag.get_last_modified().unix_timestamp()} })
 }

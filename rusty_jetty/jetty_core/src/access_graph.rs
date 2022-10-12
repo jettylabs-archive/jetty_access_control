@@ -74,7 +74,7 @@ impl UserAttributes {
 
 /// Attributes associated with a Group node
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct GroupAttributes {
     name: String,
     metadata: HashMap<String, String>,
@@ -93,6 +93,14 @@ impl GroupAttributes {
             metadata,
             connectors,
         })
+    }
+    /// Convenience constructor for testing
+    #[cfg(test)]
+    fn new(name: String) -> Self {
+        Self {
+            name,
+            ..Default::default()
+        }
     }
 }
 
@@ -239,7 +247,7 @@ pub enum JettyNode {
 
 impl JettyNode {
     /// Get the type (as a string) of the node.
-    pub fn get_node_name(&self) -> String {
+    pub fn get_string_name(&self) -> String {
         match &self {
             JettyNode::Group(g) => g.name.to_owned(),
             JettyNode::User(u) => u.name.to_owned(),
@@ -389,7 +397,7 @@ pub struct AccessGraph {
     pub(crate) graph: graph::Graph,
     edge_cache: HashSet<JettyEdge>,
     /// Unix timestamp of when the graph was built
-    last_modified: i64,
+    last_modified: OffsetDateTime,
 }
 
 impl AccessGraph {
@@ -401,14 +409,13 @@ impl AccessGraph {
                 nodes: HashMap::new(),
             },
             edge_cache: HashSet::new(),
-            last_modified: 0,
+            last_modified: OffsetDateTime::now_utc(),
         };
         for connector_data in data {
             // Create all nodes first, then create edges.
             ag.add_nodes(&connector_data)?;
             ag.add_edges()?;
         }
-        ag.last_modified = OffsetDateTime::now_utc().unix_timestamp();
         Ok(ag)
     }
 
@@ -420,15 +427,14 @@ impl AccessGraph {
         let mut ag = AccessGraph {
             graph: new_graph_with(nodes, edges).unwrap(),
             edge_cache: HashSet::new(),
-            last_modified: 0,
+            last_modified: OffsetDateTime::now_utc(),
         };
 
-        ag.last_modified = OffsetDateTime::now_utc().unix_timestamp();
         ag
     }
 
-    /// Get last modified date for access graph as a Unix timestamp (seconds resolution)
-    pub fn get_last_modified(&self) -> i64 {
+    /// Get last modified date for access graph
+    pub fn get_last_modified(&self) -> OffsetDateTime {
         self.last_modified
     }
 
