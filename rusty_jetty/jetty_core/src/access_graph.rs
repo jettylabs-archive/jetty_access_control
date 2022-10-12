@@ -16,10 +16,12 @@ pub use self::helpers::ProcessedConnectorData;
 
 use super::connectors;
 use core::hash::Hash;
+use std::collections::BinaryHeap;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::fs::File;
+use std::hash::Hasher;
 use std::io::BufWriter;
 
 use anyhow::{anyhow, Context, Result};
@@ -37,6 +39,15 @@ pub struct UserAttributes {
     other_identifiers: HashSet<String>,
     metadata: HashMap<String, String>,
     connectors: HashSet<String>,
+}
+
+impl Hash for UserAttributes {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.name.hash(state);
+        let mut connectors = self.connectors.iter().collect::<Vec<_>>();
+        connectors.sort();
+        connectors.hash(state);
+    }
 }
 
 impl UserAttributes {
@@ -84,6 +95,15 @@ pub struct GroupAttributes {
     pub connectors: HashSet<String>,
 }
 
+impl Hash for GroupAttributes {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.name.hash(state);
+        let mut connectors = self.connectors.iter().collect::<Vec<_>>();
+        connectors.sort();
+        connectors.hash(state);
+    }
+}
+
 impl GroupAttributes {
     fn merge_attributes(&self, new_attributes: &GroupAttributes) -> Result<GroupAttributes> {
         let name = merge_matched_field(&self.name, &new_attributes.name)
@@ -114,6 +134,12 @@ pub struct AssetAttributes {
     asset_type: AssetType,
     metadata: HashMap<String, String>,
     connectors: HashSet<String>,
+}
+
+impl Hash for AssetAttributes {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.cual.hash(state);
+    }
 }
 
 impl AssetAttributes {
@@ -155,6 +181,18 @@ pub struct TagAttributes {
     connectors: HashSet<String>,
 }
 
+impl Hash for TagAttributes {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.name.hash(state);
+        self.value.hash(state);
+        self.pass_through_hierarchy.hash(state);
+        self.pass_through_lineage.hash(state);
+        let mut connectors = self.connectors.iter().collect::<Vec<_>>();
+        connectors.sort();
+        connectors.hash(state);
+    }
+}
+
 impl TagAttributes {
     fn merge_attributes(&self, new_attributes: &TagAttributes) -> Result<TagAttributes> {
         let name = merge_matched_field(&self.name, &new_attributes.name)
@@ -191,6 +229,20 @@ pub struct PolicyAttributes {
     pass_through_hierarchy: bool,
     pass_through_lineage: bool,
     connectors: HashSet<String>,
+}
+
+impl Hash for PolicyAttributes {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.name.hash(state);
+        self.pass_through_hierarchy.hash(state);
+        self.pass_through_lineage.hash(state);
+        let mut connectors = self.connectors.iter().collect::<Vec<_>>();
+        connectors.sort();
+        connectors.hash(state);
+        let mut privileges = self.privileges.iter().collect::<Vec<_>>();
+        privileges.sort();
+        privileges.hash(state);
+    }
 }
 
 impl PolicyAttributes {
@@ -234,7 +286,7 @@ impl PolicyAttributes {
 }
 
 /// Enum of node types
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub enum JettyNode {
     /// Group node
     Group(GroupAttributes),
