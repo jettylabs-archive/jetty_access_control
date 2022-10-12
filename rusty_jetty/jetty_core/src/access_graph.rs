@@ -16,7 +16,7 @@ pub use self::helpers::ProcessedConnectorData;
 
 use super::connectors;
 use core::hash::Hash;
-use std::collections::BinaryHeap;
+
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt::Debug;
@@ -484,7 +484,7 @@ impl AccessGraph {
     pub fn new_dummy(nodes: &[&JettyNode], edges: &[(NodeName, NodeName, EdgeType)]) -> Self {
         use self::test_util::new_graph_with;
 
-        let mut ag = AccessGraph {
+        let ag = AccessGraph {
             graph: new_graph_with(nodes, edges).unwrap(),
             edge_cache: HashSet::new(),
             last_modified: OffsetDateTime::now_utc(),

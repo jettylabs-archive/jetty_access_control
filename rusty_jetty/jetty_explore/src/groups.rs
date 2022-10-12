@@ -3,7 +3,7 @@ use std::{collections::HashSet, sync::Arc};
 use axum::{extract::Path, routing::get, Extension, Json, Router};
 use jetty_core::access_graph::{self, EdgeType, JettyNode, NodeName};
 use serde::Serialize;
-use serde_json::{json, Value};
+
 
 #[derive(Serialize)]
 pub(crate) struct ObjectWithPathResponse {
