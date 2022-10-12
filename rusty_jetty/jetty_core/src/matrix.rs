@@ -3,7 +3,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use jetty_core::{
+use super::{
     connectors::{
         nodes::{EffectivePermission, SparseMatrix},
         UserIdentifier,
@@ -15,7 +15,7 @@ use anyhow::{bail, Result};
 
 /// HashMap utility trait to assist with doing an insertion when it's easy,
 /// and merging as needed when it's not.
-pub(crate) trait InsertOrMerge<K, V> {
+pub trait InsertOrMerge<K, V> {
     /// Insert `key` into the map if it doesn't exist. Otherwise, merge
     /// `val` with what's already found at `key`.
     fn insert_or_merge(&mut self, key: K, val: V);
@@ -74,7 +74,10 @@ impl InsertOrMerge<Cual, HashSet<EffectivePermission>>
 /// Utility trait for merging two copies of the same struct. Like
 /// `std::iter::Extend` except we can use it on types declared
 /// outside this crate.
-pub(crate) trait Merge<T> {
+pub trait Merge<T> {
+    /// Merge two instances of a struct. Like
+    /// `std::iter::Extend` except we can use it on types declared
+    /// outside this crate.
     fn merge(&mut self, other: T) -> Result<()>;
 }
 
@@ -119,7 +122,7 @@ mod tests {
 
     use super::*;
 
-    use jetty_core::connectors::nodes::{EffectivePermission, PermissionMode};
+    use crate::connectors::nodes::{EffectivePermission, PermissionMode};
 
     use anyhow::Result;
 

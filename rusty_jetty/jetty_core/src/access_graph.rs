@@ -9,6 +9,8 @@ mod helpers;
 #[cfg(test)]
 pub mod test_util;
 
+use crate::connectors::nodes::{EffectivePermission, SparseMatrix};
+use crate::connectors::UserIdentifier;
 use crate::{connectors::AssetType, cual::Cual};
 
 use self::helpers::NodeHelper;
@@ -28,6 +30,8 @@ use anyhow::{anyhow, Context, Result};
 use serde::Deserialize;
 use serde::Serialize;
 use time::OffsetDateTime;
+
+use crate::matrix::Merge;
 
 const SAVED_GRAPH_PATH: &str = "jetty_graph";
 
@@ -458,6 +462,8 @@ pub struct AccessGraph {
     edge_cache: HashSet<JettyEdge>,
     /// Unix timestamp of when the graph was built
     last_modified: OffsetDateTime,
+    /// The merged effective permissions from all connectors
+    effective_permissions: SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>>,
 }
 
 impl AccessGraph {
@@ -470,10 +476,16 @@ impl AccessGraph {
             },
             edge_cache: HashSet::new(),
             last_modified: OffsetDateTime::now_utc(),
+            effective_permissions: Default::default(),
         };
         for connector_data in data {
             // Create all nodes first, then create edges.
             ag.add_nodes(&connector_data)?;
+            // Merge effective permissions into the access graph
+            ag.effective_permissions
+                .merge(connector_data.data.effective_permissions)
+                .context("merging effective permissions")
+                .unwrap();
         }
         ag.add_edges()?;
         Ok(ag)
@@ -484,12 +496,11 @@ impl AccessGraph {
     pub fn new_dummy(nodes: &[&JettyNode], edges: &[(NodeName, NodeName, EdgeType)]) -> Self {
         use self::test_util::new_graph_with;
 
-        
-
         AccessGraph {
             graph: new_graph_with(nodes, edges).unwrap(),
             edge_cache: HashSet::new(),
             last_modified: OffsetDateTime::now_utc(),
+            effective_permissions: Default::default(),
         }
     }
 

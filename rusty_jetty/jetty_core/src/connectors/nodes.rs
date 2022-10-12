@@ -5,17 +5,18 @@ use std::{
 };
 
 use derivative::Derivative;
+use serde::{Deserialize, Serialize};
 
 use crate::cual::Cual;
 
 use super::UserIdentifier;
 
-/// Alias for a sparse matrix addressable by matrix[x][y], where each entry is of type T.
+/// Alias for a sparse matrix addressable by matrix\[x\]\[y\], where each entry is of type T.
 pub type SparseMatrix<X, Y, T> = HashMap<X, HashMap<Y, T>>;
 
 /// Mode for a permission that's either "allow," "deny," "none," or something
 /// else with a given explanation.
-#[derive(Debug, Default, Hash, PartialEq, Eq, Clone)]
+#[derive(Debug, Default, Hash, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub enum PermissionMode {
     /// Allow this permission.
     Allow,
@@ -38,7 +39,7 @@ impl From<&str> for PermissionMode {
     }
 }
 /// An effective permission
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct EffectivePermission {
     /// The privilege granted/denied for this permission.
     pub privilege: String,
