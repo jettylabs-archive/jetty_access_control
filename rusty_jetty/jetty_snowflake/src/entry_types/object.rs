@@ -1,10 +1,12 @@
 use serde::{Deserialize, Serialize};
 
 /// A type of object.
-#[derive(Clone, Default, Deserialize, Serialize, Debug)]
+#[derive(Copy, Clone, Default, Deserialize, Serialize, Debug)]
 pub enum ObjectKind {
     #[default]
+    #[serde(rename = "TABLE")]
     Table,
+    #[serde(rename = "VIEW")]
     View,
 }
 /// Snowflake Table entry.

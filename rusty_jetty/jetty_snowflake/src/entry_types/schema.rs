@@ -7,3 +7,9 @@ pub struct Schema {
     pub name: String,
     pub database_name: String,
 }
+
+impl Schema {
+    pub(crate) fn fqn(&self) -> String {
+        format!("{}.{}", self.name, self.database_name)
+    }
+}

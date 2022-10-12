@@ -16,10 +16,11 @@ use jetty_core::cual::Cualable;
 use jetty_core::permissions::matrix::InsertOrMerge;
 
 use super::cual::{cual, get_cual_account_name, Cual};
+use crate::efperm::EffectivePermissionMap;
 use crate::entry_types;
 use crate::entry_types::ObjectKind;
 use crate::entry_types::RoleName;
-use crate::ep::EffectivePermissionMap;
+use crate::Asset;
 use crate::Grant;
 use crate::GrantType;
 
@@ -366,7 +367,32 @@ impl<'a> Coordinator<'a> {
                 );
             }
             res.insert_or_merge(UserIdentifier::Email(user.email.to_owned()), obj_eps);
+            let mut db_eps = HashMap::new();
+            for db in &self.env.databases {
+                db_eps.insert_or_merge(
+                    db.cual(),
+                    ep_map.get_effective_permissions_for_asset(
+                        &self.env,
+                        user,
+                        &Asset::Database(db.clone()),
+                    ),
+                );
+            }
+            res.insert_or_merge(UserIdentifier::Email(user.email.to_owned()), db_eps);
+            let mut schema_eps = HashMap::new();
+            for schema in &self.env.schemas {
+                schema_eps.insert_or_merge(
+                    schema.cual(),
+                    ep_map.get_effective_permissions_for_asset(
+                        &self.env,
+                        user,
+                        &Asset::Schema(schema.clone()),
+                    ),
+                )
+            }
+            res.insert_or_merge(UserIdentifier::Email(user.email.to_owned()), schema_eps);
         }
+
         res
     }
 }
