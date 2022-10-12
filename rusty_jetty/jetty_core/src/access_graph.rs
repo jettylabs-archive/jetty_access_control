@@ -469,8 +469,8 @@ impl AccessGraph {
         for connector_data in data {
             // Create all nodes first, then create edges.
             ag.add_nodes(&connector_data)?;
-            ag.add_edges()?;
         }
+        ag.add_edges()?;
         Ok(ag)
     }
 
