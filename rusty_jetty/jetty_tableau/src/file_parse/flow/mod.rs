@@ -63,7 +63,7 @@ impl FlowDoc {
                         self.handle_load_sql_proxy(node, &coord.env, &coord.rest_client)
                             .map_or_else(
                                 |e| {
-                                    error!(
+                                    debug!(
                                         "skipping data input source of type: {}\nerror: {}",
                                         node_type, e
                                     )
