@@ -143,6 +143,7 @@ impl TableauAsset for Metric {
 mod tests {
     use super::*;
     use anyhow::{Context, Result};
+    use jetty_core::logging::debug;
 
     #[tokio::test]
     async fn test_fetching_metrics_works() -> Result<()> {
@@ -151,7 +152,7 @@ mod tests {
             .context("running tableau connector setup")?;
         let nodes = get_basic_metrics(&tc.coordinator.rest_client).await?;
         for (_k, v) in nodes {
-            println!("{:#?}", v);
+            debug!("{:#?}", v);
         }
         Ok(())
     }
@@ -167,7 +168,7 @@ mod tests {
                 .await?;
         }
         for (_k, v) in nodes {
-            println!("{:#?}", v);
+            debug!("{:#?}", v);
         }
         Ok(())
     }

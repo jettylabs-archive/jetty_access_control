@@ -1,4 +1,5 @@
 use anyhow::{anyhow, bail, Context, Result};
+use jetty_core::logging::debug;
 
 #[derive(Debug, Clone)]
 pub(crate) struct SnowflakeConnectionInfo {
@@ -31,7 +32,7 @@ impl SnowflakeTableInfo {
         Ok(
             cual_from_name_parts(&name_parts, &self.server, &self.db, &self.schema).map_or_else(
                 |_| {
-                    println!("Unable to print create qual from {:#?}", name_parts);
+                    debug!("Unable to print create qual from {:#?}", name_parts);
                     vec![]
                 },
                 |cual| vec![cual],
@@ -57,7 +58,7 @@ impl SnowflakeQueryInfo {
         for name_parts in relations {
             cual_from_name_parts(&name_parts, &self.server, &self.db, &self.schema).map_or_else(
                 |_| {
-                    println!("Unable to print create qual from {:#?}", name_parts);
+                    debug!("Unable to print create qual from {:#?}", name_parts);
                 },
                 |cual| cuals.push(cual),
             )
@@ -123,7 +124,6 @@ pub(super) fn build_snowflake_connection_info(
 
 #[cfg(test)]
 mod tests {
-    
 
     use super::*;
     use anyhow::Result;

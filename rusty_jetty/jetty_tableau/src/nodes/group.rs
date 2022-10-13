@@ -107,6 +107,7 @@ pub(crate) async fn get_basic_groups(
 mod tests {
     use super::*;
     use anyhow::{Context, Result};
+    use jetty_core::logging::debug;
 
     #[tokio::test]
     async fn test_fetching_groups_works() -> Result<()> {
@@ -115,7 +116,7 @@ mod tests {
             .context("running tableau connector setup")?;
         let groups = get_basic_groups(&tc.coordinator.rest_client).await?;
         for (_k, v) in groups {
-            println!("{:#?}", v);
+            debug!("{:#?}", v);
         }
         Ok(())
     }
@@ -142,7 +143,7 @@ mod tests {
                 )]),
             )
             .await?;
-            println!("{:#?}", v);
+            debug!("{:#?}", v);
         }
         Ok(())
     }

@@ -11,6 +11,8 @@ use jetty_core::connectors::nodes;
 use jetty_core::connectors::UserIdentifier;
 
 use jetty_core::cual::Cualable;
+use jetty_core::logging::debug;
+use jetty_core::logging::error;
 
 use super::cual::{cual, get_cual_account_name, Cual};
 use crate::entry_types;
@@ -76,7 +78,7 @@ impl<'a> Coordinator<'a> {
         let results = join_all(hold).await;
         for res in results {
             if let Err(e) = res {
-                println!("{}", e)
+                error!("{}", e)
             }
         }
 
@@ -128,7 +130,7 @@ impl<'a> Coordinator<'a> {
 
         for res in results {
             if let Err(e) = res {
-                println!("{}", e)
+                error!("{}", e)
             }
         }
 
@@ -155,7 +157,7 @@ impl<'a> Coordinator<'a> {
                 "ROLE" => Grantee::Role(grant.grantee_name.to_owned()),
                 "USER" => Grantee::User(grant.grantee_name.to_owned()),
                 other => {
-                    println!("skipping unexpected role type: {}", other);
+                    debug!("skipping unexpected role type: {}", other);
                     continue;
                 }
             };

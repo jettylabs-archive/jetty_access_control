@@ -135,6 +135,7 @@ impl TableauAsset for View {
 mod tests {
     use super::*;
     use anyhow::{Context, Result};
+    use jetty_core::logging::debug;
 
     #[tokio::test]
     async fn test_fetching_views_works() -> Result<()> {
@@ -143,7 +144,7 @@ mod tests {
             .context("running tableau connector setup")?;
         let nodes = get_basic_views(&tc.coordinator.rest_client).await?;
         for (_k, v) in nodes {
-            println!("{:#?}", v);
+            debug!("{:#?}", v);
         }
         Ok(())
     }
@@ -159,7 +160,7 @@ mod tests {
                 .await?;
         }
         for (_k, v) in views {
-            println!("{:#?}", v);
+            debug!("{:#?}", v);
         }
         Ok(())
     }

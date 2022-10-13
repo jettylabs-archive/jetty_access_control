@@ -18,8 +18,7 @@ impl ToAssetType for String {
             // We ignore tests since they aren't materialized.
             "test" => Ok(None),
             x => {
-                println!("unexpected asset type {:?}", x);
-                bail!("unexpected asset type");
+                bail!("unexpected asset type {:?}", x);
             }
         }
     }

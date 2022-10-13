@@ -26,6 +26,7 @@ pub use entry_types::{
     Asset, Database, Entry, FutureGrant, Grant, GrantOf, GrantType, Object, Role, RoleName, Schema,
     StandardGrant, Table, User, View, Warehouse,
 };
+use jetty_core::logging::error;
 use rest::{SnowflakeRequestConfig, SnowflakeRestClient, SnowflakeRestConfig};
 use serde::de::value::MapDeserializer;
 
@@ -71,7 +72,7 @@ impl Connector for SnowflakeConnector {
             .await;
         return match res {
             Err(e) => {
-                println!("{:?}", e);
+                error!("{:?}", e);
                 false
             }
             Ok(_) => true,

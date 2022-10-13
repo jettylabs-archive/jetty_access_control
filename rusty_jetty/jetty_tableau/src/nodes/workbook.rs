@@ -231,6 +231,7 @@ pub(crate) async fn get_basic_workbooks(
 mod tests {
     use super::*;
     use anyhow::{Context, Ok, Result};
+    use jetty_core::logging::debug;
 
     #[tokio::test]
     async fn test_fetching_workbooks_works() -> Result<()> {
@@ -239,7 +240,7 @@ mod tests {
             .context("running tableau connector setup")?;
         let groups = get_basic_workbooks(&tc.coordinator.rest_client).await?;
         for (_k, v) in groups {
-            println!("{:#?}", v);
+            debug!("{:#?}", v);
         }
         Ok(())
     }
@@ -257,7 +258,7 @@ mod tests {
             .rest_client
             .download(test_workbook, true)
             .await?;
-        println!("Downloaded {} bytes", x.len());
+        debug!("Downloaded {} bytes", x.len());
         Ok(())
     }
 
@@ -272,7 +273,7 @@ mod tests {
                 .await?;
         }
         for (_k, v) in workbooks {
-            println!("{:#?}", v);
+            debug!("{:#?}", v);
         }
         Ok(())
     }
