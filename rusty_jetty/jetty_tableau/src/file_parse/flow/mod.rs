@@ -76,7 +76,7 @@ impl FlowDoc {
                         self.handle_publish_extract(node, &coord.env, &coord.rest_client)
                             .map_or_else(
                                 |e| {
-                                    error!(
+                                    debug!(
                                         "skipping data output destination of type: {}\nerror: {}",
                                         node_type, e
                                     )
