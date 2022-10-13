@@ -321,7 +321,6 @@ impl PartialOrd for Asset {
 #[derive(Debug, Derivative, PartialEq, Eq)]
 #[derivative(Default)]
 pub struct Tag {
-    /// Name of the tag, appropriately namespaced for the
     /// context
     pub name: String,
     /// Optional value for the tag (for the case of key-value tags)

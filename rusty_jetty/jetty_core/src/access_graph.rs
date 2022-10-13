@@ -399,6 +399,10 @@ pub enum EdgeType {
     Governs,
     /// policy -> granted_to -> user|group
     GrantedTo,
+    /// tag -> removed from -> asset
+    RemovedFrom,
+    /// asset -> had removed -> tag
+    HadRemoved,
     /// anything else
     #[default]
     Other,
@@ -418,6 +422,8 @@ fn get_edge_type_pair(edge_type: &EdgeType) -> EdgeType {
         EdgeType::AppliedTo => EdgeType::TaggedAs,
         EdgeType::GovernedBy => EdgeType::Governs,
         EdgeType::Governs => EdgeType::GovernedBy,
+        EdgeType::RemovedFrom => EdgeType::HadRemoved,
+        EdgeType::HadRemoved => EdgeType::RemovedFrom,
         EdgeType::Other => EdgeType::Other,
     }
 }
