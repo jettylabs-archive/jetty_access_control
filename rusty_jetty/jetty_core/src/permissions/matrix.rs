@@ -3,11 +3,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-<<<<<<<< HEAD:rusty_jetty/jetty_core/src/matrix.rs
-use super::{
-========
 use crate::{
->>>>>>>> origin/get_explore_rocking:rusty_jetty/jetty_core/src/permissions/matrix.rs
     connectors::{
         nodes::{EffectivePermission, SparseMatrix},
         UserIdentifier,
@@ -79,13 +75,9 @@ impl InsertOrMerge<Cual, HashSet<EffectivePermission>>
 /// `std::iter::Extend` except we can use it on types declared
 /// outside this crate.
 pub trait Merge<T> {
-<<<<<<<< HEAD:rusty_jetty/jetty_core/src/matrix.rs
     /// Merge two instances of a struct. Like
     /// `std::iter::Extend` except we can use it on types declared
     /// outside this crate.
-========
-    /// Merge another of the same struct into self.
->>>>>>>> origin/get_explore_rocking:rusty_jetty/jetty_core/src/permissions/matrix.rs
     fn merge(&mut self, other: T) -> Result<()>;
 }
 

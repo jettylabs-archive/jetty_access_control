@@ -16,7 +16,7 @@ use crate::{
 };
 
 impl AccessGraph {
-    /// Return accessible assets
+    /// Return a node when given a name
     pub fn get_node<'a>(&'a self, node_name: &NodeName) -> Result<&'a JettyNode> {
         let idx = self
             .graph

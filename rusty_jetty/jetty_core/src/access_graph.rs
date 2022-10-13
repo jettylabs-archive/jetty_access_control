@@ -31,7 +31,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use time::OffsetDateTime;
 
-use crate::matrix::Merge;
+use crate::permissions::matrix::Merge;
 
 const SAVED_GRAPH_PATH: &str = "jetty_graph";
 

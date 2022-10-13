@@ -1,7 +1,7 @@
 //! Utilities for exploration of the graph.
 //!
 
-mod accessable_assets;
+mod accessible_assets;
 mod extract_graph;
 mod get_node;
 mod matching_children;
