@@ -32,7 +32,7 @@ impl SnowflakeTableInfo {
         Ok(
             cual_from_name_parts(&name_parts, &self.server, &self.db, &self.schema).map_or_else(
                 |_| {
-                    debug!("Unable to print create qual from {:#?}", name_parts);
+                    error!("Unable to print create qual from {:#?}", name_parts);
                     vec![]
                 },
                 |cual| vec![cual],
