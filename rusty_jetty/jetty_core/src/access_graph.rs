@@ -16,10 +16,12 @@ pub use self::helpers::ProcessedConnectorData;
 
 use super::connectors;
 use core::hash::Hash;
+
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::fs::File;
+use std::hash::Hasher;
 use std::io::BufWriter;
 
 use anyhow::{anyhow, Context, Result};
@@ -32,11 +34,25 @@ const SAVED_GRAPH_PATH: &str = "jetty_graph";
 /// Attributes associated with a User node
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UserAttributes {
-    name: String,
-    identifiers: HashSet<connectors::UserIdentifier>,
-    other_identifiers: HashSet<String>,
-    metadata: HashMap<String, String>,
-    connectors: HashSet<String>,
+    /// User name
+    pub name: String,
+    /// Specific user identifiers
+    pub identifiers: HashSet<connectors::UserIdentifier>,
+    /// Misc user identifiers
+    pub other_identifiers: HashSet<String>,
+    /// K-V pairs of user-specific metadata
+    pub metadata: HashMap<String, String>,
+    /// Connectors the user is present in
+    pub connectors: HashSet<String>,
+}
+
+impl Hash for UserAttributes {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.name.hash(state);
+        let mut connectors = self.connectors.iter().collect::<Vec<_>>();
+        connectors.sort();
+        connectors.hash(state);
+    }
 }
 
 impl UserAttributes {
@@ -76,9 +92,22 @@ impl UserAttributes {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct GroupAttributes {
-    name: String,
-    metadata: HashMap<String, String>,
-    connectors: HashSet<String>,
+    /// Name of group
+    pub name: String,
+    /// k-v pairs of group metadata
+    pub metadata: HashMap<String, String>,
+    /// All the connectors the group is present in
+    pub connectors: HashSet<String>,
+}
+
+impl Hash for GroupAttributes {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        // excluding metadata as that shouldn't be necessary to uniquely identify a group
+        self.name.hash(state);
+        let mut connectors = self.connectors.iter().collect::<Vec<_>>();
+        connectors.sort();
+        connectors.hash(state);
+    }
 }
 
 impl GroupAttributes {
@@ -111,6 +140,12 @@ pub struct AssetAttributes {
     asset_type: AssetType,
     metadata: HashMap<String, String>,
     connectors: HashSet<String>,
+}
+
+impl Hash for AssetAttributes {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.cual.hash(state);
+    }
 }
 
 impl AssetAttributes {
@@ -152,6 +187,18 @@ pub struct TagAttributes {
     connectors: HashSet<String>,
 }
 
+impl Hash for TagAttributes {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.name.hash(state);
+        self.value.hash(state);
+        self.pass_through_hierarchy.hash(state);
+        self.pass_through_lineage.hash(state);
+        let mut connectors = self.connectors.iter().collect::<Vec<_>>();
+        connectors.sort();
+        connectors.hash(state);
+    }
+}
+
 impl TagAttributes {
     fn merge_attributes(&self, new_attributes: &TagAttributes) -> Result<TagAttributes> {
         let name = merge_matched_field(&self.name, &new_attributes.name)
@@ -188,6 +235,20 @@ pub struct PolicyAttributes {
     pass_through_hierarchy: bool,
     pass_through_lineage: bool,
     connectors: HashSet<String>,
+}
+
+impl Hash for PolicyAttributes {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.name.hash(state);
+        self.pass_through_hierarchy.hash(state);
+        self.pass_through_lineage.hash(state);
+        let mut connectors = self.connectors.iter().collect::<Vec<_>>();
+        connectors.sort();
+        connectors.hash(state);
+        let mut privileges = self.privileges.iter().collect::<Vec<_>>();
+        privileges.sort();
+        privileges.hash(state);
+    }
 }
 
 impl PolicyAttributes {
@@ -231,7 +292,7 @@ impl PolicyAttributes {
 }
 
 /// Enum of node types
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub enum JettyNode {
     /// Group node
     Group(GroupAttributes),
@@ -414,8 +475,8 @@ impl AccessGraph {
         for connector_data in data {
             // Create all nodes first, then create edges.
             ag.add_nodes(&connector_data)?;
-            ag.add_edges()?;
         }
+        ag.add_edges()?;
         Ok(ag)
     }
 
@@ -424,13 +485,11 @@ impl AccessGraph {
     pub fn new_dummy(nodes: &[&JettyNode], edges: &[(NodeName, NodeName, EdgeType)]) -> Self {
         use self::test_util::new_graph_with;
 
-        let mut ag = AccessGraph {
+        AccessGraph {
             graph: new_graph_with(nodes, edges).unwrap(),
             edge_cache: HashSet::new(),
             last_modified: OffsetDateTime::now_utc(),
-        };
-
-        ag
+        }
     }
 
     /// Get last modified date for access graph

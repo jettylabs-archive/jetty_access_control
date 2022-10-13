@@ -6,12 +6,10 @@ use jetty_core::{
         UserIdentifier,
     },
     cual::{Cual, Cualable},
+    permissions::matrix::{InsertOrMerge, Merge},
 };
 
-use super::{
-    consts::AssetCapabilityMap,
-    matrix::{InsertOrMerge, Merge},
-};
+use super::consts::AssetCapabilityMap;
 use crate::{
     coordinator::Coordinator,
     nodes::{self, user::SiteRole, OwnedAsset, ProjectId},
@@ -142,10 +140,10 @@ impl<'x> PermissionManager<'x> {
             for user in self.coordinator.env.users.values() {
                 let restricted_capabilities = capability_restrictions_map
                     .get(user.site_role, asset.get_asset_type())
-                    .expect(&format!("getting site role {:?} and asset type {:?} from capability restrictions map", user.site_role, asset.get_asset_type()));
+                    .unwrap_or_else(|| panic!("getting site role {:?} and asset type {:?} from capability restrictions map", user.site_role, asset.get_asset_type()));
 
                 let effective_permissions = asset_capabilities
-                    .into_iter()
+                    .iter()
                     .filter_map(|&capa| {
                         if restricted_capabilities.contains(&capa) {
                             Some(EffectivePermission::new(

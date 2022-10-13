@@ -1,12 +1,24 @@
 use serde::Serialize;
 
-use crate::{Database, Schema, Table, View};
+use crate::{Database, Object, Schema};
 
 /// Marker trait for asset types.
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Default)]
 pub enum Asset {
-    Table(Table),
-    View(View),
     Schema(Schema),
     Database(Database),
+    Object(Object),
+    #[default]
+    Unknown,
+}
+
+impl Asset {
+    pub(crate) fn fqn(&self) -> String {
+        match self {
+            Asset::Database(d) => d.name.to_owned(),
+            Asset::Schema(s) => s.fqn(),
+            Asset::Object(o) => o.fqn(),
+            Asset::Unknown => panic!("unknown asset type"),
+        }
+    }
 }

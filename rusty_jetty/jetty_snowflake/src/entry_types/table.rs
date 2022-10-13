@@ -1,9 +1,7 @@
 use serde::{Deserialize, Serialize};
-use structmap::FromMap;
-use structmap_derive::FromMap;
 
 /// Snowflake Table entry.
-#[derive(FromMap, Clone, Default, Deserialize, Serialize, Debug)]
+#[derive(Clone, Default, Deserialize, Serialize, Debug)]
 pub struct Table {
     /// The Table name in Snowflake.
     pub name: String,

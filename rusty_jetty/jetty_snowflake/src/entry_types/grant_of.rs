@@ -1,12 +1,22 @@
 use serde::Deserialize;
-use structmap::FromMap;
-use structmap_derive::FromMap;
+
+use super::RoleName;
 
 /// Snowflake entry for a grant to a role.
-#[derive(FromMap, Default, Deserialize, Debug)]
+#[derive(Default, Deserialize, Debug)]
 pub struct GrantOf {
     /// The role name in Snowflake.
-    pub role: String,
+    pub role: RoleName,
     pub granted_to: String,
     pub grantee_name: String,
+}
+
+impl GrantOf {
+    pub fn new(role: RoleName, granted_to: String, grantee_name: String) -> Self {
+        Self {
+            role,
+            granted_to,
+            grantee_name,
+        }
+    }
 }

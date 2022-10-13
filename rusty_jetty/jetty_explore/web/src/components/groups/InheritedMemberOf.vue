@@ -21,7 +21,7 @@
             </router-link>
             <q-item-label caption>
               <JettyBadge
-                v-for="platform in slotProps.props.row.platforms"
+                v-for="platform in slotProps.props.row.connectors"
                 :key="platform"
                 :name="platform"
               />
@@ -76,7 +76,7 @@ const filterMethod = (rows, terms) => {
     needles.every(
       (needle) =>
         r.name.toLocaleLowerCase().indexOf(needle) > -1 ||
-        r.platforms.join(" ").toLocaleLowerCase().indexOf(needle) > -1
+        r.connectors.join(" ").toLocaleLowerCase().indexOf(needle) > -1
     )
   );
 };
@@ -87,7 +87,7 @@ const csvConfig = {
   // accepts filtered sorted rows and returns the proper mapping
   mappingFn: (filteredSortedRows) =>
     filteredSortedRows.flatMap((r) =>
-      r.membership_paths.map((m) => [r.name, r.platforms.join(", "), m])
+      r.membership_paths.map((m) => [r.name, r.connectors.join(", "), m])
     ),
 };
 </script>

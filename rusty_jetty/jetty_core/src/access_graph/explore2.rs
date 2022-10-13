@@ -1,14 +1,20 @@
 //! Utilities for exploration of the graph.
 //!
 
-use std::{collections::HashSet, fmt::Display};
+mod extract_graph;
+mod matching_children;
+mod matching_paths;
+mod matching_paths_to_children;
 
-use indexmap::IndexSet;
-use petgraph::{stable_graph::NodeIndex, visit::IntoNodeReferences, Direction};
+use std::fmt::Display;
+
+use petgraph::visit::IntoNodeReferences;
 
 use super::{AccessGraph, EdgeType, JettyNode, NodeName};
 
-struct NodePath(Vec<JettyNode>);
+/// A path from one node to another, including start and end nodes.
+/// Inside, it's a Vec<JettyNode>
+pub struct NodePath(Vec<JettyNode>);
 
 impl Display for NodePath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -28,225 +34,6 @@ impl AccessGraph {
     /// Get all nodes from the graph
     pub fn get_nodes(&self) -> petgraph::stable_graph::NodeReferences<super::JettyNode> {
         self.graph.graph.node_references()
-    }
-
-    /// Get all the children nodes up to a particular depth by following non-repeating paths given certain
-    /// criteria. It only looks at outgoing edges.
-    ///
-    /// `from` is the name of the starting node
-    /// `edge_matcher` is a function that must return true to be able to follow the edge
-    /// `passthrough_matcher` is a function that must return true for the path to pass through that node
-    /// `output_matcher` is a function that must return true for a node to be a destination
-    /// `min_depth` is the minimum depth at which a target may be found
-    /// `max_depth` is how deep to search for children. If None, will continue until it runs out of children to visit.
-    pub fn get_matching_children(
-        &self,
-        from: &NodeName,
-        edge_matcher: fn(&EdgeType) -> bool,
-        passthrough_matcher: fn(&JettyNode) -> bool,
-        target_matcher: fn(&JettyNode) -> bool,
-        min_depth: Option<usize>,
-        max_depth: Option<usize>,
-    ) -> Vec<JettyNode> {
-        let idx = self.graph.nodes.get(from).unwrap();
-
-        let max_depth = if let Some(l) = max_depth {
-            l
-        } else {
-            self.graph.graph.node_count() - 1
-        };
-
-        let min_depth = min_depth.unwrap_or(0);
-
-        // list of visited nodes
-        let mut visited = HashSet::new();
-        let mut results = vec![];
-
-        self.get_matching_children_recursive(
-            *idx,
-            edge_matcher,
-            passthrough_matcher,
-            target_matcher,
-            min_depth,
-            max_depth,
-            0,
-            &mut visited,
-            &mut results,
-        );
-
-        results
-    }
-
-    /// Start with a node, then get all of its children. If they're the target type, add them to the result.
-    /// If not the target, keep going.
-    fn get_matching_children_recursive(
-        &self,
-        idx: NodeIndex,
-        edge_matcher: fn(&EdgeType) -> bool,
-        passthrough_matcher: fn(&JettyNode) -> bool,
-        target_matcher: fn(&JettyNode) -> bool,
-        min_depth: usize,
-        max_depth: usize,
-        current_depth: usize,
-        visited: &mut HashSet<NodeIndex>,
-        results: &mut Vec<JettyNode>,
-    ) {
-        let legal_connections = self
-            .graph
-            .graph
-            .edges_directed(idx, Direction::Outgoing)
-            .filter(|e| edge_matcher(e.weight()))
-            .map(|e| petgraph::visit::EdgeRef::target(&e));
-
-        // Update depth because we're now looking at the children
-        let current_depth = current_depth + 1;
-
-        // Did we go too deep?
-        if current_depth > max_depth {
-            return;
-        }
-
-        for child in legal_connections {
-            // Has it already been inserted?
-            if !visited.insert(child) {
-                continue;
-            }
-
-            // Get the node we're looking at
-            let node_weight = &self.graph.graph[child];
-            // Are we beyond the minimum depth?
-            if current_depth >= min_depth {
-                // is it the target node type?
-                if target_matcher(node_weight) {
-                    results.push(node_weight.to_owned());
-                }
-            }
-
-            // Is it a passthrough type?
-            if passthrough_matcher(node_weight) {
-                self.get_matching_children_recursive(
-                    child,
-                    edge_matcher,
-                    passthrough_matcher,
-                    target_matcher,
-                    min_depth,
-                    max_depth,
-                    current_depth,
-                    visited,
-                    results,
-                );
-            }
-        }
-    }
-
-    fn all_matching_simple_paths(
-        &self,
-        from: &NodeName,
-        to: &NodeName,
-        edge_matcher: fn(&EdgeType) -> bool,
-        passthrough_matcher: fn(&JettyNode) -> bool,
-        min_depth: Option<usize>,
-        max_depth: Option<usize>,
-    ) -> Vec<NodePath> {
-        let from_idx = self.graph.nodes.get(from).unwrap();
-        let to_idx = self.graph.nodes.get(to).unwrap();
-
-        let max_depth = if let Some(l) = max_depth {
-            l
-        } else {
-            self.graph.graph.node_count() - 1
-        };
-
-        let min_depth = min_depth.unwrap_or(0);
-
-        // list of visited nodes
-        let mut visited = IndexSet::from([(from_idx.to_owned())]);
-        let mut results = vec![];
-
-        self.all_matching_simple_paths_recursive(
-            *from_idx,
-            *to_idx,
-            edge_matcher,
-            passthrough_matcher,
-            min_depth,
-            max_depth,
-            0,
-            &mut visited,
-            &mut results,
-        );
-
-        results
-    }
-
-    /// Returns a Vec of Vec<JettyNodes> representing the matching non-cyclic paths
-    /// between two nodes
-    fn all_matching_simple_paths_recursive(
-        &self,
-        from_idx: NodeIndex,
-        to_idx: NodeIndex,
-        edge_matcher: fn(&EdgeType) -> bool,
-        passthrough_matcher: fn(&JettyNode) -> bool,
-        min_depth: usize,
-        max_depth: usize,
-        current_depth: usize,
-        visited: &mut IndexSet<NodeIndex>,
-        results: &mut Vec<NodePath>,
-    ) {
-        let legal_connections = self
-            .graph
-            .graph
-            .edges_directed(from_idx, Direction::Outgoing)
-            .filter(|e| edge_matcher(e.weight()))
-            .map(|e| petgraph::visit::EdgeRef::target(&e));
-
-        // Update depth because we're now looking at the children
-        let current_depth = current_depth + 1;
-
-        // Did we go too deep?
-        if current_depth > max_depth {
-            return;
-        }
-
-        for child in legal_connections {
-            // Has it already been inserted?
-            if !visited.insert(child) {
-                continue;
-            }
-
-            // Are we beyond the minimum depth?
-            if current_depth >= min_depth {
-                // is it the target node? if so, add the path to the results, pop
-                // the node from visited and carry on with the next child
-                if child == to_idx {
-                    let path = visited
-                        .iter()
-                        .cloned()
-                        .map(|i| self.graph.graph[i].to_owned())
-                        .collect::<Vec<_>>();
-                    results.push(NodePath(path));
-                    visited.pop();
-                    continue;
-                }
-            }
-
-            // Get the node we're looking at
-            let node_weight = &self.graph.graph[child];
-            // Is it a passthrough type?
-            if passthrough_matcher(node_weight) {
-                self.all_matching_simple_paths_recursive(
-                    child,
-                    to_idx,
-                    edge_matcher,
-                    passthrough_matcher,
-                    min_depth,
-                    max_depth,
-                    current_depth,
-                    visited,
-                    results,
-                );
-            }
-            visited.pop();
-        }
     }
 }
 
