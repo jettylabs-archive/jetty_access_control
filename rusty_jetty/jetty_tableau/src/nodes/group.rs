@@ -105,6 +105,8 @@ pub(crate) async fn get_basic_groups(
 
 #[cfg(test)]
 mod tests {
+    use crate::nodes::user::get_basic_users;
+
     use super::*;
     use anyhow::{Context, Result};
 
@@ -126,22 +128,10 @@ mod tests {
             .await
             .context("running tableau connector setup")?;
         let mut groups = get_basic_groups(&tc.coordinator.rest_client).await?;
+        let users_map = get_basic_users(&tc.coordinator.rest_client).await?;
         for (_k, v) in &mut groups {
-            v.update_users(
-                &tc.coordinator.rest_client,
-                &HashMap::from([(
-                    "u".to_owned(),
-                    tableau_nodes::User::new(
-                        "id".to_owned(),
-                        "name".to_owned(),
-                        "email".to_owned(),
-                        "eauid".to_owned(),
-                        "full name".to_owned(),
-                        Default::default(),
-                    ),
-                )]),
-            )
-            .await?;
+            v.update_users(&tc.coordinator.rest_client, &users_map)
+                .await?;
             println!("{:#?}", v);
         }
         Ok(())
