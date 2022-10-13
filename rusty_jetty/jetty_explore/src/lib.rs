@@ -11,23 +11,14 @@ use axum::{extract::Extension, routing::get, Json, Router};
 use serde_json::{json, Value};
 use time::OffsetDateTime;
 use tower_http::trace::TraceLayer;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use jetty_core::{
     access_graph,
-    logging::{debug, error},
+    logging::{debug, error, info, warn},
 };
 
 /// Launch the Jetty Explore web ui and accompanying server
 pub async fn explore_web_ui(ag: Arc<access_graph::AccessGraph>) {
-    tracing_subscriber::registry()
-        .with(tracing_subscriber::EnvFilter::new(
-            std::env::var("RUST_LOG")
-                .unwrap_or_else(|_| "example_tracing_aka_logging=debug,tower_http=debug".into()),
-        ))
-        .with(tracing_subscriber::fmt::layer())
-        .init();
-
     // build our application with a route
     let app = Router::new()
         .nest("/api/", nodes::router())

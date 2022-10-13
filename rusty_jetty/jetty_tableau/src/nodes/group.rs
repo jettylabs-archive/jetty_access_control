@@ -133,7 +133,7 @@ mod tests {
         for (_k, v) in &mut groups {
             v.update_users(&tc.coordinator.rest_client, &users_map)
                 .await?;
-            println!("{:#?}", v);
+            debug!("{:#?}", v);
         }
         Ok(())
     }

@@ -1,45 +1,35 @@
 //! Logging utilities for Jetty-wide output to stdout.
 //!
 
-use std::io::Write;
-
-use env_logger::{fmt::Color, Builder, Env};
 // Re-exports for convenience
-pub use log::{debug, error, info, warn, LevelFilter};
+pub use tracing::metadata::LevelFilter;
+pub use tracing::{debug, error, info, warn};
+use tracing_subscriber::prelude::*;
+use tracing_subscriber::{util::SubscriberInitExt, Layer};
 
 /// Set up basic logging
 pub fn setup(level: Option<LevelFilter>) {
     // The user can specify a log level via an env var
     // (such as for testing).
-    let env = Env::default().filter_or("LOG_LEVEL", LevelFilter::Info.as_str());
+    let env = std::env::var("RUST_LOG").unwrap_or_else(|_| "tower_http=debug".into());
+    let mut logging_layers = vec![tracing_subscriber::EnvFilter::new(env).boxed()];
 
-    let mut log_builder = &mut Builder::from_env(env);
     // The input level overrides any env vars.
     if let Some(level) = level {
-        log_builder = log_builder.filter_level(level);
+        let layer = tracing_subscriber::fmt::layer().with_filter(level).boxed();
+        logging_layers.push(layer);
+    } else {
+        let layer = tracing_subscriber::fmt::layer()
+            .with_filter(LevelFilter::INFO)
+            .boxed();
+        logging_layers.push(layer);
     }
-    log_builder
-        .format(|buf, record| {
-            let style = buf.style();
-            let mut error_style = buf.style().clone();
-            error_style
-                .set_color(Color::Rgb(244, 113, 36))
-                .set_bold(true);
 
-            let timestamp = buf.timestamp();
-
-            match record.level() {
-                log::Level::Error => {
-                    writeln!(
-                        buf,
-                        "Jetty ({}): {}",
-                        timestamp,
-                        error_style.value(record.args())
-                    )
-                }
-                _ => writeln!(buf, "Jetty ({}): {}", timestamp, style.value(record.args())),
-            }
-        })
+    // Actually initialize all logging layers
+    tracing_subscriber::registry()
+        .with(logging_layers)
+        .with(tracing_subscriber::fmt::layer())
         .init();
+
     debug!("logging set up");
 }
