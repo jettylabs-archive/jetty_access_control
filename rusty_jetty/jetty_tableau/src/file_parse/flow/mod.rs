@@ -87,7 +87,7 @@ impl FlowDoc {
                     ".v2020_3_1.WriteToDatabase" => {
                         self.handle_write_to_database(node).map_or_else(
                             |e| {
-                                error!(
+                                debug!(
                                     "skipping data output destination of type: {}\nerror: {}",
                                     node_type, e
                                 )
