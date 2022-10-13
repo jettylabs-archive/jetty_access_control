@@ -175,10 +175,10 @@ mod tests {
             ],
         );
 
-        let extracted = ag.extract_graph(&NodeName::Group("group3".to_owned()), 1);
+        let SubGraph(extracted) = ag.extract_graph(&NodeName::Group("group3".to_owned()), 1);
 
         assert!(is_isomorphic_matching(
-            &extracted.0,
+            &extracted,
             &Into::<petgraph::graph::DiGraph<JettyNode, EdgeType>>::into(sub_graph.graph.graph),
             |w1, w2| w1.get_name() == w2.get_name(),
             |e1, e2| e1 == e2

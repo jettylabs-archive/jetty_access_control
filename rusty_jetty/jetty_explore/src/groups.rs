@@ -4,7 +4,6 @@ use axum::{extract::Path, routing::get, Extension, Json, Router};
 use jetty_core::access_graph::{self, EdgeType, JettyNode, NodeName};
 use serde::Serialize;
 
-
 #[derive(Serialize)]
 pub(crate) struct ObjectWithPathResponse {
     name: String,
@@ -117,7 +116,7 @@ async fn direct_members_groups_handler(
             if let JettyNode::Group(g) = n {
                 Some(g)
             } else {
-                None
+                panic!("found wrong node type - expected group")
             }
         })
         .collect::<Vec<_>>();

@@ -102,6 +102,7 @@ pub struct GroupAttributes {
 
 impl Hash for GroupAttributes {
     fn hash<H: Hasher>(&self, state: &mut H) {
+        // excluding metadata as that shouldn't be necessary to uniquely identify a group
         self.name.hash(state);
         let mut connectors = self.connectors.iter().collect::<Vec<_>>();
         connectors.sort();
@@ -483,8 +484,6 @@ impl AccessGraph {
     /// New graph
     pub fn new_dummy(nodes: &[&JettyNode], edges: &[(NodeName, NodeName, EdgeType)]) -> Self {
         use self::test_util::new_graph_with;
-
-        
 
         AccessGraph {
             graph: new_graph_with(nodes, edges).unwrap(),
