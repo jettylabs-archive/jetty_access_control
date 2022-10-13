@@ -51,7 +51,7 @@ impl FlowDoc {
                     ".v1.LoadSql" => {
                         self.handle_load_sql(node).map_or_else(
                             |e| {
-                                error!(
+                                debug!(
                                     "skipping data input source of type: {}\nerror: {}",
                                     node_type, e
                                 )
