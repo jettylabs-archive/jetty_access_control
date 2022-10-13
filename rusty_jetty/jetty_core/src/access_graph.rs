@@ -184,11 +184,14 @@ impl AssetAttributes {
 /// A struct describing the attributes of a Tag
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TagAttributes {
-    name: String,
-    value: Option<String>,
-    pass_through_hierarchy: bool,
-    pass_through_lineage: bool,
-    connectors: HashSet<String>,
+    /// Name of tag
+    pub name: String,
+    /// an optional value
+    pub value: Option<String>,
+    /// whether the tag is to be passed through hierarchy
+    pub pass_through_hierarchy: bool,
+    /// whether the tag is to be passed through lineage
+    pub pass_through_lineage: bool,
 }
 
 impl Hash for TagAttributes {
@@ -197,9 +200,6 @@ impl Hash for TagAttributes {
         self.value.hash(state);
         self.pass_through_hierarchy.hash(state);
         self.pass_through_lineage.hash(state);
-        let mut connectors = self.connectors.iter().collect::<Vec<_>>();
-        connectors.sort();
-        connectors.hash(state);
     }
 }
 
@@ -220,14 +220,23 @@ impl TagAttributes {
         )
         .context("field: TagAttributes.pass_through_lineage")?;
 
-        let connectors = merge_set(&self.connectors, &new_attributes.connectors);
         Ok(TagAttributes {
             name,
             value,
             pass_through_hierarchy,
             pass_through_lineage,
-            connectors,
         })
+    }
+
+    /// Convenience constructor for testing
+    #[cfg(test)]
+    fn new(name: String, pass_through_hierarchy: bool, pass_through_lineage: bool) -> Self {
+        Self {
+            name: name,
+            value: Default::default(),
+            pass_through_hierarchy,
+            pass_through_lineage,
+        }
     }
 }
 
@@ -328,7 +337,8 @@ impl JettyNode {
             JettyNode::Group(g) => g.connectors.to_owned(),
             JettyNode::User(u) => u.connectors.to_owned(),
             JettyNode::Asset(a) => a.connectors.to_owned(),
-            JettyNode::Tag(t) => t.connectors.to_owned(),
+            // Tags don't really have connectors at this point, so return an empty HashSet
+            JettyNode::Tag(t) => Default::default(),
             JettyNode::Policy(p) => p.connectors.to_owned(),
         }
     }
@@ -391,7 +401,7 @@ pub enum EdgeType {
     DerivedTo,
     /// asset -> tagged with -> tag
     TaggedAs,
-    /// asset ->
+    /// asset -> governed by -> policy
     GovernedBy,
     /// tag -> applied to -> asset
     AppliedTo,
@@ -402,7 +412,7 @@ pub enum EdgeType {
     /// tag -> removed from -> asset
     RemovedFrom,
     /// asset -> had removed -> tag
-    HadRemoved,
+    UntaggedAs,
     /// anything else
     #[default]
     Other,
@@ -422,8 +432,8 @@ fn get_edge_type_pair(edge_type: &EdgeType) -> EdgeType {
         EdgeType::AppliedTo => EdgeType::TaggedAs,
         EdgeType::GovernedBy => EdgeType::Governs,
         EdgeType::Governs => EdgeType::GovernedBy,
-        EdgeType::RemovedFrom => EdgeType::HadRemoved,
-        EdgeType::HadRemoved => EdgeType::RemovedFrom,
+        EdgeType::RemovedFrom => EdgeType::UntaggedAs,
+        EdgeType::UntaggedAs => EdgeType::RemovedFrom,
         EdgeType::Other => EdgeType::Other,
     }
 }

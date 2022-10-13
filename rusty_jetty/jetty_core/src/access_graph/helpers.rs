@@ -178,7 +178,6 @@ impl NodeHelper for nodes::Tag {
             value: self.value.to_owned(),
             pass_through_hierarchy: self.pass_through_hierarchy,
             pass_through_lineage: self.pass_through_lineage,
-            connectors: HashSet::from([connector]),
         })
     }
 
