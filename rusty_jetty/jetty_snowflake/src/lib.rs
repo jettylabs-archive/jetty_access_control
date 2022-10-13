@@ -17,8 +17,8 @@ mod consts;
 mod coordinator;
 mod creds;
 mod cual;
+mod efperm;
 mod entry_types;
-mod ep;
 mod rest;
 
 use cual::set_cual_account_name;

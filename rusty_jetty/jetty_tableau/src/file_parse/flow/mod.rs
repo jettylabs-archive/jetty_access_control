@@ -373,33 +373,34 @@ mod test {
         .into_iter()
         .collect::<HashSet<String>>());
 
-        assert_eq!(
-            output_cuals,
-            [
-                format!(
-                    "{}/datasource/6df04a18-19a6-4012-8a83-c2b33a8d1907",
-                    &cual_prefix
-                ),
-                format!(
-                    "{}/datasource/91dae170-0191-4dba-8cef-5eda957bf122",
-                    &cual_prefix
-                ),
-                format!(
-                    "{}/datasource/de1c1844-2ce6-480d-8016-afc7be49827e",
-                    &cual_prefix
-                ),
-                "snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/GOLD/TABLEAU_SPECIAL"
-                    .to_owned(),
-                "snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/RAW/Special%20Name"
-                    .to_owned(),
-                format!(
-                    "{}/datasource/a27d260d-9ff9-4707-82fd-e66cda23275d",
-                    &cual_prefix
-                ),
-            ]
-            .into_iter()
-            .collect::<HashSet<String>>()
-        );
+        let mut output_cuals = output_cuals.into_iter().collect::<Vec<_>>();
+        output_cuals.sort();
+        let mut expected_cuals = [
+            format!(
+                "{}/datasource/6df04a18-19a6-4012-8a83-c2b33a8d1907",
+                &cual_prefix
+            ),
+            format!(
+                "{}/datasource/91dae170-0191-4dba-8cef-5eda957bf122",
+                &cual_prefix
+            ),
+            format!(
+                "{}/datasource/de1c1844-2ce6-480d-8016-afc7be49827e",
+                &cual_prefix
+            ),
+            "snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/GOLD/tableau_special"
+                .to_owned(),
+            "snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/RAW/%22Special%20Name%22"
+                .to_owned(),
+            format!(
+                "{}/datasource/a27d260d-9ff9-4707-82fd-e66cda23275d",
+                &cual_prefix
+            ),
+        ]
+        .into_iter()
+        .collect::<Vec<String>>();
+        expected_cuals.sort();
+        assert_eq!(output_cuals, expected_cuals,);
 
         Ok(())
     }

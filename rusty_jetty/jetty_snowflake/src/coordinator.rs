@@ -10,13 +10,19 @@ use jetty_core::connectors;
 use jetty_core::connectors::nodes;
 use jetty_core::connectors::UserIdentifier;
 
+use jetty_core::connectors::nodes::EffectivePermission;
+use jetty_core::connectors::nodes::SparseMatrix;
 use jetty_core::cual::Cualable;
 use jetty_core::logging::debug;
 use jetty_core::logging::error;
+use jetty_core::permissions::matrix::InsertOrMerge;
 
 use super::cual::{cual, get_cual_account_name, Cual};
+use crate::efperm::EffectivePermissionMap;
 use crate::entry_types;
+use crate::entry_types::ObjectKind;
 use crate::entry_types::RoleName;
+use crate::Asset;
 use crate::Grant;
 use crate::GrantType;
 
@@ -43,7 +49,7 @@ pub(crate) struct Environment {
 pub(super) struct Coordinator<'a> {
     pub(crate) env: Environment,
     conn: &'a super::SnowflakeConnector,
-    role_grants: HashMap<Grantee, HashSet<RoleName>>,
+    pub(crate) role_grants: HashMap<Grantee, HashSet<RoleName>>,
 }
 
 #[derive(Hash, Eq, PartialEq)]
@@ -145,11 +151,11 @@ impl<'a> Coordinator<'a> {
             assets: self.get_jetty_assets(),
             tags: self.get_jetty_tags(),
             policies: self.get_jetty_policies(),
-            effective_permissions: HashMap::new(),
+            effective_permissions: self.get_effective_permissions(),
         }
     }
 
-    /// Get the role grands into a nicer format
+    /// Get the role grants into a nicer format
     fn build_role_grants(&self) -> HashMap<Grantee, HashSet<RoleName>> {
         let mut res: HashMap<Grantee, HashSet<RoleName>> = HashMap::new();
         for grant in &self.env.role_grants {
@@ -260,9 +266,9 @@ impl<'a> Coordinator<'a> {
     fn get_jetty_assets(&self) -> Vec<nodes::Asset> {
         let mut res = vec![];
         for object in &self.env.objects {
-            let object_type = match &object.kind[..] {
-                "TABLE" => connectors::AssetType::DBTable,
-                "VIEW" => connectors::AssetType::DBView,
+            let object_type = match object.kind {
+                ObjectKind::Table => connectors::AssetType::DBTable,
+                ObjectKind::View => connectors::AssetType::DBView,
                 _ => connectors::AssetType::Other,
             };
 
@@ -346,5 +352,49 @@ impl<'a> Coordinator<'a> {
     }
 
     /// get effective_permissions from environment
-    fn get_jetty_effective_permissions(&self) {}
+    pub(crate) fn get_effective_permissions(
+        &self,
+    ) -> SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> {
+        let mut res = HashMap::new();
+        let ep_map = EffectivePermissionMap::new(&self.role_grants);
+
+        // The runtime performance here can definitely be improved, but this is
+        // a workable naive approach for now.
+        for user in &self.env.users {
+            let mut obj_eps = HashMap::new();
+            for obj in &self.env.objects {
+                obj_eps.insert_or_merge(
+                    obj.cual(),
+                    ep_map.get_effective_permissions_for_object(&self.env, user, obj),
+                );
+            }
+            res.insert_or_merge(UserIdentifier::Email(user.email.to_owned()), obj_eps);
+            let mut db_eps = HashMap::new();
+            for db in &self.env.databases {
+                db_eps.insert_or_merge(
+                    db.cual(),
+                    ep_map.get_effective_permissions_for_asset(
+                        &self.env,
+                        user,
+                        &Asset::Database(db.clone()),
+                    ),
+                );
+            }
+            res.insert_or_merge(UserIdentifier::Email(user.email.to_owned()), db_eps);
+            let mut schema_eps = HashMap::new();
+            for schema in &self.env.schemas {
+                schema_eps.insert_or_merge(
+                    schema.cual(),
+                    ep_map.get_effective_permissions_for_asset(
+                        &self.env,
+                        user,
+                        &Asset::Schema(schema.clone()),
+                    ),
+                )
+            }
+            res.insert_or_merge(UserIdentifier::Email(user.email.to_owned()), schema_eps);
+        }
+
+        res
+    }
 }

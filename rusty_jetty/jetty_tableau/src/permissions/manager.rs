@@ -7,12 +7,10 @@ use jetty_core::{
     },
     cual::{Cual, Cualable},
     logging::debug,
+    permissions::matrix::{InsertOrMerge, Merge},
 };
 
-use super::{
-    consts::AssetCapabilityMap,
-    matrix::{InsertOrMerge, Merge},
-};
+use super::consts::AssetCapabilityMap;
 use crate::{
     coordinator::Coordinator,
     nodes::{self, user::SiteRole, OwnedAsset, ProjectId},
