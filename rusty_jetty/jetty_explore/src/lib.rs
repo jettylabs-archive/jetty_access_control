@@ -51,7 +51,7 @@ pub async fn explore_web_ui(ag: Arc<access_graph::AccessGraph>) {
         let addr = SocketAddr::from(([127, 0, 0, 1], port));
         debug!("trying to bind on {}", addr);
         if let Ok(server) = axum::Server::try_bind(&addr) {
-            debug!("listening on {}", addr);
+            info!("Serving Jetty explore on {}", addr);
             let open_url = format!("http://{}", &addr);
             // Open a web browser to the appropriate port
             match open::that(&open_url) {
