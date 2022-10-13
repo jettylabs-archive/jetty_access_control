@@ -7,3 +7,16 @@ pub struct Schema {
     pub name: String,
     pub database_name: String,
 }
+
+impl Schema {
+    pub fn new(name: String, database_name: String) -> Self {
+        Self {
+            name,
+            database_name,
+        }
+    }
+
+    pub(crate) fn fqn(&self) -> String {
+        format!("{}.{}", self.name, self.database_name)
+    }
+}

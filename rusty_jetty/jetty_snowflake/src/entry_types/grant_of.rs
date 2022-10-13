@@ -10,3 +10,13 @@ pub struct GrantOf {
     pub granted_to: String,
     pub grantee_name: String,
 }
+
+impl GrantOf {
+    pub fn new(role: RoleName, granted_to: String, grantee_name: String) -> Self {
+        Self {
+            role,
+            granted_to,
+            grantee_name,
+        }
+    }
+}

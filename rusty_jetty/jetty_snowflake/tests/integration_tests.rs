@@ -110,22 +110,14 @@ impl WiremockServer {
             privilege,
             granted_on
         );
-        let tables_body = body_for!(
-            jetty_snowflake::Entry::Asset(jetty_snowflake::Asset::Table(_)),
+        let objects_body = body_for!(
+            jetty_snowflake::Entry::Asset(jetty_snowflake::Asset::Object(_)),
             input,
             name,
             schema_name,
             database_name
         );
-        // println!("tables body: {}", tables_body);
-        let views_body = body_for!(
-            jetty_snowflake::Entry::Asset(jetty_snowflake::Asset::View(_)),
-            input,
-            name,
-            schema_name,
-            database_name
-        );
-        // println!("body: {}", tables_body);
+        println!("objects body: {}", objects_body);
         let schemas_body = body_for!(
             jetty_snowflake::Entry::Asset(jetty_snowflake::Asset::Schema(_)),
             input,
@@ -138,7 +130,6 @@ impl WiremockServer {
             input,
             name
         );
-        println!("body: {}", tables_body);
 
         // Mount mocks for each query.
         // Mount mock for roles
@@ -172,7 +163,7 @@ impl WiremockServer {
         Mock::given(method("POST"))
             .and(path("/api/v2/statements"))
             .and(body_string_contains("SHOW TABLES"))
-            .respond_with(ResponseTemplate::new(200).set_body_string(tables_body))
+            .respond_with(ResponseTemplate::new(200).set_body_string(objects_body.clone()))
             .named("grants query")
             .mount(self.server.as_ref().unwrap())
             .await;
@@ -181,7 +172,7 @@ impl WiremockServer {
         Mock::given(method("POST"))
             .and(path("/api/v2/statements"))
             .and(body_string_contains("SHOW VIEWS"))
-            .respond_with(ResponseTemplate::new(200).set_body_string(views_body))
+            .respond_with(ResponseTemplate::new(200).set_body_string(objects_body))
             .named("grants query")
             .mount(self.server.as_ref().unwrap())
             .await;

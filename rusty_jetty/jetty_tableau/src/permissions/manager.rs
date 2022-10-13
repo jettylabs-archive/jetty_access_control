@@ -6,12 +6,10 @@ use jetty_core::{
         UserIdentifier,
     },
     cual::{Cual, Cualable},
+    permissions::matrix::{InsertOrMerge, Merge},
 };
 
-use super::{
-    consts::AssetCapabilityMap,
-    matrix::{InsertOrMerge, Merge},
-};
+use super::consts::AssetCapabilityMap;
 use crate::{
     coordinator::Coordinator,
     nodes::{self, user::SiteRole, OwnedAsset, ProjectId},

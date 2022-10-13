@@ -6,3 +6,9 @@ pub struct Database {
     /// The Database name in Snowflake.
     pub name: String,
 }
+
+impl Database {
+    pub fn new(name: String) -> Self {
+        Self { name }
+    }
+}
