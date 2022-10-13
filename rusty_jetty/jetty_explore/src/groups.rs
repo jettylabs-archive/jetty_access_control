@@ -111,7 +111,7 @@ async fn direct_members_groups_handler(
             if let JettyNode::Group(g) = n {
                 Some(g)
             } else {
-                None
+                panic!("found wrong node type - expected group")
             }
         })
         .collect::<Vec<_>>();

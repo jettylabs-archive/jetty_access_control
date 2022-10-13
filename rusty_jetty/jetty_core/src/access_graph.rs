@@ -106,6 +106,7 @@ pub struct GroupAttributes {
 
 impl Hash for GroupAttributes {
     fn hash<H: Hasher>(&self, state: &mut H) {
+        // excluding metadata as that shouldn't be necessary to uniquely identify a group
         self.name.hash(state);
         let mut connectors = self.connectors.iter().collect::<Vec<_>>();
         connectors.sort();

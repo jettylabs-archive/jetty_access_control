@@ -6,7 +6,7 @@ use jetty_core::{
         UserIdentifier,
     },
     cual::{Cual, Cualable},
-    matrix::{InsertOrMerge, Merge},
+    permissions::matrix::{InsertOrMerge, Merge},
 };
 
 use super::consts::AssetCapabilityMap;
