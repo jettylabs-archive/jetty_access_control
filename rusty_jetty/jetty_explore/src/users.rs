@@ -1,12 +1,14 @@
 use std::sync::Arc;
 
 use axum::{extract::Path, routing::get, Extension, Json, Router};
-use jetty_core::{
-    access_graph::{self, NodeName},
-    connectors::UserIdentifier,
-};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+
+use super::ObjectWithPathResponse;
+use jetty_core::{
+    access_graph::{self, EdgeType, JettyNode, NodeName},
+    connectors::UserIdentifier,
+};
 
 /// Return a router to handle all user-related requests
 pub(super) fn router() -> Router {
@@ -94,37 +96,66 @@ async fn tags_handler() -> Json<Value> {
 }
 
 /// Returns groups that user is a direct member of
-async fn direct_groups_handler() -> Json<Value> {
-    Json(json! {
-    [
-        {
-          "name": "Frozen Yogurt",
-          "platforms": ["snowflake"],
-        },
-        {
-          "name": "Ice cream sandwich",
-          "platforms": ["Tableau"],
-        },
-      ]
+async fn direct_groups_handler(
+    Path(node_id): Path<String>,
+    Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
+) -> Json<Vec<access_graph::GroupAttributes>> {
+    let from = NodeName::User(node_id);
+
+    println!("{:?}", ag.extract_graph(&from, 1).dot());
+
+    let group_nodes = ag.get_matching_children(
+        &from,
+        |n| matches!(n, EdgeType::MemberOf),
+        |n| matches!(n, JettyNode::Group(_)),
+        |n| matches!(n, JettyNode::Group(_)),
+        None,
+        Some(1),
+    );
+
+    let group_attributes = group_nodes
+        .into_iter()
+        .filter_map(|n| {
+            if let JettyNode::Group(g) = n {
+                Some(g)
+            } else {
+                None
+            }
         })
+        .collect::<Vec<_>>();
+
+    Json(group_attributes)
 }
 
 /// Returns groups that user is an inherited member of
-async fn inherited_groups_handler() -> Json<Value> {
-    Json(json! {
-    [
-        {
-          "name": "Frozen Yogurt",
-          "platforms": ["snowflake"],
-          "membership_paths": ["group 1 > group 2 > group name",
-          ]
-        },
-        {
-          "name": "Ice cream sandwich",
-          "platforms": ["Tableau"],
-          "membership_paths": ["group 1 > group 2 > group name",
-          "group 3 > group 4 > group name"]
-        },
-      ]
+async fn inherited_groups_handler(
+    Path(node_id): Path<String>,
+    Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
+) -> Json<Vec<ObjectWithPathResponse>> {
+    let from = NodeName::User(node_id);
+
+    let res = ag.all_matching_simple_paths_to_children(
+        &from,
+        |n| matches!(n, EdgeType::MemberOf),
+        |n| matches!(n, JettyNode::Group(_)),
+        |n| matches!(n, JettyNode::Group(_)),
+        None,
+        None,
+    );
+
+    let group_attributes = res
+        .into_iter()
+        .filter_map(|(n, p)| {
+            if let JettyNode::Group(g) = n {
+                Some(ObjectWithPathResponse {
+                    name: g.name.to_owned(),
+                    connectors: g.connectors,
+                    membership_paths: p.iter().map(|p| p.to_string()).collect(),
+                })
+            } else {
+                None
+            }
         })
+        .collect::<Vec<_>>();
+    Json(group_attributes)
 }

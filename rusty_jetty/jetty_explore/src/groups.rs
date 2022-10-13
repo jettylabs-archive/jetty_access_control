@@ -4,13 +4,7 @@ use axum::{extract::Path, routing::get, Extension, Json, Router};
 use jetty_core::access_graph::{self, EdgeType, JettyNode, NodeName};
 use serde::Serialize;
 
-
-#[derive(Serialize)]
-pub(crate) struct ObjectWithPathResponse {
-    name: String,
-    connectors: HashSet<String>,
-    membership_paths: Vec<String>,
-}
+use super::ObjectWithPathResponse;
 
 /// Return a router to handle all group-related requests
 pub(super) fn router() -> Router {
