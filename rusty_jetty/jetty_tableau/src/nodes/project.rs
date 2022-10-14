@@ -78,7 +78,8 @@ fn to_node(val: &serde_json::Value) -> Result<super::Project> {
         serde_json::from_value(val.to_owned()).context("parsing asset information")?;
 
     Ok(super::Project {
-        cual: get_tableau_cual(TableauAssetType::Project, &project_info.id)?,
+        cual: todo!(),
+        // cual: get_tableau_cual(TableauAssetType::Project, &project_info.id)?,
         id: ProjectId(project_info.id),
         name: project_info.name,
         owner_id: project_info.owner.id,
@@ -172,9 +173,10 @@ impl From<Project> for jetty_nodes::Asset {
         let parents = val
             .parent_project_id
             .map(|ProjectId(i)| {
-                get_tableau_cual(TableauAssetType::Project, &i)
-                    .expect("Getting Tableau CUAL for project parent.")
-                    .uri()
+                todo!()
+                // get_tableau_cual(TableauAssetType::Project, &i)
+                //     .expect("Getting Tableau CUAL for project parent.")
+                //     .uri()
             })
             .map(|c| HashSet::from([c]))
             .unwrap_or_default();

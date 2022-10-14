@@ -9,7 +9,7 @@ use jetty_core::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    coordinator::{Coordinator, HasSources},
+    coordinator::{Coordinator, Environment, FromTableau, HasSources},
     file_parse::flow::FlowDoc,
     rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType},
 };
@@ -19,7 +19,6 @@ use super::{Permissionable, ProjectId, TableauAsset, FLOW};
 /// Representation of a Tableau Flow
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub(crate) struct Flow {
-    pub(crate) cual: Cual,
     pub id: String,
     pub name: String,
     pub project_id: ProjectId,
@@ -32,7 +31,6 @@ pub(crate) struct Flow {
 
 impl Flow {
     pub(crate) fn new(
-        cual: Cual,
         id: String,
         name: String,
         project_id: ProjectId,
@@ -43,7 +41,6 @@ impl Flow {
         permissions: Vec<super::Permission>,
     ) -> Self {
         Self {
-            cual,
             id,
             name,
             project_id,
@@ -125,7 +122,6 @@ fn to_node(val: &serde_json::Value) -> Result<Flow> {
         serde_json::from_value(val.to_owned()).context("parsing flow information")?;
 
     Ok(Flow {
-        cual: get_tableau_cual(TableauAssetType::Flow, &asset_info.id)?,
         id: asset_info.id,
         name: asset_info.name,
         owner_id: asset_info.owner.id,
@@ -160,11 +156,12 @@ impl Permissionable for Flow {
     }
 }
 
-impl From<Flow> for jetty_nodes::Asset {
-    fn from(val: Flow) -> Self {
+impl FromTableau<Flow> for jetty_nodes::Asset {
+    fn from(val: Flow, env: &Environment) -> Self {
         let ProjectId(project_id) = val.project_id;
+        // TODO: get project ids up the stack, construct a cual from them.
         jetty_nodes::Asset::new(
-            val.cual,
+            todo!(),
             val.name,
             AssetType(FLOW.to_owned()),
             // We will add metadata as it's useful.
@@ -172,9 +169,14 @@ impl From<Flow> for jetty_nodes::Asset {
             // Governing policies will be assigned in the policy.
             HashSet::new(),
             // Flows are children of their projects?
-            HashSet::from([get_tableau_cual(TableauAssetType::Project, &project_id)
-                .expect("Getting parent project CUAL")
-                .uri()]),
+            HashSet::from([get_tableau_cual(
+                TableauAssetType::Project,
+                &project_id,
+                Some(&val.project_id),
+                env,
+            )
+            .expect("Getting parent project CUAL")
+            .uri()]),
             // Children objects will be handled in their respective nodes.
             HashSet::new(),
             // Flows are derived from their source data.
@@ -241,7 +243,6 @@ mod tests {
     fn test_asset_from_flow_works() {
         set_cual_prefix("", "");
         let l = Flow::new(
-            Cual::new("".to_owned()),
             "id".to_owned(),
             "name".to_owned(),
             ProjectId("project_id".to_owned()),
@@ -251,7 +252,8 @@ mod tests {
             Default::default(),
             Default::default(),
         );
-        jetty_nodes::Asset::from(l);
+        let env = Environment::default();
+        <jetty_core::connectors::nodes::Asset as FromTableau<Flow>>::from(l, &env);
     }
 
     #[test]
@@ -259,7 +261,6 @@ mod tests {
     fn test_flow_into_asset_works() {
         set_cual_prefix("", "");
         let l = Flow::new(
-            Cual::new("".to_owned()),
             "id".to_owned(),
             "name".to_owned(),
             ProjectId("project_id".to_owned()),
@@ -269,6 +270,7 @@ mod tests {
             Default::default(),
             Default::default(),
         );
-        Into::<jetty_nodes::Asset>::into(l);
+        todo!()
+        // Into::<jetty_nodes::Asset>::into(l);
     }
 }

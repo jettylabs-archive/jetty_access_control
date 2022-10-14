@@ -40,7 +40,8 @@ fn to_node(val: &serde_json::Value) -> Result<View> {
         serde_json::from_value(val.to_owned()).context("parsing view information")?;
 
     Ok(View {
-        cual: get_tableau_cual(TableauAssetType::View, &asset_info.id)?,
+        cual: todo!(),
+        // cual: get_tableau_cual(TableauAssetType::View, &asset_info.id)?,
         id: asset_info.id,
         name: asset_info.name,
         owner_id: asset_info.owner.id,
@@ -109,11 +110,12 @@ impl From<View> for jetty_nodes::Asset {
             // Governing policies will be assigned in the policy.
             HashSet::new(),
             // Views are children of their workbooks.
-            HashSet::from([
-                get_tableau_cual(TableauAssetType::Workbook, &val.workbook_id)
-                    .expect("Getting parent workbook CUAL.")
-                    .uri(),
-            ]),
+            todo!(),
+            // HashSet::from([
+            //     get_tableau_cual(TableauAssetType::Workbook, &val.workbook_id)
+            //         .expect("Getting parent workbook CUAL.")
+            //         .uri(),
+            // ]),
             // Children objects will be handled in their respective nodes.
             HashSet::new(),
             // Views are not derived from/to anything.

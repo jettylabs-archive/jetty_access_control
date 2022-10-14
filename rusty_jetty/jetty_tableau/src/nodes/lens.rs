@@ -60,7 +60,8 @@ fn to_node(val: &serde_json::Value) -> Result<Lens> {
         serde_json::from_value(val.to_owned()).context("parsing lens information")?;
 
     Ok(Lens {
-        cual: get_tableau_cual(TableauAssetType::Lens, &asset_info.id)?,
+        cual: todo!(),
+        // cual: get_tableau_cual(TableauAssetType::Lens, &asset_info.id)?,
         id: asset_info.id,
         name: asset_info.name,
         owner_id: asset_info.owner_id,
@@ -97,19 +98,21 @@ impl From<Lens> for jetty_nodes::Asset {
             // Governing policies will be assigned in the policy.
             HashSet::new(),
             // Lenses are children of their datasources?
-            HashSet::from([
-                get_tableau_cual(TableauAssetType::Datasource, &val.datasource_id)
-                    .expect("Getting parent datasource CUAL")
-                    .uri(),
-            ]),
+            todo!(),
+            // HashSet::from([
+            //     get_tableau_cual(TableauAssetType::Datasource, &val.datasource_id)
+            //         .expect("Getting parent datasource CUAL")
+            //         .uri(),
+            // ]),
             // Children objects will be handled in their respective nodes.
             HashSet::new(),
             // Lenses are derived from their source data.
-            HashSet::from([
-                get_tableau_cual(TableauAssetType::Datasource, &val.datasource_id)
-                    .expect("Getting parent datasource CUAL")
-                    .uri(),
-            ]),
+            todo!(),
+            // HashSet::from([
+            //     get_tableau_cual(TableauAssetType::Datasource, &val.datasource_id)
+            //         .expect("Getting parent datasource CUAL")
+            //         .uri(),
+            // ]),
             HashSet::new(),
             // No tags at this point.
             HashSet::new(),

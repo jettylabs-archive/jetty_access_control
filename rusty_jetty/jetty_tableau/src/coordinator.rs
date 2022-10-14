@@ -10,7 +10,7 @@ use futures::StreamExt;
 use jetty_core::logging::error;
 use serde::{Deserialize, Serialize};
 
-use crate::nodes::{self, Permissionable};
+use crate::nodes::{self, Permissionable, ProjectId};
 
 use crate::rest;
 use crate::TableauCredentials;
@@ -21,6 +21,11 @@ const CONCURRENT_ASSET_DOWNLOADS: usize = 25;
 const CONCURRENT_METADATA_FETCHES: usize = 100;
 /// Path to serialized version of the Tableau Env
 const SERIALIZED_ENV_PATH: &str = "tableau_env.json";
+
+/// Conversion from Tableau types.
+pub(crate) trait FromTableau<T> {
+    fn from(val: T, env: &Environment) -> Self;
+}
 
 /// The state of a tableau site. We use this to persist state and
 /// enable incremental updates.
@@ -35,6 +40,21 @@ pub(crate) struct Environment {
     pub metrics: HashMap<String, nodes::Metric>,
     pub views: HashMap<String, nodes::View>,
     pub workbooks: HashMap<String, nodes::Workbook>,
+}
+
+impl Environment {
+    pub(crate) fn get_recursive_projects_for(&self, project_id: &ProjectId) -> Vec<ProjectId> {
+        let ProjectId(id) = project_id;
+        let mut res = vec![project_id.clone()];
+        if let Some(ppid) = self
+            .projects
+            .get(id)
+            .and_then(|proj| proj.parent_project_id.clone())
+        {
+            res.append(&mut self.get_recursive_projects_for(&ppid))
+        }
+        res
+    }
 }
 
 /// Implemented for asset types that have sources embedded in them: Workbooks, Flows, and Datasources

@@ -177,26 +177,27 @@ impl OwnedAsset for Project {
     }
 }
 
-/// This Macro implements the Cualable trait for one or more types that have a `cual` field.
-macro_rules! impl_Cualable {
-    (for $($t:ty),+) => {
-        $(impl Cualable for $t {
-            fn cual(&self) -> Cual{
-                self.cual.clone()
-            }
-        })*
-    }
-}
+// /// This Macro implements the Cualable trait for one or more types that have a `cual` field.
+// macro_rules! impl_Cualable {
+//     (for $($t:ty),+) => {
+//         $(impl Cualable for $t {
+//             fn cual(&self) -> Cual{
+//                 // self.cual.clone()
+//                 todo!()
+//             }
+//         })*
+//     }
+// }
 
-impl_Cualable!(for
-    Workbook,
-    View,
-    Datasource,
-    Metric,
-    Flow,
-    Lens,
-    Project
-);
+// impl_Cualable!(for
+//     Workbook,
+//     View,
+//     Datasource,
+//     Metric,
+//     Flow,
+//     Lens,
+//     Project
+// );
 
 /// Helper struct for deserializing Tableau assets
 #[derive(Deserialize, Debug, Clone)]

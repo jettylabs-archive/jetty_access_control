@@ -13,6 +13,7 @@ mod rest;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 
+use coordinator::{Environment, FromTableau};
 use rest::TableauRestClient;
 use serde::Deserialize;
 use serde_json::json;
@@ -75,7 +76,8 @@ impl TableauConnector {
         Vec<jetty_nodes::Policy>,
     ) {
         // Transform assets
-        let flows: Vec<jetty_nodes::Asset> = self.object_to_jetty(&self.coordinator.env.flows);
+        let flows: Vec<jetty_nodes::Asset> =
+            self.object_to_jetty_new(&self.coordinator.env.flows, &self.coordinator.env);
         let projects = self.object_to_jetty(&self.coordinator.env.projects);
         let lenses = self.object_to_jetty(&self.coordinator.env.lenses);
         let datasources = self.object_to_jetty(&self.coordinator.env.datasources);
@@ -162,6 +164,18 @@ impl TableauConnector {
         O: Into<J> + Clone,
     {
         obj_map.clone().into_values().map(|x| x.into()).collect()
+    }
+
+    fn object_to_jetty_new<O, J>(&self, obj_map: &HashMap<String, O>, env: &Environment) -> Vec<J>
+    where
+        J: FromTableau<O>,
+        O: Clone,
+    {
+        obj_map
+            .clone()
+            .values()
+            .map(|x| J::from(x.clone(), env))
+            .collect()
     }
 }
 

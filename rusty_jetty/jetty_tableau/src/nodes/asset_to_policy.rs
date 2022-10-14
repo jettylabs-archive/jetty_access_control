@@ -13,7 +13,9 @@ macro_rules! impl_from_asset_to_policy {
                     .into_iter()
                     .map(|p| {
                         let mut policy: jetty_nodes::Policy = p.into();
-                        policy.governs_assets.insert(val.cual.uri());
+                        // TODO: We need to get the cual here
+                        // policy.governs_assets.insert(val.cual.uri());
+                        todo!();
                         policy
                     })
                     .collect()

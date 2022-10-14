@@ -141,9 +141,10 @@ impl From<Workbook> for jetty_nodes::Asset {
             // Governing policies will be assigned in the policy.
             HashSet::new(),
             // Workbooks are children of their projects.
-            HashSet::from([get_tableau_cual(TableauAssetType::Project, &project_id)
-                .unwrap()
-                .uri()]),
+            todo!(),
+            // HashSet::from([get_tableau_cual(TableauAssetType::Project, &project_id)
+            //     .unwrap()
+            //     .uri()]),
             // Children objects will be handled in their respective nodes.
             HashSet::new(),
             // Workbooks are derived from their source data.
@@ -185,7 +186,8 @@ fn to_node_graphql(val: &serde_json::Value) -> Result<Workbook> {
         serde_json::from_value(val.to_owned()).context("parsing workbook information")?;
 
     Ok(Workbook {
-        cual: get_tableau_cual(TableauAssetType::Workbook, &workbook_info.luid)?,
+        cual: todo!(),
+        // cual: get_tableau_cual(TableauAssetType::Workbook, &workbook_info.luid)?,
         id: workbook_info.luid,
         name: workbook_info.name,
         owner_id: workbook_info.owner.luid,

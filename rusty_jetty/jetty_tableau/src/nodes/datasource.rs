@@ -84,9 +84,10 @@ impl From<Datasource> for jetty_nodes::Asset {
             // Governing policies will be assigned in the policy.
             HashSet::new(),
             // Datasources are children of their projects.
-            HashSet::from([get_tableau_cual(TableauAssetType::Project, &project_id)
-                .expect("Getting parent project for datasource")
-                .uri()]),
+            todo!(),
+            // HashSet::from([get_tableau_cual(TableauAssetType::Project, &project_id)
+            //     .expect("Getting parent project for datasource")
+            //     .uri()]),
             // Children objects will be handled in their respective nodes.
             HashSet::new(),
             // Datasources can be derived from other datasources.
@@ -162,7 +163,8 @@ fn to_node(val: &serde_json::Value) -> Result<super::Datasource> {
         serde_json::from_value(val.to_owned()).context("parsing datasource information")?;
 
     Ok(super::Datasource {
-        cual: get_tableau_cual(TableauAssetType::Datasource, &asset_info.id)?,
+        cual: todo!(),
+        // cual: get_tableau_cual(TableauAssetType::Datasource, &asset_info.id)?,
         id: asset_info.id,
         name: asset_info.name,
         owner_id: asset_info.owner.id,

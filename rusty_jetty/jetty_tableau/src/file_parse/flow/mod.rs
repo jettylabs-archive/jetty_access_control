@@ -178,9 +178,10 @@ impl FlowDoc {
             );
         }
 
-        cuals.insert(
-            get_tableau_cual(TableauAssetType::Datasource, &correct_datasource[0].id)?.uri(),
-        );
+        todo!();
+        // cuals.insert(
+        //     get_tableau_cual(TableauAssetType::Datasource, &correct_datasource[0].id)?.uri(),
+        // );
 
         Ok(cuals)
     }
@@ -228,11 +229,12 @@ impl FlowDoc {
             bail!("unable to find linked datasource; this can happen if the flow has not run");
         }
 
-        Ok(HashSet::from([get_tableau_cual(
-            TableauAssetType::Datasource,
-            &correct_datasource[0].id,
-        )?
-        .uri()]))
+        todo!();
+        // Ok(HashSet::from([get_tableau_cual(
+        //     TableauAssetType::Datasource,
+        //     &correct_datasource[0].id,
+        // )?
+        // .uri()]))
     }
 
     fn get_node_connection_class(&self, node: &serde_json::Value) -> Result<String> {

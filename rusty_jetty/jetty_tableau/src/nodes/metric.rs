@@ -43,7 +43,8 @@ fn to_node(val: &serde_json::Value) -> Result<Metric> {
         serde_json::from_value(val.to_owned()).context("parsing metric information")?;
 
     Ok(Metric {
-        cual: get_tableau_cual(TableauAssetType::Metric, &asset_info.id)?,
+        cual: todo!(),
+        // cual: get_tableau_cual(TableauAssetType::Metric, &asset_info.id)?,
         id: asset_info.id,
         name: asset_info.name,
         owner_id: asset_info.owner.id,
@@ -117,11 +118,12 @@ impl From<Metric> for jetty_nodes::Asset {
             // Governing policies will be assigned in the policy.
             HashSet::new(),
             // Metrics are children of the underlying view.
-            HashSet::from([
-                get_tableau_cual(TableauAssetType::View, &val.underlying_view_id)
-                    .expect("Getting parent View.")
-                    .uri(),
-            ]),
+            todo!(),
+            // HashSet::from([
+            //     get_tableau_cual(TableauAssetType::View, &val.underlying_view_id)
+            //         .expect("Getting parent View.")
+            //         .uri(),
+            // ]),
             // Children objects will be handled in their respective nodes.
             HashSet::new(),
             // Metrics aren't derived from anything
