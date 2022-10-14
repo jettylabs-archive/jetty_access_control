@@ -27,6 +27,7 @@ impl AccessGraph {
                 if v.iter().any(|p| p.mode == PermissionMode::Allow) {
                     Some((k.to_owned(), v))
                 } else {
+                    // Access not allowed
                     None
                 }
             })
