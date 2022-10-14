@@ -158,10 +158,16 @@ impl Permissionable for Flow {
 
 impl FromTableau<Flow> for jetty_nodes::Asset {
     fn from(val: Flow, env: &Environment) -> Self {
-        let ProjectId(project_id) = val.project_id;
-        // TODO: get project ids up the stack, construct a cual from them.
+        let ProjectId(project_id) = val.clone().project_id;
+        let cual = get_tableau_cual(
+            TableauAssetType::Flow,
+            &val.name,
+            Some(&val.project_id),
+            env,
+        )
+        .expect("Generating cual from flow");
         jetty_nodes::Asset::new(
-            todo!(),
+            cual,
             val.name,
             AssetType(FLOW.to_owned()),
             // We will add metadata as it's useful.
@@ -172,7 +178,11 @@ impl FromTableau<Flow> for jetty_nodes::Asset {
             HashSet::from([get_tableau_cual(
                 TableauAssetType::Project,
                 &project_id,
-                Some(&val.project_id),
+                env.projects
+                    .get(&project_id)
+                    .unwrap()
+                    .parent_project_id
+                    .as_ref(),
                 env,
             )
             .expect("Getting parent project CUAL")
