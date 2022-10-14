@@ -103,7 +103,7 @@ async fn fetch(connectors: &Vec<String>, visualize: &bool) -> Result<()> {
         info!("intializing snowflake");
         let now = Instant::now();
         let mut snow = jetty_snowflake::SnowflakeConnector::new(
-            &jetty.config.connectors[&ConnectorNamespace("snowflake".to_owned())],
+            &jetty.config.connectors[&ConnectorNamespace("snow".to_owned())],
             &creds["snow"],
             Some(ConnectorClient::Core),
         )
