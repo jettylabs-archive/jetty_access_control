@@ -7,6 +7,7 @@ use anyhow::{Context, Result};
 use async_trait::async_trait;
 use futures::join;
 use futures::StreamExt;
+use jetty_core::logging::error;
 use serde::{Deserialize, Serialize};
 
 use crate::nodes::{self, Permissionable};
@@ -123,39 +124,39 @@ impl Coordinator {
 
         let mut new_env = Environment {
             users: resources.4.unwrap_or_else(|e| {
-                println!("unable to fetch users: {}", e);
+                error!("unable to fetch users: {}", e);
                 Default::default()
             }),
             projects: resources.1.unwrap_or_else(|e| {
-                println!("unable to fetch projects: {}", e);
+                error!("unable to fetch projects: {}", e);
                 Default::default()
             }),
             datasources: resources.0.unwrap_or_else(|e| {
-                println!("unable to fetch datasources: {}", e);
+                error!("unable to fetch datasources: {}", e);
                 Default::default()
             }),
             flows: resources.8.unwrap_or_else(|e| {
-                println!("unable to fetch flows: {}", e);
+                error!("unable to fetch flows: {}", e);
                 Default::default()
             }),
             lenses: resources.7.unwrap_or_else(|e| {
-                println!("unable to fetch lenses: {}", e);
+                error!("unable to fetch lenses: {}", e);
                 Default::default()
             }),
             metrics: resources.6.unwrap_or_else(|e| {
-                println!("unable to fetch metrics: {}", e);
+                error!("unable to fetch metrics: {}", e);
                 Default::default()
             }),
             views: resources.3.unwrap_or_else(|e| {
-                println!("unable to fetch views: {}", e);
+                error!("unable to fetch views: {}", e);
                 Default::default()
             }),
             workbooks: resources.2.unwrap_or_else(|e| {
-                println!("unable to fetch workbooks: {}", e);
+                error!("unable to fetch workbooks: {}", e);
                 Default::default()
             }),
             groups: resources.5.unwrap_or_else(|e| {
-                println!("unable to fetch groups: {}", e);
+                error!("unable to fetch groups: {}", e);
                 Default::default()
             }),
         };

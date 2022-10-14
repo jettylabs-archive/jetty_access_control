@@ -214,6 +214,7 @@ mod tests {
 
     use super::*;
     use anyhow::{Context, Result};
+    use jetty_core::logging::debug;
 
     #[tokio::test]
     async fn test_fetching_flows_works() -> Result<()> {
@@ -222,7 +223,7 @@ mod tests {
             .context("running tableau connector setup")?;
         let nodes = get_basic_datasources(&tc.coordinator.rest_client).await?;
         for (_, v) in nodes {
-            println!("{:#?}", v);
+            debug!("{:#?}", v);
         }
         Ok(())
     }
@@ -238,7 +239,7 @@ mod tests {
                 .await?;
         }
         for (_, v) in nodes {
-            println!("{:#?}", v);
+            debug!("{:#?}", v);
         }
         Ok(())
     }
@@ -256,7 +257,7 @@ mod tests {
             .rest_client
             .download(test_datasource, true)
             .await?;
-        println!("Downloaded {} bytes", x.len());
+        debug!("Downloaded {} bytes", x.len());
         Ok(())
     }
 

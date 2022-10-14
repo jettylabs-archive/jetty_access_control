@@ -92,6 +92,7 @@ pub(crate) async fn get_basic_users(tc: &rest::TableauRestClient) -> Result<Hash
 mod tests {
     use super::*;
     use anyhow::Context;
+    use jetty_core::logging::debug;
 
     #[tokio::test]
     async fn test_fetching_users_works() -> Result<()> {
@@ -100,7 +101,7 @@ mod tests {
             .context("running tableau connector setup")?;
         let users = get_basic_users(&tc.coordinator.rest_client).await?;
         for (_k, v) in users {
-            println!("{}", v.name);
+            debug!("{}", v.name);
         }
         Ok(())
     }

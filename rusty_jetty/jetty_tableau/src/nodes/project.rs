@@ -12,6 +12,7 @@ use async_trait::async_trait;
 use jetty_core::{
     connectors::{nodes as jetty_nodes, AssetType},
     cual::Cual,
+    logging::debug,
 };
 use serde::{Deserialize, Serialize};
 
@@ -147,7 +148,7 @@ impl Permissionable for Project {
                         // ID, user owner), for which a user does not exist
                         // (permission_result is an err type). Therefore, we
                         // will skip this permission.
-                        println!("Skipping owner for default project.");
+                        debug!("Skipping owner {:?} for default project.", p);
                         None
                     } else {
                         Some(
@@ -216,7 +217,7 @@ mod tests {
             .context("running tableau connector setup")?;
         let nodes = get_basic_projects(&tc.coordinator.rest_client).await?;
         for (_k, v) in nodes {
-            println!("{:#?}", v);
+            debug!("{:#?}", v);
         }
         Ok(())
     }
@@ -233,7 +234,7 @@ mod tests {
                 .await?;
         }
         for (_k, v) in nodes {
-            println!("{:#?}", v);
+            debug!("{:#?}", v);
         }
         Ok(())
     }

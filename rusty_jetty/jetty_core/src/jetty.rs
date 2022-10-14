@@ -48,8 +48,6 @@ pub fn fetch_credentials() -> Result<HashMap<String, CredentialsBlob>> {
 
     default_path.push(".jetty/connectors.yaml");
 
-    println!("{:?}", default_path);
-
     let credentials_raw = fs::read_to_string(default_path)?;
     let mut config = yaml::from_str::<HashMap<String, CredentialsBlob>>(&credentials_raw)?;
 
