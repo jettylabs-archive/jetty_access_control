@@ -132,7 +132,7 @@ fn remove_poisoned_paths<'a>(
             )
         })
         // now only keep the assets that still have a path;
-        .filter(|(_n, p)| p.len() > 0)
+        .filter(|(_n, p)| !p.is_empty())
         .map(|(n, _)| n.to_owned())
         .collect()
 }
@@ -140,7 +140,7 @@ fn remove_poisoned_paths<'a>(
 #[cfg(test)]
 mod tests {
 
-    use crate::access_graph::{AssetAttributes, GroupAttributes, UserAttributes};
+    use crate::access_graph::{AssetAttributes};
     use crate::cual::Cual;
 
     use anyhow::Result;

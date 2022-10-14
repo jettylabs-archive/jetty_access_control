@@ -232,7 +232,7 @@ impl TagAttributes {
     #[cfg(test)]
     fn new(name: String, pass_through_hierarchy: bool, pass_through_lineage: bool) -> Self {
         Self {
-            name: name,
+            name,
             value: Default::default(),
             pass_through_hierarchy,
             pass_through_lineage,

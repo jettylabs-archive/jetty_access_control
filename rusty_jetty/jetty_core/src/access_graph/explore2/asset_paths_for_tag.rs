@@ -112,7 +112,7 @@ fn remove_poisoned_paths<'a>(
             )
         })
         // now only keep the assets that still have a path;
-        .filter(|(_, p)| p.len() > 0)
+        .filter(|(_, p)| !p.is_empty())
         .map(|(n, p)| {
             (
                 n.to_owned(),
