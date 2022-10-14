@@ -5,22 +5,18 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    coordinator::{Coordinator, HasSources},
+    coordinator::{Coordinator, Environment, HasSources},
     file_parse::xml_docs,
     rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType},
 };
 
-use jetty_core::{
-    connectors::{nodes as jetty_nodes, AssetType},
-    cual::Cual,
-};
+use jetty_core::connectors::{nodes as jetty_nodes, AssetType};
 
-use super::{Permissionable, ProjectId, TableauAsset, WORKBOOK};
+use super::{FromTableau, OwnedAsset, Permissionable, ProjectId, TableauAsset, WORKBOOK};
 
 /// Representation of Tableau Workbook
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub(crate) struct Workbook {
-    pub(crate) cual: Cual,
     pub id: String,
     /// Unqualified name of the workbook
     pub name: String,
@@ -38,7 +34,6 @@ pub(crate) struct Workbook {
 
 impl Workbook {
     pub(crate) fn new(
-        cual: Cual,
         id: String,
         name: String,
         owner_id: String,
@@ -49,7 +44,6 @@ impl Workbook {
         permissions: Vec<super::Permission>,
     ) -> Self {
         Self {
-            cual,
             id,
             name,
             owner_id,
@@ -129,11 +123,21 @@ impl HasSources for Workbook {
     }
 }
 
-impl From<Workbook> for jetty_nodes::Asset {
-    fn from(val: Workbook) -> Self {
-        let ProjectId(project_id) = val.project_id;
+impl FromTableau<Workbook> for jetty_nodes::Asset {
+    fn from(val: Workbook, env: &Environment) -> Self {
+        let cual = get_tableau_cual(
+            TableauAssetType::Workbook,
+            &val.name,
+            Some(&val.project_id),
+            env,
+        )
+        .expect("Generating cual from workbook");
+        let parent_cual = val
+            .get_parent_project_cual(env)
+            .expect("getting parent cual")
+            .uri();
         jetty_nodes::Asset::new(
-            val.cual,
+            cual,
             val.name,
             AssetType(WORKBOOK.to_owned()),
             // We will add metadata as it's useful.
@@ -141,10 +145,7 @@ impl From<Workbook> for jetty_nodes::Asset {
             // Governing policies will be assigned in the policy.
             HashSet::new(),
             // Workbooks are children of their projects.
-            todo!(),
-            // HashSet::from([get_tableau_cual(TableauAssetType::Project, &project_id)
-            //     .unwrap()
-            //     .uri()]),
+            HashSet::from([parent_cual]),
             // Children objects will be handled in their respective nodes.
             HashSet::new(),
             // Workbooks are derived from their source data.
@@ -186,8 +187,6 @@ fn to_node_graphql(val: &serde_json::Value) -> Result<Workbook> {
         serde_json::from_value(val.to_owned()).context("parsing workbook information")?;
 
     Ok(Workbook {
-        cual: todo!(),
-        // cual: get_tableau_cual(TableauAssetType::Workbook, &workbook_info.luid)?,
         id: workbook_info.luid,
         name: workbook_info.name,
         owner_id: workbook_info.owner.luid,
@@ -278,39 +277,5 @@ mod tests {
             debug!("{:#?}", v);
         }
         Ok(())
-    }
-
-    #[test]
-    #[allow(unused_must_use)]
-    fn test_asset_from_workbook_works() {
-        let wb = Workbook::new(
-            Cual::new("".to_owned()),
-            "id".to_owned(),
-            "name".to_owned(),
-            "owner_id".to_owned(),
-            ProjectId("project_id".to_owned()),
-            false,
-            HashSet::new(),
-            "updated_at".to_owned(),
-            vec![],
-        );
-        jetty_nodes::Asset::from(wb);
-    }
-
-    #[test]
-    #[allow(unused_must_use)]
-    fn test_workbook_into_asset_works() {
-        let wb = Workbook::new(
-            Cual::new("".to_owned()),
-            "id".to_owned(),
-            "name".to_owned(),
-            "owner_id".to_owned(),
-            ProjectId("project_id".to_owned()),
-            false,
-            HashSet::new(),
-            "updated_at".to_owned(),
-            vec![],
-        );
-        Into::<jetty_nodes::Asset>::into(wb);
     }
 }

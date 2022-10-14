@@ -30,7 +30,7 @@ use std::collections::{HashMap, HashSet};
 use crate::{
     coordinator::Environment,
     nodes as tableau_nodes,
-    rest::{self, FetchJson, TableauAssetType},
+    rest::{self, get_tableau_cual, FetchJson, TableauAssetType},
     Cual, Cualable,
 };
 
@@ -51,6 +51,11 @@ const VIEW: &str = "view";
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
 /// A Tableau-created Project ID.
 pub(crate) struct ProjectId(pub(crate) String);
+
+/// Conversion from Tableau types.
+pub(crate) trait FromTableau<T> {
+    fn from(val: T, env: &Environment) -> Self;
+}
 
 /// This trait is implemented by permissionable Tableau asset nodes and makes it simpler to
 /// fetch and parse permissions
@@ -111,6 +116,23 @@ pub(crate) trait OwnedAsset: TableauAsset {
     fn get_parent_project_id(&self) -> Option<&ProjectId>;
     /// Get the owner ID for this asset.
     fn get_owner_id(&self) -> &str;
+    /// Get the cual for the asset's parent project if one exists.
+    fn get_parent_project_cual(&self, env: &Environment) -> Option<Cual> {
+        self.get_parent_project_id().and_then(|ppid| {
+            let ProjectId(pid) = ppid;
+            let project = env
+                .projects
+                .get(pid)
+                .expect("getting flow parent project by id");
+            get_tableau_cual(
+                TableauAssetType::Project,
+                &project.name,
+                project.parent_project_id.as_ref(),
+                env,
+            )
+            .ok()
+        })
+    }
 }
 
 /// This Macro implements the GetId trait for one or more types that have an `id` field.

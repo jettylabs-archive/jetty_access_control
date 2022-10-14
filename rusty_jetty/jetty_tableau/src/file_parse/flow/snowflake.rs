@@ -20,10 +20,10 @@ fn get_server_info(doc: &FlowDoc, connection_id: &String) -> Result<String> {
         .to_owned())
 }
 
-pub(super) fn get_input_table_cuals(
+pub(super) fn get_input_table_ids(
     doc: &FlowDoc,
     node: &serde_json::Value,
-) -> Result<HashSet<String>> {
+) -> Result<HashSet<(TableauAssetType, String)>> {
     #[derive(Deserialize)]
     struct TableRelation {
         table: String,
@@ -53,7 +53,7 @@ pub(super) fn get_input_table_cuals(
     ))
 }
 
-pub(super) fn get_output_table_cuals(
+pub(super) fn get_output_table_ids(
     doc: &FlowDoc,
     node: &serde_json::Value,
 ) -> Result<HashSet<String>> {
@@ -107,7 +107,7 @@ pub(super) fn get_output_table_cuals(
     ))
 }
 
-pub(super) fn get_input_query_cuals(
+pub(super) fn get_input_query_ids(
     doc: &FlowDoc,
     node: &serde_json::Value,
 ) -> Result<HashSet<String>> {

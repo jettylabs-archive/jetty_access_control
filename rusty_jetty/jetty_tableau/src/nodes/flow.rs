@@ -2,19 +2,16 @@ use std::collections::{HashMap, HashSet};
 
 use anyhow::{Context, Result};
 use async_trait::async_trait;
-use jetty_core::{
-    connectors::{nodes as jetty_nodes, AssetType},
-    cual::Cual,
-};
+use jetty_core::connectors::{nodes as jetty_nodes, AssetType};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    coordinator::{Coordinator, Environment, FromTableau, HasSources},
+    coordinator::{Coordinator, Environment, HasSources},
     file_parse::flow::FlowDoc,
     rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType},
 };
 
-use super::{Permissionable, ProjectId, TableauAsset, FLOW};
+use super::{FromTableau, OwnedAsset, Permissionable, ProjectId, TableauAsset, FLOW};
 
 /// Representation of a Tableau Flow
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
@@ -158,7 +155,6 @@ impl Permissionable for Flow {
 
 impl FromTableau<Flow> for jetty_nodes::Asset {
     fn from(val: Flow, env: &Environment) -> Self {
-        let ProjectId(project_id) = val.clone().project_id;
         let cual = get_tableau_cual(
             TableauAssetType::Flow,
             &val.name,
@@ -166,6 +162,10 @@ impl FromTableau<Flow> for jetty_nodes::Asset {
             env,
         )
         .expect("Generating cual from flow");
+        let parent_cual = val
+            .get_parent_project_cual(env)
+            .expect("getting parent cual")
+            .uri();
         jetty_nodes::Asset::new(
             cual,
             val.name,
@@ -174,19 +174,8 @@ impl FromTableau<Flow> for jetty_nodes::Asset {
             HashMap::new(),
             // Governing policies will be assigned in the policy.
             HashSet::new(),
-            // Flows are children of their projects?
-            HashSet::from([get_tableau_cual(
-                TableauAssetType::Project,
-                &project_id,
-                env.projects
-                    .get(&project_id)
-                    .unwrap()
-                    .parent_project_id
-                    .as_ref(),
-                env,
-            )
-            .expect("Getting parent project CUAL")
-            .uri()]),
+            // Flows are children of their projects
+            HashSet::from([parent_cual]),
             // Children objects will be handled in their respective nodes.
             HashSet::new(),
             // Flows are derived from their source data.
@@ -246,41 +235,5 @@ mod tests {
         let x = tc.coordinator.rest_client.download(test_flow, true).await?;
         debug!("Downloaded {} bytes", x.len());
         Ok(())
-    }
-
-    #[test]
-    #[allow(unused_must_use)]
-    fn test_asset_from_flow_works() {
-        set_cual_prefix("", "");
-        let l = Flow::new(
-            "id".to_owned(),
-            "name".to_owned(),
-            ProjectId("project_id".to_owned()),
-            "owner_id".to_owned(),
-            "updated".to_owned(),
-            Default::default(),
-            Default::default(),
-            Default::default(),
-        );
-        let env = Environment::default();
-        <jetty_core::connectors::nodes::Asset as FromTableau<Flow>>::from(l, &env);
-    }
-
-    #[test]
-    #[allow(unused_must_use)]
-    fn test_flow_into_asset_works() {
-        set_cual_prefix("", "");
-        let l = Flow::new(
-            "id".to_owned(),
-            "name".to_owned(),
-            ProjectId("project_id".to_owned()),
-            "owner_id".to_owned(),
-            "updated".to_owned(),
-            Default::default(),
-            Default::default(),
-            Default::default(),
-        );
-        todo!()
-        // Into::<jetty_nodes::Asset>::into(l);
     }
 }

@@ -1,20 +1,19 @@
 use std::collections::{HashMap, HashSet};
 
 use anyhow::{Context, Result};
-use jetty_core::{
-    connectors::{nodes as jetty_nodes, AssetType},
-    cual::Cual,
-};
+use jetty_core::connectors::{nodes as jetty_nodes, AssetType};
 use serde::{Deserialize, Serialize};
 
-use crate::rest::{self, get_tableau_cual, FetchJson, TableauAssetType};
+use crate::{
+    coordinator::Environment,
+    rest::{self, get_tableau_cual, FetchJson, TableauAssetType},
+};
 
-use super::{Permissionable, ProjectId, TableauAsset, LENS};
+use super::{FromTableau, Permissionable, ProjectId, TableauAsset, LENS};
 
 /// Representation of a Tableau Lens
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub(crate) struct Lens {
-    pub(crate) cual: Cual,
     pub id: String,
     pub name: String,
     pub datasource_id: String,
@@ -25,7 +24,6 @@ pub(crate) struct Lens {
 
 impl Lens {
     pub(crate) fn new(
-        cual: Cual,
         id: String,
         name: String,
         datasource_id: String,
@@ -34,7 +32,6 @@ impl Lens {
         permissions: Vec<super::Permission>,
     ) -> Self {
         Self {
-            cual,
             id,
             name,
             datasource_id,
@@ -60,8 +57,6 @@ fn to_node(val: &serde_json::Value) -> Result<Lens> {
         serde_json::from_value(val.to_owned()).context("parsing lens information")?;
 
     Ok(Lens {
-        cual: todo!(),
-        // cual: get_tableau_cual(TableauAssetType::Lens, &asset_info.id)?,
         id: asset_info.id,
         name: asset_info.name,
         owner_id: asset_info.owner_id,
@@ -87,32 +82,41 @@ pub(crate) async fn get_basic_lenses(
     super::to_asset_map(tc, node, &to_node)
 }
 
-impl From<Lens> for jetty_nodes::Asset {
-    fn from(val: Lens) -> Self {
+impl FromTableau<Lens> for jetty_nodes::Asset {
+    fn from(val: Lens, env: &Environment) -> Self {
+        let cual = get_tableau_cual(
+            TableauAssetType::Datasource,
+            &val.name,
+            Some(&val.project_id),
+            env,
+        )
+        .expect("Generating cual from Lens");
+        let parent_datasource = env
+            .datasources
+            .get(&val.datasource_id)
+            .expect("getting lens parent datasource by id");
+        let parent_cual = get_tableau_cual(
+            TableauAssetType::Datasource,
+            &parent_datasource.name,
+            Some(&parent_datasource.project_id),
+            env,
+        )
+        .expect("getting parent cual")
+        .uri();
         jetty_nodes::Asset::new(
-            val.cual,
+            cual,
             val.name,
             AssetType(LENS.to_owned()),
             // We will add metadata as it's useful.
             HashMap::new(),
             // Governing policies will be assigned in the policy.
             HashSet::new(),
-            // Lenses are children of their datasources?
-            todo!(),
-            // HashSet::from([
-            //     get_tableau_cual(TableauAssetType::Datasource, &val.datasource_id)
-            //         .expect("Getting parent datasource CUAL")
-            //         .uri(),
-            // ]),
+            // Lenses are children of their datasources
+            HashSet::from([parent_cual.clone()]),
             // Children objects will be handled in their respective nodes.
             HashSet::new(),
             // Lenses are derived from their source data.
-            todo!(),
-            // HashSet::from([
-            //     get_tableau_cual(TableauAssetType::Datasource, &val.datasource_id)
-            //         .expect("Getting parent datasource CUAL")
-            //         .uri(),
-            // ]),
+            HashSet::from([parent_cual]),
             HashSet::new(),
             // No tags at this point.
             HashSet::new(),
@@ -172,37 +176,5 @@ mod tests {
             debug!("{:#?}", v);
         }
         Ok(())
-    }
-
-    #[test]
-    #[allow(unused_must_use)]
-    fn test_asset_from_lens_works() {
-        set_cual_prefix("", "");
-        let l = Lens::new(
-            Cual::new("".to_owned()),
-            "id".to_owned(),
-            "name".to_owned(),
-            "datasource_id".to_owned(),
-            ProjectId("project_id".to_owned()),
-            "owner_id".to_owned(),
-            vec![],
-        );
-        jetty_nodes::Asset::from(l);
-    }
-
-    #[test]
-    #[allow(unused_must_use)]
-    fn test_lens_into_asset_works() {
-        set_cual_prefix("", "");
-        let l = Lens::new(
-            Cual::new("".to_owned()),
-            "id".to_owned(),
-            "name".to_owned(),
-            "datasource_id".to_owned(),
-            ProjectId("project_id".to_owned()),
-            "owner_id".to_owned(),
-            vec![],
-        );
-        Into::<jetty_nodes::Asset>::into(l);
     }
 }

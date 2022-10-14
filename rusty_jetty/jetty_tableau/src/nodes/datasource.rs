@@ -2,24 +2,20 @@ use std::collections::{HashMap, HashSet};
 
 use anyhow::{Context, Result};
 use async_trait::async_trait;
-use jetty_core::{
-    connectors::{nodes as jetty_nodes, AssetType},
-    cual::Cual,
-};
+use jetty_core::connectors::{nodes as jetty_nodes, AssetType};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    coordinator::{Coordinator, HasSources},
+    coordinator::{Coordinator, Environment, HasSources},
     file_parse::xml_docs,
     rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType},
 };
 
-use super::{Permissionable, ProjectId, TableauAsset, DATASOURCE};
+use super::{FromTableau, OwnedAsset, Permissionable, ProjectId, TableauAsset, DATASOURCE};
 
 /// Representation of a Tableau Datasource
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub(crate) struct Datasource {
-    pub(crate) cual: Cual,
     pub id: String,
     pub name: String,
     pub datasource_type: String,
@@ -34,7 +30,6 @@ pub(crate) struct Datasource {
 
 impl Datasource {
     pub(crate) fn new(
-        cual: Cual,
         id: String,
         name: String,
         datasource_type: String,
@@ -46,7 +41,6 @@ impl Datasource {
         derived_from: Vec<String>,
     ) -> Self {
         Self {
-            cual,
             id,
             name,
             datasource_type,
@@ -72,11 +66,21 @@ impl Downloadable for Datasource {
     }
 }
 
-impl From<Datasource> for jetty_nodes::Asset {
-    fn from(val: Datasource) -> Self {
-        let ProjectId(project_id) = val.project_id;
+impl FromTableau<Datasource> for jetty_nodes::Asset {
+    fn from(val: Datasource, env: &Environment) -> Self {
+        let cual = get_tableau_cual(
+            TableauAssetType::Datasource,
+            &val.name,
+            Some(&val.project_id),
+            env,
+        )
+        .expect("Generating cual from datasource");
+        let parent_cual = val
+            .get_parent_project_cual(env)
+            .expect("getting parent cual")
+            .uri();
         jetty_nodes::Asset::new(
-            val.cual,
+            cual,
             val.name,
             AssetType(DATASOURCE.to_owned()),
             // We will add metadata as it's useful.
@@ -84,10 +88,7 @@ impl From<Datasource> for jetty_nodes::Asset {
             // Governing policies will be assigned in the policy.
             HashSet::new(),
             // Datasources are children of their projects.
-            todo!(),
-            // HashSet::from([get_tableau_cual(TableauAssetType::Project, &project_id)
-            //     .expect("Getting parent project for datasource")
-            //     .uri()]),
+            HashSet::from([parent_cual]),
             // Children objects will be handled in their respective nodes.
             HashSet::new(),
             // Datasources can be derived from other datasources.
@@ -163,8 +164,6 @@ fn to_node(val: &serde_json::Value) -> Result<super::Datasource> {
         serde_json::from_value(val.to_owned()).context("parsing datasource information")?;
 
     Ok(super::Datasource {
-        cual: todo!(),
-        // cual: get_tableau_cual(TableauAssetType::Datasource, &asset_info.id)?,
         id: asset_info.id,
         name: asset_info.name,
         owner_id: asset_info.owner.id,
@@ -274,43 +273,5 @@ mod tests {
             test_datasource.fetch_sources(&tc.coordinator).await?;
         }
         Ok(())
-    }
-
-    #[test]
-    #[allow(unused_must_use)]
-    fn test_asset_from_datasource_works() {
-        set_cual_prefix("", "");
-        let ds = Datasource::new(
-            Cual::new("".to_owned()),
-            "id".to_owned(),
-            "name".to_owned(),
-            "datasource_type".to_owned(),
-            "updated".to_owned(),
-            ProjectId("project_id".to_owned()),
-            "owner_id".to_owned(),
-            HashSet::new(),
-            vec![],
-            vec![],
-        );
-        jetty_nodes::Asset::from(ds);
-    }
-
-    #[test]
-    #[allow(unused_must_use)]
-    fn test_datasource_into_asset_works() {
-        set_cual_prefix("", "");
-        let ds = Datasource::new(
-            Cual::new("".to_owned()),
-            "id".to_owned(),
-            "name".to_owned(),
-            "datasource_type".to_owned(),
-            "updated".to_owned(),
-            ProjectId("project_id".to_owned()),
-            "owner_id".to_owned(),
-            HashSet::new(),
-            vec![],
-            vec![],
-        );
-        Into::<jetty_nodes::Asset>::into(ds);
     }
 }

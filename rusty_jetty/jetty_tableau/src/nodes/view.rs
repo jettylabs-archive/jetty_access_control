@@ -1,19 +1,18 @@
 use std::collections::{HashMap, HashSet};
 
-use super::{Permission, Permissionable, ProjectId, TableauAsset, VIEW};
-use crate::rest::{self, get_tableau_cual, FetchJson, TableauAssetType};
+use super::{FromTableau, Permission, Permissionable, ProjectId, TableauAsset, VIEW};
+use crate::{
+    coordinator::Environment,
+    rest::{self, get_tableau_cual, FetchJson, TableauAssetType},
+};
 
 use anyhow::{Context, Result};
-use jetty_core::{
-    connectors::{nodes as jetty_nodes, AssetType},
-    cual::Cual,
-};
+use jetty_core::connectors::{nodes as jetty_nodes, AssetType};
 use serde::{Deserialize, Serialize};
 
 /// Representation of a Tableau View
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub(crate) struct View {
-    pub(crate) cual: Cual,
     pub id: String,
     pub name: String,
     pub workbook_id: String,
@@ -40,8 +39,6 @@ fn to_node(val: &serde_json::Value) -> Result<View> {
         serde_json::from_value(val.to_owned()).context("parsing view information")?;
 
     Ok(View {
-        cual: todo!(),
-        // cual: get_tableau_cual(TableauAssetType::View, &asset_info.id)?,
         id: asset_info.id,
         name: asset_info.name,
         owner_id: asset_info.owner.id,
@@ -77,7 +74,6 @@ impl Permissionable for View {
 
 impl View {
     pub(crate) fn new(
-        cual: Cual,
         id: String,
         name: String,
         workbook_id: String,
@@ -87,7 +83,6 @@ impl View {
         permissions: Vec<Permission>,
     ) -> Self {
         Self {
-            cual,
             id,
             name,
             workbook_id,
@@ -99,10 +94,29 @@ impl View {
     }
 }
 
-impl From<View> for jetty_nodes::Asset {
-    fn from(val: View) -> Self {
+impl FromTableau<View> for jetty_nodes::Asset {
+    fn from(val: View, env: &Environment) -> Self {
+        let cual = get_tableau_cual(
+            TableauAssetType::View,
+            &val.name,
+            Some(&val.project_id),
+            env,
+        )
+        .expect("Generating cual from Lens");
+        let parent_workbook = env
+            .workbooks
+            .get(&val.workbook_id)
+            .expect("getting view parent workbook by id");
+        let parent_cual = get_tableau_cual(
+            TableauAssetType::Workbook,
+            &parent_workbook.name,
+            Some(&parent_workbook.project_id),
+            env,
+        )
+        .expect("getting parent cual")
+        .uri();
         jetty_nodes::Asset::new(
-            val.cual,
+            cual,
             val.name,
             AssetType(VIEW.to_owned()),
             // We will add metadata as it's useful.
@@ -110,12 +124,7 @@ impl From<View> for jetty_nodes::Asset {
             // Governing policies will be assigned in the policy.
             HashSet::new(),
             // Views are children of their workbooks.
-            todo!(),
-            // HashSet::from([
-            //     get_tableau_cual(TableauAssetType::Workbook, &val.workbook_id)
-            //         .expect("Getting parent workbook CUAL.")
-            //         .uri(),
-            // ]),
+            HashSet::from([parent_cual]),
             // Children objects will be handled in their respective nodes.
             HashSet::new(),
             // Views are not derived from/to anything.
@@ -165,37 +174,5 @@ mod tests {
             debug!("{:#?}", v);
         }
         Ok(())
-    }
-
-    #[test]
-    #[allow(unused_must_use)]
-    fn test_asset_from_view_works() {
-        let v = View::new(
-            Cual::new("".to_owned()),
-            "id".to_owned(),
-            "name".to_owned(),
-            "workbook_id".to_owned(),
-            "owner_id".to_owned(),
-            ProjectId("project_id".to_owned()),
-            "updated_at".to_owned(),
-            vec![],
-        );
-        jetty_nodes::Asset::from(v);
-    }
-
-    #[test]
-    #[allow(unused_must_use)]
-    fn test_view_into_asset_works() {
-        let v = View::new(
-            Cual::new("".to_owned()),
-            "id".to_owned(),
-            "name".to_owned(),
-            "workbook_id".to_owned(),
-            "owner_id".to_owned(),
-            ProjectId("project_id".to_owned()),
-            "updated_at".to_owned(),
-            vec![],
-        );
-        Into::<jetty_nodes::Asset>::into(v);
     }
 }

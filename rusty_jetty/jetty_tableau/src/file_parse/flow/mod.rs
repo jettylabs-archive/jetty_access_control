@@ -40,9 +40,15 @@ impl FlowDoc {
 
     /// Parse a flow document. This MUST be run after projects and datasources have been
     /// fetched.
-    pub(crate) fn parse(&self, coord: &Coordinator) -> (HashSet<String>, HashSet<String>) {
-        let mut input_cuals: HashSet<String> = HashSet::new();
-        let mut output_cuals: HashSet<String> = HashSet::new();
+    pub(crate) fn parse(
+        &self,
+        coord: &Coordinator,
+    ) -> (
+        HashSet<(TableauAssetType, String)>,
+        HashSet<(TableauAssetType, String)>,
+    ) {
+        let mut input_ids = HashSet::new();
+        let mut output_ids = HashSet::new();
 
         for (_, node) in &self.nodes {
             if let Some(node_type) = node.get("nodeType").and_then(|v| v.as_str()) {
@@ -56,7 +62,7 @@ impl FlowDoc {
                                     node_type, e
                                 )
                             },
-                            |v| input_cuals.extend(v),
+                            |v| input_ids.extend(v),
                         );
                     }
                     ".v2019_3_1.LoadSqlProxy" => {
@@ -68,7 +74,7 @@ impl FlowDoc {
                                         node_type, e
                                     )
                                 },
-                                |v| input_cuals.extend(v),
+                                |v| input_ids.extend(v),
                             );
                     }
                     // Output nodes
@@ -81,7 +87,7 @@ impl FlowDoc {
                                         node_type, e
                                     )
                                 },
-                                |v| output_cuals.extend(v),
+                                |v| output_ids.extend(v),
                             );
                     }
                     ".v2020_3_1.WriteToDatabase" => {
@@ -92,7 +98,7 @@ impl FlowDoc {
                                     node_type, e
                                 )
                             },
-                            |v| output_cuals.extend(v),
+                            |v| output_ids.extend(v),
                         );
                     }
                     o => {
@@ -113,22 +119,25 @@ impl FlowDoc {
         (input_cuals, output_cuals)
     }
 
-    fn handle_load_sql(&self, node: &serde_json::Value) -> Result<HashSet<String>> {
+    fn handle_load_sql(
+        &self,
+        node: &serde_json::Value,
+    ) -> Result<HashSet<(TableauAssetType, String)>> {
         // First check the class or type of database, and then the type of sql object.
         // From there, fetch the cuals
         let class = self
             .get_node_connection_class(node)
             .context("unable to get connection class")?;
 
-        let cuals = match &class[..] {
+        let ids = match &class[..] {
             "snowflake" => match get_relation_type(node)? {
-                RelationType::SqlQuery => snowflake::get_input_query_cuals(self, node),
-                RelationType::Table => snowflake::get_input_table_cuals(self, node),
+                RelationType::SqlQuery => snowflake::get_input_query_ids(self, node),
+                RelationType::Table => snowflake::get_input_table_ids(self, node),
             }?,
             o => bail!("we don't currently support {}", o),
         };
 
-        Ok(cuals)
+        Ok(ids)
     }
 
     fn handle_load_sql_proxy(
@@ -136,7 +145,7 @@ impl FlowDoc {
         node: &serde_json::Value,
         env: &crate::coordinator::Environment,
         _client: &TableauRestClient,
-    ) -> Result<HashSet<String>> {
+    ) -> Result<HashSet<(TableauAssetType, String)>> {
         #[derive(Deserialize)]
         #[serde(rename_all = "camelCase")]
         struct ConnectionAttributes {
@@ -144,7 +153,7 @@ impl FlowDoc {
             datasource_name: String,
         }
 
-        let mut cuals = HashSet::new();
+        let mut ids = HashSet::new();
 
         let connection_attributes = node
             .get("connectionAttributes")
@@ -178,10 +187,7 @@ impl FlowDoc {
             );
         }
 
-        todo!();
-        // cuals.insert(
-        //     get_tableau_cual(TableauAssetType::Datasource, &correct_datasource[0].id)?.uri(),
-        // );
+        ids.insert((TableauAssetType::Datasource, &correct_datasource[0].id));
 
         Ok(cuals)
     }

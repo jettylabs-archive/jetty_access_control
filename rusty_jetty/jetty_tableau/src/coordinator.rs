@@ -22,10 +22,6 @@ const CONCURRENT_METADATA_FETCHES: usize = 100;
 /// Path to serialized version of the Tableau Env
 const SERIALIZED_ENV_PATH: &str = "tableau_env.json";
 
-/// Conversion from Tableau types.
-pub(crate) trait FromTableau<T> {
-    fn from(val: T, env: &Environment) -> Self;
-}
 
 /// The state of a tableau site. We use this to persist state and
 /// enable incremental updates.

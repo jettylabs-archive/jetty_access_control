@@ -1,20 +1,19 @@
 use std::collections::{HashMap, HashSet};
 
 use anyhow::{Context, Result};
-use jetty_core::{
-    connectors::{nodes as jetty_nodes, AssetType},
-    cual::Cual,
-};
+use jetty_core::connectors::{nodes as jetty_nodes, AssetType};
 use serde::{Deserialize, Serialize};
 
-use crate::rest::{self, get_tableau_cual, FetchJson, TableauAssetType};
+use crate::{
+    coordinator::Environment,
+    rest::{self, get_tableau_cual, FetchJson, TableauAssetType},
+};
 
-use super::{Permissionable, ProjectId, TableauAsset, METRIC};
+use super::{FromTableau, Permissionable, ProjectId, TableauAsset, METRIC};
 
 /// Representation of Tableau metric
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub(crate) struct Metric {
-    pub(crate) cual: Cual,
     pub id: String,
     pub name: String,
     pub updated_at: String,
@@ -43,8 +42,6 @@ fn to_node(val: &serde_json::Value) -> Result<Metric> {
         serde_json::from_value(val.to_owned()).context("parsing metric information")?;
 
     Ok(Metric {
-        cual: todo!(),
-        // cual: get_tableau_cual(TableauAssetType::Metric, &asset_info.id)?,
         id: asset_info.id,
         name: asset_info.name,
         owner_id: asset_info.owner.id,
@@ -70,7 +67,6 @@ pub(crate) async fn get_basic_metrics(
 
 impl Metric {
     pub(crate) fn new(
-        cual: Cual,
         id: String,
         name: String,
         updated_at: String,
@@ -81,7 +77,6 @@ impl Metric {
         permissions: Vec<super::Permission>,
     ) -> Self {
         Self {
-            cual,
             id,
             name,
             updated_at,
@@ -107,10 +102,29 @@ impl Permissionable for Metric {
     }
 }
 
-impl From<Metric> for jetty_nodes::Asset {
-    fn from(val: Metric) -> Self {
+impl FromTableau<Metric> for jetty_nodes::Asset {
+    fn from(val: Metric, env: &Environment) -> Self {
+        let cual = get_tableau_cual(
+            TableauAssetType::Metric,
+            &val.name,
+            Some(&val.project_id),
+            env,
+        )
+        .expect("Generating cual from Lens");
+        let underlying_view = env
+            .views
+            .get(&val.underlying_view_id)
+            .expect("getting metric parent view by id");
+        let parent_cual = get_tableau_cual(
+            TableauAssetType::View,
+            &underlying_view.name,
+            Some(&underlying_view.project_id),
+            env,
+        )
+        .expect("getting parent cual")
+        .uri();
         jetty_nodes::Asset::new(
-            val.cual,
+            cual,
             val.name,
             AssetType(METRIC.to_owned()),
             // We will add metadata as it's useful.
@@ -118,12 +132,7 @@ impl From<Metric> for jetty_nodes::Asset {
             // Governing policies will be assigned in the policy.
             HashSet::new(),
             // Metrics are children of the underlying view.
-            todo!(),
-            // HashSet::from([
-            //     get_tableau_cual(TableauAssetType::View, &val.underlying_view_id)
-            //         .expect("Getting parent View.")
-            //         .uri(),
-            // ]),
+            HashSet::from([parent_cual]),
             // Children objects will be handled in their respective nodes.
             HashSet::new(),
             // Metrics aren't derived from anything
@@ -173,39 +182,5 @@ mod tests {
             debug!("{:#?}", v);
         }
         Ok(())
-    }
-
-    #[test]
-    #[allow(unused_must_use)]
-    fn test_asset_from_metric_works() {
-        let m = Metric::new(
-            Cual::new("".to_owned()),
-            "id".to_owned(),
-            "name".to_owned(),
-            "updated_at".to_owned(),
-            false,
-            "project".to_owned(),
-            "owner".to_owned(),
-            "updated_at".to_owned(),
-            vec![],
-        );
-        jetty_nodes::Asset::from(m);
-    }
-
-    #[test]
-    #[allow(unused_must_use)]
-    fn test_metric_into_asset_works() {
-        let m = Metric::new(
-            Cual::new("".to_owned()),
-            "id".to_owned(),
-            "name".to_owned(),
-            "updated_at".to_owned(),
-            false,
-            "project".to_owned(),
-            "owner".to_owned(),
-            "updated_at".to_owned(),
-            vec![],
-        );
-        Into::<jetty_nodes::Asset>::into(m);
     }
 }
