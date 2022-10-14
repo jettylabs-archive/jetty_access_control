@@ -1,18 +1,13 @@
 //! Utilities to return only part of a graph
 //!
 
-use std::collections::{HashMap, HashSet};
+
 
 use anyhow::{anyhow, Result};
-use petgraph::{stable_graph::NodeIndex, visit::EdgeRef};
+
 
 use crate::{
-    access_graph::{AccessGraph, EdgeType, JettyNode, NodeName},
-    connectors::{
-        nodes::{EffectivePermission, PermissionMode},
-        UserIdentifier,
-    },
-    cual::Cual,
+    access_graph::{AccessGraph, JettyNode, NodeName},
 };
 
 impl AccessGraph {

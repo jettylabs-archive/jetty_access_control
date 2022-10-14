@@ -3,16 +3,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use petgraph::{stable_graph::NodeIndex, visit::EdgeRef};
-
-use crate::{
-    access_graph::{AccessGraph, EdgeType, JettyNode, NodeName, TagAttributes},
-    connectors::{
-        nodes::{EffectivePermission, PermissionMode},
-        UserIdentifier,
-    },
-    cual::Cual,
-};
+use crate::access_graph::{AccessGraph, EdgeType, JettyNode, NodeName, TagAttributes};
 
 use super::NodePath;
 
@@ -141,7 +132,7 @@ fn remove_poisoned_paths<'a>(
             )
         })
         // now only keep the assets that still have a path;
-        .filter(|(n, p)| p.len() > 0)
+        .filter(|(_n, p)| p.len() > 0)
         .map(|(n, _)| n.to_owned())
         .collect()
 }
@@ -150,6 +141,7 @@ fn remove_poisoned_paths<'a>(
 mod tests {
 
     use crate::access_graph::{AssetAttributes, GroupAttributes, UserAttributes};
+    use crate::cual::Cual;
 
     use anyhow::Result;
 

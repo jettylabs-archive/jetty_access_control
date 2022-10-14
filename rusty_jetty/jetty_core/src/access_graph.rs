@@ -338,7 +338,7 @@ impl JettyNode {
             JettyNode::User(u) => u.connectors.to_owned(),
             JettyNode::Asset(a) => a.connectors.to_owned(),
             // Tags don't really have connectors at this point, so return an empty HashSet
-            JettyNode::Tag(t) => Default::default(),
+            JettyNode::Tag(_t) => Default::default(),
             JettyNode::Policy(p) => p.connectors.to_owned(),
         }
     }

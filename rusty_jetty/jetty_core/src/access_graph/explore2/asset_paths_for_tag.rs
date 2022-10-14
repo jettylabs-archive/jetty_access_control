@@ -3,17 +3,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use graphviz_rust::dot_structures::Edge;
-use petgraph::{stable_graph::NodeIndex, visit::EdgeRef};
-
-use crate::{
-    access_graph::{AccessGraph, EdgeType, JettyNode, NodeName, TagAttributes},
-    connectors::{
-        nodes::{EffectivePermission, PermissionMode},
-        UserIdentifier,
-    },
-    cual::Cual,
-};
+use crate::access_graph::{AccessGraph, EdgeType, JettyNode, NodeName};
 
 use super::NodePath;
 
@@ -135,7 +125,10 @@ fn remove_poisoned_paths<'a>(
 #[cfg(test)]
 mod tests {
 
-    use crate::access_graph::{AssetAttributes, GroupAttributes, UserAttributes};
+    use crate::{
+        access_graph::{AssetAttributes, TagAttributes},
+        cual::Cual,
+    };
 
     use anyhow::Result;
 
