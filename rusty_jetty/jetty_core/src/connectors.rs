@@ -56,21 +56,37 @@ pub enum UserIdentifier {
     Unknown,
 }
 
-/// Enum of known asset types
-
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum AssetType {
-    /// Database Table
-    DBTable,
-    /// Database View
-    DBView,
-    /// Database Schema
-    DBSchema,
-    /// Database
-    DBDB,
-    /// Database Warehouse
-    DBWarehouse,
-    /// A catch-all that can be used by connector implementors
+/// The connector type where an asset originates
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ConnectorType {
+    /// Snowflake CDW
+    Snowflake,
+    /// Tableau BI
+    Tableau,
+    /// anything else
+    Other(String),
+    /// For default
     #[default]
-    Other,
+    Unknown,
+}
+
+/// The kind of asset within a connector
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct AssetKind(String);
+
+/// The type of an asset
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct AssetType {
+    connector_type: ConnectorType,
+    asset_type: AssetKind,
+}
+
+impl AssetType {
+    /// Basic constructor
+    pub fn new(connector_type: ConnectorType, asset_type: &str) -> Self {
+        Self {
+            connector_type,
+            asset_type: AssetKind(asset_type.to_lowercase()),
+        }
+    }
 }

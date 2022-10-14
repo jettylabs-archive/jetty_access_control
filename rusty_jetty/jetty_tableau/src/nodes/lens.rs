@@ -2,14 +2,14 @@ use std::collections::{HashMap, HashSet};
 
 use anyhow::{Context, Result};
 use jetty_core::{
-    connectors::{nodes as jetty_nodes, AssetType},
+    connectors::{nodes as jetty_nodes, AssetType, ConnectorType},
     cual::Cual,
 };
 use serde::{Deserialize, Serialize};
 
 use crate::rest::{self, get_tableau_cual, FetchJson, TableauAssetType};
 
-use super::{Permissionable, ProjectId, TableauAsset};
+use super::{Permissionable, ProjectId, TableauAsset, LENS};
 
 /// Representation of a Tableau Lens
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
@@ -91,7 +91,7 @@ impl From<Lens> for jetty_nodes::Asset {
         jetty_nodes::Asset::new(
             val.cual,
             val.name,
-            AssetType::Other,
+            AssetType::new(ConnectorType::Tableau, LENS),
             // We will add metadata as it's useful.
             HashMap::new(),
             // Governing policies will be assigned in the policy.

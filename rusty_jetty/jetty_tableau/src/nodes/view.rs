@@ -1,11 +1,11 @@
 use std::collections::{HashMap, HashSet};
 
-use super::{Permission, Permissionable, ProjectId, TableauAsset};
+use super::{Permission, Permissionable, ProjectId, TableauAsset, VIEW};
 use crate::rest::{self, get_tableau_cual, FetchJson, TableauAssetType};
 
 use anyhow::{Context, Result};
 use jetty_core::{
-    connectors::{nodes as jetty_nodes, AssetType},
+    connectors::{nodes as jetty_nodes, AssetType, ConnectorType},
     cual::Cual,
 };
 use serde::{Deserialize, Serialize};
@@ -103,7 +103,7 @@ impl From<View> for jetty_nodes::Asset {
         jetty_nodes::Asset::new(
             val.cual,
             val.name,
-            AssetType::Other,
+            AssetType::new(ConnectorType::Snowflake, VIEW),
             // We will add metadata as it's useful.
             HashMap::new(),
             // Governing policies will be assigned in the policy.

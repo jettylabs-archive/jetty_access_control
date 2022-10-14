@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use super::{Permission, Permissionable, ProjectId, TableauAsset};
+use super::{Permission, Permissionable, ProjectId, TableauAsset, PROJECT};
 use crate::{
     coordinator::Environment,
     nodes::SerializedPermission,
@@ -10,7 +10,7 @@ use crate::{
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use jetty_core::{
-    connectors::{nodes as jetty_nodes, AssetType},
+    connectors::{nodes as jetty_nodes, AssetType, ConnectorType},
     cual::Cual,
     logging::debug,
 };
@@ -181,7 +181,7 @@ impl From<Project> for jetty_nodes::Asset {
         jetty_nodes::Asset::new(
             val.cual,
             val.name,
-            AssetType::Other,
+            AssetType::new(ConnectorType::Tableau, PROJECT),
             // We will add metadata as it's useful.
             HashMap::new(),
             // Governing policies will be assigned in the policy.

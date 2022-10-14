@@ -40,6 +40,14 @@ use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+const DATASOURCE: &str = "datasource";
+const WORKBOOK: &str = "workbook";
+const PROJECT: &str = "project";
+const FLOW: &str = "flow";
+const METRIC: &str = "metric";
+const LENS: &str = "lens";
+const VIEW: &str = "view";
+
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
 /// A Tableau-created Project ID.
 pub(crate) struct ProjectId(pub(crate) String);

@@ -9,6 +9,7 @@
 //!
 #![deny(missing_docs)]
 
+mod consts;
 mod cual;
 mod manifest;
 
@@ -101,11 +102,14 @@ impl Connector for DbtConnector {
 
 #[cfg(test)]
 mod tests {
-    use crate::manifest::node::{DbtModelNode, DbtSourceNode};
+    use crate::{
+        consts::VIEW,
+        manifest::node::{DbtModelNode, DbtSourceNode},
+    };
 
     use super::*;
     use jetty_core::{
-        connectors::{nodes::Asset, AssetType, ConnectorClient},
+        connectors::{nodes::Asset, AssetType, ConnectorClient, ConnectorType},
         cual::Cual,
     };
     use manifest::{node::DbtNode, MockDbtProjectManifest};
@@ -175,7 +179,7 @@ mod tests {
             Ok(HashMap::from([(
                 "".to_owned(),
                 DbtNode::ModelNode(DbtModelNode {
-                    materialized_as: AssetType::DBView,
+                    materialized_as: AssetType::new(ConnectorType::Snowflake, VIEW),
                     name: "db.schema.model".to_owned(),
                     ..Default::default()
                 }),
@@ -191,7 +195,7 @@ mod tests {
                 assets: vec![Asset {
                     cual: Cual::new("snowflake://DB/SCHEMA/MODEL".to_owned()),
                     name: "".to_owned(),
-                    asset_type: AssetType::DBView,
+                    asset_type: AssetType::new(ConnectorType::Snowflake, VIEW),
                     metadata: HashMap::from([("enabled".to_owned(), "false".to_owned())]),
                     governed_by: HashSet::new(),
                     child_of: HashSet::new(),
@@ -225,14 +229,14 @@ mod tests {
                 (
                     "".to_owned(),
                     DbtNode::ModelNode(DbtModelNode {
-                        materialized_as: AssetType::DBView,
+                        materialized_as: AssetType::new(ConnectorType::Snowflake, VIEW),
                         ..Default::default()
                     }),
                 ),
                 (
                     "test".to_owned(),
                     DbtNode::ModelNode(DbtModelNode {
-                        materialized_as: AssetType::DBView,
+                        materialized_as: AssetType::new(ConnectorType::Snowflake, VIEW),
                         name: "test".to_owned(),
                         ..Default::default()
                     }),
@@ -257,7 +261,7 @@ mod tests {
                 Asset {
                     cual: Cual::new("snowflake:////".to_owned()),
                     name: "".to_owned(),
-                    asset_type: AssetType::DBView,
+                    asset_type: AssetType::new(ConnectorType::Snowflake, VIEW),
                     metadata: HashMap::from([("enabled".to_owned(), "false".to_owned())]),
                     governed_by: HashSet::new(),
                     child_of: HashSet::new(),
@@ -269,7 +273,7 @@ mod tests {
                 Asset {
                     cual: Cual::new("snowflake:////test".to_owned()),
                     name: "test".to_owned(),
-                    asset_type: AssetType::DBView,
+                    asset_type: AssetType::new(ConnectorType::Snowflake, VIEW),
                     metadata: HashMap::from([("enabled".to_owned(), "false".to_owned())]),
                     governed_by: HashSet::new(),
                     child_of: HashSet::new(),
@@ -281,7 +285,7 @@ mod tests {
                 Asset {
                     cual: Cual::new("snowflake://test2db/test2schema/test2".to_owned()),
                     name: "test2".to_owned(),
-                    asset_type: AssetType::DBView,
+                    asset_type: AssetType::new(ConnectorType::Snowflake, VIEW),
                     metadata: HashMap::from([("enabled".to_owned(), "false".to_owned())]),
                     governed_by: HashSet::new(),
                     child_of: HashSet::new(),

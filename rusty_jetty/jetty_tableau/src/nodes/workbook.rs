@@ -11,11 +11,11 @@ use crate::{
 };
 
 use jetty_core::{
-    connectors::{nodes as jetty_nodes, AssetType},
+    connectors::{nodes as jetty_nodes, AssetType, ConnectorType},
     cual::Cual,
 };
 
-use super::{Permissionable, ProjectId, TableauAsset};
+use super::{Permissionable, ProjectId, TableauAsset, WORKBOOK};
 
 /// Representation of Tableau Workbook
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
@@ -135,7 +135,7 @@ impl From<Workbook> for jetty_nodes::Asset {
         jetty_nodes::Asset::new(
             val.cual,
             val.name,
-            AssetType::Other,
+            AssetType::new(ConnectorType::Tableau, WORKBOOK),
             // We will add metadata as it's useful.
             HashMap::new(),
             // Governing policies will be assigned in the policy.

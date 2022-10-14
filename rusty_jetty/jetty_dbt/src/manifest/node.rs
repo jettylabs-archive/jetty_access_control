@@ -1,12 +1,13 @@
 use serde::Deserialize;
 
-use jetty_core::connectors::AssetType;
+use jetty_core::connectors::{AssetType, ConnectorType};
 use jetty_core::cual::Cual;
 use jetty_core::{connectors::nodes::Asset as JettyAsset, cual::Cualable};
 
 use std::collections::{HashMap, HashSet};
 
 use super::DbtProjectManifest;
+use crate::consts::TABLE;
 use crate::cual::cual;
 
 pub(crate) trait NamePartable {
@@ -92,7 +93,7 @@ impl DbtNode {
                 JettyAsset::new(
                     (m_node as &dyn NamePartable).cual(),
                     "".to_owned(),
-                    m_node.materialized_as,
+                    m_node.materialized_as.clone(),
                     m_node.get_metadata(),
                     // No policies in dbt.
                     HashSet::new(),
@@ -120,7 +121,7 @@ impl DbtNode {
                 JettyAsset::new(
                     (s_node as &dyn NamePartable).cual(),
                     "".to_owned(),
-                    AssetType::DBTable,
+                    AssetType::new(ConnectorType::Snowflake, TABLE),
                     HashMap::new(),
                     // No policies in dbt.
                     HashSet::new(),
