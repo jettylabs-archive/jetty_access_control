@@ -3,10 +3,10 @@
 
 use std::collections::{HashMap, HashSet};
 
-use petgraph::{stable_graph::NodeIndex, visit::EdgeRef};
+
 
 use crate::{
-    access_graph::{AccessGraph, EdgeType, JettyNode, NodeName},
+    access_graph::{AccessGraph},
     connectors::{
         nodes::{EffectivePermission, PermissionMode},
         UserIdentifier,

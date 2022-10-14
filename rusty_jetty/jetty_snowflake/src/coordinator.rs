@@ -267,7 +267,6 @@ impl<'a> Coordinator<'a> {
             let object_type = match object.kind {
                 ObjectKind::Table => connectors::AssetType::DBTable,
                 ObjectKind::View => connectors::AssetType::DBView,
-                _ => connectors::AssetType::Other,
             };
 
             res.push(nodes::Asset::new(

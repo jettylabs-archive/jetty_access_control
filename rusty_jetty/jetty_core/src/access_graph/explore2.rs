@@ -2,11 +2,13 @@
 //!
 
 mod accessible_assets;
+mod asset_paths_for_tag;
 mod extract_graph;
 mod get_node;
 mod matching_children;
 mod matching_paths;
 mod matching_paths_to_children;
+mod tags_for_asset;
 
 use std::fmt::Display;
 
@@ -16,6 +18,7 @@ use super::{AccessGraph, EdgeType, JettyNode, NodeName};
 
 /// A path from one node to another, including start and end nodes.
 /// Inside, it's a Vec<JettyNode>
+#[derive(Debug, Clone)]
 pub struct NodePath(Vec<JettyNode>);
 
 impl Display for NodePath {

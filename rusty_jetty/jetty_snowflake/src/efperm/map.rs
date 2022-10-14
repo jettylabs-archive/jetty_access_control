@@ -29,7 +29,7 @@ impl<'a> EffectivePermissionMap<'a> {
         let mut res = HashSet::new();
         // Get recursive grants for each of the direct ones.
         for role in &direct_grants {
-            res.extend(self.get_recursive_roles_for_role(&role));
+            res.extend(self.get_recursive_roles_for_role(role));
         }
         res.extend(direct_grants);
         res
@@ -41,7 +41,7 @@ impl<'a> EffectivePermissionMap<'a> {
         let direct_grants = self.get_direct_parents(&Grantee::Role(role.to_owned()));
         // Get the recursive parents for each parent role.
         for role in &direct_grants {
-            res.extend(self.get_recursive_roles_for_role(&role).into_iter());
+            res.extend(self.get_recursive_roles_for_role(role).into_iter());
         }
         res.extend(direct_grants.into_iter());
         res
@@ -109,8 +109,7 @@ impl<'a> EffectivePermissionMap<'a> {
         let has_any_db_grant = !db_grants.is_empty();
         let has_schema_usage = schema_grants
             .iter()
-            .find(|g| g.privilege == "USAGE")
-            .is_some();
+            .any(|g| g.privilege == "USAGE");
 
         if !has_any_db_grant || !has_schema_usage {
             return get_effective_permissions_for_all_privileges(
@@ -166,7 +165,7 @@ fn get_effective_permissions_for_all_privileges(
         crate::entry_types::ObjectKind::View => VIEW_PRIVILEGES,
     };
     privileges
-        .into_iter()
+        .iter()
         .map(|&p| EffectivePermission::new(p.to_owned(), mode.clone(), reasons.clone()))
         .collect()
 }
@@ -225,7 +224,7 @@ mod tests {
         let db = Database::new("db".to_owned());
         let schema = Schema::new("db".to_owned(), "schema".to_owned());
         let mut env = Environment::default();
-        env.databases = vec![db.clone()];
+        env.databases = vec![db];
         let user = User::default();
         let eps = ep_map.get_effective_permissions_for_asset(&env, &user, &Asset::Schema(schema));
         assert_eq!(eps, HashSet::new());

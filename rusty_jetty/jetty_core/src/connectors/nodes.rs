@@ -321,15 +321,16 @@ impl PartialOrd for Asset {
 #[derive(Debug, Derivative, PartialEq, Eq)]
 #[derivative(Default)]
 pub struct Tag {
-    /// Name of the tag, appropriately namespaced for the
     /// context
     pub name: String,
     /// Optional value for the tag (for the case of key-value tags)
     pub value: Option<String>,
-    /// Whether the tag is to be passed through asset hierarchy
+    /// Whether the tag is to be passed through asset hierarchy (only to direct
+    /// descendants of this node)
     #[derivative(Default(value = "true"))]
     pub pass_through_hierarchy: bool,
-    /// Whether the tag is to be passed through asset lineage
+    /// Whether the tag is to be passed through asset lineage (only to direct
+    /// descendants of this node)
     pub pass_through_lineage: bool,
     /// IDs of assets the tag is applied to
     pub applied_to: HashSet<String>,
