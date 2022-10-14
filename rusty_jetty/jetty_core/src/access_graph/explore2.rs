@@ -2,6 +2,7 @@
 //!
 
 mod accessible_assets;
+mod asset_paths_for_tag;
 mod extract_graph;
 mod get_node;
 mod matching_children;
@@ -17,7 +18,7 @@ use super::{AccessGraph, EdgeType, JettyNode, NodeName};
 
 /// A path from one node to another, including start and end nodes.
 /// Inside, it's a Vec<JettyNode>
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct NodePath(Vec<JettyNode>);
 
 impl Display for NodePath {
