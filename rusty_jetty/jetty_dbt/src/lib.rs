@@ -15,6 +15,7 @@ mod manifest;
 
 use std::{collections::HashMap, path::Path};
 
+use cual::set_cual_account_name;
 use jetty_core::{
     connectors::{
         self,
@@ -56,6 +57,10 @@ impl Connector for DbtConnector {
         if !credentials.contains_key("project_dir") {
             bail!("missing project_dir key in connectors.yaml");
         }
+        if !credentials.contains_key("snowflake_account") {
+            bail!("missing snowflake_account key in connectors.yaml");
+        }
+        set_cual_account_name(&credentials["snowflake_account"]);
         let manifest = DbtManifest::new(&credentials["project_dir"])
             .context("creating dbt manifest object")?;
         Self::new_with_manifest(manifest)
@@ -142,13 +147,13 @@ mod tests {
             &HashMap::from([("project_dir".to_owned(), "something/not/a/path".to_owned())]),
             Some(ConnectorClient::Test),
         )
-        .await
-        .unwrap();
-        assert_eq!(connector.check().await, false);
+        .await;
+        assert!(connector.is_err());
     }
 
     #[tokio::test]
     async fn get_data_returns_empty() -> Result<()> {
+        set_cual_account_name("account");
         // Create mocked manifest
         let mut manifest_mock = MockDbtProjectManifest::new();
 
@@ -167,6 +172,7 @@ mod tests {
 
     #[tokio::test]
     async fn get_data_returns_valid_dbt_assets() -> Result<()> {
+        set_cual_account_name("account");
         // Create mocked manifest
         let mut manifest_mock = MockDbtProjectManifest::new();
 
@@ -193,7 +199,9 @@ mod tests {
             data,
             ConnectorData {
                 assets: vec![Asset {
-                    cual: Cual::new("snowflake://DB/SCHEMA/MODEL".to_owned()),
+                    cual: Cual::new(
+                        "snowflake://account.snowflakecomputing.com/DB/SCHEMA/MODEL".to_owned()
+                    ),
                     name: "".to_owned(),
                     asset_type: AssetType(VIEW.to_owned()),
                     metadata: HashMap::from([("enabled".to_owned(), "false".to_owned())]),
