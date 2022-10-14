@@ -9,7 +9,6 @@ use futures::StreamExt;
 use jetty_core::connectors;
 use jetty_core::connectors::nodes;
 use jetty_core::connectors::AssetType;
-use jetty_core::connectors::ConnectorType;
 use jetty_core::connectors::UserIdentifier;
 
 use jetty_core::connectors::nodes::EffectivePermission;
@@ -280,7 +279,7 @@ impl<'a> Coordinator<'a> {
             res.push(nodes::Asset::new(
                 object.cual(),
                 "".to_owned(),
-                AssetType::new(ConnectorType::Snowflake, object_type),
+                AssetType(object_type.to_owned()),
                 HashMap::new(),
                 // Policies applied are handled in get_jetty_policies
                 HashSet::new(),
@@ -298,7 +297,7 @@ impl<'a> Coordinator<'a> {
             res.push(nodes::Asset::new(
                 schema.cual(),
                 format!("{}.{}", schema.database_name, schema.name),
-                AssetType::new(ConnectorType::Snowflake, SCHEMA),
+                AssetType(SCHEMA.to_owned()),
                 HashMap::new(),
                 // Policies applied are handled in get_jetty_policies
                 HashSet::new(),
@@ -316,7 +315,7 @@ impl<'a> Coordinator<'a> {
             res.push(nodes::Asset::new(
                 db.cual(),
                 db.name.to_owned(),
-                AssetType::new(ConnectorType::Snowflake, DATABASE),
+                AssetType(DATABASE.to_owned()),
                 HashMap::new(),
                 // Policies applied are handled in get_jetty_policies
                 HashSet::new(),

@@ -38,7 +38,7 @@ impl Cualable for dyn NamePartable {
 
 #[cfg(test)]
 mod test {
-    use jetty_core::connectors::{AssetType, ConnectorType};
+    use jetty_core::connectors::AssetType;
 
     use crate::{
         consts::TABLE,
@@ -57,7 +57,7 @@ mod test {
     fn proper_model_node_yields_cual() {
         let result_cual = (&DbtModelNode {
             name: "db.schema.model".to_owned(),
-            materialized_as: AssetType::new(ConnectorType::Snowflake, TABLE),
+            materialized_as: AssetType(TABLE.to_owned()),
             ..Default::default()
         } as &dyn NamePartable)
             .cual();

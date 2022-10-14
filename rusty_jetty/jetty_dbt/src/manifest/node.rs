@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use jetty_core::connectors::{AssetType, ConnectorType};
+use jetty_core::connectors::AssetType;
 use jetty_core::cual::Cual;
 use jetty_core::{connectors::nodes::Asset as JettyAsset, cual::Cualable};
 
@@ -121,7 +121,7 @@ impl DbtNode {
                 JettyAsset::new(
                     (s_node as &dyn NamePartable).cual(),
                     "".to_owned(),
-                    AssetType::new(ConnectorType::Snowflake, TABLE),
+                    AssetType(TABLE.to_owned()),
                     HashMap::new(),
                     // No policies in dbt.
                     HashSet::new(),

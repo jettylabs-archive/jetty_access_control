@@ -11,7 +11,7 @@ use crate::{
 };
 
 use jetty_core::{
-    connectors::{nodes as jetty_nodes, AssetType, ConnectorType},
+    connectors::{nodes as jetty_nodes, AssetType},
     cual::Cual,
 };
 
@@ -135,7 +135,7 @@ impl From<Workbook> for jetty_nodes::Asset {
         jetty_nodes::Asset::new(
             val.cual,
             val.name,
-            AssetType::new(ConnectorType::Tableau, WORKBOOK),
+            AssetType(WORKBOOK.to_owned()),
             // We will add metadata as it's useful.
             HashMap::new(),
             // Governing policies will be assigned in the policy.

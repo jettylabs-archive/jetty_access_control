@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use jetty_core::{
-    connectors::{nodes as jetty_nodes, AssetType, ConnectorType},
+    connectors::{nodes as jetty_nodes, AssetType},
     cual::Cual,
 };
 use serde::{Deserialize, Serialize};
@@ -78,7 +78,7 @@ impl From<Datasource> for jetty_nodes::Asset {
         jetty_nodes::Asset::new(
             val.cual,
             val.name,
-            AssetType::new(ConnectorType::Tableau, DATASOURCE),
+            AssetType(DATASOURCE.to_owned()),
             // We will add metadata as it's useful.
             HashMap::new(),
             // Governing policies will be assigned in the policy.
