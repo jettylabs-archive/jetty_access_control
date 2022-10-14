@@ -1,3 +1,8 @@
+//! Exploration of data access via Jetty
+//!
+
+#![deny(missing_docs)]
+
 mod assets;
 mod groups;
 mod nodes;
