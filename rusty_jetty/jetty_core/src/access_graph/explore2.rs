@@ -43,7 +43,7 @@ impl AccessGraph {
             "{}",
             path.0
                 .iter()
-                .map(|idx| self.graph()[*idx].get_string_name())
+                .map(|idx| self[*idx].get_string_name())
                 .collect::<Vec<_>>()
                 .join(" ⇨ ")
         )

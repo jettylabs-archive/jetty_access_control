@@ -92,7 +92,7 @@ impl AccessGraph {
             }
 
             // Get the node we're looking at
-            let node_weight = &self.graph()[child];
+            let node_weight = &self[child];
             // Are we beyond the minimum depth?
             if current_depth >= min_depth {
                 // is it the target node type?

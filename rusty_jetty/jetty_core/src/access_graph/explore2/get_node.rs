@@ -1,14 +1,9 @@
 //! Utilities to return only part of a graph
 //!
 
-
-
 use anyhow::{anyhow, Result};
 
-
-use crate::{
-    access_graph::{AccessGraph, JettyNode, NodeName},
-};
+use crate::access_graph::{AccessGraph, JettyNode, NodeName};
 
 impl AccessGraph {
     /// Return a node when given a name
@@ -17,6 +12,6 @@ impl AccessGraph {
             .graph
             .get_node(node_name)
             .ok_or_else(|| anyhow!("unable to find node"))?;
-        Ok(&self.graph.graph[*idx])
+        Ok(&self[*idx])
     }
 }

@@ -96,7 +96,7 @@ impl AccessGraph {
             }
 
             // Get the node we're looking at
-            let node_weight = &self.graph()[child];
+            let node_weight = &self[child];
             // Is it a passthrough type?
             if passthrough_matcher(node_weight) {
                 self.all_matching_simple_paths_recursive(

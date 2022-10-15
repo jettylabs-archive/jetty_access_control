@@ -14,7 +14,7 @@ impl AccessGraph {
         let idx = self.graph.nodes.get(from).unwrap();
         let mut final_graph: petgraph::graph::DiGraph<JettyNode, EdgeType> = petgraph::Graph::new();
 
-        let new_idx = final_graph.add_node(self.graph.graph[*idx].to_owned());
+        let new_idx = final_graph.add_node(self[*idx].to_owned());
 
         self.add_children(idx, &new_idx, max_depth, &mut final_graph);
 
@@ -28,7 +28,7 @@ impl AccessGraph {
         max_depth: usize,
         graph: &mut petgraph::graph::DiGraph<JettyNode, EdgeType>,
     ) {
-        let old_graph = &self.graph.graph;
+        let old_graph = self.graph();
         // if we've already gone deep enough, don't go any deeper
         if max_depth == 0 {
             return;
