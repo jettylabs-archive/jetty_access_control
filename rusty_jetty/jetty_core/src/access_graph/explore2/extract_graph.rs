@@ -172,7 +172,7 @@ mod tests {
         assert!(is_isomorphic_matching(
             &extracted,
             &Into::<petgraph::graph::DiGraph<JettyNode, EdgeType>>::into(sub_graph.graph.graph),
-            |w1, w2| w1.get_name() == w2.get_name(),
+            |w1, w2| w1.get_node_name() == w2.get_node_name(),
             |e1, e2| e1 == e2
         ));
 

@@ -3,13 +3,15 @@
 
 use std::collections::{HashMap, HashSet};
 
+use petgraph::stable_graph::NodeIndex;
+
 use crate::access_graph::{AccessGraph, EdgeType, JettyNode, NodeName, TagAttributes};
 
 use super::NodePath;
 
 impl AccessGraph {
     /// Return accessible assets
-    pub fn tags_for_asset(&self, asset: &NodeName) -> HashSet<JettyNode> {
+    pub fn tags_for_asset(&self, asset: &NodeName) -> HashSet<NodeIndex> {
         // get paths of tags applied through hierarchy
         let hierarchy_paths = self.get_paths_to_tags_via_inheritance(
             asset,
@@ -74,13 +76,13 @@ impl AccessGraph {
             // Get the node the tag is removed from. The tag itself will be the last member of the path, so use the penultimate member
             .map(|(n, p)| {
                 (
-                    n,
+                    *n,
                     p.iter()
-                        .map(|NodePath(v)| &v[v.len() - 2])
+                        .map(|NodePath(v)| *(&v[v.len() - 2]))
                         .collect::<HashSet<_>>(),
                 )
             })
-            .collect::<HashMap<&JettyNode, HashSet<_>>>();
+            .collect::<HashMap<NodeIndex, HashSet<_>>>();
 
         let mut clean_paths = remove_poisoned_paths(hierarchy_paths, &poison_nodes);
 
@@ -97,7 +99,7 @@ impl AccessGraph {
         from: &NodeName,
         edge_matcher: fn(&EdgeType) -> bool,
         target_matcher: fn(&JettyNode) -> bool,
-    ) -> HashMap<JettyNode, Vec<super::NodePath>> {
+    ) -> HashMap<NodeIndex, Vec<super::NodePath>> {
         // go through inheritance to find all tags
         self.all_matching_simple_paths_to_children(
             from,
@@ -111,9 +113,9 @@ impl AccessGraph {
 }
 
 fn remove_poisoned_paths<'a>(
-    all_paths: HashMap<JettyNode, Vec<super::NodePath>>,
-    poison_nodes: &HashMap<&JettyNode, HashSet<&JettyNode>>,
-) -> HashSet<JettyNode> {
+    all_paths: HashMap<NodeIndex, Vec<super::NodePath>>,
+    poison_nodes: &HashMap<NodeIndex, HashSet<NodeIndex>>,
+) -> HashSet<NodeIndex> {
     all_paths
         .iter()
         .map(|(n, p)| {
@@ -123,7 +125,7 @@ fn remove_poisoned_paths<'a>(
                 p.iter()
                     .filter(|NodePath(vn)| match poison_nodes.get(n) {
                         Some(z) => z
-                            .intersection(&HashSet::from_iter(vn.iter()))
+                            .intersection(&HashSet::from_iter(vn.iter().map(|i| *i)))
                             .next()
                             .is_none(),
                         None => true,
@@ -140,7 +142,7 @@ fn remove_poisoned_paths<'a>(
 #[cfg(test)]
 mod tests {
 
-    use crate::access_graph::{AssetAttributes};
+    use crate::access_graph::AssetAttributes;
     use crate::cual::Cual;
 
     use anyhow::Result;

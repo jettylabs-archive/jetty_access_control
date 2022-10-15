@@ -26,7 +26,7 @@ impl AccessGraph {
         target_matcher: fn(&JettyNode) -> bool,
         min_depth: Option<usize>,
         max_depth: Option<usize>,
-    ) -> Vec<JettyNode> {
+    ) -> Vec<NodeIndex> {
         let idx = self.graph.nodes.get(from).unwrap();
 
         let max_depth = if let Some(l) = max_depth {
@@ -68,7 +68,7 @@ impl AccessGraph {
         max_depth: usize,
         current_depth: usize,
         visited: &mut HashSet<NodeIndex>,
-        results: &mut Vec<JettyNode>,
+        results: &mut Vec<NodeIndex>,
     ) {
         let legal_connections = self
             .graph
@@ -92,12 +92,12 @@ impl AccessGraph {
             }
 
             // Get the node we're looking at
-            let node_weight = &self.graph.graph[child];
+            let node_weight = &self.graph()[child];
             // Are we beyond the minimum depth?
             if current_depth >= min_depth {
                 // is it the target node type?
                 if target_matcher(node_weight) {
-                    results.push(node_weight.to_owned());
+                    results.push(child);
                 }
             }
 
@@ -230,7 +230,7 @@ mod tests {
             None,
             None,
         );
-        a.iter().for_each(|p| println!("{}", &p));
+        a.iter().for_each(|p| println!("{}", ag.path_as_string(&p)));
         assert_eq!(a.len(), 2);
 
         Ok(())

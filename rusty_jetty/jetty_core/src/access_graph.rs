@@ -25,8 +25,11 @@ use std::fmt::Debug;
 use std::fs::File;
 use std::hash::Hasher;
 use std::io::BufWriter;
+use std::ops::{Index, IndexMut};
 
 use anyhow::{anyhow, Context, Result};
+use petgraph::stable_graph::{NodeIndex, StableGraph};
+use petgraph::Directed;
 use serde::Deserialize;
 use serde::Serialize;
 use time::OffsetDateTime;
@@ -371,7 +374,7 @@ impl JettyNode {
 
     /// Given a node, return the NodeName. This will return the name field
     /// wrapped in the appropriate enum.
-    fn get_name(&self) -> NodeName {
+    fn get_node_name(&self) -> NodeName {
         match &self {
             JettyNode::Asset(a) => NodeName::Asset(a.cual.uri()),
             JettyNode::Group(a) => NodeName::Group(a.name.to_owned()),
@@ -483,6 +486,20 @@ pub struct AccessGraph {
     effective_permissions: SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>>,
 }
 
+impl Index<NodeIndex> for AccessGraph {
+    type Output = JettyNode;
+
+    fn index(&self, index: NodeIndex) -> &Self::Output {
+        &self.graph.graph.index(index)
+    }
+}
+
+impl IndexMut<NodeIndex> for AccessGraph {
+    fn index_mut(&mut self, index: NodeIndex) -> &mut Self::Output {
+        self.graph.graph.index_mut(index)
+    }
+}
+
 impl AccessGraph {
     /// New graph
     pub fn new(data: Vec<ProcessedConnectorData>) -> Result<Self> {
@@ -577,6 +594,11 @@ impl AccessGraph {
         let f = File::open(SAVED_GRAPH_PATH).context("opening graph file")?;
         let decoded = bincode::deserialize_from(f).context("deserializing graph from file")?;
         Ok(decoded)
+    }
+
+    /// Return a pointer to the petgraph - makes it easy to index and get node values
+    pub fn graph(&self) -> &petgraph::stable_graph::StableGraph<JettyNode, EdgeType> {
+        &self.graph.graph
     }
 }
 
