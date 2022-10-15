@@ -14,7 +14,7 @@ use crate::{
     rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType},
 };
 
-use super::{Permissionable, ProjectId, TableauAsset};
+use super::{Permissionable, ProjectId, TableauAsset, DATASOURCE};
 
 /// Representation of a Tableau Datasource
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
@@ -78,7 +78,7 @@ impl From<Datasource> for jetty_nodes::Asset {
         jetty_nodes::Asset::new(
             val.cual,
             val.name,
-            AssetType::Other,
+            AssetType(DATASOURCE.to_owned()),
             // We will add metadata as it's useful.
             HashMap::new(),
             // Governing policies will be assigned in the policy.

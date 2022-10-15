@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::rest::{self, get_tableau_cual, FetchJson, TableauAssetType};
 
-use super::{Permissionable, ProjectId, TableauAsset};
+use super::{Permissionable, ProjectId, TableauAsset, METRIC};
 
 /// Representation of Tableau metric
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
@@ -111,7 +111,7 @@ impl From<Metric> for jetty_nodes::Asset {
         jetty_nodes::Asset::new(
             val.cual,
             val.name,
-            AssetType::Other,
+            AssetType(METRIC.to_owned()),
             // We will add metadata as it's useful.
             HashMap::new(),
             // Governing policies will be assigned in the policy.

@@ -11,3 +11,8 @@ pub const USER_AGENT_HEADER: &str = "User-Agent";
 /// ROLE: We don't need children groups. Those relationships will be taken care of
 /// as parent roles.
 pub const ASSET_TYPES: [&str; 4] = ["TABLE", "VIEW", "SCHEMA", "DATABASE"];
+
+pub const DATABASE: &str = "database";
+pub const SCHEMA: &str = "schema";
+pub const VIEW: &str = "view";
+pub const TABLE: &str = "table";

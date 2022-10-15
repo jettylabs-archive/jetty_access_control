@@ -8,6 +8,7 @@ use futures::future::BoxFuture;
 use futures::StreamExt;
 use jetty_core::connectors;
 use jetty_core::connectors::nodes;
+use jetty_core::connectors::AssetType;
 use jetty_core::connectors::UserIdentifier;
 
 use jetty_core::connectors::nodes::EffectivePermission;
@@ -18,6 +19,10 @@ use jetty_core::logging::error;
 use jetty_core::permissions::matrix::InsertOrMerge;
 
 use super::cual::{cual, get_cual_account_name, Cual};
+use crate::consts::DATABASE;
+use crate::consts::SCHEMA;
+use crate::consts::TABLE;
+use crate::consts::VIEW;
 use crate::efperm::EffectivePermissionMap;
 use crate::entry_types;
 use crate::entry_types::ObjectKind;
@@ -267,15 +272,14 @@ impl<'a> Coordinator<'a> {
         let mut res = vec![];
         for object in &self.env.objects {
             let object_type = match object.kind {
-                ObjectKind::Table => connectors::AssetType::DBTable,
-                ObjectKind::View => connectors::AssetType::DBView,
-                _ => connectors::AssetType::Other,
+                ObjectKind::Table => TABLE,
+                ObjectKind::View => VIEW,
             };
 
             res.push(nodes::Asset::new(
                 object.cual(),
                 "".to_owned(),
-                object_type,
+                AssetType(object_type.to_owned()),
                 HashMap::new(),
                 // Policies applied are handled in get_jetty_policies
                 HashSet::new(),
@@ -293,7 +297,7 @@ impl<'a> Coordinator<'a> {
             res.push(nodes::Asset::new(
                 schema.cual(),
                 format!("{}.{}", schema.database_name, schema.name),
-                connectors::AssetType::DBSchema,
+                AssetType(SCHEMA.to_owned()),
                 HashMap::new(),
                 // Policies applied are handled in get_jetty_policies
                 HashSet::new(),
@@ -311,7 +315,7 @@ impl<'a> Coordinator<'a> {
             res.push(nodes::Asset::new(
                 db.cual(),
                 db.name.to_owned(),
-                connectors::AssetType::DBDB,
+                AssetType(DATABASE.to_owned()),
                 HashMap::new(),
                 // Policies applied are handled in get_jetty_policies
                 HashSet::new(),

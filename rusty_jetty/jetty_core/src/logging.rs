@@ -26,10 +26,7 @@ pub fn setup(level: Option<LevelFilter>) {
     }
 
     // Actually initialize all logging layers
-    tracing_subscriber::registry()
-        .with(logging_layers)
-        .with(tracing_subscriber::fmt::layer())
-        .init();
+    tracing_subscriber::registry().with(logging_layers).init();
 
     debug!("logging set up");
 }

@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use super::{Permission, Permissionable, ProjectId, TableauAsset};
+use super::{Permission, Permissionable, ProjectId, TableauAsset, PROJECT};
 use crate::{
     coordinator::Environment,
     nodes::SerializedPermission,
@@ -181,7 +181,7 @@ impl From<Project> for jetty_nodes::Asset {
         jetty_nodes::Asset::new(
             val.cual,
             val.name,
-            AssetType::Other,
+            AssetType(PROJECT.to_owned()),
             // We will add metadata as it's useful.
             HashMap::new(),
             // Governing policies will be assigned in the policy.

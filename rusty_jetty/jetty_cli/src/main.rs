@@ -1,3 +1,8 @@
+//! Jetty CLI
+//!
+
+#![deny(missing_docs)]
+
 use std::{sync::Arc, time::Instant};
 
 use anyhow::{bail, Context, Result};

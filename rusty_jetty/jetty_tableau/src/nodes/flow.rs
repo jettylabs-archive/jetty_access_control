@@ -14,7 +14,7 @@ use crate::{
     rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType},
 };
 
-use super::{Permissionable, ProjectId, TableauAsset};
+use super::{Permissionable, ProjectId, TableauAsset, FLOW};
 
 /// Representation of a Tableau Flow
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
@@ -166,7 +166,7 @@ impl From<Flow> for jetty_nodes::Asset {
         jetty_nodes::Asset::new(
             val.cual,
             val.name,
-            AssetType::Other,
+            AssetType(FLOW.to_owned()),
             // We will add metadata as it's useful.
             HashMap::new(),
             // Governing policies will be assigned in the policy.

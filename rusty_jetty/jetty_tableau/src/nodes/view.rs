@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use super::{Permission, Permissionable, ProjectId, TableauAsset};
+use super::{Permission, Permissionable, ProjectId, TableauAsset, VIEW};
 use crate::rest::{self, get_tableau_cual, FetchJson, TableauAssetType};
 
 use anyhow::{Context, Result};
@@ -103,7 +103,7 @@ impl From<View> for jetty_nodes::Asset {
         jetty_nodes::Asset::new(
             val.cual,
             val.name,
-            AssetType::Other,
+            AssetType(VIEW.to_owned()),
             // We will add metadata as it's useful.
             HashMap::new(),
             // Governing policies will be assigned in the policy.

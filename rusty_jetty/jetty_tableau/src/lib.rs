@@ -1,3 +1,7 @@
+//! Tableau Connector for Jetty
+//!
+
+#![deny(missing_docs)]
 #![allow(dead_code)]
 
 mod coordinator;
@@ -29,6 +33,7 @@ use permissions::PermissionManager;
 
 use std::collections::{HashMap, HashSet};
 
+/// Map wrapper for config values.
 pub type TableauConfig = HashMap<String, String>;
 
 /// Credentials for authenticating with Tableau.
@@ -44,6 +49,7 @@ struct TableauCredentials {
     site_name: String,
 }
 
+/// Top-level connector struct.
 #[allow(dead_code)]
 #[derive(Default)]
 pub struct TableauConnector {
@@ -52,6 +58,7 @@ pub struct TableauConnector {
 }
 
 impl TableauConnector {
+    /// Setup after creation. Fetch and update the local environment.
     pub async fn setup(&mut self) -> Result<()> {
         self.coordinator.update_env().await?;
         Ok(())
