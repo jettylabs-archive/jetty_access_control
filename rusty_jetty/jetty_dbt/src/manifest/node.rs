@@ -8,7 +8,7 @@ use std::collections::{HashMap, HashSet};
 
 use super::DbtProjectManifest;
 use crate::consts::TABLE;
-use crate::cual::cual;
+use crate::cual::{cual, get_cual_account_name};
 
 pub(crate) trait NamePartable {
     // Get the relation name for the object.
