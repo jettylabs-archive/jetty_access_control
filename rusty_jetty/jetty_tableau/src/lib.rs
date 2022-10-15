@@ -1,3 +1,7 @@
+//! Tableau Connector for Jetty
+//!
+
+#![deny(missing_docs)]
 #![allow(dead_code)]
 
 mod coordinator;
@@ -29,6 +33,7 @@ use permissions::PermissionManager;
 
 use std::collections::{HashMap, HashSet};
 
+/// Map wrapper for config values.
 pub type TableauConfig = HashMap<String, String>;
 
 /// Credentials for authenticating with Tableau.
@@ -44,6 +49,7 @@ struct TableauCredentials {
     site_name: String,
 }
 
+/// Top-level connector struct.
 #[allow(dead_code)]
 #[derive(Default)]
 pub struct TableauConnector {
@@ -52,6 +58,7 @@ pub struct TableauConnector {
 }
 
 impl TableauConnector {
+    /// Setup after creation. Fetch and update the local environment.
     pub async fn setup(&mut self) -> Result<()> {
         self.coordinator.update_env().await?;
         Ok(())
@@ -219,10 +226,11 @@ impl Connector for TableauConnector {
 #[cfg(test)]
 pub(crate) async fn connector_setup() -> Result<crate::TableauConnector> {
     use anyhow::Context;
+    use jetty_core::jetty::ConnectorNamespace;
 
     let j = jetty_core::jetty::Jetty::new().context("creating Jetty")?;
     let creds = jetty_core::jetty::fetch_credentials().context("fetching credentials from file")?;
-    let config = &j.config.connectors[0];
+    let config = &j.config.connectors[&ConnectorNamespace("tableau".to_owned())];
     let tc = crate::TableauConnector::new(config, &creds["tableau"], None)
         .await
         .context("reading tableau credentials")?;

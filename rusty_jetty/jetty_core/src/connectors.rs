@@ -56,21 +56,6 @@ pub enum UserIdentifier {
     Unknown,
 }
 
-/// Enum of known asset types
-
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum AssetType {
-    /// Database Table
-    DBTable,
-    /// Database View
-    DBView,
-    /// Database Schema
-    DBSchema,
-    /// Database
-    DBDB,
-    /// Database Warehouse
-    DBWarehouse,
-    /// A catch-all that can be used by connector implementors
-    #[default]
-    Other,
-}
+/// The kind of asset within a connector
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct AssetType(pub String);

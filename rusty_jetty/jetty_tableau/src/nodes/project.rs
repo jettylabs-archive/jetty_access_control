@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use super::{Permission, Permissionable, ProjectId, TableauAsset};
+use super::{Permission, Permissionable, ProjectId, TableauAsset, PROJECT};
 use crate::{
     coordinator::Environment,
     nodes::SerializedPermission,
@@ -12,6 +12,7 @@ use async_trait::async_trait;
 use jetty_core::{
     connectors::{nodes as jetty_nodes, AssetType},
     cual::Cual,
+    logging::debug,
 };
 use serde::{Deserialize, Serialize};
 
@@ -147,7 +148,7 @@ impl Permissionable for Project {
                         // ID, user owner), for which a user does not exist
                         // (permission_result is an err type). Therefore, we
                         // will skip this permission.
-                        println!("Skipping owner for default project.");
+                        debug!("Skipping owner {:?} for default project.", p);
                         None
                     } else {
                         Some(
@@ -180,7 +181,7 @@ impl From<Project> for jetty_nodes::Asset {
         jetty_nodes::Asset::new(
             val.cual,
             val.name,
-            AssetType::Other,
+            AssetType(PROJECT.to_owned()),
             // We will add metadata as it's useful.
             HashMap::new(),
             // Governing policies will be assigned in the policy.
@@ -216,7 +217,7 @@ mod tests {
             .context("running tableau connector setup")?;
         let nodes = get_basic_projects(&tc.coordinator.rest_client).await?;
         for (_k, v) in nodes {
-            println!("{:#?}", v);
+            debug!("{:#?}", v);
         }
         Ok(())
     }
@@ -233,7 +234,7 @@ mod tests {
                 .await?;
         }
         for (_k, v) in nodes {
-            println!("{:#?}", v);
+            debug!("{:#?}", v);
         }
         Ok(())
     }

@@ -15,7 +15,7 @@ use jetty_core::{
     cual::Cual,
 };
 
-use super::{Permissionable, ProjectId, TableauAsset};
+use super::{Permissionable, ProjectId, TableauAsset, WORKBOOK};
 
 /// Representation of Tableau Workbook
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
@@ -135,7 +135,7 @@ impl From<Workbook> for jetty_nodes::Asset {
         jetty_nodes::Asset::new(
             val.cual,
             val.name,
-            AssetType::Other,
+            AssetType(WORKBOOK.to_owned()),
             // We will add metadata as it's useful.
             HashMap::new(),
             // Governing policies will be assigned in the policy.
@@ -231,6 +231,7 @@ pub(crate) async fn get_basic_workbooks(
 mod tests {
     use super::*;
     use anyhow::{Context, Ok, Result};
+    use jetty_core::logging::debug;
 
     #[tokio::test]
     async fn test_fetching_workbooks_works() -> Result<()> {
@@ -239,7 +240,7 @@ mod tests {
             .context("running tableau connector setup")?;
         let groups = get_basic_workbooks(&tc.coordinator.rest_client).await?;
         for (_k, v) in groups {
-            println!("{:#?}", v);
+            debug!("{:#?}", v);
         }
         Ok(())
     }
@@ -257,7 +258,7 @@ mod tests {
             .rest_client
             .download(test_workbook, true)
             .await?;
-        println!("Downloaded {} bytes", x.len());
+        debug!("Downloaded {} bytes", x.len());
         Ok(())
     }
 
@@ -272,7 +273,7 @@ mod tests {
                 .await?;
         }
         for (_k, v) in workbooks {
-            println!("{:#?}", v);
+            debug!("{:#?}", v);
         }
         Ok(())
     }

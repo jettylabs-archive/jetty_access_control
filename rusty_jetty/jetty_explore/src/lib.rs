@@ -1,3 +1,8 @@
+//! Exploration of data access via Jetty
+//!
+
+#![deny(missing_docs)]
+
 mod assets;
 mod groups;
 mod nodes;
@@ -10,20 +15,14 @@ use std::{net::SocketAddr, sync::Arc};
 use axum::{extract::Extension, routing::get, Json, Router};
 use serde_json::{json, Value};
 use tower_http::trace::TraceLayer;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-use jetty_core::access_graph;
+use jetty_core::{
+    access_graph,
+    logging::{debug, error, info, warn},
+};
 
 /// Launch the Jetty Explore web ui and accompanying server
 pub async fn explore_web_ui(ag: Arc<access_graph::AccessGraph>) {
-    tracing_subscriber::registry()
-        .with(tracing_subscriber::EnvFilter::new(
-            std::env::var("RUST_LOG")
-                .unwrap_or_else(|_| "example_tracing_aka_logging=debug,tower_http=debug".into()),
-        ))
-        .with(tracing_subscriber::fmt::layer())
-        .init();
-
     // build our application with a route
     let app = Router::new()
         .nest("/api/", nodes::router())
@@ -45,14 +44,14 @@ pub async fn explore_web_ui(ag: Arc<access_graph::AccessGraph>) {
     // iterate through ports to find one that we can use
     for port in 3000..65535 {
         let addr = SocketAddr::from(([127, 0, 0, 1], port));
-        println!("trying to bind on {}", addr);
+        debug!("trying to bind on {}", addr);
         if let Ok(server) = axum::Server::try_bind(&addr) {
-            println!("listening on {}", addr);
+            info!("Serving Jetty explore on {}", addr);
             let open_url = format!("http://{}", &addr);
             // Open a web browser to the appropriate port
             match open::that(&open_url) {
-                Ok(()) => println!("Opened browser successfully."),
-                Err(err) => eprintln!(
+                Ok(()) => debug!("Opened browser successfully."),
+                Err(err) => error!(
                     "An error occurred when opening the browser to '{}': {}",
                     &open_url, err
                 ),

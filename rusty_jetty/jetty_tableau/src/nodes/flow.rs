@@ -14,7 +14,7 @@ use crate::{
     rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType},
 };
 
-use super::{Permissionable, ProjectId, TableauAsset};
+use super::{Permissionable, ProjectId, TableauAsset, FLOW};
 
 /// Representation of a Tableau Flow
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
@@ -166,7 +166,7 @@ impl From<Flow> for jetty_nodes::Asset {
         jetty_nodes::Asset::new(
             val.cual,
             val.name,
-            AssetType::Other,
+            AssetType(FLOW.to_owned()),
             // We will add metadata as it's useful.
             HashMap::new(),
             // Governing policies will be assigned in the policy.
@@ -193,6 +193,7 @@ mod tests {
 
     use super::*;
     use anyhow::{Context, Result};
+    use jetty_core::logging::debug;
 
     #[tokio::test]
     async fn test_fetching_flows_works() -> Result<()> {
@@ -201,7 +202,7 @@ mod tests {
             .context("running tableau connector setup")?;
         let nodes = get_basic_flows(&tc.coordinator.rest_client).await?;
         for (_k, v) in nodes {
-            println!("{:#?}", v);
+            debug!("{:#?}", v);
         }
         Ok(())
     }
@@ -217,7 +218,7 @@ mod tests {
                 .await?;
         }
         for (_k, v) in nodes {
-            println!("{:#?}", v);
+            debug!("{:#?}", v);
         }
         Ok(())
     }
@@ -231,7 +232,7 @@ mod tests {
 
         let test_flow = flows.values().next().unwrap();
         let x = tc.coordinator.rest_client.download(test_flow, true).await?;
-        println!("Downloaded {} bytes", x.len());
+        debug!("Downloaded {} bytes", x.len());
         Ok(())
     }
 
