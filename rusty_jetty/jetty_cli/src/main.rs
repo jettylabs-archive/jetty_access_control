@@ -12,6 +12,7 @@ use jetty_core::{
     access_graph::AccessGraph,
     connectors::ConnectorClient,
     fetch_credentials,
+    jetty::ConnectorNamespace,
     logging::{self, error, info, warn, LevelFilter},
     Connector, Jetty,
 };
@@ -80,7 +81,7 @@ async fn fetch(connectors: &Vec<String>, visualize: &bool) -> Result<()> {
         let now = Instant::now();
         // Initialize connectors
         let mut dbt = jetty_dbt::DbtConnector::new(
-            &jetty.config.connectors[1],
+            &jetty.config.connectors[&ConnectorNamespace("dbt".to_owned())],
             &creds["dbt"],
             Some(ConnectorClient::Core),
         )
@@ -102,7 +103,7 @@ async fn fetch(connectors: &Vec<String>, visualize: &bool) -> Result<()> {
         info!("intializing snowflake");
         let now = Instant::now();
         let mut snow = jetty_snowflake::SnowflakeConnector::new(
-            &jetty.config.connectors[0],
+            &jetty.config.connectors[&ConnectorNamespace("snow".to_owned())],
             &creds["snow"],
             Some(ConnectorClient::Core),
         )
@@ -127,7 +128,7 @@ async fn fetch(connectors: &Vec<String>, visualize: &bool) -> Result<()> {
         info!("initializing tableau");
         let now = Instant::now();
         let mut tab = jetty_tableau::TableauConnector::new(
-            &jetty.config.connectors[2],
+            &jetty.config.connectors[&ConnectorNamespace("tableau".to_owned())],
             &creds["tableau"],
             Some(ConnectorClient::Core),
         )
