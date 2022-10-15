@@ -6,6 +6,7 @@ use jetty_core::{
         UserIdentifier,
     },
     cual::{Cual, Cualable},
+    logging::debug,
     permissions::matrix::{InsertOrMerge, Merge},
 };
 
@@ -309,7 +310,7 @@ impl<'x> PermissionManager<'x> {
             }
             } else {
                 // We assume the asset is the default project with the default owner, it's not going to be in the env.
-                println!("Failed getting user {:?} from env. Assuming it's the default project default owner.", asset.get_owner_id());
+                debug!("Failed getting user {:?} from env. Assuming it's the default project default owner.", asset.get_owner_id());
             }
         });
         ep

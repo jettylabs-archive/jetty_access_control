@@ -53,7 +53,8 @@ pub(crate) fn get_tableau_cual(asset_type: TableauAssetType, id: &str) -> Result
 pub(crate) fn set_cual_prefix(server_name: &str, site_name: &str) {
     unsafe {
         INIT_CUAL_PREFIX.call_once(|| {
-            CUAL_PREFIX = format!("tableau://{}/{}", &server_name, &site_name);
+            // TODO: figure out if there's a more sensible separator here
+            CUAL_PREFIX = format!("tableau://{}.{}", &server_name, &site_name);
         });
     }
 }

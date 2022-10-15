@@ -146,8 +146,6 @@ impl SnowflakeRestClient {
                 sub: qualified_username,
             };
 
-            // println!("{}", self.credentials.private_key.replace(r" ", ""));
-
             encode(
                 &Header::new(Algorithm::RS256),
                 &claims,
@@ -169,6 +167,7 @@ impl SnowflakeRestClient {
 mod tests {
     use super::*;
 
+    use jetty_core::logging::debug;
     use wiremock::matchers::{body_string_contains, method, path};
     use wiremock::{Mock, MockGuard, MockServer, ResponseTemplate};
 
@@ -303,17 +302,15 @@ mod tests {
             )),
         };
         let client = SnowflakeRestClient::new(creds, SnowflakeRestConfig::default()).unwrap();
-        println!(
-            "change this {:?}",
-            client
-                .query(&SnowflakeRequestConfig {
-                    sql: "select 2".to_owned(),
-                    use_jwt: false
-                })
-                .await
-                .context("query failed")
-                .unwrap()
-        );
+        let res = client
+            .query(&SnowflakeRequestConfig {
+                sql: "select 2".to_owned(),
+                use_jwt: false,
+            })
+            .await
+            .context("query failed")
+            .unwrap();
+        debug!("query: {:?}", res);
         drop(guard);
     }
 }

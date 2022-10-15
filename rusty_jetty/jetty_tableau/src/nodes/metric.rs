@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::rest::{self, get_tableau_cual, FetchJson, TableauAssetType};
 
-use super::{Permissionable, ProjectId, TableauAsset};
+use super::{Permissionable, ProjectId, TableauAsset, METRIC};
 
 /// Representation of Tableau metric
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
@@ -111,7 +111,7 @@ impl From<Metric> for jetty_nodes::Asset {
         jetty_nodes::Asset::new(
             val.cual,
             val.name,
-            AssetType::Other,
+            AssetType(METRIC.to_owned()),
             // We will add metadata as it's useful.
             HashMap::new(),
             // Governing policies will be assigned in the policy.
@@ -143,6 +143,7 @@ impl TableauAsset for Metric {
 mod tests {
     use super::*;
     use anyhow::{Context, Result};
+    use jetty_core::logging::debug;
 
     #[tokio::test]
     async fn test_fetching_metrics_works() -> Result<()> {
@@ -151,7 +152,7 @@ mod tests {
             .context("running tableau connector setup")?;
         let nodes = get_basic_metrics(&tc.coordinator.rest_client).await?;
         for (_k, v) in nodes {
-            println!("{:#?}", v);
+            debug!("{:#?}", v);
         }
         Ok(())
     }
@@ -167,7 +168,7 @@ mod tests {
                 .await?;
         }
         for (_k, v) in nodes {
-            println!("{:#?}", v);
+            debug!("{:#?}", v);
         }
         Ok(())
     }

@@ -1,3 +1,8 @@
+//! SQL Parsing utilities for Jetty!
+//!
+
+#![deny(missing_docs)]
+
 mod node;
 
 use std::collections::{HashMap, HashSet};
@@ -12,8 +17,11 @@ use node::Node;
 
 type TableName = Vec<String>;
 
+/// The type of database the query is for.
 pub enum DbType {
+    /// Snowflake CDW
     Snowflake,
+    /// Generic SQL
     Generic,
 }
 

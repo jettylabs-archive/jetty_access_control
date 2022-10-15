@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use anyhow::{anyhow, bail, Result};
+use jetty_core::logging::error;
 use regex::Regex;
 
 use super::{
@@ -58,7 +59,7 @@ pub(crate) fn parse(data: &str) -> Result<HashSet<String>> {
 
     for r in relations {
         let c = r.to_cuals().unwrap_or_else(|e| {
-            println!("unable to create qual from {:#?}", r);
+            error!("unable to create qual from {:#?}", r);
             vec![]
         });
 
@@ -82,7 +83,7 @@ fn get_named_connections(node: roxmltree::Node) -> HashMap<String, NamedConnecti
                 named_connections.insert(c.0, c.1);
             }
             Err(e) => {
-                println!("skipping named connection: {}", e);
+                error!("skipping named connection: {}", e);
             }
         };
     }
@@ -133,7 +134,7 @@ fn get_relations(
             Ok(rel) => {
                 relations.insert(rel);
             }
-            Err(e) => println!("{}", e),
+            Err(e) => error!("{}", e),
         }
     }
 

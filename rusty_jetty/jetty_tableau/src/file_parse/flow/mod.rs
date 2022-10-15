@@ -3,6 +3,7 @@ mod snowflake;
 use std::collections::{HashMap, HashSet};
 
 use anyhow::{anyhow, bail, Context, Result};
+use jetty_core::logging::{debug, error};
 use serde::Deserialize;
 
 use super::RelationType;
@@ -50,7 +51,7 @@ impl FlowDoc {
                     ".v1.LoadSql" => {
                         self.handle_load_sql(node).map_or_else(
                             |e| {
-                                println!(
+                                debug!(
                                     "skipping data input source of type: {}\nerror: {}",
                                     node_type, e
                                 )
@@ -62,7 +63,7 @@ impl FlowDoc {
                         self.handle_load_sql_proxy(node, &coord.env, &coord.rest_client)
                             .map_or_else(
                                 |e| {
-                                    println!(
+                                    debug!(
                                         "skipping data input source of type: {}\nerror: {}",
                                         node_type, e
                                     )
@@ -75,7 +76,7 @@ impl FlowDoc {
                         self.handle_publish_extract(node, &coord.env, &coord.rest_client)
                             .map_or_else(
                                 |e| {
-                                    println!(
+                                    debug!(
                                         "skipping data output destination of type: {}\nerror: {}",
                                         node_type, e
                                     )
@@ -86,7 +87,7 @@ impl FlowDoc {
                     ".v2020_3_1.WriteToDatabase" => {
                         self.handle_write_to_database(node).map_or_else(
                             |e| {
-                                println!(
+                                debug!(
                                     "skipping data output destination of type: {}\nerror: {}",
                                     node_type, e
                                 )
@@ -97,15 +98,15 @@ impl FlowDoc {
                     o => {
                         if let Some(base_type) = node.get("baseType").and_then(|v| v.as_str()) {
                             match base_type {
-                                "input" => println!("ignoring input node of type: {}", o),
-                                "ouput" => println!("ignoring output node of type: {}", o),
+                                "input" => debug!("ignoring input node of type: {}", o),
+                                "ouput" => debug!("ignoring output node of type: {}", o),
                                 _ => (),
                             }
                         }
                     }
                 }
             } else {
-                println!("unable to get nodeType for a node")
+                debug!("unable to get nodeType for a node")
             }
         }
 

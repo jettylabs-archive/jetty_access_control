@@ -2,6 +2,7 @@
 //!
 
 use anyhow::{bail, Result};
+use log::debug;
 
 use super::{graph::Graph, JettyNode, NodeName};
 
@@ -51,7 +52,7 @@ impl Graph {
             bail!("not a asset");
         }
 
-        println!(
+        debug!(
             "neighbors for {:?}: {:?}",
             asset,
             self.get_neighbors_for_node(asset, policy_matcher)?

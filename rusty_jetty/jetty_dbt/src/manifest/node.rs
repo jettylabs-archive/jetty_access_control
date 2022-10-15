@@ -7,7 +7,8 @@ use jetty_core::{connectors::nodes::Asset as JettyAsset, cual::Cualable};
 use std::collections::{HashMap, HashSet};
 
 use super::DbtProjectManifest;
-use crate::cual::cual;
+use crate::consts::TABLE;
+use crate::cual::{cual, get_cual_account_name};
 
 pub(crate) trait NamePartable {
     // Get the relation name for the object.
@@ -92,7 +93,7 @@ impl DbtNode {
                 JettyAsset::new(
                     (m_node as &dyn NamePartable).cual(),
                     "".to_owned(),
-                    m_node.materialized_as,
+                    m_node.materialized_as.clone(),
                     m_node.get_metadata(),
                     // No policies in dbt.
                     HashSet::new(),
@@ -120,7 +121,7 @@ impl DbtNode {
                 JettyAsset::new(
                     (s_node as &dyn NamePartable).cual(),
                     "".to_owned(),
-                    AssetType::DBTable,
+                    AssetType(TABLE.to_owned()),
                     HashMap::new(),
                     // No policies in dbt.
                     HashSet::new(),

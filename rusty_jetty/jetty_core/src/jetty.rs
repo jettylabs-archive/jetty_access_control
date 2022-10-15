@@ -8,6 +8,9 @@ use dirs::home_dir;
 use serde::Deserialize;
 use yaml_peg::serde as yaml;
 
+/// The user-defined namespace corresponding to the connector.
+#[derive(Deserialize, Debug, Hash, PartialEq, Eq)]
+pub struct ConnectorNamespace(pub String);
 /// Struct representing the jetty_config.yaml file.
 #[allow(dead_code)]
 #[derive(Deserialize, Debug)]
@@ -15,7 +18,7 @@ pub struct JettyConfig {
     version: String,
     name: String,
     /// All connector configs defined.
-    pub connectors: Vec<ConnectorConfig>,
+    pub connectors: HashMap<ConnectorNamespace, ConnectorConfig>,
 }
 
 impl JettyConfig {
@@ -32,10 +35,10 @@ impl JettyConfig {
 #[allow(dead_code)]
 #[derive(Deserialize, Default, Debug)]
 pub struct ConnectorConfig {
-    namespace: String,
     #[serde(rename = "type")]
     connector_type: String,
-    /// Additional configuration, specific to the connector.
+    /// Additional configuration, specific to the connector
+    #[serde(flatten)]
     pub config: HashMap<String, String>,
 }
 
@@ -47,8 +50,6 @@ pub fn fetch_credentials() -> Result<HashMap<String, CredentialsBlob>> {
     let mut default_path = home_dir().unwrap();
 
     default_path.push(".jetty/connectors.yaml");
-
-    println!("{:?}", default_path);
 
     let credentials_raw = fs::read_to_string(default_path)?;
     let mut config = yaml::from_str::<HashMap<String, CredentialsBlob>>(&credentials_raw)?;
