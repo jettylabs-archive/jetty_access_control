@@ -10,30 +10,16 @@ mod matching_paths;
 mod matching_paths_to_children;
 mod tags_for_asset;
 
-use std::fmt::Display;
-
-use petgraph::visit::IntoNodeReferences;
+use petgraph::{stable_graph::NodeIndex, visit::IntoNodeReferences};
 
 use super::{AccessGraph, EdgeType, JettyNode, NodeName};
 
 /// A path from one node to another, including start and end nodes.
 /// Inside, it's a Vec<JettyNode>
 #[derive(Debug, Clone)]
-pub struct NodePath(Vec<JettyNode>);
+pub struct NodePath(Vec<NodeIndex>);
 
-impl Display for NodePath {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            self.0
-                .iter()
-                .map(|n| n.get_string_name())
-                .collect::<Vec<_>>()
-                .join(" ⇨ ")
-        )
-    }
-}
+impl NodePath {}
 
 /// A DiGraph derived from an AccessGraph
 pub struct SubGraph(petgraph::graph::DiGraph<JettyNode, EdgeType>);
@@ -48,7 +34,19 @@ impl SubGraph {
 impl AccessGraph {
     /// Get all nodes from the graph
     pub fn get_nodes(&self) -> petgraph::stable_graph::NodeReferences<super::JettyNode> {
-        self.graph.graph.node_references()
+        self.graph().node_references()
+    }
+
+    /// Get a node path as a string
+    pub fn path_as_string(&self, path: &NodePath) -> String {
+        format!(
+            "{}",
+            path.0
+                .iter()
+                .map(|idx| self[*idx].get_string_name())
+                .collect::<Vec<_>>()
+                .join(" ⇨ ")
+        )
     }
 }
 
@@ -244,7 +242,7 @@ mod tests {
             None,
             None,
         );
-        a.iter().for_each(|p| println!("{}", &p));
+        a.iter().for_each(|p| println!("{}", ag.path_as_string(&p)));
         assert_eq!(a.len(), 2);
 
         Ok(())

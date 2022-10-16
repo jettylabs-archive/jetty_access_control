@@ -1,8 +1,7 @@
-use std::{sync::Arc};
+use std::sync::Arc;
 
 use axum::{extract::Path, routing::get, Extension, Json, Router};
 use jetty_core::access_graph::{self, EdgeType, JettyNode, NodeName};
-
 
 use super::ObjectWithPathResponse;
 
@@ -42,9 +41,9 @@ async fn direct_groups_handler(
 
     let group_attributes = group_nodes
         .into_iter()
-        .filter_map(|n| {
-            if let JettyNode::Group(g) = n {
-                Some(g)
+        .filter_map(|i| {
+            if let JettyNode::Group(g) = &ag.graph()[i] {
+                Some(g.to_owned())
             } else {
                 None
             }
@@ -72,12 +71,12 @@ async fn inherited_groups_handler(
 
     let group_attributes = res
         .into_iter()
-        .filter_map(|(n, p)| {
-            if let JettyNode::Group(g) = n {
+        .filter_map(|(i, p)| {
+            if let JettyNode::Group(g) = &ag.graph()[i] {
                 Some(ObjectWithPathResponse {
                     name: g.name.to_owned(),
-                    connectors: g.connectors,
-                    membership_paths: p.iter().map(|p| p.to_string()).collect(),
+                    connectors: g.connectors.to_owned(),
+                    membership_paths: p.iter().map(|p| ag.path_as_string(p)).collect(),
                 })
             } else {
                 None
@@ -107,9 +106,9 @@ async fn direct_members_groups_handler(
 
     let group_attributes = group_nodes
         .into_iter()
-        .filter_map(|n| {
-            if let JettyNode::Group(g) = n {
-                Some(g)
+        .filter_map(|i| {
+            if let JettyNode::Group(g) = &ag.graph()[i] {
+                Some(g.to_owned())
             } else {
                 panic!("found wrong node type - expected group")
             }
@@ -139,9 +138,9 @@ async fn direct_members_users_handler(
 
     let user_attributes = group_nodes
         .into_iter()
-        .filter_map(|n| {
-            if let JettyNode::User(u) = n {
-                Some(u)
+        .filter_map(|i| {
+            if let JettyNode::User(u) = &ag.graph()[i] {
+                Some(u.to_owned())
             } else {
                 None
             }
@@ -168,12 +167,12 @@ async fn all_members_handler(
 
     let group_attributes = res
         .into_iter()
-        .filter_map(|(n, p)| {
-            if let JettyNode::User(u) = n {
+        .filter_map(|(i, p)| {
+            if let JettyNode::User(u) = &ag.graph()[i] {
                 Some(ObjectWithPathResponse {
                     name: u.name.to_owned(),
-                    connectors: u.connectors,
-                    membership_paths: p.iter().map(|p| p.to_string()).collect(),
+                    connectors: u.connectors.to_owned(),
+                    membership_paths: p.iter().map(|p| ag.path_as_string(p)).collect(),
                 })
             } else {
                 None

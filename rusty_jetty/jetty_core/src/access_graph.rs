@@ -25,8 +25,11 @@ use std::fmt::Debug;
 use std::fs::File;
 use std::hash::Hasher;
 use std::io::BufWriter;
+use std::ops::{Index, IndexMut};
 
 use anyhow::{anyhow, Context, Result};
+use petgraph::stable_graph::{NodeIndex, StableGraph};
+use petgraph::Directed;
 use serde::Deserialize;
 use serde::Serialize;
 use time::OffsetDateTime;
@@ -48,15 +51,6 @@ pub struct UserAttributes {
     pub metadata: HashMap<String, String>,
     /// Connectors the user is present in
     pub connectors: HashSet<String>,
-}
-
-impl Hash for UserAttributes {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.name.hash(state);
-        let mut connectors = self.connectors.iter().collect::<Vec<_>>();
-        connectors.sort();
-        connectors.hash(state);
-    }
 }
 
 impl UserAttributes {
@@ -104,16 +98,6 @@ pub struct GroupAttributes {
     pub connectors: HashSet<String>,
 }
 
-impl Hash for GroupAttributes {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        // excluding metadata as that shouldn't be necessary to uniquely identify a group
-        self.name.hash(state);
-        let mut connectors = self.connectors.iter().collect::<Vec<_>>();
-        connectors.sort();
-        connectors.hash(state);
-    }
-}
-
 impl GroupAttributes {
     fn merge_attributes(&self, new_attributes: &GroupAttributes) -> Result<GroupAttributes> {
         let name = merge_matched_field(&self.name, &new_attributes.name)
@@ -144,12 +128,6 @@ pub struct AssetAttributes {
     asset_type: AssetType,
     metadata: HashMap<String, String>,
     connectors: HashSet<String>,
-}
-
-impl Hash for AssetAttributes {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.cual.hash(state);
-    }
 }
 
 impl AssetAttributes {
@@ -192,15 +170,6 @@ pub struct TagAttributes {
     pub pass_through_hierarchy: bool,
     /// whether the tag is to be passed through lineage
     pub pass_through_lineage: bool,
-}
-
-impl Hash for TagAttributes {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.name.hash(state);
-        self.value.hash(state);
-        self.pass_through_hierarchy.hash(state);
-        self.pass_through_lineage.hash(state);
-    }
 }
 
 impl TagAttributes {
@@ -250,20 +219,6 @@ pub struct PolicyAttributes {
     connectors: HashSet<String>,
 }
 
-impl Hash for PolicyAttributes {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.name.hash(state);
-        self.pass_through_hierarchy.hash(state);
-        self.pass_through_lineage.hash(state);
-        let mut connectors = self.connectors.iter().collect::<Vec<_>>();
-        connectors.sort();
-        connectors.hash(state);
-        let mut privileges = self.privileges.iter().collect::<Vec<_>>();
-        privileges.sort();
-        privileges.hash(state);
-    }
-}
-
 impl PolicyAttributes {
     fn merge_attributes(&self, new_attributes: &PolicyAttributes) -> Result<PolicyAttributes> {
         let name = merge_matched_field(&self.name, &new_attributes.name)
@@ -305,7 +260,7 @@ impl PolicyAttributes {
 }
 
 /// Enum of node types
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum JettyNode {
     /// Group node
     Group(GroupAttributes),
@@ -371,7 +326,7 @@ impl JettyNode {
 
     /// Given a node, return the NodeName. This will return the name field
     /// wrapped in the appropriate enum.
-    fn get_name(&self) -> NodeName {
+    fn get_node_name(&self) -> NodeName {
         match &self {
             JettyNode::Asset(a) => NodeName::Asset(a.cual.uri()),
             JettyNode::Group(a) => NodeName::Group(a.name.to_owned()),
@@ -483,6 +438,20 @@ pub struct AccessGraph {
     effective_permissions: SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>>,
 }
 
+impl Index<NodeIndex> for AccessGraph {
+    type Output = JettyNode;
+
+    fn index(&self, index: NodeIndex) -> &Self::Output {
+        &self.graph.graph.index(index)
+    }
+}
+
+impl IndexMut<NodeIndex> for AccessGraph {
+    fn index_mut(&mut self, index: NodeIndex) -> &mut Self::Output {
+        self.graph.graph.index_mut(index)
+    }
+}
+
 impl AccessGraph {
     /// New graph
     pub fn new(data: Vec<ProcessedConnectorData>) -> Result<Self> {
@@ -577,6 +546,11 @@ impl AccessGraph {
         let f = File::open(SAVED_GRAPH_PATH).context("opening graph file")?;
         let decoded = bincode::deserialize_from(f).context("deserializing graph from file")?;
         Ok(decoded)
+    }
+
+    /// Return a pointer to the petgraph - makes it easy to index and get node values
+    pub fn graph(&self) -> &petgraph::stable_graph::StableGraph<JettyNode, EdgeType> {
+        &self.graph.graph
     }
 }
 

@@ -3,6 +3,8 @@
 
 use std::collections::{HashMap, HashSet};
 
+use petgraph::stable_graph::NodeIndex;
+
 use crate::access_graph::{AccessGraph, EdgeType, JettyNode, NodeName};
 
 use super::NodePath;
@@ -11,13 +13,13 @@ use super::NodePath;
 /// The assets that are tagged by a tag, including those directly tagged, those with inherited tags, and those untagged
 pub struct TaggedAssets {
     /// assets directly tagged with the tag
-    pub directly_tagged: HashMap<JettyNode, Vec<NodePath>>,
+    pub directly_tagged: HashMap<NodeIndex, Vec<NodePath>>,
     /// assets that inherit the tag via hierarchy
-    pub via_hierarchy: HashMap<JettyNode, Vec<NodePath>>,
+    pub via_hierarchy: HashMap<NodeIndex, Vec<NodePath>>,
     /// assets that inherit the tag via lineage
-    pub via_lineage: HashMap<JettyNode, Vec<NodePath>>,
+    pub via_lineage: HashMap<NodeIndex, Vec<NodePath>>,
     /// assets that are explicitly untagged
-    pub untagged: HashSet<JettyNode>,
+    pub untagged: HashSet<NodeIndex>,
 }
 
 impl AccessGraph {
@@ -39,7 +41,7 @@ impl AccessGraph {
             None,
             Some(1),
         );
-        let poison_nodes = HashSet::from_iter(binding.iter());
+        let poison_nodes = HashSet::from_iter(binding.into_iter());
 
         let node_paths_hierarchy = if tag_node.pass_through_hierarchy {
             // get paths of tags applied through hierarchy
@@ -92,9 +94,9 @@ impl AccessGraph {
 }
 
 fn remove_poisoned_paths<'a>(
-    all_paths: HashMap<JettyNode, Vec<super::NodePath>>,
-    poison_nodes: &HashSet<&JettyNode>,
-) -> HashMap<JettyNode, Vec<super::NodePath>> {
+    all_paths: HashMap<NodeIndex, Vec<super::NodePath>>,
+    poison_nodes: &HashSet<NodeIndex>,
+) -> HashMap<NodeIndex, Vec<super::NodePath>> {
     all_paths
         .iter()
         .map(|(n, p)| {
@@ -104,7 +106,7 @@ fn remove_poisoned_paths<'a>(
                 p.iter()
                     .filter(|NodePath(vn)| {
                         poison_nodes
-                            .intersection(&HashSet::from_iter(vn.iter()))
+                            .intersection(&HashSet::from_iter(vn.iter().map(|i| *i)))
                             .next()
                             .is_none()
                     })

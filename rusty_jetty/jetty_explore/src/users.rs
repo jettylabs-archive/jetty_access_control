@@ -115,9 +115,9 @@ async fn direct_groups_handler(
 
     let group_attributes = group_nodes
         .into_iter()
-        .filter_map(|n| {
-            if let JettyNode::Group(g) = n {
-                Some(g)
+        .filter_map(|i| {
+            if let JettyNode::Group(g) = &ag.graph()[i] {
+                Some(g.to_owned())
             } else {
                 None
             }
@@ -145,12 +145,12 @@ async fn inherited_groups_handler(
 
     let group_attributes = res
         .into_iter()
-        .filter_map(|(n, p)| {
-            if let JettyNode::Group(g) = n {
+        .filter_map(|(i, p)| {
+            if let JettyNode::Group(g) = &ag.graph()[i] {
                 Some(ObjectWithPathResponse {
                     name: g.name.to_owned(),
-                    connectors: g.connectors,
-                    membership_paths: p.iter().map(|p| p.to_string()).collect(),
+                    connectors: g.connectors.to_owned(),
+                    membership_paths: p.iter().map(|p| ag.path_as_string(p)).collect(),
                 })
             } else {
                 None
