@@ -22,10 +22,9 @@ pub(crate) struct Datasource {
     pub updated_at: String,
     pub project_id: ProjectId,
     pub owner_id: String,
+    /// collection of origin cuals
     pub sources: HashSet<String>,
     pub permissions: Vec<super::Permission>,
-    /// Vec of origin cuals
-    pub derived_from: Vec<String>,
 }
 
 impl Datasource {
@@ -38,7 +37,6 @@ impl Datasource {
         owner_id: String,
         sources: HashSet<String>,
         permissions: Vec<super::Permission>,
-        derived_from: Vec<String>,
     ) -> Self {
         Self {
             id,
@@ -49,7 +47,6 @@ impl Datasource {
             owner_id,
             sources,
             permissions,
-            derived_from,
         }
     }
 }
@@ -172,7 +169,6 @@ fn to_node(val: &serde_json::Value) -> Result<super::Datasource> {
         datasource_type: asset_info.datasource_type,
         permissions: Default::default(),
         sources: Default::default(),
-        derived_from: Default::default(),
     })
 }
 
