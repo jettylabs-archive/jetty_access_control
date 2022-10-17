@@ -157,7 +157,7 @@ impl AssetAttributes {
 
     /// Convenience constructor for testing
     #[cfg(test)]
-    fn new(cual: Cual) -> Self {
+    pub(crate) fn new(cual: Cual) -> Self {
         Self {
             cual,
             asset_type: AssetType::default(),

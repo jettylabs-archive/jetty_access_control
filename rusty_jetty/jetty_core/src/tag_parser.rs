@@ -35,7 +35,7 @@ impl Display for AssetMatchError {
         match &self.problem {
             AssetMatchProblem::TooMany(v) => write!(
                 f,
-                "unable to disambiguate asset: {}\nmatched all of the following:\n{}",
+                "unable to disambiguate asset:\n{}\ncould refer to any of the following:\n{}",
                 self.target,
                 v.iter()
                     .map(|t| t.to_string())
@@ -44,7 +44,7 @@ impl Display for AssetMatchError {
             ),
             AssetMatchProblem::BadType(v) => write!(
                 f,
-                "unable to find asset matching: {}\ndid you mean one of the following:\n{}",
+                "unable to find asset with:\n{}\ndid you mean one of the following:\n{}",
                 self.target,
                 v.iter()
                     .map(|t| t.to_string())
@@ -52,7 +52,7 @@ impl Display for AssetMatchError {
                     .join("\n")
             ),
             AssetMatchProblem::NoMatches => {
-                write!(f, "unable to find asset matching: {}", self.target)
+                write!(f, "unable to find asset:\n{}", self.target)
             }
         }
     }
@@ -86,9 +86,9 @@ impl From<AssetAttributes> for TargetAsset {
 impl Display for TargetAsset {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if let Some(t) = &self.asset_type {
-            write!(f, "name: {}\nasset_type: {}", self.name, t)
+            write!(f, " - name: {}\n   asset_type: {}", self.name, t)
         } else {
-            write!(f, "name: {}", self.name)
+            write!(f, " - name: {}", self.name)
         }
     }
 }
@@ -207,7 +207,7 @@ fn get_optional_bool(node: NodeRc, field_name: &str, config: &String) -> Result<
 fn parse_target_assets(node: NodeRc, config: &String) -> Result<Vec<TargetAsset>> {
     let asset_list = node.as_seq().map_err(|_| {
         anyhow!(
-            "Assets should be a list: {}",
+            "assets should be a list: {}",
             indicated_msg(config.as_bytes(), node.pos(), 2)
         )
     })?;
@@ -294,7 +294,13 @@ pub(crate) fn indicated_msg(doc: &[u8], mut pos: u64, lines_of_context: usize) -
         .collect::<Vec<_>>()
         .join("\n");
     let lines_before = line_buffer
-        .range(0..line_buffer.len() - lines_after_counter)
+        // this feels convoluted, but it makes sure that no more than the appropriate number of lines are shown before an error
+        .range(
+            max(
+                0,
+                line_buffer.len() - lines_after_counter - lines_of_context,
+            )..line_buffer.len() - lines_after_counter,
+        )
         .map(|l| String::from_utf8_lossy(l))
         .collect::<Vec<_>>()
         .join("\n");
@@ -302,7 +308,7 @@ pub(crate) fn indicated_msg(doc: &[u8], mut pos: u64, lines_of_context: usize) -
     let start_red = "\u{1b}[31m";
     let end_red = "\u{1b}[39m";
     format!(
-        "\n{}:{}\n{}\n{}\n{}{}^{}\n{}",
+        "{}:{}\n{}\n{}\n{}{}^{}\n{}\n",
         error_line + 1,
         column + 1,
         lines_before,
@@ -420,6 +426,7 @@ fn tags_to_jetty_node_helpers(
             pass_through_hierarchy: tag_config.pass_through_hierarchy,
             pass_through_lineage: tag_config.pass_through_lineage,
             applied_to: Default::default(),
+            removed_from: Default::default(),
             governed_by: Default::default(),
         };
 
@@ -433,7 +440,7 @@ fn tags_to_jetty_node_helpers(
             let (remove_from_errors, remove_from_names) =
                 get_asset_list_from_target_list(&target_list, &asset_list);
             error_vec.extend(remove_from_errors);
-            result_tag.applied_to = remove_from_names;
+            result_tag.removed_from = remove_from_names;
         }
 
         if error_vec.len() == 0 {
@@ -445,7 +452,7 @@ fn tags_to_jetty_node_helpers(
             .iter()
             .map(|e| {
                 format!(
-                    "Error at: {}\n{}/n",
+                    "error at {}\n{}\n",
                     indicated_msg(config.as_bytes(), e.pos, 2),
                     e
                 )
@@ -460,11 +467,17 @@ fn tags_to_jetty_node_helpers(
 #[cfg(test)]
 mod test {
 
+    use std::collections::BTreeSet;
+
+    use crate::connectors::nodes::Tag;
+    use crate::cual::Cual;
+    use crate::logging::{error, info};
+
     use super::*;
 
     #[test]
     fn parsing_tags_works() -> Result<()> {
-        let test_tag = r#"
+        let config = r#"
         pii:
             description: This data contains pii from ppis
             value: I don't know if we want values, but Snowflake has them
@@ -479,9 +492,94 @@ mod test {
                 - tab:project1/project2/pizza
 "#;
 
-        let t = parse_tags(&test_tag.to_owned());
+        parse_tags(&config.to_owned()).map(|_| ())
+    }
 
-        dbg!(t);
+    #[test]
+    fn ambiguous_asset_name_error_works() -> Result<()> {
+        let ag = AccessGraph::new_dummy(
+            &[
+                &JettyNode::Asset(AssetAttributes::new(Cual::new("asset1".to_owned()))),
+                &JettyNode::Asset(AssetAttributes::new(Cual::new("asset2".to_owned()))),
+            ],
+            &[],
+        );
+
+        let config = r#"
+        pii:
+            description: This data contains pii from ppis
+            value: I don't know if we want values, but Snowflake has them
+            apply_to:
+                - asset
+"#
+        .to_owned();
+
+        let tag_map = parse_tags(&config)?;
+        let t = tags_to_jetty_node_helpers(tag_map, &ag, &config);
+
+        match t {
+            Ok(tags) => bail!("should have returned an error"),
+            Err(e) => {
+                if e.to_string().contains("unable to disambiguate asset") {
+                    Ok(())
+                } else {
+                    bail!("improper error")
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn building_tags_works() -> Result<()> {
+        let ag = AccessGraph::new_dummy(
+            &[
+                &JettyNode::Asset(AssetAttributes::new(Cual::new("asset1".to_owned()))),
+                &JettyNode::Asset(AssetAttributes::new(Cual::new("asset2".to_owned()))),
+            ],
+            &[],
+        );
+
+        let config = r#"
+pii:
+    description: This data contains pii from ppis
+    value: I don't know if we want values, but Snowflake has them
+    apply_to:
+        - asset1
+    remove_from:
+        - asset2
+pii2:
+    pass_through_lineage: true
+    apply_to:
+        - name: asset1
+          asset_type: ""
+"#
+        .to_owned();
+
+        let mut goal = vec![
+            Tag {
+                name: "pii".to_owned(),
+                description: Some("This data contains pii from ppis".to_owned()),
+                value: Some("I don't know if we want values, but Snowflake has them".to_owned()),
+                applied_to: HashSet::from(["asset1".to_owned()]),
+                removed_from: HashSet::from(["asset2".to_owned()]),
+                ..Default::default()
+            },
+            Tag {
+                name: "pii2".to_owned(),
+                pass_through_lineage: true,
+                applied_to: HashSet::from(["asset1".to_owned()]),
+                ..Default::default()
+            },
+        ];
+
+        goal.sort_by(|a, b| a.name.partial_cmp(&b.name).unwrap());
+
+        let tag_map = parse_tags(&config)?;
+        let mut t = tags_to_jetty_node_helpers(tag_map, &ag, &config)?;
+
+        t.sort_by(|a, b| a.name.partial_cmp(&b.name).unwrap());
+
+        assert_eq!(t, goal);
 
         Ok(())
     }

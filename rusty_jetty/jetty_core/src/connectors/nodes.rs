@@ -318,8 +318,7 @@ impl PartialOrd for Asset {
 }
 
 /// Struct used to populate tag nodes and edges in the graph
-#[derive(Debug, Derivative, PartialEq, Eq)]
-#[derivative(Default)]
+#[derive(Debug, PartialEq, Eq, Default)]
 pub struct Tag {
     /// context
     pub name: String,
@@ -329,13 +328,14 @@ pub struct Tag {
     pub description: Option<String>,
     /// Whether the tag is to be passed through asset hierarchy (only to direct
     /// descendants of this node)
-    #[derivative(Default(value = "true"))]
     pub pass_through_hierarchy: bool,
     /// Whether the tag is to be passed through asset lineage (only to direct
     /// descendants of this node)
     pub pass_through_lineage: bool,
     /// IDs of assets the tag is applied to
     pub applied_to: HashSet<String>,
+    /// IDs of assets the tag is applied to
+    pub removed_from: HashSet<String>,
     /// IDs of policies that are applied to this asset
     pub governed_by: HashSet<String>,
 }
