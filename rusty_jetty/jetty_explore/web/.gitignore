@@ -35,4 +35,4 @@ yarn.lock
 dist/*
 !dist/spa
 dist/spa/*
-!dist/spa/index.html
+!dist/spa/favicon.ico
