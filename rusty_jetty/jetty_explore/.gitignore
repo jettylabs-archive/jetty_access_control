@@ -24,5 +24,3 @@ Cargo.lock
 
 .vscode/
 
-# compiled webapp dir
-web/dist/
