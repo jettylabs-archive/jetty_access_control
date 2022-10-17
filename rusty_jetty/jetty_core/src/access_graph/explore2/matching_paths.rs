@@ -88,11 +88,7 @@ impl AccessGraph {
                 // is it the target node? if so, add the path to the results, pop
                 // the node from visited and carry on with the next child
                 if child == to_idx {
-                    let path = visited
-                        .iter()
-                        .cloned()
-                        .map(|i| self.graph.graph[i].to_owned())
-                        .collect::<Vec<_>>();
+                    let path = visited.iter().cloned().collect::<Vec<_>>();
                     results.push(NodePath(path));
                     visited.pop();
                     continue;
@@ -100,7 +96,7 @@ impl AccessGraph {
             }
 
             // Get the node we're looking at
-            let node_weight = &self.graph.graph[child];
+            let node_weight = &self[child];
             // Is it a passthrough type?
             if passthrough_matcher(node_weight) {
                 self.all_matching_simple_paths_recursive(
@@ -231,7 +227,7 @@ mod tests {
             None,
             None,
         );
-        a.iter().for_each(|p| println!("{}", &p));
+        a.iter().for_each(|p| println!("{}", ag.path_as_string(&p)));
         assert_eq!(a.len(), 2);
 
         Ok(())

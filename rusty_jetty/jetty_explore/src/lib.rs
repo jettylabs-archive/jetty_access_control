@@ -10,9 +10,10 @@ mod static_server;
 mod tags;
 mod users;
 
-use std::{net::SocketAddr, sync::Arc};
+use std::{collections::HashSet, net::SocketAddr, sync::Arc};
 
 use axum::{extract::Extension, routing::get, Json, Router};
+use serde::Serialize;
 use serde_json::{json, Value};
 use tower_http::trace::TraceLayer;
 
@@ -20,6 +21,14 @@ use jetty_core::{
     access_graph,
     logging::{debug, error, info, warn},
 };
+
+/// This is a commonly used response format
+#[derive(Serialize)]
+pub(crate) struct ObjectWithPathResponse {
+    name: String,
+    connectors: HashSet<String>,
+    membership_paths: Vec<String>,
+}
 
 /// Launch the Jetty Explore web ui and accompanying server
 pub async fn explore_web_ui(ag: Arc<access_graph::AccessGraph>) {

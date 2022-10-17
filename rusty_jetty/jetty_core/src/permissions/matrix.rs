@@ -75,7 +75,9 @@ impl InsertOrMerge<Cual, HashSet<EffectivePermission>>
 /// `std::iter::Extend` except we can use it on types declared
 /// outside this crate.
 pub trait Merge<T> {
-    /// Merge another of the same struct into self.
+    /// Merge two instances of a struct. Like
+    /// `std::iter::Extend` except we can use it on types declared
+    /// outside this crate.
     fn merge(&mut self, other: T) -> Result<()>;
 }
 

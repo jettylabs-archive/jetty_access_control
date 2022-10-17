@@ -41,6 +41,11 @@ impl Cual {
     }
 }
 
+impl ToString for Cual {
+    fn to_string(&self) -> String {
+        self.uri.to_owned()
+    }
+}
 /// Common behavior for connectors to implement.
 pub trait Cualable {
     /// Get the cual for the associated asset object.

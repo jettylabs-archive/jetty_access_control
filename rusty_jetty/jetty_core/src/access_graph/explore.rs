@@ -36,7 +36,7 @@ impl Graph {
             .get_neighbors_for_node(user, policy_matcher)?
             .flat_map(|policy| {
                 // 2. traverse graph from policies to their governed assets.
-                self.get_neighbors_for_node(&policy.get_name(), asset_matcher)
+                self.get_neighbors_for_node(&policy.get_node_name(), asset_matcher)
                     .unwrap()
             }))
         // TODO: recursively get child assets as necessary here.
@@ -64,7 +64,7 @@ impl Graph {
             .flat_map(|policy| {
                 // 2. traverse graph from policies to their users.
                 let r = self
-                    .get_neighbors_for_node(&policy.get_name(), user_matcher)
+                    .get_neighbors_for_node(&policy.get_node_name(), user_matcher)
                     .unwrap();
                 r
             }))

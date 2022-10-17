@@ -5,17 +5,18 @@ use std::{
 };
 
 use derivative::Derivative;
+use serde::{Deserialize, Serialize};
 
 use crate::cual::Cual;
 
 use super::UserIdentifier;
 
-/// Alias for a sparse matrix addressable by matrix[x][y], where each entry is of type T.
+/// Alias for a sparse matrix addressable by matrix\[x\]\[y\], where each entry is of type T.
 pub type SparseMatrix<X, Y, T> = HashMap<X, HashMap<Y, T>>;
 
 /// Mode for a permission that's either "allow," "deny," "none," or something
 /// else with a given explanation.
-#[derive(Debug, Default, Hash, PartialEq, Eq, Clone)]
+#[derive(Debug, Default, Hash, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub enum PermissionMode {
     /// Allow this permission.
     Allow,
@@ -38,7 +39,7 @@ impl From<&str> for PermissionMode {
     }
 }
 /// An effective permission
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct EffectivePermission {
     /// The privilege granted/denied for this permission.
     pub privilege: String,
@@ -320,15 +321,16 @@ impl PartialOrd for Asset {
 #[derive(Debug, Derivative, PartialEq, Eq)]
 #[derivative(Default)]
 pub struct Tag {
-    /// Name of the tag, appropriately namespaced for the
     /// context
     pub name: String,
     /// Optional value for the tag (for the case of key-value tags)
     pub value: Option<String>,
-    /// Whether the tag is to be passed through asset hierarchy
+    /// Whether the tag is to be passed through asset hierarchy (only to direct
+    /// descendants of this node)
     #[derivative(Default(value = "true"))]
     pub pass_through_hierarchy: bool,
-    /// Whether the tag is to be passed through asset lineage
+    /// Whether the tag is to be passed through asset lineage (only to direct
+    /// descendants of this node)
     pub pass_through_lineage: bool,
     /// IDs of assets the tag is applied to
     pub applied_to: HashSet<String>,

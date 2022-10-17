@@ -19,7 +19,7 @@ impl AccessGraph {
         target_matcher: fn(&JettyNode) -> bool,
         min_depth: Option<usize>,
         max_depth: Option<usize>,
-    ) -> HashMap<JettyNode, Vec<NodePath>> {
+    ) -> HashMap<NodeIndex, Vec<NodePath>> {
         let from_idx = self.graph.nodes.get(from).unwrap();
 
         let max_depth = if let Some(l) = max_depth {
@@ -61,7 +61,7 @@ impl AccessGraph {
         max_depth: usize,
         current_depth: usize,
         visited: &mut IndexSet<NodeIndex>,
-        results: &mut HashMap<JettyNode, Vec<NodePath>>,
+        results: &mut HashMap<NodeIndex, Vec<NodePath>>,
     ) {
         let legal_connections = self
             .graph
@@ -85,24 +85,20 @@ impl AccessGraph {
             }
 
             // Get the node we're looking at
-            let node_weight = &self.graph.graph[child];
+            let node_weight = &self[child];
 
             // Are we beyond the minimum depth?
             if current_depth >= min_depth {
                 // is it the target node? if so, add the path to the results
                 if target_matcher(node_weight) {
-                    let path = visited
-                        .iter()
-                        .cloned()
-                        .map(|i| self.graph.graph[i].to_owned())
-                        .collect::<Vec<_>>();
-                    let x = results.get_mut(node_weight);
+                    let path = visited.iter().cloned().collect::<Vec<_>>();
+                    let x = results.get_mut(&child);
                     match x {
                         Some(p) => {
                             p.push(NodePath(path));
                         }
                         None => {
-                            results.insert(node_weight.to_owned(), vec![NodePath(path)]);
+                            results.insert(child, vec![NodePath(path)]);
                         }
                     };
                 }
@@ -198,7 +194,7 @@ mod tests {
             None,
         );
         a.iter()
-            .for_each(|(_, p)| p.iter().for_each(|q| println!("{}", q)));
+            .for_each(|(_, p)| p.iter().for_each(|q| println!("{}", ag.path_as_string(q))));
         assert_eq!(a.len(), 1);
         assert_eq!(a.values().next().map(|v| v.len()), Some(2));
 

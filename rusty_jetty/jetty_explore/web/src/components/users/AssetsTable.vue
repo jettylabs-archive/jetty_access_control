@@ -22,7 +22,7 @@
             </router-link>
 
             <q-item-label caption>
-              <JettyBadge :name="slotProps.props.row.platform" />
+              <JettyBadge :name="slotProps.props.row.connector" />
             </q-item-label>
           </q-item-section>
         </q-item>
@@ -61,14 +61,14 @@ import JettyBadge from "../JettyBadge.vue";
 
 const props = defineProps(["node"]);
 
-// Filters by name, privileges, or platform
+// Filters by name, privileges, or connector
 const filterMethod = (rows, terms) => {
   const needles = terms.toLocaleLowerCase().split(" ");
   return rows.filter((r) =>
     needles.every(
       (needle) =>
         r.name.toLocaleLowerCase().indexOf(needle) > -1 ||
-        r.platform.toLocaleLowerCase().indexOf(needle) > -1 ||
+        r.connector.toLocaleLowerCase().indexOf(needle) > -1 ||
         r.privileges
           .map((a) => a.name)
           .join(" ")
@@ -97,12 +97,12 @@ const columns = [
 
 const csvConfig = {
   filename: props.node.name + "_assets.csv",
-  columnNames: ["Asset Name", "Privilege", "Explanation"],
+  columnNames: ["Asset Name", "Asset Platform", "Privilege", "Explanation"],
   // accepts a row and returns the proper mapping
   mappingFn: (filteredSortedRows) =>
     filteredSortedRows.flatMap((r) =>
       r.privileges.flatMap((p) =>
-        p.explanations.map((e) => [r.name, p.name, e])
+        p.explanations.map((e) => [r.name, r.connector, p.name, e])
       )
     ),
 };

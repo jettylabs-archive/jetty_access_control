@@ -1,0 +1,36 @@
+//! Utilities to return only part of a graph
+//!
+
+use std::collections::{HashMap, HashSet};
+
+
+
+use crate::{
+    access_graph::{AccessGraph},
+    connectors::{
+        nodes::{EffectivePermission, PermissionMode},
+        UserIdentifier,
+    },
+    cual::Cual,
+};
+
+impl AccessGraph {
+    /// Return accessible assets
+    pub fn get_user_accessible_assets<'a>(
+        &'a self,
+        user: &UserIdentifier,
+    ) -> HashMap<Cual, &'a HashSet<EffectivePermission>> {
+        let perms = &self.effective_permissions[user];
+        perms
+            .iter()
+            .filter_map(|(k, v)| {
+                if v.iter().any(|p| p.mode == PermissionMode::Allow) {
+                    Some((k.to_owned(), v))
+                } else {
+                    // Access not allowed
+                    None
+                }
+            })
+            .collect::<HashMap<Cual, &HashSet<EffectivePermission>>>()
+    }
+}
