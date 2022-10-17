@@ -33,7 +33,7 @@
         <q-tab-panel name="assets">
           <router-view v-slot="{ Component }" :node="currentNode">
             <keep-alive max="3">
-              <component :is="Component" />
+              <component :is="Component" :key="route.fullPath" />
             </keep-alive>
           </router-view>
         </q-tab-panel>
@@ -54,10 +54,11 @@
 import { ref, computed } from "vue";
 import JettyHeader from "src/components/JettyHeader.vue";
 import { useJettyStore } from "stores/jetty";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 
 const props = defineProps(["user_id"]);
 const route = useRoute();
+const router = useRouter();
 
 const store = useJettyStore();
 const nodeList = computed(() => store.nodes);

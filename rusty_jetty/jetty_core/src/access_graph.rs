@@ -3,11 +3,14 @@
 //! `access_graph` is a library for modeling data access permissions and metadata as a graph.
 
 pub mod explore;
+pub mod explore2;
 pub mod graph;
 mod helpers;
 #[cfg(test)]
 pub mod test_util;
 
+use crate::connectors::nodes::{EffectivePermission, SparseMatrix};
+use crate::connectors::UserIdentifier;
 use crate::{connectors::AssetType, cual::Cual};
 
 use self::helpers::NodeHelper;
@@ -15,27 +18,39 @@ pub use self::helpers::ProcessedConnectorData;
 
 use super::connectors;
 use core::hash::Hash;
+
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::fs::File;
+use std::hash::Hasher;
 use std::io::BufWriter;
+use std::ops::{Index, IndexMut};
 
 use anyhow::{anyhow, Context, Result};
+use petgraph::stable_graph::{NodeIndex, StableGraph};
+use petgraph::Directed;
 use serde::Deserialize;
 use serde::Serialize;
 use time::OffsetDateTime;
 
+use crate::permissions::matrix::Merge;
+
 const SAVED_GRAPH_PATH: &str = "jetty_graph";
 
 /// Attributes associated with a User node
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub(crate) struct UserAttributes {
-    name: String,
-    identifiers: HashSet<connectors::UserIdentifier>,
-    other_identifiers: HashSet<String>,
-    metadata: HashMap<String, String>,
-    connectors: HashSet<String>,
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UserAttributes {
+    /// User name
+    pub name: String,
+    /// Specific user identifiers
+    pub identifiers: HashSet<connectors::UserIdentifier>,
+    /// Misc user identifiers
+    pub other_identifiers: HashSet<String>,
+    /// K-V pairs of user-specific metadata
+    pub metadata: HashMap<String, String>,
+    /// Connectors the user is present in
+    pub connectors: HashSet<String>,
 }
 
 impl UserAttributes {
@@ -73,11 +88,14 @@ impl UserAttributes {
 
 /// Attributes associated with a Group node
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub(crate) struct GroupAttributes {
-    name: String,
-    metadata: HashMap<String, String>,
-    connectors: HashSet<String>,
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct GroupAttributes {
+    /// Name of group
+    pub name: String,
+    /// k-v pairs of group metadata
+    pub metadata: HashMap<String, String>,
+    /// All the connectors the group is present in
+    pub connectors: HashSet<String>,
 }
 
 impl GroupAttributes {
@@ -93,10 +111,19 @@ impl GroupAttributes {
             connectors,
         })
     }
+    /// Convenience constructor for testing
+    #[cfg(test)]
+    fn new(name: String) -> Self {
+        Self {
+            name,
+            ..Default::default()
+        }
+    }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub(crate) struct AssetAttributes {
+/// A struct defining the attributes of an asset
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AssetAttributes {
     cual: Cual,
     asset_type: AssetType,
     metadata: HashMap<String, String>,
@@ -132,13 +159,17 @@ impl AssetAttributes {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub(crate) struct TagAttributes {
-    name: String,
-    value: Option<String>,
-    pass_through_hierarchy: bool,
-    pass_through_lineage: bool,
-    connectors: HashSet<String>,
+/// A struct describing the attributes of a Tag
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TagAttributes {
+    /// Name of tag
+    pub name: String,
+    /// an optional value
+    pub value: Option<String>,
+    /// whether the tag is to be passed through hierarchy
+    pub pass_through_hierarchy: bool,
+    /// whether the tag is to be passed through lineage
+    pub pass_through_lineage: bool,
 }
 
 impl TagAttributes {
@@ -158,19 +189,29 @@ impl TagAttributes {
         )
         .context("field: TagAttributes.pass_through_lineage")?;
 
-        let connectors = merge_set(&self.connectors, &new_attributes.connectors);
         Ok(TagAttributes {
             name,
             value,
             pass_through_hierarchy,
             pass_through_lineage,
-            connectors,
         })
+    }
+
+    /// Convenience constructor for testing
+    #[cfg(test)]
+    fn new(name: String, pass_through_hierarchy: bool, pass_through_lineage: bool) -> Self {
+        Self {
+            name,
+            value: Default::default(),
+            pass_through_hierarchy,
+            pass_through_lineage,
+        }
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub(crate) struct PolicyAttributes {
+/// A struct describing the attributes of a policy
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PolicyAttributes {
     name: String,
     privileges: HashSet<String>,
     pass_through_hierarchy: bool,
@@ -219,8 +260,8 @@ impl PolicyAttributes {
 }
 
 /// Enum of node types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub(crate) enum JettyNode {
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum JettyNode {
     /// Group node
     Group(GroupAttributes),
     /// User node
@@ -234,6 +275,29 @@ pub(crate) enum JettyNode {
 }
 
 impl JettyNode {
+    /// Get the type (as a string) of the node.
+    pub fn get_string_name(&self) -> String {
+        match &self {
+            JettyNode::Group(g) => g.name.to_owned(),
+            JettyNode::User(u) => u.name.to_owned(),
+            JettyNode::Asset(a) => a.cual.uri(),
+            JettyNode::Tag(t) => t.name.to_owned(),
+            JettyNode::Policy(p) => p.name.to_owned(),
+        }
+    }
+
+    /// Get a Vec of the connectors for a node
+    pub fn get_node_connectors(&self) -> HashSet<String> {
+        match &self {
+            JettyNode::Group(g) => g.connectors.to_owned(),
+            JettyNode::User(u) => u.connectors.to_owned(),
+            JettyNode::Asset(a) => a.connectors.to_owned(),
+            // Tags don't really have connectors at this point, so return an empty HashSet
+            JettyNode::Tag(_t) => Default::default(),
+            JettyNode::Policy(p) => p.connectors.to_owned(),
+        }
+    }
+
     #[allow(dead_code)]
     fn merge_nodes(&self, new_node: &JettyNode) -> Result<JettyNode> {
         match (&self, new_node) {
@@ -262,7 +326,7 @@ impl JettyNode {
 
     /// Given a node, return the NodeName. This will return the name field
     /// wrapped in the appropriate enum.
-    fn get_name(&self) -> NodeName {
+    fn get_node_name(&self) -> NodeName {
         match &self {
             JettyNode::Asset(a) => NodeName::Asset(a.cual.uri()),
             JettyNode::Group(a) => NodeName::Group(a.name.to_owned()),
@@ -275,19 +339,36 @@ impl JettyNode {
 
 /// Enum of edge types
 #[derive(PartialEq, Eq, Hash, Debug, Copy, Clone, Default, Serialize, Deserialize)]
-pub(crate) enum EdgeType {
+pub enum EdgeType {
+    /// user|group -> is a member of -> group
     MemberOf,
+    /// group -> includes, as members -> user|group
     Includes,
+    /// group|user -> has permission granted by -> policy
     GrantedBy,
+    /// asset -> hierarchical child of -> asset
     ChildOf,
+    /// asset -> hierarchical parent of -> asset
     ParentOf,
+    /// asset -> derived via lineage from -> asset
     DerivedFrom,
+    /// asset -> parent, via lineage, of -> asset
     DerivedTo,
+    /// asset -> tagged with -> tag
     TaggedAs,
+    /// asset -> governed by -> policy
     GovernedBy,
+    /// tag -> applied to -> asset
     AppliedTo,
+    /// policy -> governs -> asset
     Governs,
+    /// policy -> granted_to -> user|group
     GrantedTo,
+    /// tag -> removed from -> asset
+    RemovedFrom,
+    /// asset -> had removed -> tag
+    UntaggedAs,
+    /// anything else
     #[default]
     Other,
 }
@@ -306,6 +387,8 @@ fn get_edge_type_pair(edge_type: &EdgeType) -> EdgeType {
         EdgeType::AppliedTo => EdgeType::TaggedAs,
         EdgeType::GovernedBy => EdgeType::Governs,
         EdgeType::Governs => EdgeType::GovernedBy,
+        EdgeType::RemovedFrom => EdgeType::UntaggedAs,
+        EdgeType::UntaggedAs => EdgeType::RemovedFrom,
         EdgeType::Other => EdgeType::Other,
     }
 }
@@ -347,10 +430,26 @@ impl JettyEdge {
 #[derive(Serialize, Deserialize)]
 pub struct AccessGraph {
     /// The graph itself
-    graph: graph::Graph,
+    pub(crate) graph: graph::Graph,
     edge_cache: HashSet<JettyEdge>,
     /// Unix timestamp of when the graph was built
-    last_modified: i64,
+    last_modified: OffsetDateTime,
+    /// The merged effective permissions from all connectors
+    effective_permissions: SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>>,
+}
+
+impl Index<NodeIndex> for AccessGraph {
+    type Output = JettyNode;
+
+    fn index(&self, index: NodeIndex) -> &Self::Output {
+        &self.graph.graph.index(index)
+    }
+}
+
+impl IndexMut<NodeIndex> for AccessGraph {
+    fn index_mut(&mut self, index: NodeIndex) -> &mut Self::Output {
+        self.graph.graph.index_mut(index)
+    }
 }
 
 impl AccessGraph {
@@ -362,19 +461,37 @@ impl AccessGraph {
                 nodes: HashMap::new(),
             },
             edge_cache: HashSet::new(),
-            last_modified: 0,
+            last_modified: OffsetDateTime::now_utc(),
+            effective_permissions: Default::default(),
         };
         for connector_data in data {
             // Create all nodes first, then create edges.
             ag.add_nodes(&connector_data)?;
-            ag.add_edges()?;
+            // Merge effective permissions into the access graph
+            ag.effective_permissions
+                .merge(connector_data.data.effective_permissions)
+                .context("merging effective permissions")
+                .unwrap();
         }
-        ag.last_modified = OffsetDateTime::now_utc().unix_timestamp();
+        ag.add_edges()?;
         Ok(ag)
     }
 
-    /// Get last modified date for access graph as a Unix timestamp (seconds resolution)
-    pub fn get_last_modified(&self) -> i64 {
+    #[cfg(test)]
+    /// New graph
+    pub fn new_dummy(nodes: &[&JettyNode], edges: &[(NodeName, NodeName, EdgeType)]) -> Self {
+        use self::test_util::new_graph_with;
+
+        AccessGraph {
+            graph: new_graph_with(nodes, edges).unwrap(),
+            edge_cache: HashSet::new(),
+            last_modified: OffsetDateTime::now_utc(),
+            effective_permissions: Default::default(),
+        }
+    }
+
+    /// Get last modified date for access graph
+    pub fn get_last_modified(&self) -> OffsetDateTime {
         self.last_modified
     }
 
@@ -429,6 +546,11 @@ impl AccessGraph {
         let f = File::open(SAVED_GRAPH_PATH).context("opening graph file")?;
         let decoded = bincode::deserialize_from(f).context("deserializing graph from file")?;
         Ok(decoded)
+    }
+
+    /// Return a pointer to the petgraph - makes it easy to index and get node values
+    pub fn graph(&self) -> &petgraph::stable_graph::StableGraph<JettyNode, EdgeType> {
+        &self.graph.graph
     }
 }
 

@@ -172,13 +172,12 @@ impl NodeHelper for nodes::Asset {
 }
 
 impl NodeHelper for nodes::Tag {
-    fn get_node(&self, connector: String) -> JettyNode {
+    fn get_node(&self, _connector: String) -> JettyNode {
         JettyNode::Tag(TagAttributes {
             name: self.name.to_owned(),
             value: self.value.to_owned(),
             pass_through_hierarchy: self.pass_through_hierarchy,
             pass_through_lineage: self.pass_through_lineage,
-            connectors: HashSet::from([connector]),
         })
     }
 

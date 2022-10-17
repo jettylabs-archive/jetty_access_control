@@ -18,7 +18,6 @@ use super::{FromTableau, OwnedAsset, Permissionable, ProjectId, TableauAsset, DA
 pub(crate) struct Datasource {
     pub id: String,
     pub name: String,
-    pub datasource_type: String,
     pub updated_at: String,
     pub project_id: ProjectId,
     pub owner_id: String,
@@ -31,7 +30,6 @@ impl Datasource {
     pub(crate) fn new(
         id: String,
         name: String,
-        datasource_type: String,
         updated_at: String,
         project_id: ProjectId,
         owner_id: String,
@@ -41,7 +39,6 @@ impl Datasource {
         Self {
             id,
             name,
-            datasource_type,
             updated_at,
             project_id,
             owner_id,
@@ -151,8 +148,6 @@ fn to_node(val: &serde_json::Value) -> Result<super::Datasource> {
         name: String,
         id: String,
         updated_at: String,
-        #[serde(rename = "type")]
-        datasource_type: String,
         owner: super::IdField,
         project: super::IdField,
     }
@@ -166,7 +161,6 @@ fn to_node(val: &serde_json::Value) -> Result<super::Datasource> {
         owner_id: asset_info.owner.id,
         project_id: ProjectId(asset_info.project.id),
         updated_at: asset_info.updated_at,
-        datasource_type: asset_info.datasource_type,
         permissions: Default::default(),
         sources: Default::default(),
     })

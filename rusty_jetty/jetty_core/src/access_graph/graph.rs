@@ -17,7 +17,7 @@ use super::{EdgeType, JettyNode, NodeName};
 
 /// The main graph wrapper
 #[derive(Serialize, Deserialize)]
-pub struct Graph {
+pub(crate) struct Graph {
     pub(crate) graph: StableDiGraph<JettyNode, EdgeType>,
     /// A map of node identifiers to indicies
     pub(crate) nodes: HashMap<NodeName, NodeIndex>,
@@ -50,7 +50,7 @@ impl Graph {
 
     /// Adds a node to the graph and returns the index.
     pub(crate) fn add_node(&mut self, node: &JettyNode) -> Result<()> {
-        let node_name = node.get_name();
+        let node_name = node.get_node_name();
         // Check for duplicate
         if let Some(&idx) = self.get_node(&node_name) {
             self.merge_nodes(idx, node)?;
@@ -187,7 +187,7 @@ mod tests {
         g.add_node(&original_node)?;
 
         let &idx = g
-            .get_node(&original_node.get_name())
+            .get_node(&original_node.get_node_name())
             .ok_or(anyhow!["Unable to find \"to\" node: {:?}", &original_node])?;
 
         let merged_node = g
@@ -219,7 +219,7 @@ mod tests {
         g.add_node(&original_node)?;
 
         let &idx = g
-            .get_node(&original_node.get_name())
+            .get_node(&original_node.get_node_name())
             .ok_or(anyhow!["Unable to find \"to\" node: {:?}", &original_node])?;
 
         let merged_node = g
@@ -251,7 +251,7 @@ mod tests {
         g.add_node(&original_node)?;
 
         let &idx = g
-            .get_node(&original_node.get_name())
+            .get_node(&original_node.get_node_name())
             .ok_or(anyhow!["Unable to find \"to\" node: {:?}", &original_node])?;
 
         let merged_node = g
@@ -293,7 +293,7 @@ mod tests {
         g.add_node(&original_node)?;
 
         let &idx = g
-            .get_node(&original_node.get_name())
+            .get_node(&original_node.get_node_name())
             .ok_or(anyhow!["Unable to find \"to\" node: {:?}", &original_node])?;
 
         let merged_node = g

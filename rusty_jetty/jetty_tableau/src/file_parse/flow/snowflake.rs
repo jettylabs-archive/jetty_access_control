@@ -78,22 +78,8 @@ pub(super) fn get_output_table_ids(
     let table = table_info.attributes.tablename;
 
     // It turns out that when writing tables to the db, flows actually use the tableau name as if it
-    // were quoted, which is what we want to do, so this code double-escapes quotes causes errors:
-
-    // // Fix up the table name:
-    // if table.starts_with('"') {
-    //     // this uses a simple wrapper around strip to make
-    //     // it work like trim_matches, but only with single match
-    //     table = strip_start_and_end(table, '"', '"');
-    // } else if table.starts_with('\'') {
-    //     table = strip_start_and_end(table, '\'', '\'');
-    // } else if table.starts_with('[') {
-    //     table = strip_start_and_end(table, '[', ']');
-    // } else if table.starts_with('`') {
-    //     table = strip_start_and_end(table, '`', '`');
-    // } else {
-    //     table = table.to_uppercase();
-    // }
+    // were quoted, which is what we want to do, so this code double-escapes quotes causes errors. See
+    // https://github.com/jettylabs/experiments/pull/111 for the fix.
 
     let snowflake_table = crate::file_parse::snowflake_common::SnowflakeTableInfo {
         table,
