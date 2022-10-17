@@ -181,6 +181,9 @@ pub struct TagAttributes {
     pub pass_through_hierarchy: bool,
     /// whether the tag is to be passed through lineage
     pub pass_through_lineage: bool,
+    /// Connector the tag is from. This is not all the connectors that the tag may be applied to.
+    /// We don't yet support specifying that.
+    connectors: HashSet<String>,
 }
 
 impl TagAttributes {
@@ -201,6 +204,7 @@ impl TagAttributes {
             &new_attributes.pass_through_lineage,
         )
         .context("field: TagAttributes.pass_through_lineage")?;
+        let connectors = merge_set(&self.connectors, &new_attributes.connectors);
 
         Ok(TagAttributes {
             name,
@@ -208,6 +212,7 @@ impl TagAttributes {
             description,
             pass_through_hierarchy,
             pass_through_lineage,
+            connectors,
         })
     }
 
@@ -220,6 +225,7 @@ impl TagAttributes {
             value: Default::default(),
             pass_through_hierarchy,
             pass_through_lineage,
+            connectors: HashSet::from(["Jetty".to_owned()]),
         }
     }
 }
