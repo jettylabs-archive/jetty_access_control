@@ -408,7 +408,7 @@ fn get_asset_list_from_target_list(
     (errors, results)
 }
 
-fn tags_to_jetty_node_helpers(
+pub(crate) fn tags_to_jetty_node_helpers(
     tags: HashMap<String, TagConfig>,
     ag: &AccessGraph,
     config: &String,

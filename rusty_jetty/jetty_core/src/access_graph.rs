@@ -9,8 +9,9 @@ mod helpers;
 #[cfg(test)]
 pub mod test_util;
 
-use crate::connectors::nodes::{EffectivePermission, SparseMatrix};
+use crate::connectors::nodes::{ConnectorData, EffectivePermission, SparseMatrix};
 use crate::connectors::UserIdentifier;
+use crate::tag_parser::{parse_tags, tags_to_jetty_node_helpers};
 use crate::{connectors::AssetType, cual::Cual};
 
 use self::helpers::NodeHelper;
@@ -518,8 +519,9 @@ impl AccessGraph {
         Ok(())
     }
 
+    /// Adds all the edges from the edge cache, draining the cache as it goes.
     pub(crate) fn add_edges(&mut self) -> Result<()> {
-        for edge in &self.edge_cache {
+        for edge in self.edge_cache.drain() {
             self.graph
                 .add_edge(edge.to_owned())
                 .context(format!("couldn't add edge {:?} to graph", edge))?;
@@ -565,6 +567,23 @@ impl AccessGraph {
     /// Return a pointer to the petgraph - makes it easy to index and get node values
     pub fn graph(&self) -> &petgraph::stable_graph::StableGraph<JettyNode, EdgeType> {
         &self.graph.graph
+    }
+    /// add tags and appropriate edges from a configuration file to the graph
+    pub fn add_tags(&mut self, config: &String) -> Result<()> {
+        let parsed_tags = parse_tags(config)?;
+        let tags = tags_to_jetty_node_helpers(parsed_tags, &self, config)?;
+        self.add_nodes(&ProcessedConnectorData {
+            connector: "Jetty".to_owned(),
+            data: ConnectorData {
+                tags,
+                ..Default::default()
+            },
+        })?;
+
+        // add edges from the cache
+        self.add_edges();
+
+        Ok(())
     }
 }
 

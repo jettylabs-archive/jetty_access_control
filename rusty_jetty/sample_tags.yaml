@@ -1,0 +1,14 @@
+pii:
+    description: This data contains pii from ppis
+    apply_to:
+        - snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB2/RAW/IRIS
+
+pii2:
+    description: This data contains pii from ppis
+    apply_to:
+        - snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB2/RAW/IRIS
+
+pii3:
+    description: This data contains pii from ppis
+    apply_to:
+        - snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB2/RAW/IRIS
