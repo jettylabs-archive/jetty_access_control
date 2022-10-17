@@ -98,43 +98,7 @@ impl TableauConnector {
             .collect();
 
         // Transform policies
-        let flow_policies: Vec<jetty_nodes::Policy> = env_to_jetty_policies(
-            &mut self.coordinator.env.flows.clone().into_values(),
-            &self.coordinator.env,
-        );
-        let project_policies: Vec<jetty_nodes::Policy> = env_to_jetty_policies(
-            &mut self.coordinator.env.projects.clone().into_values(),
-            &self.coordinator.env,
-        );
-        let lens_policies: Vec<jetty_nodes::Policy> = env_to_jetty_policies(
-            &mut self.coordinator.env.lenses.clone().into_values(),
-            &self.coordinator.env,
-        );
-        let datasource_policies: Vec<jetty_nodes::Policy> = env_to_jetty_policies(
-            &mut self.coordinator.env.datasources.clone().into_values(),
-            &self.coordinator.env,
-        );
-        let workbook_policies: Vec<jetty_nodes::Policy> = env_to_jetty_policies(
-            &mut self.coordinator.env.workbooks.clone().into_values(),
-            &self.coordinator.env,
-        );
-        let metric_policies: Vec<jetty_nodes::Policy> = env_to_jetty_policies(
-            &mut self.coordinator.env.metrics.clone().into_values(),
-            &self.coordinator.env,
-        );
-        let view_policies: Vec<jetty_nodes::Policy> = env_to_jetty_policies(
-            &mut self.coordinator.env.views.clone().into_values(),
-            &self.coordinator.env,
-        );
-        let all_policies = flow_policies
-            .into_iter()
-            .chain(project_policies.into_iter())
-            .chain(lens_policies.into_iter())
-            .chain(datasource_policies.into_iter())
-            .chain(workbook_policies.into_iter())
-            .chain(metric_policies.into_iter())
-            .chain(view_policies.into_iter())
-            .collect();
+        let all_policies = env_to_jetty_policies(&self.coordinator.env);
 
         (
             self.to_jetty(&self.coordinator.env.groups),

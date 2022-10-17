@@ -6,9 +6,9 @@ use crate::{coordinator::Environment, nodes::TableauCualable, rest::TableauAsset
 
 #[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone, Deserialize, Serialize)]
 pub(crate) enum SourceOrigin {
-    Snowflake {
-        cual: Cual,
-    },
+    /// Another source other than Tableau. We just use the CUAL to identify it.
+    Other { cual: Cual },
+    /// A tableau source. All we need is the type and ID to identify it.
     Tableau {
         asset_type: TableauAssetType,
         id: String,
@@ -17,7 +17,7 @@ pub(crate) enum SourceOrigin {
 
 impl SourceOrigin {
     pub(crate) fn from_cual(cual: Cual) -> Self {
-        Self::Snowflake { cual }
+        Self::Other { cual }
     }
 
     pub(crate) fn from_id_type(asset_type: TableauAssetType, id: String) -> Self {
@@ -26,7 +26,7 @@ impl SourceOrigin {
 
     pub(crate) fn into_cual(self, env: &Environment) -> Cual {
         match self {
-            SourceOrigin::Snowflake { cual } => cual.clone(),
+            SourceOrigin::Other { cual } => cual.clone(),
             SourceOrigin::Tableau { asset_type, id } => match asset_type {
                 TableauAssetType::Project => {
                     let asset = env.projects.get(&id).expect("getting asset from env");

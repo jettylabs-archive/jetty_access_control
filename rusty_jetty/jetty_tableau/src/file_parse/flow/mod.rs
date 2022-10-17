@@ -3,7 +3,7 @@ mod snowflake;
 use std::collections::{HashMap, HashSet};
 
 use anyhow::{anyhow, bail, Context, Result};
-use jetty_core::{cual::Cual, logging::debug};
+use jetty_core::logging::debug;
 use serde::Deserialize;
 
 use super::{origin::SourceOrigin, RelationType};

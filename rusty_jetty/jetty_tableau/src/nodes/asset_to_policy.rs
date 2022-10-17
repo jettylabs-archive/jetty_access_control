@@ -38,7 +38,7 @@ impl_from_asset_to_policy!(View);
 
 /// Given an asset from Tableau, bundle up its permissions
 /// as Jetty policies.
-pub(crate) fn env_to_jetty_policies<T>(
+fn asset_to_jetty_policies<T>(
     asset: &mut dyn Iterator<Item = T>,
     env: &Environment,
 ) -> Vec<jetty_nodes::Policy>
@@ -48,5 +48,31 @@ where
 {
     asset
         .flat_map(|f| -> Vec<jetty_nodes::Policy> { f.into(env) })
+        .collect()
+}
+
+pub(crate) fn env_to_jetty_policies(env: &Environment) -> Vec<jetty_nodes::Policy> {
+    let flow_policies: Vec<jetty_nodes::Policy> =
+        asset_to_jetty_policies(&mut env.flows.clone().into_values(), env);
+    let project_policies: Vec<jetty_nodes::Policy> =
+        asset_to_jetty_policies(&mut env.projects.clone().into_values(), env);
+    let lens_policies: Vec<jetty_nodes::Policy> =
+        asset_to_jetty_policies(&mut env.lenses.clone().into_values(), env);
+    let datasource_policies: Vec<jetty_nodes::Policy> =
+        asset_to_jetty_policies(&mut env.datasources.clone().into_values(), env);
+    let workbook_policies: Vec<jetty_nodes::Policy> =
+        asset_to_jetty_policies(&mut env.workbooks.clone().into_values(), env);
+    let metric_policies: Vec<jetty_nodes::Policy> =
+        asset_to_jetty_policies(&mut env.metrics.clone().into_values(), env);
+    let view_policies: Vec<jetty_nodes::Policy> =
+        asset_to_jetty_policies(&mut env.views.clone().into_values(), env);
+    flow_policies
+        .into_iter()
+        .chain(project_policies.into_iter())
+        .chain(lens_policies.into_iter())
+        .chain(datasource_policies.into_iter())
+        .chain(workbook_policies.into_iter())
+        .chain(metric_policies.into_iter())
+        .chain(view_policies.into_iter())
         .collect()
 }
