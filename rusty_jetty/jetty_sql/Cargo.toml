@@ -6,5 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+jetty_core = { path = "../jetty_core" }
 anyhow = "1.0.64"
 sqlparser = "0.22.0"
+

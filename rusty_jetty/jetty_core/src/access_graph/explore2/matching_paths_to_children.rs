@@ -193,8 +193,10 @@ mod tests {
             None,
             None,
         );
-        a.iter()
-            .for_each(|(_, p)| p.iter().for_each(|q| println!("{}", ag.path_as_string(q))));
+        a.iter().for_each(|(_, p)| {
+            p.iter()
+                .for_each(|q| crate::logging::debug!("{}", ag.path_as_string(q)))
+        });
         assert_eq!(a.len(), 1);
         assert_eq!(a.values().next().map(|v| v.len()), Some(2));
 

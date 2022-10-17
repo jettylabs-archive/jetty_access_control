@@ -7,6 +7,7 @@ use jetty_core::{
         ConnectorClient,
     },
     jetty::ConnectorConfig,
+    logging::debug,
     Connector,
 };
 use jetty_snowflake::{RoleName, SnowflakeConnector};
@@ -91,7 +92,7 @@ impl WiremockServer {
         self.server = Some(mock_server);
 
         let roles_body = body_for!(jetty_snowflake::Entry::Role(_), input, name);
-        println!("roles: {}", roles_body);
+        debug!("roles: {}", roles_body);
         let users_body = body_for!(
             jetty_snowflake::Entry::User(_),
             input,
@@ -117,14 +118,14 @@ impl WiremockServer {
             schema_name,
             database_name
         );
-        println!("objects body: {}", objects_body);
+        debug!("objects body: {}", objects_body);
         let schemas_body = body_for!(
             jetty_snowflake::Entry::Asset(jetty_snowflake::Asset::Schema(_)),
             input,
             name,
             database_name
         );
-        println!("body: {}", schemas_body);
+        debug!("body: {}", schemas_body);
         let databases_body = body_for!(
             jetty_snowflake::Entry::Asset(jetty_snowflake::Asset::Database(_)),
             input,
@@ -283,7 +284,7 @@ async fn input_produces_correct_results() {
 
     // Query the Snowflake connector
     let data: nodes::ConnectorData = harness.connector.get_data().await;
-    println!("data: {:#?}", data);
+    debug!("data: {:#?}", data);
 
     // Do some assertion on the resulting data.
     assert_eq!(data.groups, expected_groups);
