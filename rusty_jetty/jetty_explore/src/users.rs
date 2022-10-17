@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use anyhow::Context;
 use axum::{extract::Path, routing::get, Extension, Json, Router};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -8,6 +9,7 @@ use super::ObjectWithPathResponse;
 use jetty_core::{
     access_graph::{self, EdgeType, JettyNode, NodeName},
     connectors::UserIdentifier,
+    logging::info,
 };
 
 /// Return a router to handle all user-related requests
@@ -49,7 +51,14 @@ async fn assets_handler(
         assets_and_permissions
             .iter()
             // get the JettyNodes for all of the accessible assets
-            .map(|(k, v)| (ag.get_node(&NodeName::Asset(k.to_string())).unwrap(), v))
+            .map(|(k, v)| {
+                (
+                    ag.get_node(&NodeName::Asset(k.to_string()))
+                        .context("fetching asset index from node map")
+                        .unwrap(),
+                    v,
+                )
+            })
             // adding second map for clarity
             // build Vec of UserAssetResponse structs
             .map(|(k, v)| UserAssetsResponse {
@@ -61,7 +70,13 @@ async fn assets_handler(
                         explanations: p.reasons.to_owned(),
                     })
                     .collect(),
-                connector: k.get_node_connectors().iter().next().unwrap().to_owned(),
+                connector: k
+                    .get_node_connectors()
+                    .iter()
+                    .next()
+                    .context(format!("asset is missing a connector: {:?}", k))
+                    .unwrap()
+                    .to_owned(),
             })
             .collect(),
     )
@@ -102,7 +117,7 @@ async fn direct_groups_handler(
 ) -> Json<Vec<access_graph::GroupAttributes>> {
     let from = NodeName::User(node_id);
 
-    println!("{:?}", ag.extract_graph(&from, 1).dot());
+    info!("{:?}", ag.extract_graph(&from, 1).dot());
 
     let group_nodes = ag.get_matching_children(
         &from,

@@ -102,7 +102,7 @@ const csvConfig = {
   mappingFn: (filteredSortedRows) =>
     filteredSortedRows.flatMap((r) =>
       r.privileges.flatMap((p) =>
-        p.explanations.map((e) => [r.name, r.platform, p.name, e])
+        p.explanations.map((e) => [r.name, r.connector, p.name, e])
       )
     ),
 };
