@@ -173,10 +173,9 @@ impl FromTableau<Project> for jetty_nodes::Asset {
             env,
         )
         .expect("Generating cual from flow");
-        let parent_cual = val
+        let parent_cuals = val
             .get_parent_project_cual(env)
-            .expect("getting parent cual")
-            .uri();
+            .map_or_else(|| HashSet::new(), |c| HashSet::from([c.uri()]));
         jetty_nodes::Asset::new(
             cual,
             val.name,
@@ -186,7 +185,7 @@ impl FromTableau<Project> for jetty_nodes::Asset {
             // Governing policies will be assigned in the policy.
             HashSet::new(),
             // Projects can be the children of other projects.
-            HashSet::from([parent_cual]),
+            parent_cuals,
             // Children objects will be handled in their respective nodes.
             HashSet::new(),
             // Projects aren't derived from/to anything.

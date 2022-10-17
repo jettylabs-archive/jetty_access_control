@@ -10,6 +10,7 @@ use futures::StreamExt;
 use jetty_core::logging::error;
 use serde::{Deserialize, Serialize};
 
+use crate::file_parse::origin::SourceOrigin;
 use crate::nodes::{self, Permissionable, ProjectId};
 
 use crate::rest;
@@ -21,7 +22,6 @@ const CONCURRENT_ASSET_DOWNLOADS: usize = 25;
 const CONCURRENT_METADATA_FETCHES: usize = 100;
 /// Path to serialized version of the Tableau Env
 const SERIALIZED_ENV_PATH: &str = "tableau_env.json";
-
 
 /// The state of a tableau site. We use this to persist state and
 /// enable incremental updates.
@@ -64,13 +64,13 @@ pub(crate) trait HasSources {
     /// Get updated_at
     fn updated_at(&self) -> &String;
     /// Get sources
-    fn sources(&self) -> (HashSet<String>, HashSet<String>);
+    fn sources(&self) -> (HashSet<SourceOrigin>, HashSet<SourceOrigin>);
     /// Fetch sources for an asset
     async fn fetch_sources(
         &self,
         coord: &Coordinator,
-    ) -> Result<(HashSet<String>, HashSet<String>)>;
-    fn set_sources(&mut self, sources: (HashSet<String>, HashSet<String>));
+    ) -> Result<(HashSet<SourceOrigin>, HashSet<SourceOrigin>)>;
+    fn set_sources(&mut self, sources: (HashSet<SourceOrigin>, HashSet<SourceOrigin>));
 
     /// Update sources for an asset
     async fn update_sources<T: HasSources + Sync + Send>(

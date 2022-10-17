@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     coordinator::{Coordinator, Environment, HasSources},
-    file_parse::flow::FlowDoc,
+    file_parse::{flow::FlowDoc, origin::SourceOrigin},
     rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType},
 };
 
@@ -21,8 +21,8 @@ pub(crate) struct Flow {
     pub project_id: ProjectId,
     pub owner_id: String,
     pub updated_at: String,
-    pub derived_from: HashSet<String>,
-    pub derived_to: HashSet<String>,
+    pub(crate) derived_from: HashSet<SourceOrigin>,
+    pub(crate) derived_to: HashSet<SourceOrigin>,
     pub permissions: Vec<super::Permission>,
 }
 
@@ -33,8 +33,8 @@ impl Flow {
         project_id: ProjectId,
         owner_id: String,
         updated_at: String,
-        derived_from: HashSet<String>,
-        derived_to: HashSet<String>,
+        derived_from: HashSet<SourceOrigin>,
+        derived_to: HashSet<SourceOrigin>,
         permissions: Vec<super::Permission>,
     ) -> Self {
         Self {
@@ -74,14 +74,14 @@ impl HasSources for Flow {
         &self.updated_at
     }
 
-    fn sources(&self) -> (HashSet<String>, HashSet<String>) {
+    fn sources(&self) -> (HashSet<SourceOrigin>, HashSet<SourceOrigin>) {
         (self.derived_from.to_owned(), self.derived_to.to_owned())
     }
 
     async fn fetch_sources(
         &self,
         coord: &Coordinator,
-    ) -> Result<(HashSet<String>, HashSet<String>)> {
+    ) -> Result<(HashSet<SourceOrigin>, HashSet<SourceOrigin>)> {
         // download the source
         let archive = coord.rest_client.download(self, true).await?;
         // get the file
@@ -91,7 +91,7 @@ impl HasSources for Flow {
         Ok(flow_doc.parse(coord))
     }
 
-    fn set_sources(&mut self, sources: (HashSet<String>, HashSet<String>)) {
+    fn set_sources(&mut self, sources: (HashSet<SourceOrigin>, HashSet<SourceOrigin>)) {
         self.derived_from = sources.0;
         self.derived_to = sources.1;
     }
@@ -179,9 +179,15 @@ impl FromTableau<Flow> for jetty_nodes::Asset {
             // Children objects will be handled in their respective nodes.
             HashSet::new(),
             // Flows are derived from their source data.
-            val.derived_from,
+            val.derived_from
+                .into_iter()
+                .map(|o| o.into_cual(env).to_string())
+                .collect(),
             // Flows can also be used to create other data assets
-            val.derived_to,
+            val.derived_to
+                .into_iter()
+                .map(|o| o.into_cual(env).to_string())
+                .collect(),
             // No tags at this point.
             HashSet::new(),
         )
@@ -190,7 +196,6 @@ impl FromTableau<Flow> for jetty_nodes::Asset {
 
 #[cfg(test)]
 mod tests {
-    use crate::rest::set_cual_prefix;
 
     use super::*;
     use anyhow::{Context, Result};

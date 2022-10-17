@@ -3,13 +3,14 @@ use std::sync::Once;
 use anyhow::{bail, Context, Ok, Result};
 
 use jetty_core::cual::Cual;
+use serde::{Deserialize, Serialize};
 
 use crate::{coordinator::Environment, nodes::ProjectId};
 
 static mut CUAL_PREFIX: String = String::new();
 static INIT_CUAL_PREFIX: Once = Once::new();
 
-#[derive(PartialEq, Eq, Hash, Clone, Debug)]
+#[derive(PartialEq, Eq, Hash, Clone, Debug, PartialOrd, Ord, Deserialize, Serialize)]
 pub(crate) enum TableauAssetType {
     Project,
     Datasource,
@@ -101,7 +102,7 @@ mod tests {
 
     #[test]
     fn tableau_cual_works() -> Result<()> {
-        set_cual_prefix("server", "site");
+        set_cual_prefix("dummy-server", "dummy-site");
         let mut env = Environment::default();
         env.projects = HashMap::from([
             (
@@ -127,19 +128,19 @@ mod tests {
         )?;
         assert_eq!(
             cual,
-            Cual::new("tableau://server@site/id2/id1/my_flow_yo".to_owned())
+            Cual::new("tableau://dummy-server@dummy-site/id2/id1/my_flow_yo".to_owned())
         );
         Ok(())
     }
 
     #[test]
     fn tableau_cual_works_with_no_parent() -> Result<()> {
-        set_cual_prefix("server", "site");
+        set_cual_prefix("dummy-server", "dummy-site");
         let env = Environment::default();
         let cual = get_tableau_cual(TableauAssetType::Project, "grandpappy_project", None, &env)?;
         assert_eq!(
             cual,
-            Cual::new("tableau://server@site/grandpappy_project".to_owned())
+            Cual::new("tableau://dummy-server@dummy-site/grandpappy_project".to_owned())
         );
         Ok(())
     }

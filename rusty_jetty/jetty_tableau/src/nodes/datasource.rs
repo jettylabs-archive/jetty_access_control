@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     coordinator::{Coordinator, Environment, HasSources},
-    file_parse::xml_docs,
+    file_parse::{origin::SourceOrigin, xml_docs},
     rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType},
 };
 
@@ -21,8 +21,8 @@ pub(crate) struct Datasource {
     pub updated_at: String,
     pub project_id: ProjectId,
     pub owner_id: String,
-    /// collection of origin cuals
-    pub sources: HashSet<String>,
+    /// collection of origin sources
+    pub sources: HashSet<SourceOrigin>,
     pub permissions: Vec<super::Permission>,
 }
 
@@ -33,7 +33,7 @@ impl Datasource {
         updated_at: String,
         project_id: ProjectId,
         owner_id: String,
-        sources: HashSet<String>,
+        sources: HashSet<SourceOrigin>,
         permissions: Vec<super::Permission>,
     ) -> Self {
         Self {
@@ -86,7 +86,10 @@ impl FromTableau<Datasource> for jetty_nodes::Asset {
             // Children objects will be handled in their respective nodes.
             HashSet::new(),
             // Datasources can be derived from other datasources.
-            val.sources,
+            val.sources
+                .into_iter()
+                .map(|o| o.into_cual(env).to_string())
+                .collect(),
             // Handled in any child datasources.
             HashSet::new(),
             // No tags at this point.
@@ -109,14 +112,14 @@ impl HasSources for Datasource {
         &self.updated_at
     }
 
-    fn sources(&self) -> (HashSet<String>, HashSet<String>) {
+    fn sources(&self) -> (HashSet<SourceOrigin>, HashSet<SourceOrigin>) {
         (self.sources.to_owned(), HashSet::new())
     }
 
     async fn fetch_sources(
         &self,
         coord: &Coordinator,
-    ) -> Result<(HashSet<String>, HashSet<String>)> {
+    ) -> Result<(HashSet<SourceOrigin>, HashSet<SourceOrigin>)> {
         // download the source
         let archive = coord.rest_client.download(self, true).await?;
         // get the file
@@ -129,7 +132,7 @@ impl HasSources for Datasource {
         Ok((input_sources, output_sources))
     }
 
-    fn set_sources(&mut self, sources: (HashSet<String>, HashSet<String>)) {
+    fn set_sources(&mut self, sources: (HashSet<SourceOrigin>, HashSet<SourceOrigin>)) {
         self.sources = sources.0;
     }
 }

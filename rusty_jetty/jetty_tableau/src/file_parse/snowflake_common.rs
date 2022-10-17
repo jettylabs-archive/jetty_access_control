@@ -1,5 +1,8 @@
 use anyhow::{anyhow, bail, Context, Result};
-use jetty_core::logging::{debug, error};
+use jetty_core::{
+    cual::Cual,
+    logging::{debug, error},
+};
 
 #[derive(Debug, Clone)]
 pub(crate) struct SnowflakeConnectionInfo {
@@ -26,7 +29,7 @@ pub(crate) struct SnowflakeQueryInfo {
 }
 
 impl SnowflakeTableInfo {
-    pub(super) fn to_cuals(&self) -> Result<Vec<String>> {
+    pub(super) fn to_cuals(&self) -> Result<Vec<Cual>> {
         let name_parts = self.get_table_name_parts();
 
         Ok(
@@ -50,7 +53,7 @@ impl SnowflakeTableInfo {
 }
 
 impl SnowflakeQueryInfo {
-    pub(super) fn to_cuals(&self) -> Result<Vec<String>> {
+    pub(super) fn to_cuals(&self) -> Result<Vec<Cual>> {
         let relations = jetty_sql::get_tables(&self.query, jetty_sql::DbType::Snowflake)
             .context("parsing query")?;
 
@@ -72,7 +75,7 @@ fn cual_from_name_parts(
     server: &str,
     db: &str,
     schema: &str,
-) -> Result<String> {
+) -> Result<Cual> {
     let name_parts: Vec<std::borrow::Cow<str>> =
         name_parts.iter().map(|p| urlencoding::encode(p)).collect();
 
@@ -90,7 +93,7 @@ fn cual_from_name_parts(
         1 => format!("{}/{}/{}/{}", prefix, db, schema, name_parts[0]),
         _ => bail!("unable to build cual"),
     };
-    Ok(cual)
+    Ok(Cual::new(cual))
 }
 
 /// Build a named SnowflakeConnectionInfo instance for a snowflake source
@@ -141,7 +144,9 @@ mod tests {
 
         assert_eq!(
             cuals,
-            vec!["snowflake://heresatest.snowflakecomputing.com/MY_DB/MY_SCHEMA/MY_TABLE"]
+            vec![Cual::new(
+                "snowflake://heresatest.snowflakecomputing.com/MY_DB/MY_SCHEMA/MY_TABLE".to_owned()
+            )]
         );
 
         Ok(())

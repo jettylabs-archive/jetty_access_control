@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     coordinator::{Coordinator, Environment, HasSources},
-    file_parse::xml_docs,
+    file_parse::{origin::SourceOrigin, xml_docs},
     rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType},
 };
 
@@ -26,8 +26,8 @@ pub(crate) struct Workbook {
     pub project_id: ProjectId,
     /// Probably not necessary?
     pub has_embedded_sources: bool,
-    /// HashSet of derived-from cuals
-    pub sources: HashSet<String>,
+    /// HashSet of derived-from origins
+    pub sources: HashSet<SourceOrigin>,
     pub updated_at: String,
     pub permissions: Vec<super::Permission>,
 }
@@ -39,7 +39,7 @@ impl Workbook {
         owner_id: String,
         project_id: ProjectId,
         has_embedded_sources: bool,
-        sources: HashSet<String>,
+        sources: HashSet<SourceOrigin>,
         updated_at: String,
         permissions: Vec<super::Permission>,
     ) -> Self {
@@ -99,14 +99,14 @@ impl HasSources for Workbook {
         &self.updated_at
     }
 
-    fn sources(&self) -> (HashSet<String>, HashSet<String>) {
+    fn sources(&self) -> (HashSet<SourceOrigin>, HashSet<SourceOrigin>) {
         (self.sources.to_owned(), HashSet::new())
     }
 
     async fn fetch_sources(
         &self,
         coord: &Coordinator,
-    ) -> Result<(HashSet<String>, HashSet<String>)> {
+    ) -> Result<(HashSet<SourceOrigin>, HashSet<SourceOrigin>)> {
         // download the source
         let archive = coord.rest_client.download(self, true).await?;
         // get the file
@@ -118,7 +118,7 @@ impl HasSources for Workbook {
         Ok((input_sources, output_sources))
     }
 
-    fn set_sources(&mut self, sources: (HashSet<String>, HashSet<String>)) {
+    fn set_sources(&mut self, sources: (HashSet<SourceOrigin>, HashSet<SourceOrigin>)) {
         self.sources = sources.0;
     }
 }
@@ -149,7 +149,10 @@ impl FromTableau<Workbook> for jetty_nodes::Asset {
             // Children objects will be handled in their respective nodes.
             HashSet::new(),
             // Workbooks are derived from their source data.
-            val.sources,
+            val.sources
+                .into_iter()
+                .map(|o| o.into_cual(env).to_string())
+                .collect(),
             HashSet::new(),
             // No tags at this point.
             HashSet::new(),

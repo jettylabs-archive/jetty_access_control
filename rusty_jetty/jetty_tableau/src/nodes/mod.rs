@@ -31,7 +31,7 @@ use crate::{
     coordinator::Environment,
     nodes as tableau_nodes,
     rest::{self, get_tableau_cual, FetchJson, TableauAssetType},
-    Cual, Cualable,
+    Cual,
 };
 
 use jetty_core::connectors::nodes as jetty_nodes;
@@ -55,6 +55,22 @@ pub(crate) struct ProjectId(pub(crate) String);
 /// Conversion from Tableau types.
 pub(crate) trait FromTableau<T> {
     fn from(val: T, env: &Environment) -> Self;
+}
+
+pub(crate) trait IntoTableau<U: FromTableau<Self>>
+where
+    Self: Sized,
+{
+    fn into(self, env: &Environment) -> U;
+}
+
+impl<T, U> IntoTableau<U> for T
+where
+    U: FromTableau<T>,
+{
+    fn into(self, env: &Environment) -> U {
+        <U>::from(self, env)
+    }
 }
 
 /// This trait is implemented by permissionable Tableau asset nodes and makes it simpler to
@@ -199,27 +215,39 @@ impl OwnedAsset for Project {
     }
 }
 
-// /// This Macro implements the Cualable trait for one or more types that have a `cual` field.
-// macro_rules! impl_Cualable {
-//     (for $($t:ty),+) => {
-//         $(impl Cualable for $t {
-//             fn cual(&self) -> Cual{
-//                 // self.cual.clone()
-//                 todo!()
-//             }
-//         })*
-//     }
-// }
+/// Common behavior across tableau assets
+pub(crate) trait TableauCualable {
+    /// Get the cual for the associated asset object.
+    fn cual(&self, env: &Environment) -> Cual;
+}
 
-// impl_Cualable!(for
-//     Workbook,
-//     View,
-//     Datasource,
-//     Metric,
-//     Flow,
-//     Lens,
-//     Project
-// );
+/// This Macro implements the Cualable trait for one or more types that have a `cual` field.
+macro_rules! impl_Cualable {
+    (for $($t:tt),+) => {
+        $(impl TableauCualable for $t {
+            fn cual(&self, env:&Environment) -> Cual{
+                    get_tableau_cual(
+                        TableauAssetType::$t,
+                        &self.name,
+                        self.get_parent_project_id(),
+                        env,
+                    )
+                    .expect(&format!("making cual for tableau asset {:?}", TableauAssetType::$t))
+
+            }
+        })*
+    }
+}
+
+impl_Cualable!(for
+    Workbook,
+    View,
+    Datasource,
+    Metric,
+    Flow,
+    Lens,
+    Project
+);
 
 /// Helper struct for deserializing Tableau assets
 #[derive(Deserialize, Debug, Clone)]

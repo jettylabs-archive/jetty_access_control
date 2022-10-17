@@ -3,14 +3,14 @@ mod snowflake;
 use std::collections::{HashMap, HashSet};
 
 use anyhow::{anyhow, bail, Context, Result};
-use jetty_core::logging::{debug, error};
+use jetty_core::{cual::Cual, logging::debug};
 use serde::Deserialize;
 
-use super::RelationType;
+use super::{origin::SourceOrigin, RelationType};
 use crate::{
     coordinator::Coordinator,
     nodes::ProjectId,
-    rest::{get_tableau_cual, TableauAssetType, TableauRestClient},
+    rest::{TableauAssetType, TableauRestClient},
 };
 
 #[derive(Deserialize, Debug)]
@@ -40,9 +40,12 @@ impl FlowDoc {
 
     /// Parse a flow document. This MUST be run after projects and datasources have been
     /// fetched.
-    pub(crate) fn parse(&self, coord: &Coordinator) -> (HashSet<String>, HashSet<String>) {
-        let mut input_cuals: HashSet<String> = HashSet::new();
-        let mut output_cuals: HashSet<String> = HashSet::new();
+    pub(crate) fn parse(
+        &self,
+        coord: &Coordinator,
+    ) -> (HashSet<SourceOrigin>, HashSet<SourceOrigin>) {
+        let mut input_origins: HashSet<SourceOrigin> = HashSet::new();
+        let mut output_origins: HashSet<SourceOrigin> = HashSet::new();
 
         for (_, node) in &self.nodes {
             if let Some(node_type) = node.get("nodeType").and_then(|v| v.as_str()) {
@@ -56,7 +59,7 @@ impl FlowDoc {
                                     node_type, e
                                 )
                             },
-                            |v| input_cuals.extend(v),
+                            |v| input_origins.extend(v),
                         );
                     }
                     ".v2019_3_1.LoadSqlProxy" => {
@@ -68,7 +71,7 @@ impl FlowDoc {
                                         node_type, e
                                     )
                                 },
-                                |v| input_cuals.extend(v),
+                                |v| input_origins.extend(v),
                             );
                     }
                     // Output nodes
@@ -81,7 +84,9 @@ impl FlowDoc {
                                         node_type, e
                                     )
                                 },
-                                |v| output_cuals.extend(v),
+                                |v| {
+                                    output_origins.insert(v);
+                                },
                             );
                     }
                     ".v2020_3_1.WriteToDatabase" => {
@@ -92,7 +97,7 @@ impl FlowDoc {
                                     node_type, e
                                 )
                             },
-                            |v| output_cuals.extend(v),
+                            |v| output_origins.extend(v),
                         );
                     }
                     o => {
@@ -110,10 +115,10 @@ impl FlowDoc {
             }
         }
 
-        (input_cuals, output_cuals)
+        (input_origins, output_origins)
     }
 
-    fn handle_load_sql(&self, node: &serde_json::Value) -> Result<HashSet<String>> {
+    fn handle_load_sql(&self, node: &serde_json::Value) -> Result<HashSet<SourceOrigin>> {
         // First check the class or type of database, and then the type of sql object.
         // From there, fetch the cuals
         let class = self
@@ -127,8 +132,10 @@ impl FlowDoc {
             }?,
             o => bail!("we don't currently support {}", o),
         };
-
-        Ok(cuals)
+        Ok(cuals
+            .into_iter()
+            .map(|c| SourceOrigin::from_cual(c))
+            .collect())
     }
 
     fn handle_load_sql_proxy(
@@ -136,7 +143,7 @@ impl FlowDoc {
         node: &serde_json::Value,
         env: &crate::coordinator::Environment,
         _client: &TableauRestClient,
-    ) -> Result<HashSet<String>> {
+    ) -> Result<HashSet<SourceOrigin>> {
         #[derive(Deserialize)]
         #[serde(rename_all = "camelCase")]
         struct ConnectionAttributes {
@@ -144,7 +151,7 @@ impl FlowDoc {
             datasource_name: String,
         }
 
-        let mut cuals = HashSet::new();
+        let mut origins = HashSet::new();
 
         let connection_attributes = node
             .get("connectionAttributes")
@@ -178,19 +185,23 @@ impl FlowDoc {
             );
         }
 
-        cuals.insert(
-            get_tableau_cual(TableauAssetType::Datasource, &correct_datasource[0].id)?.uri(),
-        );
+        origins.insert(SourceOrigin::from_id_type(
+            TableauAssetType::Datasource,
+            correct_datasource[0].id.clone(),
+        ));
 
-        Ok(cuals)
+        Ok(origins)
     }
 
-    fn handle_write_to_database(&self, node: &serde_json::Value) -> Result<HashSet<String>> {
+    fn handle_write_to_database(&self, node: &serde_json::Value) -> Result<HashSet<SourceOrigin>> {
         // First check the class or type of database, and then the type of sql object.
         // From there, fetch the cuals
         if let Ok(class) = self.get_node_connection_class(node) {
             let cuals = match &class[..] {
-                "snowflake" => snowflake::get_output_table_cuals(self, node)?,
+                "snowflake" => snowflake::get_output_table_cuals(self, node)?
+                    .into_iter()
+                    .map(|c| SourceOrigin::from_cual(c))
+                    .collect(),
                 o => bail!("we don't currently support {}", o),
             };
 
@@ -205,7 +216,7 @@ impl FlowDoc {
         node: &serde_json::Value,
         env: &crate::coordinator::Environment,
         _client: &TableauRestClient,
-    ) -> Result<HashSet<String>> {
+    ) -> Result<SourceOrigin> {
         #[derive(Deserialize)]
         #[serde(rename_all = "camelCase")]
         struct ConnectionAttributes {
@@ -228,12 +239,10 @@ impl FlowDoc {
             bail!("unable to find linked datasource; this can happen if the flow has not run");
         }
 
-        todo!();
-        // Ok(HashSet::from([get_tableau_cual(
-        //     TableauAssetType::Datasource,
-        //     &correct_datasource[0].id,
-        // )?
-        // .uri()]))
+        Ok(SourceOrigin::from_id_type(
+            TableauAssetType::Datasource,
+            correct_datasource[0].id.clone(),
+        ))
     }
 
     fn get_node_connection_class(&self, node: &serde_json::Value) -> Result<String> {
@@ -262,10 +271,12 @@ mod test {
     };
 
     use anyhow::Result;
+    use jetty_core::cual::Cual;
 
     use crate::{
+        file_parse::origin::SourceOrigin,
         nodes::{Datasource, Project, ProjectId},
-        rest::{self},
+        rest::{self, TableauAssetType},
     };
 
     #[test]
@@ -360,48 +371,37 @@ mod test {
 
         let cual_prefix = rest::get_cual_prefix()?;
         let doc = super::FlowDoc::new(data).unwrap();
-        let (input_cuals, output_cuals) = doc.parse(&coord);
-        assert_eq!(input_cuals,
+        let (input_origins, output_origins) = doc.parse(&coord);
+        assert_eq!(input_origins,
             [
-                format!["{}/datasource/d99c9c85-a525-4cce-beaa-7ebcda1ea577", &cual_prefix],
-                "snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/GOLD/IRIS_JOINED_TABLE".to_owned(),
-                "snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/SILVER/SILVER_ADULT_AGGREGATED_VIEW".to_owned(),
-                "snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/GOLD/ADULT_AGGREGATED_VIEW".to_owned(),
-                format!["{}/datasource/5f6df88d-aeb2-4551-a4c1-e326a45f4b91", &cual_prefix],
-                "snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/GOLD/IRIS_JOINED_VIEW".to_owned(),
-                "snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/GOLD/ADULT_AGGREGATED_TABLE".to_owned(),
+                SourceOrigin::from_id_type(TableauAssetType::Datasource,"d99c9c85-a525-4cce-beaa-7ebcda1ea577".to_owned()),
+                SourceOrigin::from_cual(Cual::new("snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/GOLD/IRIS_JOINED_TABLE".to_owned())),
+                SourceOrigin::from_cual(Cual::new("snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/SILVER/SILVER_ADULT_AGGREGATED_VIEW".to_owned())),
+                SourceOrigin::from_cual(Cual::new("snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/GOLD/ADULT_AGGREGATED_VIEW".to_owned())),
+                SourceOrigin::from_id_type(TableauAssetType::Datasource,"5f6df88d-aeb2-4551-a4c1-e326a45f4b91".to_owned()),
+                SourceOrigin::from_cual(Cual::new("snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/GOLD/IRIS_JOINED_VIEW".to_owned())),
+                SourceOrigin::from_cual(Cual::new("snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/GOLD/ADULT_AGGREGATED_TABLE".to_owned())),
             ]
         .into_iter()
-        .collect::<HashSet<String>>());
+        .collect::<HashSet<SourceOrigin>>());
 
-        let mut output_cuals = output_cuals.into_iter().collect::<Vec<_>>();
-        output_cuals.sort();
-        let mut expected_cuals = [
-            format!(
-                "{}/datasource/6df04a18-19a6-4012-8a83-c2b33a8d1907",
-                &cual_prefix
-            ),
-            format!(
-                "{}/datasource/91dae170-0191-4dba-8cef-5eda957bf122",
-                &cual_prefix
-            ),
-            format!(
-                "{}/datasource/de1c1844-2ce6-480d-8016-afc7be49827e",
-                &cual_prefix
-            ),
-            "snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/GOLD/tableau_special"
-                .to_owned(),
+        let mut output_origins = output_origins.into_iter().collect::<Vec<_>>();
+        output_origins.sort();
+        let mut expected_origins = [
+                SourceOrigin::from_id_type(TableauAssetType::Datasource,"6df04a18-19a6-4012-8a83-c2b33a8d1907".to_owned()),
+                SourceOrigin::from_id_type(TableauAssetType::Datasource,"91dae170-0191-4dba-8cef-5eda957bf122".to_owned()),
+                SourceOrigin::from_id_type(TableauAssetType::Datasource,"de1c1844-2ce6-480d-8016-afc7be49827e".to_owned()),
+            SourceOrigin::from_cual(Cual::new("snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/GOLD/tableau_special"
+                .to_owned())),
+            SourceOrigin::from_cual(Cual::new(
             "snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/RAW/%22Special%20Name%22"
-                .to_owned(),
-            format!(
-                "{}/datasource/a27d260d-9ff9-4707-82fd-e66cda23275d",
-                &cual_prefix
-            ),
+                .to_owned())),
+                SourceOrigin::from_id_type(TableauAssetType::Datasource,"a27d260d-9ff9-4707-82fd-e66cda23275d".to_owned()),
         ]
         .into_iter()
-        .collect::<Vec<String>>();
-        expected_cuals.sort();
-        assert_eq!(output_cuals, expected_cuals,);
+        .collect::<Vec<SourceOrigin>>();
+        expected_origins.sort();
+        assert_eq!(output_origins, expected_origins);
 
         Ok(())
     }
