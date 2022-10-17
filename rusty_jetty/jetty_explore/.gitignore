@@ -23,3 +23,6 @@ Cargo.lock
 **/tableau_env.json
 
 .vscode/
+
+# compiled webapp dir
+web/dist
