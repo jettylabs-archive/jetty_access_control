@@ -58,7 +58,7 @@ async fn main() -> Result<()> {
         JettyCommand::Explore => match AccessGraph::deserialize_graph() {
             Ok(mut ag) => {
                 if Path::new(TAGS_PATH).exists() {
-                    let tag_config = std::fs::read_to_string("tags.yaml");
+                    let tag_config = std::fs::read_to_string(TAGS_PATH);
                     match tag_config {
                         Ok(c) => {
                             ag.add_tags(&c)?;
