@@ -325,6 +325,8 @@ pub struct Tag {
     pub name: String,
     /// Optional value for the tag (for the case of key-value tags)
     pub value: Option<String>,
+    /// Optional description for the tag
+    pub description: Option<String>,
     /// Whether the tag is to be passed through asset hierarchy (only to direct
     /// descendants of this node)
     #[derivative(Default(value = "true"))]

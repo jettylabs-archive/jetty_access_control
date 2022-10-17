@@ -147,6 +147,14 @@ impl AssetAttributes {
         })
     }
 
+    pub(crate) fn cual(&self) -> &Cual {
+        &self.cual
+    }
+
+    pub(crate) fn asset_type(&self) -> &AssetType {
+        &self.asset_type
+    }
+
     /// Convenience constructor for testing
     #[cfg(test)]
     fn new(cual: Cual) -> Self {
@@ -164,6 +172,8 @@ impl AssetAttributes {
 pub struct TagAttributes {
     /// Name of tag
     pub name: String,
+    /// optional discription of the tag
+    pub description: Option<String>,
     /// an optional value
     pub value: Option<String>,
     /// whether the tag is to be passed through hierarchy
@@ -176,6 +186,8 @@ impl TagAttributes {
     fn merge_attributes(&self, new_attributes: &TagAttributes) -> Result<TagAttributes> {
         let name = merge_matched_field(&self.name, &new_attributes.name)
             .context("field: TagAttributes.name")?;
+        let description = merge_matched_field(&self.description, &new_attributes.description)
+            .context("field: TagAttributes.description")?;
         let value = merge_matched_field(&self.value, &new_attributes.value)
             .context("field: TagAttributes.value")?;
         let pass_through_hierarchy = merge_matched_field(
@@ -192,6 +204,7 @@ impl TagAttributes {
         Ok(TagAttributes {
             name,
             value,
+            description,
             pass_through_hierarchy,
             pass_through_lineage,
         })
@@ -202,6 +215,7 @@ impl TagAttributes {
     fn new(name: String, pass_through_hierarchy: bool, pass_through_lineage: bool) -> Self {
         Self {
             name,
+            description: None,
             value: Default::default(),
             pass_through_hierarchy,
             pass_through_lineage,

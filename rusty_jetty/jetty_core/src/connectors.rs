@@ -59,3 +59,9 @@ pub enum UserIdentifier {
 /// The kind of asset within a connector
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct AssetType(pub String);
+
+impl ToString for AssetType {
+    fn to_string(&self) -> String {
+        self.0.to_owned()
+    }
+}

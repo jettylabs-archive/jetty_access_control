@@ -176,6 +176,7 @@ impl NodeHelper for nodes::Tag {
         JettyNode::Tag(TagAttributes {
             name: self.name.to_owned(),
             value: self.value.to_owned(),
+            description: self.description.to_owned(),
             pass_through_hierarchy: self.pass_through_hierarchy,
             pass_through_lineage: self.pass_through_lineage,
         })
