@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use axum::{extract::Path, routing::get, Extension, Json, Router};
-use jetty_core::access_graph::{self, EdgeType, JettyNode, NodeName};
+use jetty_core::access_graph::{self, explore2::AssetTags, EdgeType, JettyNode, NodeName};
 use serde::Serialize;
 use serde_json::{json, Value};
 
@@ -38,113 +38,39 @@ async fn hierarchy_upstream_handler(
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<AssetWithPaths>> {
-    let upstream_paths = ag.all_matching_simple_paths_to_children(
-        &NodeName::Asset(node_id),
-        |e| matches!(e, EdgeType::ChildOf),
-        |n| matches!(n, JettyNode::Asset(_)),
-        |n| matches!(n, JettyNode::Asset(_)),
-        None,
-        None,
-    );
-
-    Json(
-        upstream_paths
-            .into_iter()
-            .map(|(k, v)| {
-                let node = &ag[k];
-                AssetWithPaths {
-                    name: node.get_string_name(),
-                    connector: node
-                        .get_node_connectors()
-                        .iter()
-                        .next()
-                        .and_then(|s| Some(s.to_owned()))
-                        .unwrap_or("unknown".to_owned()),
-                    paths: v.iter().map(|p| ag.path_as_string(p)).collect::<Vec<_>>(),
-                }
-            })
-            .collect::<Vec<_>>(),
-    )
+    asset_genealogy_with_path(node_id, ag, |e| matches!(e, EdgeType::ChildOf))
 }
 
 /// Return information about downstream assets, by hierarchy. Includes path to the current asset
-async fn hierarchy_downstream_handler() -> Json<Value> {
-    Json(json! {
-    [
-        {
-          "name": "Frozen Yogurt",
-          "platform": "snowflake",
-          "paths": ["Asset name > asset 2 > Frozen Yogurt",
-          ]
-        },
-        {
-          "name": "Ice cream sandwich",
-          "platform": "Tableau",
-          "paths": ["asset name > Asset 2 > Ice cream sandwich",
-          "asset name > asset 4 > Ice cream sandwich"]
-        },
-      ]
-        })
+async fn hierarchy_downstream_handler(
+    Path(node_id): Path<String>,
+    Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
+) -> Json<Vec<AssetWithPaths>> {
+    asset_genealogy_with_path(node_id, ag, |e| matches!(e, EdgeType::ParentOf))
 }
 
 /// Return information about upstream assets, by data lineage. Includes path to the current asset
-async fn lineage_upstream_handler() -> Json<Value> {
-    Json(json! {
-    [
-        {
-          "name": "Frozen Yogurt",
-          "platform": "snowflake",
-          "paths": ["Frozen Yogurt > asset 2 > asset name",
-          ]
-        },
-        {
-          "name": "Ice cream sandwich",
-          "platform": "Tableau",
-          "paths": ["Ice Cream sandwich 1 > Asset 2 > Asset name",
-          "asset 3 > asset 4 > asset name"]
-        },
-      ]
-        })
+async fn lineage_upstream_handler(
+    Path(node_id): Path<String>,
+    Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
+) -> Json<Vec<AssetWithPaths>> {
+    asset_genealogy_with_path(node_id, ag, |e| matches!(e, EdgeType::DerivedFrom))
 }
 
 /// Return information about downstream assets, by data lineage. Includes path to the current asset
-async fn lineage_downstream_handler() -> Json<Value> {
-    Json(json! {
-    [
-        {
-          "name": "Frozen Yogurt",
-          "platform": "snowflake",
-          "paths": ["Asset name > asset 2 > Frozen Yogurt",
-          ]
-        },
-        {
-          "name": "Ice cream sandwich",
-          "platform": "Tableau",
-          "paths": ["asset name > Asset 2 > Ice cream sandwich",
-          "asset name > asset 4 > Ice cream sandwich"]
-        },
-      ]
-        })
+async fn lineage_downstream_handler(
+    Path(node_id): Path<String>,
+    Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
+) -> Json<Vec<AssetWithPaths>> {
+    asset_genealogy_with_path(node_id, ag, |e| matches!(e, EdgeType::DerivedTo))
 }
 
 /// Return information about the tags that an asset is tagged with
-async fn tags_handler() -> Json<Value> {
-    Json(json!(
-    [
-        {
-            "name": "tag_1",
-            "sources": ["direct"]
-        },
-        {
-            "name": "pizza",
-            "sources": ["hierarchy", "lineage"]
-        },
-        {
-            "name": "my_tag",
-            "sources": ["direct", "lineage"]
-        }
-    ]
-      ))
+async fn tags_handler(
+    Path(node_id): Path<String>,
+    Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
+) -> Json<AssetTags> {
+    Json(ag.tags_for_asset_by_source(&NodeName::Asset(node_id)))
 }
 
 /// Return users that have direct access to the asset, including there level of privilege and privilege explanation
@@ -191,4 +117,39 @@ async fn users_incl_downstream_handler() -> Json<Value> {
         },
     ]
     ))
+}
+
+/// get the ascending or descending assets with paths, based on edge matcher
+fn asset_genealogy_with_path(
+    node_id: String,
+    ag: Arc<access_graph::AccessGraph>,
+    edge_matcher: fn(&EdgeType) -> bool,
+) -> Json<Vec<AssetWithPaths>> {
+    let paths = ag.all_matching_simple_paths_to_children(
+        &NodeName::Asset(node_id),
+        edge_matcher,
+        |n| matches!(n, JettyNode::Asset(_)),
+        |n| matches!(n, JettyNode::Asset(_)),
+        None,
+        None,
+    );
+
+    Json(
+        paths
+            .into_iter()
+            .map(|(k, v)| {
+                let node = &ag[k];
+                AssetWithPaths {
+                    name: node.get_string_name(),
+                    connector: node
+                        .get_node_connectors()
+                        .iter()
+                        .next()
+                        .and_then(|s| Some(s.to_owned()))
+                        .unwrap_or("unknown".to_owned()),
+                    paths: v.iter().map(|p| ag.path_as_string(p)).collect::<Vec<_>>(),
+                }
+            })
+            .collect::<Vec<_>>(),
+    )
 }

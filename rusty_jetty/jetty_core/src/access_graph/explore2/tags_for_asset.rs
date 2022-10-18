@@ -4,14 +4,23 @@
 use std::collections::{HashMap, HashSet};
 
 use petgraph::stable_graph::NodeIndex;
+use serde::Serialize;
 
 use crate::access_graph::{AccessGraph, EdgeType, JettyNode, NodeName, TagAttributes};
 
 use super::NodePath;
 
+#[derive(Serialize)]
+/// the tags that are applied to an asset
+pub struct AssetTags {
+    direct: HashSet<NodeIndex>,
+    via_lineage: HashSet<NodeIndex>,
+    via_hierarchy: HashSet<NodeIndex>,
+}
+
 impl AccessGraph {
-    /// Return accessible assets
-    pub fn tags_for_asset(&self, asset: &NodeName) -> HashSet<NodeIndex> {
+    /// Return tags for an asset, grouped by the tag source.
+    pub fn tags_for_asset_by_source(&self, asset: &NodeName) -> AssetTags {
         // get paths of tags applied through hierarchy
         let hierarchy_paths = self.get_paths_to_tags_via_inheritance(
             asset,
@@ -25,6 +34,7 @@ impl AccessGraph {
                     })
                 )
             },
+            2,
         );
 
         // get paths of tags applied through lineage
@@ -40,22 +50,15 @@ impl AccessGraph {
                     })
                 )
             },
+            2,
         );
 
         // get direct tags that aren't applied through lineage or hierarchy:
-        let single_asset_paths = self.get_paths_to_tags_via_inheritance(
+        let direct_paths = self.get_paths_to_tags_via_inheritance(
             asset,
             |e| matches!(e, EdgeType::TaggedAs),
-            |n| {
-                matches!(
-                    n,
-                    JettyNode::Tag(TagAttributes {
-                        pass_through_lineage: false,
-                        pass_through_hierarchy: false,
-                        ..
-                    })
-                )
-            },
+            |n| matches!(n, JettyNode::Tag(_)),
+            1,
         );
 
         // get the paths to nodes that have had the tag explicitly removed
@@ -67,6 +70,7 @@ impl AccessGraph {
                     || matches!(e, EdgeType::UntaggedAs)
             },
             |n| matches!(n, JettyNode::Tag(_)),
+            1,
         );
 
         // for each poison path, get a map of the tag and a HashSet of the the assets that it has been removed from
@@ -84,14 +88,23 @@ impl AccessGraph {
             })
             .collect::<HashMap<NodeIndex, HashSet<_>>>();
 
-        let mut clean_paths = remove_poisoned_paths(hierarchy_paths, &poison_nodes);
-
-        clean_paths.extend(remove_poisoned_paths(lineage_paths, &poison_nodes));
-        clean_paths.extend(remove_poisoned_paths(single_asset_paths, &poison_nodes));
-
-        clean_paths
+        AssetTags {
+            direct: remove_poisoned_paths(direct_paths, &poison_nodes),
+            via_lineage: remove_poisoned_paths(lineage_paths, &poison_nodes),
+            via_hierarchy: remove_poisoned_paths(hierarchy_paths, &poison_nodes),
+        }
 
         // Now get the hierarchy-based tags that don't have a poison tag in their path
+    }
+
+    /// get all tags applied to an asset
+    pub fn tags_for_asset(&self, asset: &NodeName) -> HashSet<NodeIndex> {
+        let asset_tags = self.tags_for_asset_by_source(asset);
+        let mut return_tags = asset_tags.direct;
+        return_tags.extend(asset_tags.via_lineage);
+        return_tags.extend(asset_tags.via_hierarchy);
+
+        return_tags
     }
 
     fn get_paths_to_tags_via_inheritance(
@@ -99,6 +112,7 @@ impl AccessGraph {
         from: &NodeName,
         edge_matcher: fn(&EdgeType) -> bool,
         target_matcher: fn(&JettyNode) -> bool,
+        min_depth: usize,
     ) -> HashMap<NodeIndex, Vec<super::NodePath>> {
         // go through inheritance to find all tags
         self.all_matching_simple_paths_to_children(
@@ -106,7 +120,7 @@ impl AccessGraph {
             edge_matcher,
             |n| matches!(n, JettyNode::Asset(_)),
             target_matcher,
-            None,
+            Some(min_depth),
             None,
         )
     }

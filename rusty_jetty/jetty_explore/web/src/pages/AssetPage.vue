@@ -8,7 +8,7 @@
             Direct Tags
           </div>
           <div class="flex justify-center">
-            <JettyBadge v-for="tag in directTags" :key="tag" :name="tag" />
+            <JettyBadge v-for="tag in allTags.direct" :key="tag" :name="tag" />
           </div>
         </q-card-section>
       </q-card>
@@ -19,7 +19,7 @@
             Inherited Tags - Hierarchy
           </div>
           <div class="flex justify-center">
-            <JettyBadge v-for="tag in hierarchyTags" :key="tag" :name="tag" />
+            <JettyBadge v-for="tag in allTags.via_hierarchy" :key="tag" :name="tag" />
           </div>
         </q-card-section>
       </q-card>
@@ -30,7 +30,7 @@
             Inherited Tags - Lineage
           </div>
           <div class="flex justify-center">
-            <JettyBadge v-for="tag in lineageTags" :key="tag" :name="tag" />
+            <JettyBadge v-for="tag in all_tags.via_lineage" :key="tag" :name="tag" />
           </div>
         </q-card-section>
       </q-card>
@@ -127,18 +127,7 @@ if (!currentNode.value) {
 
 const tab = ref("users");
 
-const allTags = ref([]);
-const directTags = computed(() =>
-  allTags.value.filter((t) => t.sources.includes("direct")).map((t) => t.name)
-);
-const hierarchyTags = computed(() =>
-  allTags.value
-    .filter((t) => t.sources.includes("hierarchy"))
-    .map((t) => t.name)
-);
-const lineageTags = computed(() =>
-  allTags.value.filter((t) => t.sources.includes("lineage")).map((t) => t.name)
-);
+const allTags = ref({direct: [], via_lineage:[], via_hierarchy: []});
 
 fetchJson("/api/asset/" + props.node_id + "/tags")
   .then((r) => (allTags.value = r))
