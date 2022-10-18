@@ -30,7 +30,7 @@
             Inherited Tags - Lineage
           </div>
           <div class="flex justify-center">
-            <JettyBadge v-for="tag in all_tags.via_lineage" :key="tag" :name="tag" />
+            <JettyBadge v-for="tag in allTags.via_lineage" :key="tag" :name="tag" />
           </div>
         </q-card-section>
       </q-card>

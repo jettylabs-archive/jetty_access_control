@@ -9,7 +9,6 @@ use jetty_core::{
     cual::Cual,
 };
 use serde::Serialize;
-use serde_json::{json, Value};
 
 use crate::{PrivilegeResponse, UserAssetsResponse};
 
@@ -34,14 +33,14 @@ pub(super) fn router() -> Router {
         .route("/:node_id/tags", get(tags_handler))
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 struct AssetWithPaths {
     name: String,
     connector: String,
     paths: Vec<String>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 struct UsersWithDownstreamAccess {
     name: String,
     connectors: HashSet<String>,
@@ -102,13 +101,15 @@ async fn direct_users_handler(
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<UserAssetsResponse>> {
     let users = ag.get_users_with_access_to_asset(Cual::new(node_id));
-    let default_name = "".to_owned();
 
     Json(
         users
             .iter()
             .map(|(u, ps)| {
-                let user_name = u.inner_value().unwrap_or(&default_name);
+                let user_name = u
+                    .inner_value()
+                    .and_then(|s| Some(s.to_owned()))
+                    .unwrap_or("".to_owned());
                 UserAssetsResponse {
                     name: user_name.to_owned(),
                     privileges: ps
@@ -133,8 +134,14 @@ async fn users_incl_downstream_handler(
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<UsersWithDownstreamAccess>> {
-    let downstream_assets =
-        asset_genealogy_with_path(node_id, ag.clone(), |e| matches!(e, EdgeType::DerivedTo));
+    let mut downstream_assets = asset_genealogy_with_path(node_id.to_owned(), ag.clone(), |e| {
+        matches!(e, EdgeType::DerivedTo)
+    });
+    downstream_assets.push(AssetWithPaths {
+        name: node_id,
+        connector: "".to_owned(),
+        paths: vec![],
+    });
 
     let user_asset_map = downstream_assets
         .into_iter()
@@ -157,9 +164,9 @@ async fn users_incl_downstream_handler(
             |mut acc, (user, asset)| {
                 acc.entry(user)
                     .and_modify(|a| {
-                        a.insert(asset);
+                        a.insert(asset.to_owned());
                     })
-                    .or_insert(HashSet::new());
+                    .or_insert(HashSet::from([asset]));
                 acc
             },
         );
