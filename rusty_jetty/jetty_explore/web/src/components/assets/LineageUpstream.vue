@@ -5,7 +5,7 @@
     :filter-method="filterMethod"
     :columns="columns"
     :csv-config="csvConfig"
-    :fetchPath="'/api/asset/' + props.node.name + '/lineage_upstream'"
+    :fetchPath="'/api/asset/' + encodeURIComponent(props.node.name) + '/lineage_upstream'"
     v-slot="slotProps"
     :tip="`Assets upstream from ${props.node.name}, based on data lineage`"
   >
@@ -14,7 +14,7 @@
         <q-item class="q-px-none">
           <q-item-section>
             <router-link
-              :to="'/asset/' + slotProps.props.row.name"
+              :to="'/asset/' + encodeURIComponent(slotProps.props.row.name)"
               style="text-decoration: none; color: inherit"
             >
               <q-item-label> {{ slotProps.props.row.name }}</q-item-label>

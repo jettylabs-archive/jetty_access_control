@@ -5,7 +5,7 @@
     :filter-method="filterMethod"
     :columns="columns"
     :csv-config="csvConfig"
-    :fetchPath="'/api/tag/' + props.node.name + '/direct_assets'"
+    :fetchPath="'/api/tag/' + encodeURIComponent(props.node.name) + '/direct_assets'"
     v-slot="slotProps"
     :tip="`Assets directly tagged with ${props.node.name}`"
   >
@@ -14,7 +14,7 @@
         <q-item class="q-px-none">
           <q-item-section>
             <router-link
-              :to="'/group/' + slotProps.props.row.name"
+              :to="'/group/' + encodeURIComponent(slotProps.props.row.name)"
               style="text-decoration: none; color: inherit"
             >
               <q-item-label> {{ slotProps.props.row.name }}</q-item-label>

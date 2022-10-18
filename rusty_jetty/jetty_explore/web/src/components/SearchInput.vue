@@ -76,7 +76,7 @@ function setModel(val) {
 
 function navigate(val) {
   model.value = null;
-  let new_path = "/" + val.type + "/" + val.name;
+  let new_path = "/" + val.type + "/" + encodeURIComponent(val.name);
   if (searchField.value) {
     searchField.value.blur();
   }

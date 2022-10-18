@@ -5,7 +5,7 @@
     :filter-method="filterMethod"
     :columns="columns"
     :csv-config="csvConfig"
-    :fetchPath="'/api/user/' + props.node.name + '/assets'"
+    :fetchPath="'/api/user/' + encodeURIComponent(props.node.name) + '/assets'"
     v-slot="slotProps"
     :tip="`All the assets ${props.node.name} has access too, including the privilege levels and
     sources of those privileges`"
@@ -15,7 +15,7 @@
         <q-item class="q-px-none">
           <q-item-section>
             <router-link
-              :to="'/asset/' + slotProps.props.row.name"
+              :to="'/asset/' + encodeURIComponent(slotProps.props.row.name)"
               style="text-decoration: none; color: inherit"
             >
               <q-item-label> {{ slotProps.props.row.name }}</q-item-label>

@@ -5,7 +5,7 @@
     :filter-method="filterMethod"
     :columns="columns"
     :csv-config="csvConfig"
-    :fetchPath="'/api/asset/' + props.node.name + '/hierarchy_downstream'"
+    :fetchPath="'/api/asset/' + encodeURIComponent(props.node.name) + '/hierarchy_downstream'"
     v-slot="slotProps"
     :tip="`Assets downstream from ${props.node.name}, based on object hierarchy`"
   >
@@ -14,7 +14,7 @@
         <q-item class="q-px-none">
           <q-item-section>
             <router-link
-              :to="'/asset/' + slotProps.props.row.name"
+              :to="'/asset/' + encodeURIComponent(slotProps.props.row.name)"
               style="text-decoration: none; color: inherit"
             >
               <q-item-label> {{ slotProps.props.row.name }}</q-item-label>

@@ -47,22 +47,22 @@
         <q-route-tab
           name="users"
           label="Direct Access"
-          :to="'/asset/' + props.node_id + '/direct_access'"
+          :to="'/asset/' + encodeURIComponent(props.node_id) + '/direct_access'"
         />
         <q-route-tab
           name="all_users"
           label="Any Access"
-          :to="'/asset/' + props.node_id + '/any_access'"
+          :to="'/asset/' + encodeURIComponent(props.node_id) + '/any_access'"
         />
         <q-route-tab
           name="hierarchy"
           label="Hierarchy"
-          :to="'/asset/' + props.node_id + '/hierarchy'"
+          :to="'/asset/' + encodeURIComponent(props.node_id) + '/hierarchy'"
         />
         <q-route-tab
           name="lineage"
           label="Lineage"
-          :to="'/asset/' + props.node_id + '/lineage'"
+          :to="'/asset/' + encodeURIComponent(props.node_id) + '/lineage'"
         />
       </q-tabs>
 

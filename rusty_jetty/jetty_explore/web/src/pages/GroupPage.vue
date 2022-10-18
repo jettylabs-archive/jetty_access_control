@@ -13,17 +13,17 @@
         <q-route-tab
           name="all_members"
           label="All Members"
-          :to="'/group/' + props.node_id + '/all_members'"
+          :to="'/group/' + encodeURIComponent(props.node_id) + '/all_members'"
         />
         <q-route-tab
           name="direct_members"
           label="Direct Members"
-          :to="'/group/' + props.node_id + '/direct_members'"
+          :to="'/group/' + encodeURIComponent(props.node_id) + '/direct_members'"
         />
         <q-route-tab
           name="member_of"
           label="Member Of"
-          :to="'/group/' + props.node_id + '/member_of'"
+          :to="'/group/' + encodeURIComponent(props.node_id) + '/member_of'"
         />
       </q-tabs>
 

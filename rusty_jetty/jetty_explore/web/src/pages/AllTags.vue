@@ -14,7 +14,7 @@
           <q-item class="q-px-none">
             <q-item-section>
               <router-link
-                :to="'/tag/' + slotProps.props.row.name"
+                :to="'/tag/' + encodeURIComponent(slotProps.props.row.name)"
                 style="text-decoration: none; color: inherit"
               >
                 <q-item-label> {{ slotProps.props.row.name }}</q-item-label>
