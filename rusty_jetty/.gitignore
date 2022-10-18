@@ -25,3 +25,4 @@ Cargo.lock
 .vscode/
 
 jetty_graph
+tags.yaml

@@ -29,7 +29,8 @@ use std::io::BufWriter;
 use std::ops::{Index, IndexMut};
 
 use anyhow::{anyhow, Context, Result};
-use petgraph::stable_graph::{NodeIndex, StableGraph};
+// reexporting for use in other packages
+pub use petgraph::stable_graph::NodeIndex;
 use petgraph::Directed;
 use serde::Deserialize;
 use serde::Serialize;
@@ -58,8 +59,7 @@ impl UserAttributes {
     fn merge_attributes(&self, new_attributes: &UserAttributes) -> Result<UserAttributes> {
         let name = merge_matched_field(&self.name, &new_attributes.name)
             .context("field: UserAttributes.name")?;
-        let identifiers = merge_matched_field(&self.identifiers, &new_attributes.identifiers)
-            .context("field: UserAttributes.identifiers")?;
+        let identifiers = merge_set(&self.identifiers, &new_attributes.identifiers);
         let other_identifiers =
             merge_set(&self.other_identifiers, &new_attributes.other_identifiers);
         let metadata = merge_map(&self.metadata, &new_attributes.metadata)
@@ -594,7 +594,10 @@ impl AccessGraph {
 }
 
 #[allow(dead_code)]
-fn merge_set(s1: &HashSet<String>, s2: &HashSet<String>) -> HashSet<String> {
+fn merge_set<T>(s1: &HashSet<T>, s2: &HashSet<T>) -> HashSet<T>
+where
+    T: Eq + Hash + Clone,
+{
     let mut s1 = s1.to_owned();
     let s2 = s2.to_owned();
     s1.extend(s2);

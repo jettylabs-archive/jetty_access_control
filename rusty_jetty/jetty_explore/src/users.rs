@@ -1,4 +1,7 @@
-use std::sync::Arc;
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 use anyhow::Context;
 use axum::{extract::Path, routing::get, Extension, Json, Router};
@@ -7,8 +10,9 @@ use serde_json::{json, Value};
 
 use super::ObjectWithPathResponse;
 use jetty_core::{
-    access_graph::{self, EdgeType, JettyNode, NodeName},
+    access_graph::{self, EdgeType, JettyNode, NodeIndex, NodeName},
     connectors::UserIdentifier,
+    cual::Cual,
     logging::info,
 };
 
@@ -82,32 +86,42 @@ async fn assets_handler(
     )
 }
 
+#[derive(Serialize)]
+pub(crate) struct TagWithAssets {
+    name: String,
+    assets: Vec<AssetBasics>,
+}
+
+#[derive(Serialize)]
+pub(crate) struct AssetBasics {
+    name: String,
+    connectors: HashSet<String>,
+}
+
 /// Return information about a users access to tagged assets, grouped by tag
-async fn tags_handler() -> Json<Value> {
-    Json(json! {
-                [
-      {
-        "name": "Frozen Yogurt",
-        "assets": [
-          { "name": "asset 1 with a much longer name", "platform": "tableau" },
-          { "name": "asset 2", "platform": "tableau" },
-          { "name": "asset 3", "platform": "tableau" },
-          { "name": "asset 4", "platform": "tableau" },
-          { "name": "asset 5", "platform": "tableau" },
-        ],
-      },
-      {
-        "name": "Ice cream sandwich",
-        "assets": [
-          { "name": "asset 1", "platform": "tableau" },
-          { "name": "asset 2", "platform": "tableau" },
-          { "name": "asset 3", "platform": "tableau" },
-          { "name": "asset 4", "platform": "tableau" },
-          { "name": "asset 5", "platform": "tableau" },
-        ],
-      },
-    ]
-            })
+async fn tags_handler(
+    Path(node_id): Path<String>,
+    Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
+) -> Json<Vec<TagWithAssets>> {
+    // get all the user_accessable assets
+    let tag_asset_map = ag.get_user_accessible_tags(&UserIdentifier::Email(node_id));
+
+    let response = tag_asset_map
+        .into_iter()
+        .map(|(t, v)| (&ag[t], v))
+        .map(|(t, v)| TagWithAssets {
+            name: t.get_string_name(),
+            assets: v
+                .iter()
+                .map(|v| AssetBasics {
+                    name: v.get_string_name(),
+                    connectors: v.get_node_connectors(),
+                })
+                .collect(),
+        })
+        .collect::<Vec<_>>();
+
+    Json(response)
 }
 
 /// Returns groups that user is a direct member of
@@ -116,8 +130,6 @@ async fn direct_groups_handler(
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<access_graph::GroupAttributes>> {
     let from = NodeName::User(node_id);
-
-    info!("{:?}", ag.extract_graph(&from, 1).dot());
 
     let group_nodes = ag.get_matching_children(
         &from,
