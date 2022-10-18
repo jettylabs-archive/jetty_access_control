@@ -129,7 +129,7 @@ const tab = ref("users");
 
 const allTags = ref({direct: [], via_lineage:[], via_hierarchy: []});
 
-fetchJson("/api/asset/" + props.node_id + "/tags")
+fetchJson("/api/asset/" + encodeURIComponent(props.node_id) + "/tags")
   .then((r) => (allTags.value = r))
   .catch((error) => console.log("unable to fetch: ", error));
 </script>

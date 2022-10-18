@@ -10,12 +10,15 @@ use crate::access_graph::{AccessGraph, EdgeType, JettyNode, NodeName, TagAttribu
 
 use super::NodePath;
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 /// the tags that are applied to an asset
 pub struct AssetTags {
-    direct: HashSet<NodeIndex>,
-    via_lineage: HashSet<NodeIndex>,
-    via_hierarchy: HashSet<NodeIndex>,
+    /// Tags applied directly
+    pub direct: HashSet<NodeIndex>,
+    /// Tags inherited via lineage
+    pub via_lineage: HashSet<NodeIndex>,
+    /// Tags inherited via hierarchy
+    pub via_hierarchy: HashSet<NodeIndex>,
 }
 
 impl AccessGraph {

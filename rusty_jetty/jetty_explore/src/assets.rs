@@ -5,7 +5,7 @@ use std::{
 
 use axum::{extract::Path, routing::get, Extension, Json, Router};
 use jetty_core::{
-    access_graph::{self, explore2::AssetTags, EdgeType, JettyNode, NodeName},
+    access_graph::{self, EdgeType, JettyNode, NodeName},
     cual::Cual,
 };
 use serde::Serialize;
@@ -45,6 +45,13 @@ struct UsersWithDownstreamAccess {
     name: String,
     connectors: HashSet<String>,
     assets: HashSet<String>,
+}
+
+#[derive(Serialize, Debug)]
+struct AssetTagStrings {
+    direct: Vec<String>,
+    via_lineage: Vec<String>,
+    via_hierarchy: Vec<String>,
 }
 
 /// Return information about upstream assets, by hierarchy. Includes path to the current asset
@@ -91,8 +98,26 @@ async fn lineage_downstream_handler(
 async fn tags_handler(
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
-) -> Json<AssetTags> {
-    Json(ag.tags_for_asset_by_source(&NodeName::Asset(node_id)))
+) -> Json<AssetTagStrings> {
+    let tags = ag.tags_for_asset_by_source(&NodeName::Asset(node_id));
+
+    Json(AssetTagStrings {
+        direct: tags
+            .direct
+            .into_iter()
+            .map(|t| ag[t].get_string_name())
+            .collect(),
+        via_lineage: tags
+            .via_lineage
+            .into_iter()
+            .map(|t| ag[t].get_string_name())
+            .collect(),
+        via_hierarchy: tags
+            .via_hierarchy
+            .into_iter()
+            .map(|t| ag[t].get_string_name())
+            .collect(),
+    })
 }
 
 /// Return users that have direct access to the asset, including their levels of privilege and privilege explanation
