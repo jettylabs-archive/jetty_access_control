@@ -72,7 +72,7 @@ const filterMethod = (rows, terms) => {
     needles.every(
       (needle) =>
         r.name.toLocaleLowerCase().indexOf(needle) > -1 ||
-        r.connector.toLocaleLowerCase().indexOf(needle) > -1 ||
+        r.connectors.join(" ").toLocaleLowerCase().indexOf(needle) > -1 ||
         r.privileges
           .map((a) => a.name)
           .join(" ")
