@@ -252,7 +252,7 @@ impl<'a> Coordinator<'a> {
         let mut res = vec![];
         for user in &self.env.users {
             res.push(nodes::User::new(
-                user.name.to_owned(),
+                user.email.to_owned(),
                 HashSet::from([
                     UserIdentifier::Email(user.email.to_owned()),
                     UserIdentifier::FirstName(user.first_name.to_owned()),

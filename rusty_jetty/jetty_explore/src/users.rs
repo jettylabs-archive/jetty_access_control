@@ -157,8 +157,6 @@ async fn direct_groups_handler(
 ) -> Json<Vec<access_graph::GroupAttributes>> {
     let from = NodeName::User(node_id);
 
-    info!("{:?}", ag.extract_graph(&from, 1).dot());
-
     let group_nodes = ag.get_matching_children(
         &from,
         |n| matches!(n, EdgeType::MemberOf),
