@@ -16,7 +16,7 @@ pub type SparseMatrix<X, Y, T> = HashMap<X, HashMap<Y, T>>;
 
 /// Mode for a permission that's either "allow," "deny," "none," or something
 /// else with a given explanation.
-#[derive(Debug, Default, Hash, PartialEq, Eq, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, Hash, PartialEq, Eq, Clone, Serialize, Deserialize, PartialOrd, Ord)]
 pub enum PermissionMode {
     /// Allow this permission.
     Allow,
@@ -39,7 +39,7 @@ impl From<&str> for PermissionMode {
     }
 }
 /// An effective permission
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize, PartialOrd, Ord)]
 pub struct EffectivePermission {
     /// The privilege granted/denied for this permission.
     pub privilege: String,

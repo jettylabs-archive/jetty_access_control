@@ -235,7 +235,6 @@ macro_rules! impl_Cualable {
                         env,
                     )
                     .expect(&format!("making cual for tableau asset {:?}", TableauAssetType::$t))
-
             }
         })*
     }
@@ -251,7 +250,7 @@ impl_Cualable!(for
 impl TableauCualable for View {
     fn cual(&self, env: &Environment) -> Cual {
         get_tableau_cual(
-            TableauAssetType::Metric,
+            TableauAssetType::View,
             &self.name,
             self.get_parent_project_id(),
             Some(&self.workbook_id),

@@ -398,17 +398,3 @@ impl FetchJson for reqwest::RequestBuilder {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use anyhow::Context;
-
-    #[tokio::test]
-    async fn test_fetching_token_works() -> Result<()> {
-        connector_setup()
-            .await
-            .context("running tableau connector setup")?;
-        Ok(())
-    }
-}

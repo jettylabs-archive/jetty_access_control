@@ -93,18 +93,6 @@ mod tests {
     use super::*;
     use jetty_core::logging::debug;
 
-    #[tokio::test]
-    async fn test_fetching_users_works() -> Result<()> {
-        let tc = crate::connector_setup()
-            .await
-            .context("running tableau connector setup")?;
-        let users = get_basic_users(&tc.coordinator.rest_client).await?;
-        for (_k, v) in users {
-            debug!("{}", v.name);
-        }
-        Ok(())
-    }
-
     #[test]
     #[allow(unused_must_use)]
     fn test_jetty_user_from_user_works() {

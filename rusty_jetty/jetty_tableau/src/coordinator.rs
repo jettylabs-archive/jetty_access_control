@@ -305,27 +305,6 @@ mod test {
 
     use super::*;
 
-    #[tokio::test]
-    async fn test_update_env() -> Result<()> {
-        let mut tc = crate::connector_setup()
-            .await
-            .context("running tableau connector setup")?;
-
-        tc.coordinator.update_env().await?;
-
-        let total_assets = tc.coordinator.env.datasources.len()
-            + tc.coordinator.env.flows.len()
-            + tc.coordinator.env.groups.len()
-            + tc.coordinator.env.lenses.len()
-            + tc.coordinator.env.metrics.len()
-            + tc.coordinator.env.projects.len()
-            + tc.coordinator.env.users.len()
-            + tc.coordinator.env.views.len()
-            + tc.coordinator.env.workbooks.len();
-        dbg!(total_assets);
-        Ok(())
-    }
-
     #[test]
     fn test_get_recursive_projects_for_yields_correct_order() {
         let mut env = Environment::default();
