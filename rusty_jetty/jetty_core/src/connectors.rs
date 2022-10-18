@@ -40,7 +40,6 @@ pub trait Connector {
 }
 
 /// Enum of identifiers used to resolve user identities
-
 #[derive(Debug, Default, Clone, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub enum UserIdentifier {
     /// User's first name
@@ -54,6 +53,19 @@ pub enum UserIdentifier {
     /// Shouldn't be used other than as a default.
     #[default]
     Unknown,
+}
+
+impl UserIdentifier {
+    /// Helper function to return the inner value of a UserIdentifier.
+    pub fn inner_value(&self) -> Option<&String> {
+        match self {
+            UserIdentifier::FirstName(s) => Some(s),
+            UserIdentifier::LastName(s) => Some(s),
+            UserIdentifier::FullName(s) => Some(s),
+            UserIdentifier::Email(s) => Some(s),
+            UserIdentifier::Unknown => None,
+        }
+    }
 }
 
 /// The kind of asset within a connector

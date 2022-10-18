@@ -22,7 +22,11 @@
             </router-link>
 
             <q-item-label caption>
-              <JettyBadge :name="slotProps.props.row.connector" />
+              <JettyBadge
+                v-for="platform in slotProps.props.row.connectors"
+                :key="platform"
+                :name="platform"
+              />
             </q-item-label>
           </q-item-section>
         </q-item>
@@ -102,7 +106,7 @@ const csvConfig = {
   mappingFn: (filteredSortedRows) =>
     filteredSortedRows.flatMap((r) =>
       r.privileges.flatMap((p) =>
-        p.explanations.map((e) => [r.name, r.connector, p.name, e])
+        p.explanations.map((e) => [r.name, r.connectors.join(", "), p.name, e])
       )
     ),
 };

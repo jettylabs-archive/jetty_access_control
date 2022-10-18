@@ -13,7 +13,7 @@ mod users;
 use std::{collections::HashSet, net::SocketAddr, sync::Arc};
 
 use axum::{extract::Extension, routing::get, Json, Router};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tower_http::trace::TraceLayer;
 
@@ -28,6 +28,20 @@ pub(crate) struct ObjectWithPathResponse {
     name: String,
     connectors: HashSet<String>,
     membership_paths: Vec<String>,
+}
+
+/// Struct used to return asset access information
+#[derive(Serialize, Deserialize)]
+pub(crate) struct UserAssetsResponse {
+    name: String,
+    privileges: Vec<PrivilegeResponse>,
+    connectors: HashSet<String>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub(crate) struct PrivilegeResponse {
+    name: String,
+    explanations: Vec<String>,
 }
 
 /// Launch the Jetty Explore web ui and accompanying server

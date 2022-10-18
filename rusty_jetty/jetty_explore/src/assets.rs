@@ -1,9 +1,14 @@
 use std::sync::Arc;
 
 use axum::{extract::Path, routing::get, Extension, Json, Router};
-use jetty_core::access_graph::{self, explore2::AssetTags, EdgeType, JettyNode, NodeName};
+use jetty_core::{
+    access_graph::{self, explore2::AssetTags, EdgeType, JettyNode, NodeName},
+    cual::Cual,
+};
 use serde::Serialize;
 use serde_json::{json, Value};
+
+use crate::{PrivilegeResponse, UserAssetsResponse};
 
 /// Return a router to handle all asset-related requests
 pub(super) fn router() -> Router {
@@ -73,32 +78,36 @@ async fn tags_handler(
     Json(ag.tags_for_asset_by_source(&NodeName::Asset(node_id)))
 }
 
-/// Return users that have direct access to the asset, including there level of privilege and privilege explanation
-async fn direct_users_handler() -> Json<Value> {
-    Json(json!(
-    [
-        {
-            "name": "Isaac",
-            "privileges": [
-            {
-                "name": "p1",
-                "explanations": [
-                "what happens we have really long explanations what happens we have really long explanations",
-                "what happens we have really long",
-                ],
-            },
-            { "name": "p2", "explanations": ["reason 1", "reason 2"] },
-            { "name": "p3", "explanations": ["reason 1", "reason 2"] },
-            ],
-            "platforms": ["tableau", "snowflake"],
-        },
-        {
-            "name": "Ice cream sandwich",
-            "privileges": [{ "name": "p1", "explanations": ["reason 1", "reason 2"] }],
-            "platforms": ["snowflake"],
-        },
-    ]
-    ))
+/// Return users that have direct access to the asset, including their levels of privilege and privilege explanation
+async fn direct_users_handler(
+    Path(node_id): Path<String>,
+    Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
+) -> Json<Vec<UserAssetsResponse>> {
+    let users = ag.get_users_with_access_to_asset(Cual::new(node_id));
+    let default_name = "".to_owned();
+
+    Json(
+        users
+            .iter()
+            .map(|(u, ps)| {
+                let user_name = u.inner_value().unwrap_or(&default_name);
+                UserAssetsResponse {
+                    name: user_name.to_owned(),
+                    privileges: ps
+                        .iter()
+                        .map(|p| PrivilegeResponse {
+                            name: p.privilege.to_owned(),
+                            explanations: p.reasons.to_owned(),
+                        })
+                        .collect(),
+                    connectors: ag
+                        .get_node(&NodeName::User(user_name.to_owned()))
+                        .unwrap()
+                        .get_node_connectors(),
+                }
+            })
+            .collect(),
+    )
 }
 
 /// Return users that have access to this asset directly, or through downstream assets (via data lineage)

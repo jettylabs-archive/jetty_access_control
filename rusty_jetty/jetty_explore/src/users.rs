@@ -8,6 +8,8 @@ use axum::{extract::Path, routing::get, Extension, Json, Router};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
+use crate::{PrivilegeResponse, UserAssetsResponse};
+
 use super::ObjectWithPathResponse;
 use jetty_core::{
     access_graph::{self, EdgeType, JettyNode, NodeIndex, NodeName},
@@ -26,20 +28,6 @@ pub(super) fn router() -> Router {
             "/:user_name/inherited_groups",
             get(inherited_groups_handler),
         )
-}
-
-/// Struct used to return asset access information
-#[derive(Serialize, Deserialize)]
-struct UserAssetsResponse {
-    name: String,
-    privileges: Vec<PrivilegeResponse>,
-    connector: String,
-}
-
-#[derive(Serialize, Deserialize)]
-struct PrivilegeResponse {
-    name: String,
-    explanations: Vec<String>,
 }
 
 /// Return information about a user's access to assets, including privilege and explanation
@@ -74,13 +62,7 @@ async fn assets_handler(
                         explanations: p.reasons.to_owned(),
                     })
                     .collect(),
-                connector: k
-                    .get_node_connectors()
-                    .iter()
-                    .next()
-                    .context(format!("asset is missing a connector: {:?}", k))
-                    .unwrap()
-                    .to_owned(),
+                connectors: k.get_node_connectors(),
             })
             .collect(),
     )
