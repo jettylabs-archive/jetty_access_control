@@ -22,6 +22,7 @@ use jetty_core::{
         nodes::{Asset as JettyAsset, ConnectorData},
     },
     jetty::{ConnectorConfig, CredentialsBlob},
+    logging::info,
     Connector,
 };
 
@@ -63,6 +64,7 @@ impl Connector for DbtConnector {
         set_cual_account_name(&credentials["snowflake_account"]);
         let manifest = DbtManifest::new(&credentials["project_dir"])
             .context("creating dbt manifest object")?;
+        info!("wowza from dbt");
         Self::new_with_manifest(manifest)
     }
 
