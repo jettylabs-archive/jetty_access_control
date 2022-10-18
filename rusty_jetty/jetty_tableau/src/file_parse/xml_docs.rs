@@ -5,6 +5,7 @@ use jetty_core::logging::error;
 use regex::Regex;
 
 use super::{
+    origin::SourceOrigin,
     snowflake_common::{self},
     NamedConnection, RelationType,
 };
@@ -18,24 +19,26 @@ enum Relation {
 
 /// This Macro implements to_cuals for Relation by matching on
 /// the inner enum types
-macro_rules! impl_to_cuals {
+macro_rules! impl_to_origins {
     ($($t:tt),+) => {
         impl Relation {
-            fn to_cuals(&self) -> Result<Vec<String>> {
+            fn to_origins(&self) -> Result<Vec<SourceOrigin>> {
                 match self {
-                    $(Relation::$t(n) => n.to_cuals(),)*
+                    $(Relation::$t(n) => n.to_cuals().map(|cuals|{
+                        cuals.into_iter().map(|c|SourceOrigin::from_cual(c)).collect()
+                    }),)*
                 }
             }
         }
     }
 }
 
-impl_to_cuals!(SnowflakeTable, SnowflakeQuery);
+impl_to_origins!(SnowflakeTable, SnowflakeQuery);
 
 /// Gets cuals from an xml file by parsing the file, pulling out the relevant relations,
 /// and building an identifier from it.
 #[allow(unused)]
-pub(crate) fn parse(data: &str) -> Result<HashSet<String>> {
+pub(crate) fn parse(data: &str) -> Result<HashSet<SourceOrigin>> {
     let doc = roxmltree::Document::parse(data).unwrap();
 
     // filter the doc down to the connection info
@@ -55,18 +58,18 @@ pub(crate) fn parse(data: &str) -> Result<HashSet<String>> {
     // pull out the relations
     let relations = get_relations(connection_info, named_connections);
 
-    let mut cuals = HashSet::new();
+    let mut origins = HashSet::new();
 
     for r in relations {
-        let c = r.to_cuals().unwrap_or_else(|e| {
-            error!("unable to create qual from {:#?}", r);
+        let c = r.to_origins().unwrap_or_else(|e| {
+            error!("unable to create source origin from {:#?}", r);
             vec![]
         });
 
-        cuals.extend(c);
+        origins.extend(c);
     }
 
-    Ok(cuals)
+    Ok(origins)
 }
 
 /// Given a <named-connections> node, look at the children and pull out named connection information.

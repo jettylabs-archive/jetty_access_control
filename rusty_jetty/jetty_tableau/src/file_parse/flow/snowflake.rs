@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use anyhow::Result;
+use jetty_core::cual::Cual;
 use serde::Deserialize;
 
 use super::FlowDoc;
@@ -23,7 +24,7 @@ fn get_server_info(doc: &FlowDoc, connection_id: &String) -> Result<String> {
 pub(super) fn get_input_table_cuals(
     doc: &FlowDoc,
     node: &serde_json::Value,
-) -> Result<HashSet<String>> {
+) -> Result<HashSet<Cual>> {
     #[derive(Deserialize)]
     struct TableRelation {
         table: String,
@@ -48,15 +49,13 @@ pub(super) fn get_input_table_cuals(
         schema: table_info.connection_attributes.schema,
     };
 
-    Ok(HashSet::from_iter(
-        snowflake_table.to_cuals()?.iter().cloned(),
-    ))
+    Ok(snowflake_table.to_cuals()?.iter().cloned().collect())
 }
 
 pub(super) fn get_output_table_cuals(
     doc: &FlowDoc,
     node: &serde_json::Value,
-) -> Result<HashSet<String>> {
+) -> Result<HashSet<Cual>> {
     #[derive(Deserialize)]
     struct OutputDbAttributes {
         schema: String,
@@ -88,15 +87,13 @@ pub(super) fn get_output_table_cuals(
         schema: table_info.attributes.schema,
     };
 
-    Ok(HashSet::from_iter(
-        snowflake_table.to_cuals()?.iter().cloned(),
-    ))
+    Ok(snowflake_table.to_cuals()?.iter().cloned().collect())
 }
 
 pub(super) fn get_input_query_cuals(
     doc: &FlowDoc,
     node: &serde_json::Value,
-) -> Result<HashSet<String>> {
+) -> Result<HashSet<Cual>> {
     #[derive(Deserialize)]
     struct QueryRelation {
         query: String,
