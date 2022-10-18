@@ -129,6 +129,7 @@ impl FromTableau<Workbook> for jetty_nodes::Asset {
             TableauAssetType::Workbook,
             &val.name,
             Some(&val.project_id),
+            None,
             env,
         )
         .expect("Generating cual from workbook");
