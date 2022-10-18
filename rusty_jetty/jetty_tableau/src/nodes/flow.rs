@@ -159,6 +159,7 @@ impl FromTableau<Flow> for jetty_nodes::Asset {
             TableauAssetType::Flow,
             &val.name,
             Some(&val.project_id),
+            None,
             env,
         )
         .expect("Generating cual from flow");

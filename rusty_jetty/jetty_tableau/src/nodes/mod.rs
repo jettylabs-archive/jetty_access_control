@@ -144,6 +144,7 @@ pub(crate) trait OwnedAsset: TableauAsset {
                 TableauAssetType::Project,
                 &project.name,
                 project.parent_project_id.as_ref(),
+                None,
                 env,
             )
             .ok()
@@ -230,6 +231,7 @@ macro_rules! impl_Cualable {
                         TableauAssetType::$t,
                         &self.name,
                         self.get_parent_project_id(),
+                        None,
                         env,
                     )
                     .expect(&format!("making cual for tableau asset {:?}", TableauAssetType::$t))
@@ -241,13 +243,49 @@ macro_rules! impl_Cualable {
 
 impl_Cualable!(for
     Workbook,
-    View,
     Datasource,
-    Metric,
     Flow,
-    Lens,
     Project
 );
+
+impl TableauCualable for View {
+    fn cual(&self, env: &Environment) -> Cual {
+        get_tableau_cual(
+            TableauAssetType::Metric,
+            &self.name,
+            self.get_parent_project_id(),
+            Some(&self.workbook_id),
+            env,
+        )
+        .expect("making cual for view")
+    }
+}
+
+impl TableauCualable for Metric {
+    fn cual(&self, env: &Environment) -> Cual {
+        get_tableau_cual(
+            TableauAssetType::Metric,
+            &self.name,
+            self.get_parent_project_id(),
+            Some(&self.underlying_view_id),
+            env,
+        )
+        .expect("making cual for metric")
+    }
+}
+
+impl TableauCualable for Lens {
+    fn cual(&self, env: &Environment) -> Cual {
+        get_tableau_cual(
+            TableauAssetType::Lens,
+            &self.name,
+            self.get_parent_project_id(),
+            Some(&self.datasource_id),
+            env,
+        )
+        .expect("making cual for lens")
+    }
+}
 
 /// Helper struct for deserializing Tableau assets
 #[derive(Deserialize, Debug, Clone)]

@@ -88,6 +88,7 @@ impl FromTableau<Lens> for jetty_nodes::Asset {
             TableauAssetType::Datasource,
             &val.name,
             Some(&val.project_id),
+            Some(&val.datasource_id),
             env,
         )
         .expect("Generating cual from Lens");
@@ -99,6 +100,7 @@ impl FromTableau<Lens> for jetty_nodes::Asset {
             TableauAssetType::Datasource,
             &parent_datasource.name,
             Some(&parent_datasource.project_id),
+            None,
             env,
         )
         .expect("getting parent cual")
@@ -146,7 +148,6 @@ impl Permissionable for Lens {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::rest::set_cual_prefix;
     use anyhow::{Context, Result};
     use jetty_core::logging::debug;
 

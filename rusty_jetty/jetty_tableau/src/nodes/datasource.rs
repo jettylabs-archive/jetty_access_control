@@ -66,6 +66,7 @@ impl FromTableau<Datasource> for jetty_nodes::Asset {
             TableauAssetType::Datasource,
             &val.name,
             Some(&val.project_id),
+            None,
             env,
         )
         .expect("Generating cual from datasource");

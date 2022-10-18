@@ -108,6 +108,7 @@ impl FromTableau<Metric> for jetty_nodes::Asset {
             TableauAssetType::Metric,
             &val.name,
             Some(&val.project_id),
+            Some(&val.underlying_view_id),
             env,
         )
         .expect("Generating cual from Lens");
@@ -119,6 +120,7 @@ impl FromTableau<Metric> for jetty_nodes::Asset {
             TableauAssetType::View,
             &underlying_view.name,
             Some(&underlying_view.project_id),
+            Some(&underlying_view.workbook_id),
             env,
         )
         .expect("getting parent cual")

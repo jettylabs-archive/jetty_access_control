@@ -100,6 +100,7 @@ impl FromTableau<View> for jetty_nodes::Asset {
             TableauAssetType::View,
             &val.name,
             Some(&val.project_id),
+            Some(&val.workbook_id),
             env,
         )
         .expect("Generating cual from Lens");
@@ -111,6 +112,7 @@ impl FromTableau<View> for jetty_nodes::Asset {
             TableauAssetType::Workbook,
             &parent_workbook.name,
             Some(&parent_workbook.project_id),
+            None,
             env,
         )
         .expect("getting parent cual")
