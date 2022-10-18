@@ -353,80 +353,84 @@ mod tests {
         let m = PermissionManager::new(coordinator);
 
         let ep = m.get_effective_permissions_for_asset(&m.coordinator.env.flows);
+        let mut expected = vec![
+            EffectivePermission {
+                privilege: "Read".to_owned(),
+                mode: PermissionMode::Allow,
+                reasons: vec![
+                    "user is the owner of this content".to_owned(),
+                    "user has site role SiteAdministratorCreator".to_owned(),
+                ],
+            },
+            EffectivePermission {
+                privilege: "Write".to_owned(),
+                mode: PermissionMode::Allow,
+                reasons: vec![
+                    "user is the owner of this content".to_owned(),
+                    "user has site role SiteAdministratorCreator".to_owned(),
+                ],
+            },
+            EffectivePermission {
+                privilege: "ChangeHierarchy".to_owned(),
+                mode: PermissionMode::Allow,
+                reasons: vec![
+                    "user is the owner of this content".to_owned(),
+                    "user has site role SiteAdministratorCreator".to_owned(),
+                ],
+            },
+            EffectivePermission {
+                privilege: "Execute".to_owned(),
+                mode: PermissionMode::Allow,
+                reasons: vec![
+                    "user is the owner of this content".to_owned(),
+                    "user has site role SiteAdministratorCreator".to_owned(),
+                ],
+            },
+            EffectivePermission {
+                privilege: "Delete".to_owned(),
+                mode: PermissionMode::Allow,
+                reasons: vec![
+                    "user is the owner of this content".to_owned(),
+                    "user has site role SiteAdministratorCreator".to_owned(),
+                ],
+            },
+            EffectivePermission {
+                privilege: "ExportXml".to_owned(),
+                mode: PermissionMode::Allow,
+                reasons: vec![
+                    "user is the owner of this content".to_owned(),
+                    "user has site role SiteAdministratorCreator".to_owned(),
+                ],
+            },
+            EffectivePermission {
+                privilege: "ChangePermissions".to_owned(),
+                mode: PermissionMode::Allow,
+                reasons: vec![
+                    "user is the owner of this content".to_owned(),
+                    "user has site role SiteAdministratorCreator".to_owned(),
+                ],
+            },
+            EffectivePermission {
+                privilege: "WebAuthoringForFlows".to_owned(),
+                mode: PermissionMode::Allow,
+                reasons: vec![
+                    "user is the owner of this content".to_owned(),
+                    "user has site role SiteAdministratorCreator".to_owned(),
+                ],
+            },
+        ];
+
+        expected.sort();
+        let mut result = ep[&UserIdentifier::Email("".to_owned())]
+            [&Cual::new("tableau://dummy-server@dummy-site//".to_owned())]
+            .clone()
+            .into_iter()
+            .collect::<Vec<_>>();
+        result.sort();
         assert_eq!(
-            ep,
-            HashMap::from([(
-                UserIdentifier::Email("".to_owned(),),
-                HashMap::from([(
-                    Cual::new("tableau://dummy-server@dummy-site".to_owned(),),
-                    HashSet::from([
-                        EffectivePermission {
-                            privilege: "Read".to_owned(),
-                            mode: PermissionMode::Allow,
-                            reasons: vec![
-                                "user is the owner of this content".to_owned(),
-                                "user has site role SiteAdministratorCreator".to_owned(),
-                            ],
-                        },
-                        EffectivePermission {
-                            privilege: "Write".to_owned(),
-                            mode: PermissionMode::Allow,
-                            reasons: vec![
-                                "user is the owner of this content".to_owned(),
-                                "user has site role SiteAdministratorCreator".to_owned(),
-                            ],
-                        },
-                        EffectivePermission {
-                            privilege: "ChangeHierarchy".to_owned(),
-                            mode: PermissionMode::Allow,
-                            reasons: vec![
-                                "user is the owner of this content".to_owned(),
-                                "user has site role SiteAdministratorCreator".to_owned(),
-                            ],
-                        },
-                        EffectivePermission {
-                            privilege: "Execute".to_owned(),
-                            mode: PermissionMode::Allow,
-                            reasons: vec![
-                                "user is the owner of this content".to_owned(),
-                                "user has site role SiteAdministratorCreator".to_owned(),
-                            ],
-                        },
-                        EffectivePermission {
-                            privilege: "Delete".to_owned(),
-                            mode: PermissionMode::Allow,
-                            reasons: vec![
-                                "user is the owner of this content".to_owned(),
-                                "user has site role SiteAdministratorCreator".to_owned(),
-                            ],
-                        },
-                        EffectivePermission {
-                            privilege: "ExportXml".to_owned(),
-                            mode: PermissionMode::Allow,
-                            reasons: vec![
-                                "user is the owner of this content".to_owned(),
-                                "user has site role SiteAdministratorCreator".to_owned(),
-                            ],
-                        },
-                        EffectivePermission {
-                            privilege: "ChangePermissions".to_owned(),
-                            mode: PermissionMode::Allow,
-                            reasons: vec![
-                                "user is the owner of this content".to_owned(),
-                                "user has site role SiteAdministratorCreator".to_owned(),
-                            ],
-                        },
-                        EffectivePermission {
-                            privilege: "WebAuthoringForFlows".to_owned(),
-                            mode: PermissionMode::Allow,
-                            reasons: vec![
-                                "user is the owner of this content".to_owned(),
-                                "user has site role SiteAdministratorCreator".to_owned(),
-                            ],
-                        },
-                    ])
-                )])
-            )])
+            result, expected,
+            "{:#?} compared to {:#?}",
+            result, expected
         );
     }
 }

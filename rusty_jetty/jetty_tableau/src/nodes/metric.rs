@@ -151,38 +151,3 @@ impl TableauAsset for Metric {
         TableauAssetType::Metric
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use anyhow::{Context, Result};
-    use jetty_core::logging::debug;
-
-    #[tokio::test]
-    async fn test_fetching_metrics_works() -> Result<()> {
-        let tc = crate::connector_setup()
-            .await
-            .context("running tableau connector setup")?;
-        let nodes = get_basic_metrics(&tc.coordinator.rest_client).await?;
-        for (_k, v) in nodes {
-            debug!("{:#?}", v);
-        }
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_fetching_metric_permissions_works() -> Result<()> {
-        let tc = crate::connector_setup()
-            .await
-            .context("running tableau connector setup")?;
-        let mut nodes = get_basic_metrics(&tc.coordinator.rest_client).await?;
-        for (_k, v) in &mut nodes {
-            v.update_permissions(&tc.coordinator.rest_client, &tc.coordinator.env)
-                .await?;
-        }
-        for (_k, v) in nodes {
-            debug!("{:#?}", v);
-        }
-        Ok(())
-    }
-}

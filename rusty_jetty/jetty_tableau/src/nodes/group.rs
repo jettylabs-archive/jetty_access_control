@@ -105,38 +105,8 @@ pub(crate) async fn get_basic_groups(
 
 #[cfg(test)]
 mod tests {
-    use crate::nodes::user::get_basic_users;
 
     use super::*;
-    use anyhow::{Context, Result};
-    use jetty_core::logging::debug;
-
-    #[tokio::test]
-    async fn test_fetching_groups_works() -> Result<()> {
-        let tc = crate::connector_setup()
-            .await
-            .context("running tableau connector setup")?;
-        let groups = get_basic_groups(&tc.coordinator.rest_client).await?;
-        for (_k, v) in groups {
-            debug!("{:#?}", v);
-        }
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_fetching_groups_with_users_works() -> Result<()> {
-        let tc = crate::connector_setup()
-            .await
-            .context("running tableau connector setup")?;
-        let mut groups = get_basic_groups(&tc.coordinator.rest_client).await?;
-        let users_map = get_basic_users(&tc.coordinator.rest_client).await?;
-        for (_k, v) in &mut groups {
-            v.update_users(&tc.coordinator.rest_client, &users_map)
-                .await?;
-            debug!("{:#?}", v);
-        }
-        Ok(())
-    }
 
     #[test]
     #[allow(unused_must_use)]

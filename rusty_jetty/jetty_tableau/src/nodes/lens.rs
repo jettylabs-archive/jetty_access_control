@@ -85,7 +85,7 @@ pub(crate) async fn get_basic_lenses(
 impl FromTableau<Lens> for jetty_nodes::Asset {
     fn from(val: Lens, env: &Environment) -> Self {
         let cual = get_tableau_cual(
-            TableauAssetType::Datasource,
+            TableauAssetType::Lens,
             &val.name,
             Some(&val.project_id),
             Some(&val.datasource_id),
@@ -142,40 +142,5 @@ impl Permissionable for Lens {
 
     fn get_permissions(&self) -> &Vec<super::Permission> {
         &self.permissions
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use anyhow::{Context, Result};
-    use jetty_core::logging::debug;
-
-    #[tokio::test]
-    async fn test_fetching_lenses_works() -> Result<()> {
-        let tc = crate::connector_setup()
-            .await
-            .context("running tableau connector setup")?;
-        let nodes = get_basic_lenses(&tc.coordinator.rest_client).await?;
-        for (_k, v) in nodes {
-            debug!("{:#?}", v);
-        }
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_fetching_lens_permissions_works() -> Result<()> {
-        let tc = crate::connector_setup()
-            .await
-            .context("running tableau connector setup")?;
-        let mut nodes = get_basic_lenses(&tc.coordinator.rest_client).await?;
-        for (_k, v) in &mut nodes {
-            v.update_permissions(&tc.coordinator.rest_client, &tc.coordinator.env)
-                .await?;
-        }
-        for (_k, v) in nodes {
-            debug!("{:#?}", v);
-        }
-        Ok(())
     }
 }

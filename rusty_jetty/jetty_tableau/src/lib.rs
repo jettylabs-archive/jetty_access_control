@@ -216,17 +216,3 @@ impl Connector for TableauConnector {
         ConnectorData::new(groups, users, assets, tags, policies, effective_permissions)
     }
 }
-
-#[cfg(test)]
-pub(crate) async fn connector_setup() -> Result<crate::TableauConnector> {
-    use anyhow::Context;
-    use jetty_core::jetty::ConnectorNamespace;
-
-    let j = jetty_core::jetty::Jetty::new().context("creating Jetty")?;
-    let creds = jetty_core::jetty::fetch_credentials().context("fetching credentials from file")?;
-    let config = &j.config.connectors[&ConnectorNamespace("tableau".to_owned())];
-    let tc = crate::TableauConnector::new(config, &creds["tableau"], None)
-        .await
-        .context("reading tableau credentials")?;
-    Ok(*tc)
-}
