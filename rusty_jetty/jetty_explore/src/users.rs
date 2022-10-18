@@ -5,13 +5,12 @@ use std::{
 
 use anyhow::Context;
 use axum::{extract::Path, routing::get, Extension, Json, Router};
-use petgraph::stable_graph::NodeIndex;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 use super::ObjectWithPathResponse;
 use jetty_core::{
-    access_graph::{self, EdgeType, JettyNode, NodeName},
+    access_graph::{self, EdgeType, JettyNode, NodeIndex, NodeName},
     connectors::UserIdentifier,
     cual::Cual,
     logging::info,
