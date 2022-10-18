@@ -30,8 +30,8 @@ use std::collections::{HashMap, HashSet};
 use crate::{
     coordinator::Environment,
     nodes as tableau_nodes,
-    rest::{self, FetchJson, TableauAssetType},
-    Cual, Cualable,
+    rest::{self, get_tableau_cual, FetchJson, TableauAssetType},
+    Cual,
 };
 
 use jetty_core::connectors::nodes as jetty_nodes;
@@ -51,6 +51,27 @@ const VIEW: &str = "view";
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
 /// A Tableau-created Project ID.
 pub(crate) struct ProjectId(pub(crate) String);
+
+/// Conversion from Tableau types.
+pub(crate) trait FromTableau<T> {
+    fn from(val: T, env: &Environment) -> Self;
+}
+
+pub(crate) trait IntoTableau<U: FromTableau<Self>>
+where
+    Self: Sized,
+{
+    fn into(self, env: &Environment) -> U;
+}
+
+impl<T, U> IntoTableau<U> for T
+where
+    U: FromTableau<T>,
+{
+    fn into(self, env: &Environment) -> U {
+        <U>::from(self, env)
+    }
+}
 
 /// This trait is implemented by permissionable Tableau asset nodes and makes it simpler to
 /// fetch and parse permissions
@@ -111,6 +132,24 @@ pub(crate) trait OwnedAsset: TableauAsset {
     fn get_parent_project_id(&self) -> Option<&ProjectId>;
     /// Get the owner ID for this asset.
     fn get_owner_id(&self) -> &str;
+    /// Get the cual for the asset's parent project if one exists.
+    fn get_parent_project_cual(&self, env: &Environment) -> Option<Cual> {
+        self.get_parent_project_id().and_then(|ppid| {
+            let ProjectId(pid) = ppid;
+            let project = env
+                .projects
+                .get(pid)
+                .expect("getting flow parent project by id");
+            get_tableau_cual(
+                TableauAssetType::Project,
+                &project.name,
+                project.parent_project_id.as_ref(),
+                None,
+                env,
+            )
+            .ok()
+        })
+    }
 }
 
 /// This Macro implements the GetId trait for one or more types that have an `id` field.
@@ -177,12 +216,26 @@ impl OwnedAsset for Project {
     }
 }
 
+/// Common behavior across tableau assets
+pub(crate) trait TableauCualable {
+    /// Get the cual for the associated asset object.
+    fn cual(&self, env: &Environment) -> Cual;
+}
+
 /// This Macro implements the Cualable trait for one or more types that have a `cual` field.
 macro_rules! impl_Cualable {
-    (for $($t:ty),+) => {
-        $(impl Cualable for $t {
-            fn cual(&self) -> Cual{
-                self.cual.clone()
+    (for $($t:tt),+) => {
+        $(impl TableauCualable for $t {
+            fn cual(&self, env:&Environment) -> Cual{
+                    get_tableau_cual(
+                        TableauAssetType::$t,
+                        &self.name,
+                        self.get_parent_project_id(),
+                        None,
+                        env,
+                    )
+                    .expect(&format!("making cual for tableau asset {:?}", TableauAssetType::$t))
+
             }
         })*
     }
@@ -190,13 +243,49 @@ macro_rules! impl_Cualable {
 
 impl_Cualable!(for
     Workbook,
-    View,
     Datasource,
-    Metric,
     Flow,
-    Lens,
     Project
 );
+
+impl TableauCualable for View {
+    fn cual(&self, env: &Environment) -> Cual {
+        get_tableau_cual(
+            TableauAssetType::Metric,
+            &self.name,
+            self.get_parent_project_id(),
+            Some(&self.workbook_id),
+            env,
+        )
+        .expect("making cual for view")
+    }
+}
+
+impl TableauCualable for Metric {
+    fn cual(&self, env: &Environment) -> Cual {
+        get_tableau_cual(
+            TableauAssetType::Metric,
+            &self.name,
+            self.get_parent_project_id(),
+            Some(&self.underlying_view_id),
+            env,
+        )
+        .expect("making cual for metric")
+    }
+}
+
+impl TableauCualable for Lens {
+    fn cual(&self, env: &Environment) -> Cual {
+        get_tableau_cual(
+            TableauAssetType::Lens,
+            &self.name,
+            self.get_parent_project_id(),
+            Some(&self.datasource_id),
+            env,
+        )
+        .expect("making cual for lens")
+    }
+}
 
 /// Helper struct for deserializing Tableau assets
 #[derive(Deserialize, Debug, Clone)]

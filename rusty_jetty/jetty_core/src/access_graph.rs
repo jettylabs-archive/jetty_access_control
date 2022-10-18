@@ -29,7 +29,8 @@ use std::io::BufWriter;
 use std::ops::{Index, IndexMut};
 
 use anyhow::{anyhow, Context, Result};
-use petgraph::stable_graph::{NodeIndex, StableGraph};
+// reexporting for use in other packages
+pub use petgraph::stable_graph::NodeIndex;
 use petgraph::Directed;
 use serde::Deserialize;
 use serde::Serialize;

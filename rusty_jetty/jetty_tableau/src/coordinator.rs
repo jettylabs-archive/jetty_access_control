@@ -10,7 +10,8 @@ use futures::StreamExt;
 use jetty_core::logging::error;
 use serde::{Deserialize, Serialize};
 
-use crate::nodes::{self, Permissionable};
+use crate::file_parse::origin::SourceOrigin;
+use crate::nodes::{self, Permissionable, ProjectId};
 
 use crate::rest;
 use crate::TableauCredentials;
@@ -37,6 +38,21 @@ pub(crate) struct Environment {
     pub workbooks: HashMap<String, nodes::Workbook>,
 }
 
+impl Environment {
+    pub(crate) fn get_recursive_projects_for(&self, project_id: &ProjectId) -> Vec<String> {
+        let ProjectId(id) = project_id;
+        let this_project = self.projects.get(id);
+        let mut res = vec![this_project
+            .expect("getting project from env")
+            .name
+            .to_owned()];
+        if let Some(ppid) = this_project.and_then(|proj| proj.parent_project_id.clone()) {
+            res.append(&mut self.get_recursive_projects_for(&ppid));
+        }
+        res
+    }
+}
+
 /// Implemented for asset types that have sources embedded in them: Workbooks, Flows, and Datasources
 /// Makes it simpler to download these sources
 #[async_trait]
@@ -48,13 +64,13 @@ pub(crate) trait HasSources {
     /// Get updated_at
     fn updated_at(&self) -> &String;
     /// Get sources
-    fn sources(&self) -> (HashSet<String>, HashSet<String>);
+    fn sources(&self) -> (HashSet<SourceOrigin>, HashSet<SourceOrigin>);
     /// Fetch sources for an asset
     async fn fetch_sources(
         &self,
         coord: &Coordinator,
-    ) -> Result<(HashSet<String>, HashSet<String>)>;
-    fn set_sources(&mut self, sources: (HashSet<String>, HashSet<String>));
+    ) -> Result<(HashSet<SourceOrigin>, HashSet<SourceOrigin>)>;
+    fn set_sources(&mut self, sources: (HashSet<SourceOrigin>, HashSet<SourceOrigin>));
 
     /// Update sources for an asset
     async fn update_sources<T: HasSources + Sync + Send>(
@@ -285,6 +301,8 @@ fn read_environment_assets() -> Result<Environment> {
 
 #[cfg(test)]
 mod test {
+    use crate::nodes::Project;
+
     use super::*;
 
     #[tokio::test]
@@ -306,5 +324,50 @@ mod test {
             + tc.coordinator.env.workbooks.len();
         dbg!(total_assets);
         Ok(())
+    }
+
+    #[test]
+    fn test_get_recursive_projects_for_yields_correct_order() {
+        let mut env = Environment::default();
+        env.projects = HashMap::from([
+            (
+                "project".to_owned(),
+                Project::new(
+                    ProjectId("project".to_owned()),
+                    "p0".to_owned(),
+                    String::new(),
+                    Some(ProjectId("project1".to_owned())),
+                    None,
+                    vec![],
+                ),
+            ),
+            (
+                "project1".to_owned(),
+                Project::new(
+                    ProjectId("project1".to_owned()),
+                    "p1".to_owned(),
+                    String::new(),
+                    Some(ProjectId("project2".to_owned())),
+                    None,
+                    vec![],
+                ),
+            ),
+            (
+                "project2".to_owned(),
+                Project::new(
+                    ProjectId("project2".to_owned()),
+                    "p2".to_owned(),
+                    String::new(),
+                    None,
+                    None,
+                    vec![],
+                ),
+            ),
+        ]);
+        let parents = env.get_recursive_projects_for(&ProjectId("project".to_owned()));
+        assert_eq!(
+            parents,
+            vec!["p0".to_owned(), "p1".to_owned(), "p2".to_owned()]
+        );
     }
 }

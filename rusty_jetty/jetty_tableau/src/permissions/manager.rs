@@ -5,7 +5,7 @@ use jetty_core::{
         nodes::{EffectivePermission, PermissionMode, SparseMatrix},
         UserIdentifier,
     },
-    cual::{Cual, Cualable},
+    cual::Cual,
     logging::debug,
     permissions::matrix::{InsertOrMerge, Merge},
 };
@@ -13,7 +13,7 @@ use jetty_core::{
 use super::consts::AssetCapabilityMap;
 use crate::{
     coordinator::Coordinator,
-    nodes::{self, user::SiteRole, OwnedAsset, ProjectId},
+    nodes::{self, user::SiteRole, OwnedAsset, ProjectId, TableauCualable},
     nodes::{Grantee, Permissionable},
 };
 
@@ -32,7 +32,9 @@ impl<'x> PermissionManager<'x> {
     ///
     /// Gets explicit permissions, combines them with implicit permissions,
     /// and then combines those with the site-role-specific permissions.
-    pub(crate) fn get_effective_permissions_for_asset<T: OwnedAsset + Permissionable + Cualable>(
+    pub(crate) fn get_effective_permissions_for_asset<
+        T: OwnedAsset + Permissionable + TableauCualable,
+    >(
         &self,
         assets: &HashMap<String, T>,
     ) -> SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> {
@@ -105,7 +107,9 @@ impl<'x> PermissionManager<'x> {
     }
 
     /// Get all effective permissions that are based on site role.
-    fn get_effective_permissions_for_site_roles<T: OwnedAsset + Permissionable + Cualable>(
+    fn get_effective_permissions_for_site_roles<
+        T: OwnedAsset + Permissionable + TableauCualable,
+    >(
         &self,
         assets: &HashMap<String, T>,
     ) -> SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> {
@@ -115,7 +119,7 @@ impl<'x> PermissionManager<'x> {
         let capability_restrictions_map = AssetCapabilityMap::new();
 
         for asset in assets.values() {
-            let cual = asset.cual();
+            let cual = asset.cual(&self.coordinator.env);
             let asset_capabilities = super::get_capabilities_for_asset_type(asset.get_asset_type());
 
             // Superusers – allow them through everything.
@@ -172,7 +176,9 @@ impl<'x> PermissionManager<'x> {
 
     /// Get all effective permissions that are explicitly set for the assets
     /// given.
-    fn get_explicit_effective_permissions_for_asset<T: OwnedAsset + Permissionable + Cualable>(
+    fn get_explicit_effective_permissions_for_asset<
+        T: OwnedAsset + Permissionable + TableauCualable,
+    >(
         &self,
         assets: &HashMap<String, T>,
     ) -> SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> {
@@ -186,7 +192,7 @@ impl<'x> PermissionManager<'x> {
             // discover effective access.
             user_perm_map.iter().for_each(|(user, perms)| {
                 // apply the permission explicitly given
-                let explicit_effective_permissions = perms
+                let explicit_effective_permissions: HashSet<_> = perms
                     .iter()
                     .map(|(grantee, capa, mode)| {
                         let grantee_type = if matches!(grantee, Grantee::User(_)) {
@@ -208,7 +214,10 @@ impl<'x> PermissionManager<'x> {
                 // Add permissions to ep[user][asset]
                 ep.insert(
                     UserIdentifier::Email(user.email.to_owned()),
-                    HashMap::from([(asset.cual(), explicit_effective_permissions)]),
+                    HashMap::from([(
+                        asset.cual(&self.coordinator.env),
+                        explicit_effective_permissions,
+                    )]),
                 );
             });
         });
@@ -252,7 +261,9 @@ impl<'x> PermissionManager<'x> {
 
     /// Get all effective permissions for permissions implicitly defined by
     /// content ownership and project leadership.
-    fn get_implicit_effective_permissions_for_asset<T: OwnedAsset + Permissionable + Cualable>(
+    fn get_implicit_effective_permissions_for_asset<
+        T: OwnedAsset + Permissionable + TableauCualable,
+    >(
         &self,
         assets: &HashMap<String, T>,
     ) -> SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> {
@@ -263,7 +274,7 @@ impl<'x> PermissionManager<'x> {
             // Content owners
             let some_owner = self.coordinator.env.users.get(asset.get_owner_id());
             if let Some(owner) = some_owner {
-                let perms = asset_capabilities
+                let perms:HashSet<_> = asset_capabilities
                     .iter()
                     .map(|capa| {
                         EffectivePermission::new(
@@ -275,7 +286,7 @@ impl<'x> PermissionManager<'x> {
                     .collect();
                 ep.insert_or_merge(
                     UserIdentifier::Email(owner.email.to_owned()),
-                    HashMap::from([(asset.cual(), perms)]),
+                    HashMap::from([(asset.cual(&self.coordinator.env), perms)]),
                 );
 
             // Project leaders
@@ -300,7 +311,7 @@ impl<'x> PermissionManager<'x> {
                             ep.insert_or_merge(
                                 UserIdentifier::Email(grantee_email),
                                 HashMap::from([(
-                                    asset.cual(),
+                                    asset.cual(&self.coordinator.env),
                                     leader_effective_permissions.clone(),
                                 )]),
                             );
@@ -322,13 +333,14 @@ mod tests {
     use crate::{
         coordinator::Environment,
         nodes::{Flow, Project, User},
-        rest::TableauRestClient,
+        rest::{set_cual_prefix, TableauRestClient},
     };
 
     use super::*;
 
     #[test]
     fn test_effective_perms_for_asset_works() {
+        set_cual_prefix("dummy-server", "dummy-site");
         let mut env = Environment::default();
         let mut user = User::default();
         user.site_role = SiteRole::SiteAdministratorCreator;
@@ -346,7 +358,7 @@ mod tests {
             HashMap::from([(
                 UserIdentifier::Email("".to_owned(),),
                 HashMap::from([(
-                    Cual::new("".to_owned(),),
+                    Cual::new("tableau://dummy-server@dummy-site".to_owned(),),
                     HashSet::from([
                         EffectivePermission {
                             privilege: "Read".to_owned(),

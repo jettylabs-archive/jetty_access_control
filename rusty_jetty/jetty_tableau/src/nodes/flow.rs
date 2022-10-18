@@ -2,48 +2,42 @@ use std::collections::{HashMap, HashSet};
 
 use anyhow::{Context, Result};
 use async_trait::async_trait;
-use jetty_core::{
-    connectors::{nodes as jetty_nodes, AssetType},
-    cual::Cual,
-};
+use jetty_core::connectors::{nodes as jetty_nodes, AssetType};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    coordinator::{Coordinator, HasSources},
-    file_parse::flow::FlowDoc,
+    coordinator::{Coordinator, Environment, HasSources},
+    file_parse::{flow::FlowDoc, origin::SourceOrigin},
     rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType},
 };
 
-use super::{Permissionable, ProjectId, TableauAsset, FLOW};
+use super::{FromTableau, OwnedAsset, Permissionable, ProjectId, TableauAsset, FLOW};
 
 /// Representation of a Tableau Flow
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub(crate) struct Flow {
-    pub(crate) cual: Cual,
     pub id: String,
     pub name: String,
     pub project_id: ProjectId,
     pub owner_id: String,
     pub updated_at: String,
-    pub derived_from: HashSet<String>,
-    pub derived_to: HashSet<String>,
+    pub(crate) derived_from: HashSet<SourceOrigin>,
+    pub(crate) derived_to: HashSet<SourceOrigin>,
     pub permissions: Vec<super::Permission>,
 }
 
 impl Flow {
     pub(crate) fn new(
-        cual: Cual,
         id: String,
         name: String,
         project_id: ProjectId,
         owner_id: String,
         updated_at: String,
-        derived_from: HashSet<String>,
-        derived_to: HashSet<String>,
+        derived_from: HashSet<SourceOrigin>,
+        derived_to: HashSet<SourceOrigin>,
         permissions: Vec<super::Permission>,
     ) -> Self {
         Self {
-            cual,
             id,
             name,
             project_id,
@@ -80,14 +74,14 @@ impl HasSources for Flow {
         &self.updated_at
     }
 
-    fn sources(&self) -> (HashSet<String>, HashSet<String>) {
+    fn sources(&self) -> (HashSet<SourceOrigin>, HashSet<SourceOrigin>) {
         (self.derived_from.to_owned(), self.derived_to.to_owned())
     }
 
     async fn fetch_sources(
         &self,
         coord: &Coordinator,
-    ) -> Result<(HashSet<String>, HashSet<String>)> {
+    ) -> Result<(HashSet<SourceOrigin>, HashSet<SourceOrigin>)> {
         // download the source
         let archive = coord.rest_client.download(self, true).await?;
         // get the file
@@ -97,7 +91,7 @@ impl HasSources for Flow {
         Ok(flow_doc.parse(coord))
     }
 
-    fn set_sources(&mut self, sources: (HashSet<String>, HashSet<String>)) {
+    fn set_sources(&mut self, sources: (HashSet<SourceOrigin>, HashSet<SourceOrigin>)) {
         self.derived_from = sources.0;
         self.derived_to = sources.1;
     }
@@ -125,7 +119,6 @@ fn to_node(val: &serde_json::Value) -> Result<Flow> {
         serde_json::from_value(val.to_owned()).context("parsing flow information")?;
 
     Ok(Flow {
-        cual: get_tableau_cual(TableauAssetType::Flow, &asset_info.id)?,
         id: asset_info.id,
         name: asset_info.name,
         owner_id: asset_info.owner.id,
@@ -160,27 +153,42 @@ impl Permissionable for Flow {
     }
 }
 
-impl From<Flow> for jetty_nodes::Asset {
-    fn from(val: Flow) -> Self {
-        let ProjectId(project_id) = val.project_id;
+impl FromTableau<Flow> for jetty_nodes::Asset {
+    fn from(val: Flow, env: &Environment) -> Self {
+        let cual = get_tableau_cual(
+            TableauAssetType::Flow,
+            &val.name,
+            Some(&val.project_id),
+            None,
+            env,
+        )
+        .expect("Generating cual from flow");
+        let parent_cual = val
+            .get_parent_project_cual(env)
+            .expect("getting parent cual")
+            .uri();
         jetty_nodes::Asset::new(
-            val.cual,
+            cual,
             val.name,
             AssetType(FLOW.to_owned()),
             // We will add metadata as it's useful.
             HashMap::new(),
             // Governing policies will be assigned in the policy.
             HashSet::new(),
-            // Flows are children of their projects?
-            HashSet::from([get_tableau_cual(TableauAssetType::Project, &project_id)
-                .expect("Getting parent project CUAL")
-                .uri()]),
+            // Flows are children of their projects
+            HashSet::from([parent_cual]),
             // Children objects will be handled in their respective nodes.
             HashSet::new(),
             // Flows are derived from their source data.
-            val.derived_from,
+            val.derived_from
+                .into_iter()
+                .map(|o| o.into_cual(env).to_string())
+                .collect(),
             // Flows can also be used to create other data assets
-            val.derived_to,
+            val.derived_to
+                .into_iter()
+                .map(|o| o.into_cual(env).to_string())
+                .collect(),
             // No tags at this point.
             HashSet::new(),
         )
@@ -189,7 +197,6 @@ impl From<Flow> for jetty_nodes::Asset {
 
 #[cfg(test)]
 mod tests {
-    use crate::rest::set_cual_prefix;
 
     use super::*;
     use anyhow::{Context, Result};
@@ -234,41 +241,5 @@ mod tests {
         let x = tc.coordinator.rest_client.download(test_flow, true).await?;
         debug!("Downloaded {} bytes", x.len());
         Ok(())
-    }
-
-    #[test]
-    #[allow(unused_must_use)]
-    fn test_asset_from_flow_works() {
-        set_cual_prefix("", "");
-        let l = Flow::new(
-            Cual::new("".to_owned()),
-            "id".to_owned(),
-            "name".to_owned(),
-            ProjectId("project_id".to_owned()),
-            "owner_id".to_owned(),
-            "updated".to_owned(),
-            Default::default(),
-            Default::default(),
-            Default::default(),
-        );
-        jetty_nodes::Asset::from(l);
-    }
-
-    #[test]
-    #[allow(unused_must_use)]
-    fn test_flow_into_asset_works() {
-        set_cual_prefix("", "");
-        let l = Flow::new(
-            Cual::new("".to_owned()),
-            "id".to_owned(),
-            "name".to_owned(),
-            ProjectId("project_id".to_owned()),
-            "owner_id".to_owned(),
-            "updated".to_owned(),
-            Default::default(),
-            Default::default(),
-            Default::default(),
-        );
-        Into::<jetty_nodes::Asset>::into(l);
     }
 }

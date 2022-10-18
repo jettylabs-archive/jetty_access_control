@@ -3,9 +3,7 @@
 
 mod cual;
 
-use std::{
-    io::{Cursor, Read},
-};
+use std::io::{Cursor, Read};
 
 use super::*;
 #[cfg(test)]
@@ -18,9 +16,8 @@ pub(crate) use cual::{get_tableau_cual, TableauAssetType};
 
 use anyhow::{bail, Context};
 use async_trait::async_trait;
-use bytes::{Bytes};
+use bytes::Bytes;
 use serde::Serialize;
-
 
 pub(crate) trait Downloadable {
     /// URI path (not including domain, api version, or site id) to download the asset
@@ -78,7 +75,7 @@ impl TableauRestClient {
     #[cfg(test)]
     pub(crate) fn new_dummy() -> Self {
         set_cual_prefix("dummy-server", "dummy-site");
-        
+
         TableauRestClient {
             credentials: TableauCredentials {
                 server_name: "dummy-server".to_owned(),
@@ -406,7 +403,6 @@ impl FetchJson for reqwest::RequestBuilder {
 mod tests {
     use super::*;
     use anyhow::Context;
-    
 
     #[tokio::test]
     async fn test_fetching_token_works() -> Result<()> {
