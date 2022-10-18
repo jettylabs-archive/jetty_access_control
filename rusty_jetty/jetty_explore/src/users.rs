@@ -104,32 +104,7 @@ async fn tags_handler(
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<TagWithAssets>> {
     // get all the user_accessable assets
-    let accessable_assets = ag.get_user_accessible_assets(&UserIdentifier::Email(node_id));
-    let tag_asset_map = accessable_assets
-        .iter()
-        .map(|(c, _)| (c, ag.tags_for_asset(&NodeName::Asset(c.to_string()))))
-        .map(|(c, i)| i.iter().map(|n| (n.clone(), c)).collect::<Vec<_>>())
-        .flatten()
-        .fold(
-            HashMap::<NodeIndex, Vec<JettyNode>>::new(),
-            |mut acc, (tag_node, asset_cual)| {
-                acc.entry(tag_node)
-                    .and_modify(|e| {
-                        e.push(
-                            ag.get_node(&NodeName::Asset(asset_cual.to_string()))
-                                .context("nonexistent asset")
-                                .unwrap()
-                                .to_owned(),
-                        );
-                    })
-                    .or_insert(vec![ag
-                        .get_node(&NodeName::Asset(asset_cual.to_string()))
-                        .context("nonexistent asset")
-                        .unwrap()
-                        .to_owned()]);
-                acc
-            },
-        );
+    let tag_asset_map = ag.get_user_accessible_tags(&UserIdentifier::Email(node_id));
 
     let response = tag_asset_map
         .into_iter()

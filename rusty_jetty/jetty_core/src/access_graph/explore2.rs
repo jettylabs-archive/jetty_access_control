@@ -9,6 +9,7 @@ mod matching_children;
 mod matching_paths;
 mod matching_paths_to_children;
 mod tags_for_asset;
+mod user_accessible_tags;
 
 use petgraph::{stable_graph::NodeIndex, visit::IntoNodeReferences};
 
