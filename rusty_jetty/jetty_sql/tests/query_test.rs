@@ -1,6 +1,5 @@
 use anyhow::Result;
-
-
+use jetty_core::logging::{debug, error};
 
 // Tests that queries from the dataset are valid. Does not currently check table output.
 #[test]
@@ -14,31 +13,31 @@ fn try_all_queries() -> Result<()> {
             Ok(query) => {
                 let tables = jetty_sql::get_tables(&query, jetty_sql::DbType::Generic);
                 match tables {
-                    Ok(t) => println!(
+                    Ok(t) => debug!(
                         "{}",
                         t.iter().map(|u| u.join(".")).collect::<Vec<_>>().join(", ")
                     ),
                     Err(e) => {
                         if e.to_string().contains("sql parser error") {
-                            println!("Failed to parse query: {}", e);
+                            error!("Failed to parse query: {}", e);
                             parse_failures += 1;
                         } else {
-                            println!("Failed to get tables: {}", e);
+                            error!("Failed to get tables: {}", e);
                             table_failures += 1;
                         }
                     }
                 }
             }
             Err(e) => {
-                println!("Failed to read query: {}", e);
+                error!("Failed to read query: {}", e);
             }
         }
     }
-    println!(
+    error!(
         "\n--------------\nFailed to parse {} queries",
         parse_failures
     );
-    println!(
+    error!(
         "Failed to extract tables from {} queries\n--------------\n",
         table_failures
     );

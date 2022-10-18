@@ -58,7 +58,7 @@ impl Connector for DbtConnector {
             bail!("missing project_dir key in connectors.yaml");
         }
         if !credentials.contains_key("snowflake_account") {
-            bail!("missing snowflake_account key in connectors.yaml");
+            bail!("missing `snowflake_account` dbt configuration (connectors.yaml)");
         }
         set_cual_account_name(&credentials["snowflake_account"]);
         let manifest = DbtManifest::new(&credentials["project_dir"])

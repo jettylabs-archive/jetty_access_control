@@ -28,8 +28,6 @@ async fn direct_groups_handler(
 ) -> Json<Vec<access_graph::GroupAttributes>> {
     let from = NodeName::Group(node_id);
 
-    println!("{:?}", ag.extract_graph(&from, 1).dot());
-
     let group_nodes = ag.get_matching_children(
         &from,
         |n| matches!(n, EdgeType::MemberOf),
@@ -93,8 +91,6 @@ async fn direct_members_groups_handler(
 ) -> Json<Vec<access_graph::GroupAttributes>> {
     let from = NodeName::Group(node_id);
 
-    println!("{:?}", ag.extract_graph(&from, 1).dot());
-
     let group_nodes = ag.get_matching_children(
         &from,
         |n| matches!(n, EdgeType::Includes),
@@ -124,8 +120,6 @@ async fn direct_members_users_handler(
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<access_graph::UserAttributes>> {
     let from = NodeName::Group(node_id);
-
-    println!("{:?}", ag.extract_graph(&from, 1).dot());
 
     let group_nodes = ag.get_matching_children(
         &from,

@@ -3,7 +3,7 @@
 
 #![deny(missing_docs)]
 
-use std::{sync::Arc, time::Instant};
+use std::{path::Path, sync::Arc, time::Instant};
 
 use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
@@ -16,6 +16,8 @@ use jetty_core::{
     logging::{self, error, info, warn, LevelFilter},
     Connector, Jetty,
 };
+
+const TAGS_PATH: &str = "tags.yaml";
 
 /// Jetty CLI: Open-source data access control for modern teams
 #[derive(Parser, Debug)]
@@ -54,7 +56,21 @@ async fn main() -> Result<()> {
         }
 
         JettyCommand::Explore => match AccessGraph::deserialize_graph() {
-            Ok(ag) => jetty_explore::explore_web_ui(Arc::new(ag)).await,
+            Ok(mut ag) => {
+                if Path::new(TAGS_PATH).exists() {
+                    let tag_config = std::fs::read_to_string(TAGS_PATH);
+                    match tag_config {
+                        Ok(c) => {
+                            ag.add_tags(&c)?;
+                        }
+                        Err(e) => {
+                            bail!("found, but was unable to read {}\nerror: {}", TAGS_PATH, e)
+                        }
+                    }
+                }
+
+                jetty_explore::explore_web_ui(Arc::new(ag)).await;
+            }
             Err(e) => info!(
                 "Unable to find saved graph. Try running `jetty fetch`\nError: {}",
                 e
