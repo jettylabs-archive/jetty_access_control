@@ -143,38 +143,3 @@ impl TableauAsset for View {
         TableauAssetType::View
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use anyhow::{Context, Result};
-    use jetty_core::logging::debug;
-
-    #[tokio::test]
-    async fn test_fetching_views_works() -> Result<()> {
-        let tc = crate::connector_setup()
-            .await
-            .context("running tableau connector setup")?;
-        let nodes = get_basic_views(&tc.coordinator.rest_client).await?;
-        for (_k, v) in nodes {
-            debug!("{:#?}", v);
-        }
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_fetching_view_permissions_works() -> Result<()> {
-        let tc = crate::connector_setup()
-            .await
-            .context("running tableau connector setup")?;
-        let mut views = get_basic_views(&tc.coordinator.rest_client).await?;
-        for (_k, v) in &mut views {
-            v.update_permissions(&tc.coordinator.rest_client, &tc.coordinator.env)
-                .await?;
-        }
-        for (_k, v) in views {
-            debug!("{:#?}", v);
-        }
-        Ok(())
-    }
-}

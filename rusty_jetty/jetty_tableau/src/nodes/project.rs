@@ -203,38 +203,3 @@ impl TableauAsset for Project {
         TableauAssetType::Project
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use anyhow::{Context, Result};
-
-    #[tokio::test]
-    async fn test_fetching_projects_works() -> Result<()> {
-        let tc = crate::connector_setup()
-            .await
-            .context("running tableau connector setup")?;
-        let nodes = get_basic_projects(&tc.coordinator.rest_client).await?;
-        for (_k, v) in nodes {
-            debug!("{:#?}", v);
-        }
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_fetching_project_permissions_works() -> Result<()> {
-        let mut tc = crate::connector_setup()
-            .await
-            .context("running tableau connector setup")?;
-        tc.coordinator.update_env().await?;
-        let mut nodes = get_basic_projects(&tc.coordinator.rest_client).await?;
-        for (_k, v) in &mut nodes {
-            v.update_permissions(&tc.coordinator.rest_client, &tc.coordinator.env)
-                .await?;
-        }
-        for (_k, v) in nodes {
-            debug!("{:#?}", v);
-        }
-        Ok(())
-    }
-}

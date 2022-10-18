@@ -80,12 +80,14 @@ pub(crate) fn get_tableau_cual(
                             .expect("getting parent view for metric")
                             .to_owned(),
                     )
-                    .expect("Getting parent view for metric");
+                    .expect(&format!(
+                        "Getting parent view {:#?} for metric {:#?}",
+                        immediate_parent_id, name,
+                    ));
                 let grandparent_workbook = env
                     .workbooks
                     .get(&parent_view.workbook_id)
                     .expect("getting grandparent workbook for metric");
-                let ProjectId(wb_project_id) = grandparent_workbook.project_id.clone();
 
                 let mut direct_parents = vec![
                     urlencoding::encode(&grandparent_workbook.name).into_owned(),
