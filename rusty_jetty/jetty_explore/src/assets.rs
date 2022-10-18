@@ -1,4 +1,7 @@
-use std::sync::Arc;
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 use axum::{extract::Path, routing::get, Extension, Json, Router};
 use jetty_core::{
@@ -38,12 +41,21 @@ struct AssetWithPaths {
     paths: Vec<String>,
 }
 
+#[derive(Serialize)]
+struct UsersWithDownstreamAccess {
+    name: String,
+    connectors: HashSet<String>,
+    assets: HashSet<String>,
+}
+
 /// Return information about upstream assets, by hierarchy. Includes path to the current asset
 async fn hierarchy_upstream_handler(
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<AssetWithPaths>> {
-    asset_genealogy_with_path(node_id, ag, |e| matches!(e, EdgeType::ChildOf))
+    Json(asset_genealogy_with_path(node_id, ag, |e| {
+        matches!(e, EdgeType::ChildOf)
+    }))
 }
 
 /// Return information about downstream assets, by hierarchy. Includes path to the current asset
@@ -51,7 +63,9 @@ async fn hierarchy_downstream_handler(
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<AssetWithPaths>> {
-    asset_genealogy_with_path(node_id, ag, |e| matches!(e, EdgeType::ParentOf))
+    Json(asset_genealogy_with_path(node_id, ag, |e| {
+        matches!(e, EdgeType::ParentOf)
+    }))
 }
 
 /// Return information about upstream assets, by data lineage. Includes path to the current asset
@@ -59,7 +73,9 @@ async fn lineage_upstream_handler(
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<AssetWithPaths>> {
-    asset_genealogy_with_path(node_id, ag, |e| matches!(e, EdgeType::DerivedFrom))
+    Json(asset_genealogy_with_path(node_id, ag, |e| {
+        matches!(e, EdgeType::DerivedFrom)
+    }))
 }
 
 /// Return information about downstream assets, by data lineage. Includes path to the current asset
@@ -67,7 +83,9 @@ async fn lineage_downstream_handler(
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<AssetWithPaths>> {
-    asset_genealogy_with_path(node_id, ag, |e| matches!(e, EdgeType::DerivedTo))
+    Json(asset_genealogy_with_path(node_id, ag, |e| {
+        matches!(e, EdgeType::DerivedTo)
+    }))
 }
 
 /// Return information about the tags that an asset is tagged with
@@ -111,21 +129,54 @@ async fn direct_users_handler(
 }
 
 /// Return users that have access to this asset directly, or through downstream assets (via data lineage)
-async fn users_incl_downstream_handler() -> Json<Value> {
-    Json(json!(
-    [
-        {
-            "name": "Isaac",
-            "platforms": ["tableau", "snowflake"],
-            "assets": ["downstream asset 1", "this asset"]
-        },
-        {
-            "name": "Ice cream sandwich",
-            "platforms": ["snowflake"],
-            "assets": ["downstream asset 2", "downstream asset 3"]
-        },
-    ]
-    ))
+async fn users_incl_downstream_handler(
+    Path(node_id): Path<String>,
+    Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
+) -> Json<Vec<UsersWithDownstreamAccess>> {
+    let downstream_assets =
+        asset_genealogy_with_path(node_id, ag.clone(), |e| matches!(e, EdgeType::DerivedTo));
+
+    let user_asset_map = downstream_assets
+        .into_iter()
+        .map(|a| {
+            ag.get_users_with_access_to_asset(Cual::new(a.name.to_owned()))
+                .iter()
+                .map(|(u, _)| {
+                    (
+                        u.inner_value()
+                            .and_then(|s| Some(s.to_owned()))
+                            .unwrap_or_default(),
+                        a.name.to_owned(),
+                    )
+                })
+                .collect::<Vec<_>>()
+        })
+        .flatten()
+        .fold(
+            HashMap::<String, HashSet<String>>::new(),
+            |mut acc, (user, asset)| {
+                acc.entry(user)
+                    .and_modify(|a| {
+                        a.insert(asset);
+                    })
+                    .or_insert(HashSet::new());
+                acc
+            },
+        );
+
+    Json(
+        user_asset_map
+            .into_iter()
+            .map(|(u, assets)| UsersWithDownstreamAccess {
+                name: u.to_owned(),
+                connectors: ag
+                    .get_node(&NodeName::User(u))
+                    .unwrap()
+                    .get_node_connectors(),
+                assets,
+            })
+            .collect::<Vec<_>>(),
+    )
 }
 
 /// get the ascending or descending assets with paths, based on edge matcher
@@ -133,7 +184,7 @@ fn asset_genealogy_with_path(
     node_id: String,
     ag: Arc<access_graph::AccessGraph>,
     edge_matcher: fn(&EdgeType) -> bool,
-) -> Json<Vec<AssetWithPaths>> {
+) -> Vec<AssetWithPaths> {
     let paths = ag.all_matching_simple_paths_to_children(
         &NodeName::Asset(node_id),
         edge_matcher,
@@ -143,22 +194,20 @@ fn asset_genealogy_with_path(
         None,
     );
 
-    Json(
-        paths
-            .into_iter()
-            .map(|(k, v)| {
-                let node = &ag[k];
-                AssetWithPaths {
-                    name: node.get_string_name(),
-                    connector: node
-                        .get_node_connectors()
-                        .iter()
-                        .next()
-                        .and_then(|s| Some(s.to_owned()))
-                        .unwrap_or("unknown".to_owned()),
-                    paths: v.iter().map(|p| ag.path_as_string(p)).collect::<Vec<_>>(),
-                }
-            })
-            .collect::<Vec<_>>(),
-    )
+    paths
+        .into_iter()
+        .map(|(k, v)| {
+            let node = &ag[k];
+            AssetWithPaths {
+                name: node.get_string_name(),
+                connector: node
+                    .get_node_connectors()
+                    .iter()
+                    .next()
+                    .and_then(|s| Some(s.to_owned()))
+                    .unwrap_or("unknown".to_owned()),
+                paths: v.iter().map(|p| ag.path_as_string(p)).collect::<Vec<_>>(),
+            }
+        })
+        .collect::<Vec<_>>()
 }
