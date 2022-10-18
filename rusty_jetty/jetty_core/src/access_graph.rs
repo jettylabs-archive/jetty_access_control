@@ -28,7 +28,7 @@ use std::hash::Hasher;
 use std::io::BufWriter;
 use std::ops::{Index, IndexMut};
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 // reexporting for use in other packages
 pub use petgraph::stable_graph::NodeIndex;
 use petgraph::Directed;
@@ -87,6 +87,18 @@ impl UserAttributes {
     }
 }
 
+impl TryFrom<JettyNode> for UserAttributes {
+    type Error = anyhow::Error;
+
+    /// convert from a JettyNode to UserAttributes, if possible
+    fn try_from(value: JettyNode) -> Result<Self, Self::Error> {
+        match value {
+            JettyNode::User(a) => Ok(a),
+            _ => bail!("not a user node"),
+        }
+    }
+}
+
 /// Attributes associated with a Group node
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -118,6 +130,18 @@ impl GroupAttributes {
         Self {
             name,
             ..Default::default()
+        }
+    }
+}
+
+impl TryFrom<JettyNode> for GroupAttributes {
+    type Error = anyhow::Error;
+
+    /// convert from a JettyNode to GroupAttributes, if possible
+    fn try_from(value: JettyNode) -> Result<Self, Self::Error> {
+        match value {
+            JettyNode::Group(a) => Ok(a),
+            _ => bail!("not a user node"),
         }
     }
 }
@@ -164,6 +188,18 @@ impl AssetAttributes {
             asset_type: AssetType::default(),
             metadata: Default::default(),
             connectors: Default::default(),
+        }
+    }
+}
+
+impl TryFrom<JettyNode> for AssetAttributes {
+    type Error = anyhow::Error;
+
+    /// convert from a JettyNode to AssetAttributes, if possible
+    fn try_from(value: JettyNode) -> Result<Self, Self::Error> {
+        match value {
+            JettyNode::Asset(a) => Ok(a),
+            _ => bail!("not an asset node"),
         }
     }
 }
@@ -230,6 +266,18 @@ impl TagAttributes {
     }
 }
 
+impl TryFrom<JettyNode> for TagAttributes {
+    type Error = anyhow::Error;
+
+    /// convert from a JettyNode to TagAttributes, if possible
+    fn try_from(value: JettyNode) -> Result<Self, Self::Error> {
+        match value {
+            JettyNode::Tag(a) => Ok(a),
+            _ => bail!("not a tag node"),
+        }
+    }
+}
+
 /// A struct describing the attributes of a policy
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PolicyAttributes {
@@ -276,6 +324,18 @@ impl PolicyAttributes {
             pass_through_hierarchy: Default::default(),
             pass_through_lineage: Default::default(),
             connectors: Default::default(),
+        }
+    }
+}
+
+impl TryFrom<JettyNode> for PolicyAttributes {
+    type Error = anyhow::Error;
+
+    /// convert from a JettyNode to PolicyAttributes, if possible
+    fn try_from(value: JettyNode) -> Result<Self, Self::Error> {
+        match value {
+            JettyNode::Policy(a) => Ok(a),
+            _ => bail!("not a policy node"),
         }
     }
 }
