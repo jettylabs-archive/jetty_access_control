@@ -422,7 +422,7 @@ mod tests {
 
         expected.sort();
         let mut result = ep[&UserIdentifier::Email("".to_owned())]
-            [&Cual::new("tableau://dummy-server@dummy-site//".to_owned())]
+            [&Cual::new("tableau://dummy-server@dummy-site//?type=flow".to_owned())]
             .clone()
             .into_iter()
             .collect::<Vec<_>>();
