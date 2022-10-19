@@ -1,4 +1,4 @@
-use std::sync::Once;
+use std::{fmt::Display, sync::Once};
 
 use anyhow::{bail, Context, Ok, Result};
 
@@ -19,6 +19,12 @@ pub(crate) enum TableauAssetType {
     Lens,
     Metric,
     View,
+}
+
+impl Display for TableauAssetType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
 }
 
 impl TableauAssetType {
@@ -118,18 +124,20 @@ pub(crate) fn get_tableau_cual(
             | TableauAssetType::Flow => parents.join("/"),
         };
         Ok(Cual::new(format!(
-            "{}/{}/{}",
+            "{}/{}/{}?type={}",
             get_cual_prefix()?,
             parent_path,
-            urlencoding::encode(&name)
+            urlencoding::encode(&name),
+            asset_type
         )))
         .context("Getting tableau CUAL")
     } else {
         // An asset without a parent is inferred to be a top-level project.
         Ok(Cual::new(format!(
-            "{}/{}",
+            "{}/{}?type={}",
             get_cual_prefix()?,
-            urlencoding::encode(&name)
+            urlencoding::encode(&name),
+            asset_type
         )))
         .context("Getting tableau CUAL")
     }
@@ -198,7 +206,9 @@ mod tests {
         )?;
         assert_eq!(
             cual,
-            Cual::new("tableau://dummy-server@dummy-site/name2/name1/my_flow_yo".to_owned())
+            Cual::new(
+                "tableau://dummy-server@dummy-site/name2/name1/my_flow_yo?type=flow".to_owned()
+            )
         );
         Ok(())
     }
@@ -216,7 +226,9 @@ mod tests {
         )?;
         assert_eq!(
             cual,
-            Cual::new("tableau://dummy-server@dummy-site/grandpappy_project".to_owned())
+            Cual::new(
+                "tableau://dummy-server@dummy-site/grandpappy_project?type=project".to_owned()
+            )
         );
         Ok(())
     }
@@ -283,7 +295,7 @@ mod tests {
         )?;
         assert_eq!(
             cual,
-            Cual::new("tableau://dummy-server@dummy-site/projecta%20wojecta/projecty/book%20work/room%20with%20a%20view/metric%20station".to_owned())
+            Cual::new("tableau://dummy-server@dummy-site/projecta%20wojecta/projecty/book%20work/room%20with%20a%20view/metric%20station?type=metric".to_owned())
         );
         Ok(())
     }

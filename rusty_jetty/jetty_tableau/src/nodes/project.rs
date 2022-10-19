@@ -167,7 +167,7 @@ impl Permissionable for Project {
 impl FromTableau<Project> for jetty_nodes::Asset {
     fn from(val: Project, env: &Environment) -> Self {
         let cual = get_tableau_cual(
-            TableauAssetType::Flow,
+            TableauAssetType::Project,
             &val.name,
             val.parent_project_id.as_ref(),
             None,
