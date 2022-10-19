@@ -100,7 +100,6 @@ pub(crate) fn get_tableau_cual(
                     urlencoding::encode(&parent_view.name).into_owned(),
                 ];
                 parents.append(&mut direct_parents);
-                println!("parents: {:?}", &parents);
                 parents.join("/")
             }
             TableauAssetType::Lens => {
