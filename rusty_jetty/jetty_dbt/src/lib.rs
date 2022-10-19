@@ -22,7 +22,6 @@ use jetty_core::{
         nodes::{Asset as JettyAsset, ConnectorData},
     },
     jetty::{ConnectorConfig, CredentialsBlob},
-    logging::{debug, info},
     Connector,
 };
 
