@@ -7,25 +7,26 @@ pub use tracing::{debug, error, info, warn};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{util::SubscriberInitExt, Layer};
 
-/// Set up basic logging
+/// Set up basic logging.
+///
+/// The caller can specify a log level via `level`. If they don't, we
+/// default to "info."
+///
+/// The `level` arg is overridden by any env var levels.
+///
+/// The user can specify a log level via the env var `RUST_LOG` (such as for testing).
+/// If they don't, then we default to the level_filter defined above.
 pub fn setup(level: Option<LevelFilter>) {
-    // The user can specify a log level via an env var
-    // (such as for testing).
-    let env = std::env::var("RUST_LOG").unwrap_or_else(|_| "tower_http=debug".into());
-    let mut logging_layers = vec![tracing_subscriber::EnvFilter::new(env).boxed()];
+    let level_filter = level.unwrap_or_else(|| LevelFilter::INFO);
 
-    // The input level overrides any env vars.
-    if let Some(level) = level {
-        let layer = tracing_subscriber::fmt::layer().with_filter(level).boxed();
-        logging_layers.push(layer);
-    } else {
-        let layer = tracing_subscriber::fmt::layer()
-            .with_filter(LevelFilter::INFO)
-            .boxed();
-        logging_layers.push(layer);
-    }
+    let env = std::env::var("RUST_LOG")
+        .unwrap_or_else(|_| format!("{},tower_http=debug,hyper=info,reqwest=info", level_filter));
 
-    // Actually initialize all logging layers
+    let logging_layers = vec![tracing_subscriber::fmt::layer()
+        .with_filter(tracing_subscriber::EnvFilter::new(env))
+        .boxed()];
+
+    // Actually initialize the logger.
     tracing_subscriber::registry().with(logging_layers).init();
 
     debug!("logging set up");
