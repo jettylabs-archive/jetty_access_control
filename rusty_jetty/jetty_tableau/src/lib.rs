@@ -26,6 +26,7 @@ use jetty_core::{
     },
     cual::Cual,
     jetty::{ConnectorConfig, CredentialsBlob},
+    permissions::matrix::Merge,
     Connector,
 };
 
@@ -113,7 +114,8 @@ impl TableauConnector {
         &self,
     ) -> SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> {
         let permission_manager = PermissionManager::new(&self.coordinator);
-        let mut final_eps = HashMap::new();
+        let mut final_eps: SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> =
+            HashMap::new();
         let flow_eps =
             permission_manager.get_effective_permissions_for_asset(&self.coordinator.env.flows);
         let project_eps =
@@ -129,13 +131,13 @@ impl TableauConnector {
         let view_eps =
             permission_manager.get_effective_permissions_for_asset(&self.coordinator.env.views);
 
-        final_eps.extend(flow_eps.into_iter());
-        final_eps.extend(project_eps.into_iter());
-        final_eps.extend(lens_eps.into_iter());
-        final_eps.extend(datasource_eps.into_iter());
-        final_eps.extend(workbook_eps.into_iter());
-        final_eps.extend(metric_eps.into_iter());
-        final_eps.extend(view_eps.into_iter());
+        final_eps.merge(flow_eps).unwrap();
+        final_eps.merge(project_eps).unwrap();
+        final_eps.merge(lens_eps).unwrap();
+        final_eps.merge(datasource_eps).unwrap();
+        final_eps.merge(workbook_eps).unwrap();
+        final_eps.merge(metric_eps).unwrap();
+        final_eps.merge(view_eps).unwrap();
         final_eps
     }
 
