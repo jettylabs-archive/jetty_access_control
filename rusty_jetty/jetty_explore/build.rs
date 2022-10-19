@@ -19,10 +19,15 @@ fn main() {
         std::str::from_utf8(&output.stdout).unwrap()
     );
 
+    let profile = std::env::var("PROFILE").unwrap();
+    let mut build_cmd = vec!["quasar", "build"];
+    if profile == "debug" {
+        build_cmd.push("--debug");
+    }
     // Note that there are a number of downsides to this approach, the comments
     // below detail how to improve the portability of these commands.
     let output = Command::new("npx")
-        .args(["quasar", "build"])
+        .args(build_cmd)
         .current_dir(web_project_path)
         .output()
         .unwrap();
