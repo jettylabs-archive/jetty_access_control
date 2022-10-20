@@ -25,7 +25,6 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::fs::File;
-use std::hash::Hasher;
 use std::io::BufWriter;
 use std::ops::{Index, IndexMut};
 
@@ -662,7 +661,7 @@ impl AccessGraph {
         })?;
 
         // add edges from the cache
-        self.add_edges();
+        self.add_edges()?;
 
         Ok(())
     }
