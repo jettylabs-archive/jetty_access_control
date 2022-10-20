@@ -199,9 +199,7 @@ mod tests {
             data,
             ConnectorData {
                 assets: vec![Asset {
-                    cual: Cual::new(
-                        "snowflake://account.snowflakecomputing.com/DB/SCHEMA/MODEL".to_owned()
-                    ),
+                    cual: Cual::new("snowflake://account.snowflakecomputing.com/DB/SCHEMA/MODEL"),
                     name: "".to_owned(),
                     asset_type: AssetType(VIEW.to_owned()),
                     metadata: HashMap::from([("enabled".to_owned(), "false".to_owned())]),
@@ -231,7 +229,7 @@ mod tests {
         manifest_mock
             .expect_cual_for_node()
             .times(3)
-            .returning(|_| Ok(Cual::new("cual".to_owned())));
+            .returning(|_| Ok(Cual::new("cual://a")));
         manifest_mock.expect_get_nodes().times(1).returning(|| {
             Ok(HashMap::from([
                 (
@@ -267,7 +265,7 @@ mod tests {
             assets.sort(),
             vec![
                 Asset {
-                    cual: Cual::new("snowflake:////".to_owned()),
+                    cual: Cual::new("snowflake:////"),
                     name: "".to_owned(),
                     asset_type: AssetType(VIEW.to_owned()),
                     metadata: HashMap::from([("enabled".to_owned(), "false".to_owned())]),
@@ -279,7 +277,7 @@ mod tests {
                     tagged_as: HashSet::new()
                 },
                 Asset {
-                    cual: Cual::new("snowflake:////test".to_owned()),
+                    cual: Cual::new("snowflake:////test"),
                     name: "test".to_owned(),
                     asset_type: AssetType(VIEW.to_owned()),
                     metadata: HashMap::from([("enabled".to_owned(), "false".to_owned())]),
@@ -291,7 +289,7 @@ mod tests {
                     tagged_as: HashSet::new()
                 },
                 Asset {
-                    cual: Cual::new("snowflake://test2db/test2schema/test2".to_owned()),
+                    cual: Cual::new("snowflake://test2db/test2schema/test2"),
                     name: "test2".to_owned(),
                     asset_type: AssetType(VIEW.to_owned()),
                     metadata: HashMap::from([("enabled".to_owned(), "false".to_owned())]),

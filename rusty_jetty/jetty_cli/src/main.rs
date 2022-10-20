@@ -81,7 +81,7 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn fetch(connectors: &Vec<String>, visualize: &bool) -> Result<()> {
+async fn fetch(connectors: &Vec<String>, &visualize: &bool) -> Result<()> {
     let jetty = Jetty::new()?;
     let creds = fetch_credentials()?;
 
@@ -91,29 +91,6 @@ async fn fetch(connectors: &Vec<String>, visualize: &bool) -> Result<()> {
     }
 
     let mut data_from_connectors = vec![];
-
-    if connectors.contains(&"dbt".to_owned()) {
-        info!("initializing dbt");
-        let now = Instant::now();
-        // Initialize connectors
-        let mut dbt = jetty_dbt::DbtConnector::new(
-            &jetty.config.connectors[&ConnectorNamespace("dbt".to_owned())],
-            &creds["dbt"],
-            Some(ConnectorClient::Core),
-        )
-        .await?;
-        info!("dbt took {} seconds", now.elapsed().as_secs_f32());
-
-        info!("getting dbt data");
-        let now = Instant::now();
-        let dbt_data = dbt.get_data().await;
-        let dbt_pcd = jetty_core::access_graph::ProcessedConnectorData {
-            connector: "dbt".to_owned(),
-            data: dbt_data,
-        };
-        info!("dbt data took {} seconds", now.elapsed().as_secs_f32());
-        data_from_connectors.push(dbt_pcd);
-    }
 
     if connectors.contains(&"snowflake".to_owned()) {
         info!("intializing snowflake");
@@ -138,6 +115,29 @@ async fn fetch(connectors: &Vec<String>, visualize: &bool) -> Result<()> {
             now.elapsed().as_secs_f32()
         );
         data_from_connectors.push(snow_pcd);
+    }
+
+    if connectors.contains(&"dbt".to_owned()) {
+        info!("initializing dbt");
+        let now = Instant::now();
+        // Initialize connectors
+        let mut dbt = jetty_dbt::DbtConnector::new(
+            &jetty.config.connectors[&ConnectorNamespace("dbt".to_owned())],
+            &creds["dbt"],
+            Some(ConnectorClient::Core),
+        )
+        .await?;
+        info!("dbt took {} seconds", now.elapsed().as_secs_f32());
+
+        info!("getting dbt data");
+        let now = Instant::now();
+        let dbt_data = dbt.get_data().await;
+        let dbt_pcd = jetty_core::access_graph::ProcessedConnectorData {
+            connector: "dbt".to_owned(),
+            data: dbt_data,
+        };
+        info!("dbt data took {} seconds", now.elapsed().as_secs_f32());
+        data_from_connectors.push(dbt_pcd);
     }
 
     if connectors.contains(&"tableau".to_owned()) {
@@ -172,7 +172,7 @@ async fn fetch(connectors: &Vec<String>, visualize: &bool) -> Result<()> {
     );
     ag.serialize_graph()?;
 
-    if *visualize {
+    if visualize {
         info!("visualizing access graph");
         let now = Instant::now();
         ag.visualize("/tmp/graph.svg")

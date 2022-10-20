@@ -93,7 +93,7 @@ fn cual_from_name_parts(
         1 => format!("{}/{}/{}/{}", prefix, db, schema, name_parts[0]),
         _ => bail!("unable to build cual"),
     };
-    Ok(Cual::new(cual))
+    Ok(Cual::new(&cual))
 }
 
 /// Build a named SnowflakeConnectionInfo instance for a snowflake source
@@ -145,7 +145,7 @@ mod tests {
         assert_eq!(
             cuals,
             vec![Cual::new(
-                "snowflake://heresatest.snowflakecomputing.com/MY_DB/MY_SCHEMA/MY_TABLE".to_owned()
+                "snowflake://heresatest.snowflakecomputing.com/MY_DB/MY_SCHEMA/MY_TABLE"
             )]
         );
 

@@ -89,7 +89,7 @@ mod tests {
     #[test]
     fn get_assets_user_accesses_works() -> Result<()> {
         let test_asset = JettyNode::Asset(AssetAttributes {
-            cual: Cual::new("my_cual".to_owned()),
+            cual: Cual::new("mycual://a"),
             asset_type: AssetType::default(),
             metadata: HashMap::new(),
             connectors: HashSet::new(),
@@ -109,7 +109,7 @@ mod tests {
                 ),
                 (
                     NodeName::Policy("policy".to_owned()),
-                    NodeName::Asset("my_cual".to_owned()),
+                    NodeName::Asset("mycual://a".to_owned()),
                     EdgeType::default(),
                 ),
             ],
@@ -134,7 +134,7 @@ mod tests {
             &[
                 &test_user,
                 &JettyNode::Policy(PolicyAttributes::new("policy".to_owned())),
-                &JettyNode::Asset(AssetAttributes::new(Cual::new("my_cual".to_owned()))),
+                &JettyNode::Asset(AssetAttributes::new(Cual::new("mycual://a"))),
             ],
             // For this test we need the back edges so we can get back to users
             &[
@@ -144,14 +144,14 @@ mod tests {
                     EdgeType::default(),
                 ),
                 (
-                    NodeName::Asset("my_cual".to_owned()),
+                    NodeName::Asset("mycual://a".to_owned()),
                     NodeName::Policy("policy".to_owned()),
                     EdgeType::default(),
                 ),
             ],
         )?;
 
-        let a = g.get_users_with_access_to(&NodeName::Asset("my_cual".to_owned()))?;
+        let a = g.get_users_with_access_to(&NodeName::Asset("mycual://a".to_owned()))?;
         assert_eq!(a.collect::<Vec<_>>(), vec![&test_user]);
         Ok(())
     }

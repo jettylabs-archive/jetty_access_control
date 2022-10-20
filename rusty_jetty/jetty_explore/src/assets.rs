@@ -125,7 +125,7 @@ async fn direct_users_handler(
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<UserAssetsResponse>> {
-    let users = ag.get_users_with_access_to_asset(Cual::new(node_id));
+    let users = ag.get_users_with_access_to_asset(Cual::new(&node_id));
 
     Json(
         users
@@ -171,7 +171,7 @@ async fn users_incl_downstream_handler(
     let user_asset_map = downstream_assets
         .into_iter()
         .map(|a| {
-            ag.get_users_with_access_to_asset(Cual::new(a.name.to_owned()))
+            ag.get_users_with_access_to_asset(Cual::new(&a.name))
                 .iter()
                 .map(|(u, _)| {
                     (

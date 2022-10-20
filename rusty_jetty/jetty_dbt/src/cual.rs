@@ -36,10 +36,10 @@ pub(crate) fn get_cual_account_name<'a>() -> Result<&'a str> {
 #[macro_export]
 macro_rules! cual {
     ($db:expr) => {
-        Cual::new(format!("{}://{}", "snowflake", urlencoding::encode(&$db)))
+        Cual::new(&format!("{}://{}", "snowflake", urlencoding::encode(&$db)))
     };
     ($db:expr, $schema:expr) => {
-        Cual::new(format!(
+        Cual::new(&format!(
             "{}://{}/{}/{}",
             "snowflake",
             get_cual_account_name().expect("couldn't get CUAL account name"),
@@ -48,7 +48,7 @@ macro_rules! cual {
         ))
     };
     ($db:expr, $schema:expr, $table:expr) => {
-        Cual::new(format!(
+        Cual::new(&format!(
             "{}://{}/{}/{}/{}",
             "snowflake",
             get_cual_account_name().expect("couldn't get CUAL account name"),
@@ -95,7 +95,7 @@ mod test {
 
         assert_eq!(
             result_cual,
-            Cual::new("snowflake://account.snowflakecomputing.com/DB/SCHEMA/MODEL".to_owned())
+            Cual::new("snowflake://account.snowflakecomputing.com/DB/SCHEMA/MODEL")
         );
     }
 
@@ -109,7 +109,7 @@ mod test {
         let result_cual = (&source_node as &dyn NamePartable).cual();
         assert_eq!(
             result_cual,
-            Cual::new("snowflake://account.snowflakecomputing.com/DB/SCHEMA/MODEL".to_owned())
+            Cual::new("snowflake://account.snowflakecomputing.com/DB/SCHEMA/MODEL")
         );
     }
 
@@ -124,7 +124,7 @@ mod test {
         dbg!(&result_cual);
         assert_eq!(
             result_cual,
-            Cual::new("snowflake://account.snowflakecomputing.com/db/SCHEMA/MODEL".to_owned())
+            Cual::new("snowflake://account.snowflakecomputing.com/db/SCHEMA/MODEL")
         );
     }
 
@@ -138,7 +138,7 @@ mod test {
         let result_cual = (&source_node as &dyn NamePartable).cual();
         assert_eq!(
             result_cual,
-            Cual::new("snowflake://account.snowflakecomputing.com/DB/schema/MODEL".to_owned())
+            Cual::new("snowflake://account.snowflakecomputing.com/DB/schema/MODEL")
         );
     }
 
@@ -152,7 +152,7 @@ mod test {
         let result_cual = (&source_node as &dyn NamePartable).cual();
         assert_eq!(
             result_cual,
-            Cual::new("snowflake://account.snowflakecomputing.com/DB/SCHEMA/model".to_owned())
+            Cual::new("snowflake://account.snowflakecomputing.com/DB/SCHEMA/model")
         );
     }
 
@@ -166,7 +166,7 @@ mod test {
         let result_cual = (&source_node as &dyn NamePartable).cual();
         assert_eq!(
             result_cual,
-            Cual::new("snowflake://account.snowflakecomputing.com/db/schema/MODEL".to_owned())
+            Cual::new("snowflake://account.snowflakecomputing.com/db/schema/MODEL")
         );
     }
 
@@ -180,7 +180,7 @@ mod test {
         let result_cual = (&source_node as &dyn NamePartable).cual();
         assert_eq!(
             result_cual,
-            Cual::new("snowflake://account.snowflakecomputing.com/db/schema/model".to_owned())
+            Cual::new("snowflake://account.snowflakecomputing.com/db/schema/model")
         );
     }
 
@@ -194,7 +194,7 @@ mod test {
         let result_cual = (&source_node as &dyn NamePartable).cual();
         assert_eq!(
             result_cual,
-            Cual::new("snowflake://account.snowflakecomputing.com/db/SCHEMA/model".to_owned())
+            Cual::new("snowflake://account.snowflakecomputing.com/db/SCHEMA/model")
         );
     }
 
@@ -208,7 +208,7 @@ mod test {
         let result_cual = (&source_node as &dyn NamePartable).cual();
         assert_eq!(
             result_cual,
-            Cual::new("snowflake://account.snowflakecomputing.com/DB/schema/model".to_owned())
+            Cual::new("snowflake://account.snowflakecomputing.com/DB/schema/model")
         );
     }
 
@@ -222,9 +222,6 @@ mod test {
         };
         // db and schema and identifier
         let result_cual = (&source_node as &dyn NamePartable).cual();
-        assert_eq!(
-            result_cual,
-            Cual::new("snowflake://DB/schema/model".to_owned())
-        );
+        assert_eq!(result_cual, Cual::new("snowflake://DB/schema/model"));
     }
 }

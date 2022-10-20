@@ -36,7 +36,7 @@ pub(crate) fn get_cual_account_name<'a>() -> Result<&'a str> {
 
 macro_rules! cual {
     ($db:expr) => {
-        Cual::new(format!(
+        Cual::new(&format!(
             "{}://{}/{}",
             "snowflake",
             get_cual_account_name().expect("couldn't get CUAL account name"),
@@ -44,7 +44,7 @@ macro_rules! cual {
         ))
     };
     ($db:expr, $schema:expr) => {
-        Cual::new(format!(
+        Cual::new(&format!(
             "{}://{}/{}/{}",
             "snowflake",
             get_cual_account_name().expect("couldn't get CUAL account name"),
@@ -53,7 +53,7 @@ macro_rules! cual {
         ))
     };
     ($db:expr, $schema:expr, $table:expr) => {
-        Cual::new(format!(
+        Cual::new(&format!(
             "{}://{}/{}/{}/{}",
             "snowflake",
             get_cual_account_name().expect("couldn't get CUAL account name"),
@@ -155,9 +155,7 @@ mod tests {
         .cual();
         assert_eq!(
             cual,
-            Cual::new(
-                "snowflake://account.snowflakecomputing.com/database/schema/my_table".to_owned()
-            )
+            Cual::new("snowflake://account.snowflakecomputing.com/database/schema/my_table")
         )
     }
 
@@ -172,9 +170,7 @@ mod tests {
         .cual();
         assert_eq!(
             cual,
-            Cual::new(
-                "snowflake://account.snowflakecomputing.com/database/schema/my_table".to_owned()
-            )
+            Cual::new("snowflake://account.snowflakecomputing.com/database/schema/my_table")
         )
     }
 
@@ -188,7 +184,7 @@ mod tests {
         .cual();
         assert_eq!(
             cual,
-            Cual::new("snowflake://account.snowflakecomputing.com/database/my_schema".to_owned())
+            Cual::new("snowflake://account.snowflakecomputing.com/database/my_schema")
         )
     }
 
@@ -201,7 +197,7 @@ mod tests {
         .cual();
         assert_eq!(
             cual,
-            Cual::new("snowflake://account.snowflakecomputing.com/my_db".to_owned())
+            Cual::new("snowflake://account.snowflakecomputing.com/my_db")
         )
     }
 }

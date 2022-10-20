@@ -122,7 +122,7 @@ pub(crate) fn get_tableau_cual(
             | TableauAssetType::Datasource
             | TableauAssetType::Flow => parents.join("/"),
         };
-        Ok(Cual::new(format!(
+        Ok(Cual::new(&format!(
             "{}/{}/{}?type={}",
             get_cual_prefix()?,
             parent_path,
@@ -132,7 +132,7 @@ pub(crate) fn get_tableau_cual(
         .context("Getting tableau CUAL")
     } else {
         // An asset without a parent is inferred to be a top-level project.
-        Ok(Cual::new(format!(
+        Ok(Cual::new(&format!(
             "{}/{}?type={}",
             get_cual_prefix()?,
             urlencoding::encode(&name),
@@ -205,9 +205,7 @@ mod tests {
         )?;
         assert_eq!(
             cual,
-            Cual::new(
-                "tableau://dummy-server@dummy-site/name2/name1/my_flow_yo?type=flow".to_owned()
-            )
+            Cual::new("tableau://dummy-server@dummy-site/name2/name1/my_flow_yo?type=flow")
         );
         Ok(())
     }
@@ -225,9 +223,7 @@ mod tests {
         )?;
         assert_eq!(
             cual,
-            Cual::new(
-                "tableau://dummy-server@dummy-site/grandpappy_project?type=project".to_owned()
-            )
+            Cual::new("tableau://dummy-server@dummy-site/grandpappy_project?type=project")
         );
         Ok(())
     }
@@ -294,7 +290,7 @@ mod tests {
         )?;
         assert_eq!(
             cual,
-            Cual::new("tableau://dummy-server@dummy-site/projecta%20wojecta/projecty/book%20work/room%20with%20a%20view/metric%20station?type=metric".to_owned())
+            Cual::new("tableau://dummy-server@dummy-site/projecta%20wojecta/projecty/book%20work/room%20with%20a%20view/metric%20station?type=metric")
         );
         Ok(())
     }
