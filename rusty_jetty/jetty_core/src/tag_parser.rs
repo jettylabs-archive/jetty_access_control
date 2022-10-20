@@ -2,9 +2,9 @@ use anyhow::{anyhow, bail, Context, Result};
 use petgraph::stable_graph::NodeIndex;
 
 use std::cmp::max;
+use std::collections::HashMap;
 use std::collections::{HashSet, VecDeque};
 use std::fmt::Display;
-use std::{collections::HashMap};
 
 use yaml_peg::{parse, repr::RcRepr, NodeRc};
 
@@ -332,7 +332,7 @@ fn get_asset_nodes<'a>(ag: &'a AccessGraph) -> Vec<(NodeIndex, &'a AssetAttribut
 
 fn get_matching_assets<'a>(
     target: &TargetAsset,
-    asset_list: &Vec<(NodeIndex, &'a AssetAttributes)>,
+    asset_list: &[(NodeIndex, &'a AssetAttributes)],
 ) -> Vec<(NodeIndex, &'a AssetAttributes)> {
     asset_list
         .iter()
@@ -467,11 +467,8 @@ pub(crate) fn tags_to_jetty_node_helpers(
 #[cfg(test)]
 mod test {
 
-    
-
     use crate::connectors::nodes::Tag;
     use crate::cual::Cual;
-    
 
     use super::*;
 

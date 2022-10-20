@@ -138,8 +138,9 @@ async fn direct_users_handler(
             .iter()
             .map(|(u, ps)| {
                 let user_name = u
-                    .inner_value().map(|s| s.to_owned())
-                    .unwrap_or("".to_owned());
+                    .inner_value()
+                    .map(|s| s.to_owned())
+                    .unwrap_or_else(|| "".to_owned());
                 UserAssetsResponse {
                     name: user_name.to_owned(),
                     privileges: ps
@@ -176,10 +177,11 @@ async fn users_incl_downstream_handler(
     let user_asset_map = downstream_assets
         .into_iter()
         .flat_map(|a| {
-            ag.get_users_with_access_to_asset(Cual::new(&a)).keys().map(|u| {
+            ag.get_users_with_access_to_asset(Cual::new(&a))
+                .keys()
+                .map(|u| {
                     (
-                        u.inner_value().map(|s| s.to_owned())
-                            .unwrap_or_default(),
+                        u.inner_value().map(|s| s.to_owned()).unwrap_or_default(),
                         a.to_owned(),
                     )
                 })
@@ -192,7 +194,7 @@ async fn users_incl_downstream_handler(
                     .and_modify(|a| {
                         a.insert(asset.to_owned());
                     })
-                    .or_insert(HashSet::from([asset]));
+                    .or_insert_with(|| HashSet::from([asset]));
                 acc
             },
         );
@@ -238,8 +240,9 @@ fn asset_genealogy_with_path(
                     .get_node_connectors()
                     .iter()
                     // Asset should only have one connector. To be cleaned up in a future version.
-                    .next().map(|s| s.to_owned())
-                    .unwrap_or("unknown".to_owned()),
+                    .next()
+                    .map(|s| s.to_owned())
+                    .unwrap_or_else(|| "unknown".to_owned()),
                 paths: v.iter().map(|p| ag.path_as_string(p)).collect::<Vec<_>>(),
             }
         })

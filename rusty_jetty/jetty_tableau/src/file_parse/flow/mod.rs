@@ -24,7 +24,7 @@ fn get_relation_type(node: &serde_json::Value) -> Result<RelationType> {
         .get("relation")
         .and_then(|n| n.get("type"))
         .and_then(|n| n.as_str())
-        .ok_or(anyhow!("unable to get sql type"))?;
+        .ok_or_else(|| anyhow!("unable to get sql type"))?;
     Ok(match sql_type {
         "query" => RelationType::SqlQuery,
         "table" => RelationType::Table,
@@ -47,7 +47,7 @@ impl FlowDoc {
         let mut input_origins: HashSet<SourceOrigin> = HashSet::new();
         let mut output_origins: HashSet<SourceOrigin> = HashSet::new();
 
-        for (_, node) in &self.nodes {
+        for node in self.nodes.values() {
             if let Some(node_type) = node.get("nodeType").and_then(|v| v.as_str()) {
                 match node_type {
                     // Input nodes
@@ -132,10 +132,7 @@ impl FlowDoc {
             }?,
             o => bail!("we don't currently support {}", o),
         };
-        Ok(cuals
-            .into_iter()
-            .map(SourceOrigin::from_cual)
-            .collect())
+        Ok(cuals.into_iter().map(SourceOrigin::from_cual).collect())
     }
 
     fn handle_load_sql_proxy(
@@ -155,7 +152,7 @@ impl FlowDoc {
 
         let connection_attributes = node
             .get("connectionAttributes")
-            .ok_or(anyhow!["unable to find connectionAttributes"])?;
+            .ok_or_else(|| anyhow!["unable to find connectionAttributes"])?;
 
         let conn: ConnectionAttributes = serde_json::from_value(connection_attributes.to_owned())?;
 
@@ -229,9 +226,7 @@ impl FlowDoc {
         let correct_datasource: Vec<_> = env
             .datasources
             .iter()
-            .filter(|(_, v)| {
-                &v.project_id.0 == &conn.project_luid && v.name == conn.datasource_name
-            })
+            .filter(|(_, v)| v.project_id.0 == conn.project_luid && v.name == conn.datasource_name)
             .map(|(_, v)| v)
             .collect();
 

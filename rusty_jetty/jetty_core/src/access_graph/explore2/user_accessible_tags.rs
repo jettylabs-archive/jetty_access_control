@@ -16,7 +16,9 @@ impl AccessGraph {
     ) -> HashMap<NodeIndex, Vec<JettyNode>> {
         // get all the user_accessable assets
         let accessable_assets = self.get_user_accessible_assets(user);
-        let tag_asset_map = accessable_assets.keys().map(|c| (c, self.tags_for_asset(&NodeName::Asset(c.to_string()))))
+        let tag_asset_map = accessable_assets
+            .keys()
+            .map(|c| (c, self.tags_for_asset(&NodeName::Asset(c.to_string()))))
             .flat_map(|(c, i)| i.iter().map(|n| (*n, c)).collect::<Vec<_>>())
             .fold(
                 HashMap::<NodeIndex, Vec<JettyNode>>::new(),
@@ -30,11 +32,13 @@ impl AccessGraph {
                                     .to_owned(),
                             );
                         })
-                        .or_insert(vec![self
-                            .get_node(&NodeName::Asset(asset_cual.to_string()))
-                            .context("nonexistent asset")
-                            .unwrap()
-                            .to_owned()]);
+                        .or_insert_with(|| {
+                            vec![self
+                                .get_node(&NodeName::Asset(asset_cual.to_string()))
+                                .context("nonexistent asset")
+                                .unwrap()
+                                .to_owned()]
+                        });
                     acc
                 },
             );
