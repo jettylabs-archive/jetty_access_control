@@ -1,5 +1,6 @@
 //! Utilities for testing
 //!
+#![cfg(test)]
 
 use anyhow::Result;
 
@@ -19,11 +20,7 @@ pub(crate) fn new_graph_with(
         graph.add_node(node)?;
     }
     for edge in edges {
-        graph.add_edge(JettyEdge::new(
-            edge.0.clone(),
-            edge.1.clone(),
-            edge.2,
-        ))?;
+        graph.add_edge(JettyEdge::new(edge.0.clone(), edge.1.clone(), edge.2));
     }
 
     Ok(graph)

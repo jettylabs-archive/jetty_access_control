@@ -9,7 +9,7 @@ mod helpers;
 #[cfg(test)]
 pub mod test_util;
 
-use crate::connectors::nodes::{Asset, ConnectorData, EffectivePermission, SparseMatrix};
+use crate::connectors::nodes::{ConnectorData, EffectivePermission, SparseMatrix};
 use crate::connectors::UserIdentifier;
 use crate::logging::debug;
 use crate::tag_parser::{parse_tags, tags_to_jetty_node_helpers};
@@ -593,9 +593,9 @@ impl AccessGraph {
     /// Adds all the edges from the edge cache, draining the cache as it goes.
     pub(crate) fn add_edges(&mut self) -> Result<()> {
         for edge in self.edge_cache.drain() {
-            self.graph
-                .add_edge(edge.to_owned())
-                .context(format!("couldn't add edge {:?} to graph", edge))?;
+            if !self.graph.add_edge(edge.to_owned()) {
+                debug!("couldn't add edge {:?} to graph", edge);
+            }
         }
         Ok(())
     }

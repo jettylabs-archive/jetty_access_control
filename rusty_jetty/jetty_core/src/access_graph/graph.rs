@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use super::{EdgeType, JettyNode, NodeName};
+use crate::logging::warn;
 
 /// The main graph wrapper
 #[derive(Serialize, Deserialize)]
@@ -122,27 +123,31 @@ impl Graph {
         Ok(node.to_owned())
     }
 
-    /// Add edges from cache. Return an error if to/from doesn't exist
-    pub(crate) fn add_edge(&mut self, edge: super::JettyEdge) -> Result<()> {
-        let to = self.get_node(&edge.to).ok_or_else(|| {
-            anyhow![
+    /// Add edges from cache. Return false if to/from doesn't exist
+    pub(crate) fn add_edge(&mut self, edge: super::JettyEdge) -> bool {
+        let to = self.get_node(&edge.to).or_else(|| {
+            warn![
                 "Unable to find \"to\" node: {:?} for \"from\" {:?}",
-                &edge.to,
-                &edge.from
-            ]
-        })?;
+                &edge.to, &edge.from
+            ];
+            None
+        });
 
-        let from = self.get_node(&edge.from).ok_or_else(|| {
+        let from = self.get_node(&edge.from).or_else(|| {
             dbg!(&self.nodes);
-            anyhow![
+            warn![
                 "Unable to find \"from\" node: {:?} for \"to\" {:?}",
-                &edge.from,
-                &edge.to
-            ]
-        })?;
+                &edge.from, &edge.to
+            ];
+            None
+        });
 
-        self.graph.add_edge(*from, *to, edge.edge_type);
-        Ok(())
+        if let (Some(to), Some(from)) = (to, from) {
+            self.graph.add_edge(*from, *to, edge.edge_type);
+            true
+        } else {
+            false
+        }
     }
 }
 
@@ -323,11 +328,12 @@ mod tests {
             connectors: HashSet::new(),
         }))?;
 
-        g.add_edge(JettyEdge {
+        let add_success = g.add_edge(JettyEdge {
             from: NodeName::Asset("mycual://a".to_owned()),
             to: NodeName::Asset("mysecondcual://a".to_owned()),
             edge_type: EdgeType::ParentOf,
-        })?;
+        });
+        assert!(add_success);
 
         let paths = g.get_paths(
             &NodeName::Asset("mycual://a".to_owned()),
