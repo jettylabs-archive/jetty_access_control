@@ -37,6 +37,7 @@ impl AccessGraph {
                     })
                 )
             },
+            // starting at depth of two to exclude directly tagged assets (handled later)
             2,
         );
 
@@ -53,12 +54,14 @@ impl AccessGraph {
                     })
                 )
             },
+            // starting at depth of two to exclude directly tagged assets (handled later)
             2,
         );
 
         // get direct tags that aren't applied through lineage or hierarchy:
         let direct_paths = self.get_paths_to_tags_via_inheritance(
             asset,
+            // By only allowing TaggedAs nodes, we can only traverse from assets to tags.
             |e| matches!(e, EdgeType::TaggedAs),
             |n| matches!(n, JettyNode::Tag(_)),
             1,

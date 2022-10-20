@@ -41,14 +41,14 @@ struct AssetWithPaths {
 }
 
 #[derive(Serialize, Debug)]
-struct UsersWithDownstreamAccess {
+struct UserWithDownstreamAccess {
     name: String,
     connectors: HashSet<String>,
     assets: HashSet<String>,
 }
 
 #[derive(Serialize, Debug)]
-struct AssetTagStrings {
+struct AssetTagNames {
     direct: Vec<String>,
     via_lineage: Vec<String>,
     via_hierarchy: Vec<String>,
@@ -56,6 +56,7 @@ struct AssetTagStrings {
 
 /// Return information about upstream assets, by hierarchy. Includes path to the current asset
 async fn hierarchy_upstream_handler(
+    // node_id is the cual for an asset
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<AssetWithPaths>> {
@@ -66,6 +67,7 @@ async fn hierarchy_upstream_handler(
 
 /// Return information about downstream assets, by hierarchy. Includes path to the current asset
 async fn hierarchy_downstream_handler(
+    // node_id is the cual for an asset
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<AssetWithPaths>> {
@@ -76,6 +78,7 @@ async fn hierarchy_downstream_handler(
 
 /// Return information about upstream assets, by data lineage. Includes path to the current asset
 async fn lineage_upstream_handler(
+    // node_id is the cual for an asset
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<AssetWithPaths>> {
@@ -86,6 +89,7 @@ async fn lineage_upstream_handler(
 
 /// Return information about downstream assets, by data lineage. Includes path to the current asset
 async fn lineage_downstream_handler(
+    // node_id is the cual for an asset
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<AssetWithPaths>> {
@@ -96,12 +100,13 @@ async fn lineage_downstream_handler(
 
 /// Return information about the tags that an asset is tagged with
 async fn tags_handler(
+    // node_id is the cual for an asset
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
-) -> Json<AssetTagStrings> {
+) -> Json<AssetTagNames> {
     let tags = ag.tags_for_asset_by_source(&NodeName::Asset(node_id));
 
-    Json(AssetTagStrings {
+    Json(AssetTagNames {
         direct: tags
             .direct
             .into_iter()
@@ -122,6 +127,7 @@ async fn tags_handler(
 
 /// Return users that have direct access to the asset, including their levels of privilege and privilege explanation
 async fn direct_users_handler(
+    // node_id is the cual for an asset
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<UserAssetsResponse>> {
@@ -156,29 +162,29 @@ async fn direct_users_handler(
 
 /// Return users that have access to this asset directly, or through downstream assets (via data lineage)
 async fn users_incl_downstream_handler(
+    // node_id is the cual for an asset
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
-) -> Json<Vec<UsersWithDownstreamAccess>> {
+) -> Json<Vec<UserWithDownstreamAccess>> {
     let mut downstream_assets = asset_genealogy_with_path(node_id.to_owned(), ag.clone(), |e| {
         matches!(e, EdgeType::DerivedTo)
-    });
-    downstream_assets.push(AssetWithPaths {
-        name: node_id,
-        connector: "".to_owned(),
-        paths: vec![],
-    });
+    })
+    .iter()
+    .map(|a| a.name.to_owned())
+    .collect::<Vec<_>>();
+    downstream_assets.push(node_id);
 
     let user_asset_map = downstream_assets
         .into_iter()
         .map(|a| {
-            ag.get_users_with_access_to_asset(Cual::new(a.name.to_owned()))
+            ag.get_users_with_access_to_asset(Cual::new(a.to_owned()))
                 .iter()
                 .map(|(u, _)| {
                     (
                         u.inner_value()
                             .and_then(|s| Some(s.to_owned()))
                             .unwrap_or_default(),
-                        a.name.to_owned(),
+                        a.to_owned(),
                     )
                 })
                 .collect::<Vec<_>>()
@@ -199,7 +205,7 @@ async fn users_incl_downstream_handler(
     Json(
         user_asset_map
             .into_iter()
-            .map(|(u, assets)| UsersWithDownstreamAccess {
+            .map(|(u, assets)| UserWithDownstreamAccess {
                 name: u.to_owned(),
                 connectors: ag
                     .get_node(&NodeName::User(u))
@@ -213,6 +219,7 @@ async fn users_incl_downstream_handler(
 
 /// get the ascending or descending assets with paths, based on edge matcher
 fn asset_genealogy_with_path(
+    // node_id is the cual for an asset
     node_id: String,
     ag: Arc<access_graph::AccessGraph>,
     edge_matcher: fn(&EdgeType) -> bool,
@@ -235,6 +242,7 @@ fn asset_genealogy_with_path(
                 connector: node
                     .get_node_connectors()
                     .iter()
+                    // Asset should only have one connector. To be cleaned up in a future version.
                     .next()
                     .and_then(|s| Some(s.to_owned()))
                     .unwrap_or("unknown".to_owned()),
