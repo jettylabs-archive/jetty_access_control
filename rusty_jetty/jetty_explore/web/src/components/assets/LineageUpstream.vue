@@ -5,7 +5,7 @@
     :filter-method="filterMethod"
     :columns="columns"
     :csv-config="csvConfig"
-    :fetchPath="'/api/asset/' + props.node.name + '/lineage_upstream'"
+    :fetchPath="'/api/asset/' + encodeURIComponent(props.node.name) + '/lineage_upstream'"
     v-slot="slotProps"
     :tip="`Assets upstream from ${props.node.name}, based on data lineage`"
   >
@@ -14,13 +14,13 @@
         <q-item class="q-px-none">
           <q-item-section>
             <router-link
-              :to="'/asset/' + slotProps.props.row.name"
+              :to="'/asset/' + encodeURIComponent(slotProps.props.row.name)"
               style="text-decoration: none; color: inherit"
             >
               <q-item-label> {{ slotProps.props.row.name }}</q-item-label>
             </router-link>
             <q-item-label caption>
-              <JettyBadge :name="slotProps.props.row.platform" />
+              <JettyBadge :name="slotProps.props.row.connector" />
             </q-item-label>
           </q-item-section>
         </q-item>
@@ -48,14 +48,14 @@ import JettyBadge from "../JettyBadge.vue";
 
 const props = defineProps(["node"]);
 
-// Filters by name, privileges, or platform
+// Filters by name, privileges, or connector
 const filterMethod = (rows, terms) => {
   const needles = terms.toLocaleLowerCase().split(" ");
   return rows.filter((r) =>
     needles.every(
       (needle) =>
         r.name.toLocaleLowerCase().indexOf(needle) > -1 ||
-        r.platform.toLocaleLowerCase().indexOf(needle) > -1
+        r.connector.toLocaleLowerCase().indexOf(needle) > -1
     )
   );
 };
@@ -83,7 +83,7 @@ const csvConfig = {
   // accepts a row and returns the proper mapping
   mappingFn: (filteredSortedRows) =>
     filteredSortedRows.flatMap((r) =>
-      r.paths.map((p) => [r.name, r.platform, p])
+      r.paths.map((p) => [r.name, r.connector, p])
     ),
 };
 </script>

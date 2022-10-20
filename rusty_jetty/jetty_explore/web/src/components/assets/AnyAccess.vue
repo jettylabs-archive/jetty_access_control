@@ -5,7 +5,7 @@
     :filter-method="filterMethod"
     :columns="columns"
     :csv-config="csvConfig"
-    :fetchPath="'/api/asset/' + props.node.name + '/all_users'"
+    :fetchPath="'/api/asset/' + encodeURIComponent(props.node.name) + '/all_users'"
     v-slot="slotProps"
     :tip="`Users with access to ${props.node.name} or assets derived from ${props.node.name}`"
   >
@@ -14,14 +14,14 @@
         <q-item class="q-px-none">
           <q-item-section>
             <router-link
-              :to="'/user/' + slotProps.props.row.name"
+              :to="'/user/' + encodeURIComponent(slotProps.props.row.name)"
               style="text-decoration: none; color: inherit"
             >
               <q-item-label> {{ slotProps.props.row.name }}</q-item-label>
             </router-link>
             <q-item-label caption>
               <JettyBadge
-                v-for="platform in slotProps.props.row.platforms"
+                v-for="platform in slotProps.props.row.connectors"
                 :key="platform"
                 :name="platform"
               />
@@ -38,7 +38,7 @@
               style="padding-top: 2px; padding-bottom: 2px"
             >
               <router-link
-                :to="'/asset/' + asset"
+                :to="'/asset/' + encodeURIComponent(asset)"
                 style="text-decoration: none; color: inherit"
               >
                 {{ asset }}
@@ -74,14 +74,14 @@ const columns = [
   },
 ];
 
-// Filters by name, privileges, or platform
+// Filters by name, privileges, or connector
 const filterMethod = (rows, terms) => {
   const needles = terms.toLocaleLowerCase().split(" ");
   return rows.filter((r) =>
     needles.every(
       (needle) =>
         r.name.toLocaleLowerCase().indexOf(needle) > -1 ||
-        r.platforms.join(" ").toLocaleLowerCase().indexOf(needle) > -1
+        r.connectors.join(" ").toLocaleLowerCase().indexOf(needle) > -1
     )
   );
 };
@@ -92,7 +92,7 @@ const csvConfig = {
   // accepts a row and returns the proper mapping
   mappingFn: (filteredSortedRows) =>
     filteredSortedRows.flatMap((r) =>
-      r.assets.map((a) => [r.name, r.platforms.join(", "), a])
+      r.assets.map((a) => [r.name, r.connectors.join(", "), a])
     ),
 };
 </script>

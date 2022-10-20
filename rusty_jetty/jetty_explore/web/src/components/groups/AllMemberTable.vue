@@ -5,7 +5,7 @@
     :filter-method="filterMethod"
     :columns="columns"
     :csv-config="csvConfig"
-    :fetchPath="'/api/group/' + props.node.name + '/all_members'"
+    :fetchPath="'/api/group/' + encodeURIComponent(props.node.name) + '/all_members'"
     v-slot="slotProps"
     :tip="`All the members of ${props.node.name}, including the members
     inherited from child groups, when applicable`"
@@ -15,7 +15,7 @@
         <q-item class="q-px-none">
           <q-item-section>
             <router-link
-              :to="'/user/' + slotProps.props.row.name"
+              :to="'/user/' + encodeURIComponent(slotProps.props.row.name)"
               style="text-decoration: none; color: inherit"
             >
               <q-item-label> {{ slotProps.props.row.name }}</q-item-label>

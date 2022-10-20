@@ -13,17 +13,17 @@
         <q-route-tab
           name="all_assets"
           label="All Assets"
-          :to="'/tag/' + props.node_id + '/all_assets'"
+          :to="'/tag/' + encodeURIComponent(props.node_id) + '/all_assets'"
         />
         <q-route-tab
           name="direct_assets"
           label="Directly Tagged"
-          :to="'/tag/' + props.node_id + '/direct_assets'"
+          :to="'/tag/' + encodeURIComponent(props.node_id) + '/direct_assets'"
         />
         <q-route-tab
           name="users"
           label="User Access"
-          :to="'/tag/' + props.node_id + '/users'"
+          :to="'/tag/' + encodeURIComponent(props.node_id) + '/users'"
         />
       </q-tabs>
 

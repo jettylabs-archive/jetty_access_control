@@ -5,7 +5,7 @@
     :filter-method="filterMethod"
     :columns="columns"
     :csv-config="csvConfig"
-    :fetchPath="'/api/asset/' + props.node.name + '/hierarchy_downstream'"
+    :fetchPath="'/api/asset/' + encodeURIComponent(props.node.name) + '/hierarchy_downstream'"
     v-slot="slotProps"
     :tip="`Assets downstream from ${props.node.name}, based on object hierarchy`"
   >
@@ -14,13 +14,13 @@
         <q-item class="q-px-none">
           <q-item-section>
             <router-link
-              :to="'/asset/' + slotProps.props.row.name"
+              :to="'/asset/' + encodeURIComponent(slotProps.props.row.name)"
               style="text-decoration: none; color: inherit"
             >
               <q-item-label> {{ slotProps.props.row.name }}</q-item-label>
             </router-link>
             <q-item-label caption>
-              <JettyBadge :name="slotProps.props.row.platform" />
+              <JettyBadge :name="slotProps.props.row.connector" />
             </q-item-label>
           </q-item-section>
         </q-item>
@@ -55,7 +55,7 @@ const filterMethod = (rows, terms) => {
     needles.every(
       (needle) =>
         r.name.toLocaleLowerCase().indexOf(needle) > -1 ||
-        r.platform.toLocaleLowerCase().indexOf(needle) > -1
+        r.connector.toLocaleLowerCase().indexOf(needle) > -1
     )
   );
 };
@@ -83,7 +83,7 @@ const csvConfig = {
   // accepts a row and returns the proper mapping
   mappingFn: (filteredSortedRows) =>
     filteredSortedRows.flatMap((r) =>
-      r.paths.map((p) => [r.name, r.platform, p])
+      r.paths.map((p) => [r.name, r.connector, p])
     ),
 };
 </script>

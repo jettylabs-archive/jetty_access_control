@@ -8,7 +8,7 @@
             Direct Tags
           </div>
           <div class="flex justify-center">
-            <JettyBadge v-for="tag in directTags" :key="tag" :name="tag" />
+            <JettyBadge v-for="tag in allTags.direct" :key="tag" :name="tag" />
           </div>
         </q-card-section>
       </q-card>
@@ -19,7 +19,7 @@
             Inherited Tags - Hierarchy
           </div>
           <div class="flex justify-center">
-            <JettyBadge v-for="tag in hierarchyTags" :key="tag" :name="tag" />
+            <JettyBadge v-for="tag in allTags.via_hierarchy" :key="tag" :name="tag" />
           </div>
         </q-card-section>
       </q-card>
@@ -30,7 +30,7 @@
             Inherited Tags - Lineage
           </div>
           <div class="flex justify-center">
-            <JettyBadge v-for="tag in lineageTags" :key="tag" :name="tag" />
+            <JettyBadge v-for="tag in allTags.via_lineage" :key="tag" :name="tag" />
           </div>
         </q-card-section>
       </q-card>
@@ -47,22 +47,22 @@
         <q-route-tab
           name="users"
           label="Direct Access"
-          :to="'/asset/' + props.node_id + '/direct_access'"
+          :to="'/asset/' + encodeURIComponent(props.node_id) + '/direct_access'"
         />
         <q-route-tab
           name="all_users"
           label="Any Access"
-          :to="'/asset/' + props.node_id + '/any_access'"
+          :to="'/asset/' + encodeURIComponent(props.node_id) + '/any_access'"
         />
         <q-route-tab
           name="hierarchy"
           label="Hierarchy"
-          :to="'/asset/' + props.node_id + '/hierarchy'"
+          :to="'/asset/' + encodeURIComponent(props.node_id) + '/hierarchy'"
         />
         <q-route-tab
           name="lineage"
           label="Lineage"
-          :to="'/asset/' + props.node_id + '/lineage'"
+          :to="'/asset/' + encodeURIComponent(props.node_id) + '/lineage'"
         />
       </q-tabs>
 
@@ -127,20 +127,9 @@ if (!currentNode.value) {
 
 const tab = ref("users");
 
-const allTags = ref([]);
-const directTags = computed(() =>
-  allTags.value.filter((t) => t.sources.includes("direct")).map((t) => t.name)
-);
-const hierarchyTags = computed(() =>
-  allTags.value
-    .filter((t) => t.sources.includes("hierarchy"))
-    .map((t) => t.name)
-);
-const lineageTags = computed(() =>
-  allTags.value.filter((t) => t.sources.includes("lineage")).map((t) => t.name)
-);
+const allTags = ref({direct: [], via_lineage:[], via_hierarchy: []});
 
-fetchJson("/api/asset/" + props.node_id + "/tags")
+fetchJson("/api/asset/" + encodeURIComponent(props.node_id) + "/tags")
   .then((r) => (allTags.value = r))
   .catch((error) => console.log("unable to fetch: ", error));
 </script>

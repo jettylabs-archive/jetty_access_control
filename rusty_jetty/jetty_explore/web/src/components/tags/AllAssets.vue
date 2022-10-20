@@ -5,7 +5,7 @@
     :filter-method="filterMethod"
     :columns="columns"
     :csv-config="csvConfig"
-    :fetchPath="'/api/tag/' + props.node.name + '/all_assets'"
+    :fetchPath="'/api/tag/' + encodeURIComponent(props.node.name) + '/all_assets'"
     v-slot="slotProps"
     :tip="`Assets with the ${props.node.name} tag, either applied directly or through inheritance`"
   >
@@ -14,7 +14,7 @@
         <q-item class="q-px-none">
           <q-item-section>
             <router-link
-              :to="'/asset/' + slotProps.props.row.name"
+              :to="'/asset/' + encodeURIComponent(slotProps.props.row.name)"
               style="text-decoration: none; color: inherit"
             >
               <q-item-label> {{ slotProps.props.row.name }}</q-item-label>

@@ -14,6 +14,7 @@ mod user_accessible_tags;
 use petgraph::{stable_graph::NodeIndex, visit::IntoNodeReferences};
 
 use super::{AccessGraph, EdgeType, JettyNode, NodeName};
+pub use tags_for_asset::AssetTags;
 
 /// A path from one node to another, including start and end nodes.
 /// Inside, it's a Vec<JettyNode>

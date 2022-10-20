@@ -5,7 +5,7 @@
     :filter-method="filterMethod"
     :columns="columns"
     :csv-config="csvConfig"
-    :fetchPath="'/api/user/' + props.node.name + '/inherited_groups'"
+    :fetchPath="'/api/user/' + encodeURIComponent(props.node.name) + '/inherited_groups'"
     v-slot="slotProps"
     :tip="`The groups that ${props.node.name} is an inherited member of through child relationships`"
   >
@@ -14,7 +14,7 @@
         <q-item class="q-px-none">
           <q-item-section>
             <router-link
-              :to="'/group/' + slotProps.props.row.name"
+              :to="'/group/' + encodeURIComponent(slotProps.props.row.name)"
               style="text-decoration: none; color: inherit"
             >
               <q-item-label> {{ slotProps.props.row.name }}</q-item-label>

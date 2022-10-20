@@ -13,17 +13,17 @@
         <q-route-tab
           name="assets"
           label="Assets"
-          :to="'/user/' + props.user_id + '/assets'"
+          :to="'/user/' + encodeURIComponent(props.user_id) + '/assets'"
         />
         <q-route-tab
           name="groups"
           label="Groups"
-          :to="'/user/' + props.user_id + '/groups'"
+          :to="'/user/' + encodeURIComponent(props.user_id) + '/groups'"
         />
         <q-route-tab
           name="tags"
           label="Tags"
-          :to="'/user/' + props.user_id + '/tags'"
+          :to="'/user/' + encodeURIComponent(props.user_id) + '/tags'"
         />
       </q-tabs>
 

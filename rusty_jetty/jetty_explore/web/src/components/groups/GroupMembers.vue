@@ -5,7 +5,7 @@
     :filter-method="filterMethod"
     :columns="columns"
     :csv-config="csvConfig"
-    :fetchPath="'/api/group/' + props.node.name + '/direct_members_groups'"
+    :fetchPath="'/api/group/' + encodeURIComponent(props.node.name) + '/direct_members_groups'"
     v-slot="slotProps"
     :tip="`All the groups that are explicitly assigned as members of ${props.node.name}`"
   >
@@ -14,7 +14,7 @@
         <q-item class="q-px-none">
           <q-item-section>
             <router-link
-              :to="'/group/' + slotProps.props.row.name"
+              :to="'/group/' + encodeURIComponent(slotProps.props.row.name)"
               style="text-decoration: none; color: inherit"
             >
               <q-item-label> {{ slotProps.props.row.name }}</q-item-label>
