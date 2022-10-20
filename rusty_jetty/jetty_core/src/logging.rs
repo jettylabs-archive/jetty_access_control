@@ -17,7 +17,7 @@ use tracing_subscriber::{util::SubscriberInitExt, Layer};
 /// The user can specify a log level via the env var `RUST_LOG` (such as for testing).
 /// If they don't, then we default to the level_filter defined above.
 pub fn setup(level: Option<LevelFilter>) {
-    let level_filter = level.unwrap_or_else(|| LevelFilter::INFO);
+    let level_filter = level.unwrap_or(LevelFilter::INFO);
 
     let env = std::env::var("RUST_LOG")
         .unwrap_or_else(|_| format!("{},tower_http=debug,hyper=info,reqwest=info", level_filter));

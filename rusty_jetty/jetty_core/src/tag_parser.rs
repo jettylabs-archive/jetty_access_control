@@ -358,7 +358,7 @@ fn get_asset_list_from_target_list(
     let mut results = HashSet::new();
 
     for asset in target_list {
-        let matching_assets = get_matching_assets(&asset, asset_list);
+        let matching_assets = get_matching_assets(asset, asset_list);
         // if there are too many matching assets
         if matching_assets.len() > 1 {
             errors.push(AssetMatchError {
@@ -373,7 +373,7 @@ fn get_asset_list_from_target_list(
             })
         }
         // if there are no matching assets
-        else if matching_assets.len() == 0 {
+        else if matching_assets.is_empty() {
             let asset_sans_type = TargetAsset {
                 name: asset.name.to_owned(),
                 asset_type: None,
@@ -443,11 +443,11 @@ pub(crate) fn tags_to_jetty_node_helpers(
             result_tag.removed_from = remove_from_names;
         }
 
-        if error_vec.len() == 0 {
+        if error_vec.is_empty() {
             result_vec.push(result_tag)
         }
     }
-    if error_vec.len() > 0 {
+    if !error_vec.is_empty() {
         let error_message = error_vec
             .iter()
             .map(|e| {

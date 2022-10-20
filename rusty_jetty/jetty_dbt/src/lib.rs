@@ -86,9 +86,7 @@ impl Connector for DbtConnector {
         let all_nodes_as_assets: Vec<JettyAsset> = self
             .manifest
             .get_nodes()
-            .unwrap()
-            .iter()
-            .map(|(_, node)| node.to_jetty_asset(&self.manifest))
+            .unwrap().values().map(|node| node.to_jetty_asset(&self.manifest))
             .collect();
         ConnectorData {
             // No groups in dbt.

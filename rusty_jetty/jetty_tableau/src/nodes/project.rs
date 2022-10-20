@@ -176,7 +176,7 @@ impl FromTableau<Project> for jetty_nodes::Asset {
         .expect("Generating cual from flow");
         let parent_cuals = val
             .get_parent_project_cual(env)
-            .map_or_else(|| HashSet::new(), |c| HashSet::from([c.uri()]));
+            .map_or_else(HashSet::new, |c| HashSet::from([c.uri()]));
         jetty_nodes::Asset::new(
             cual,
             val.name,

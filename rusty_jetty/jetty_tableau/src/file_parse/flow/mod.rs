@@ -134,7 +134,7 @@ impl FlowDoc {
         };
         Ok(cuals
             .into_iter()
-            .map(|c| SourceOrigin::from_cual(c))
+            .map(SourceOrigin::from_cual)
             .collect())
     }
 
@@ -200,7 +200,7 @@ impl FlowDoc {
             let cuals = match &class[..] {
                 "snowflake" => snowflake::get_output_table_cuals(self, node)?
                     .into_iter()
-                    .map(|c| SourceOrigin::from_cual(c))
+                    .map(SourceOrigin::from_cual)
                     .collect(),
                 o => bail!("we don't currently support {}", o),
             };

@@ -26,7 +26,7 @@ impl SourceOrigin {
 
     pub(crate) fn into_cual(self, env: &Environment) -> Cual {
         match self {
-            SourceOrigin::Other { cual } => cual.clone(),
+            SourceOrigin::Other { cual } => cual,
             SourceOrigin::Tableau { asset_type, id } => match asset_type {
                 TableauAssetType::Project => {
                     let asset = env.projects.get(&id).expect("getting asset from env");

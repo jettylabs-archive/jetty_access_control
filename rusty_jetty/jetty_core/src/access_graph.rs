@@ -523,7 +523,7 @@ impl Index<NodeIndex> for AccessGraph {
     type Output = JettyNode;
 
     fn index(&self, index: NodeIndex) -> &Self::Output {
-        &self.graph.graph.index(index)
+        self.graph.graph.index(index)
     }
 }
 
@@ -651,7 +651,7 @@ impl AccessGraph {
     /// add tags and appropriate edges from a configuration file to the graph
     pub fn add_tags(&mut self, config: &String) -> Result<()> {
         let parsed_tags = parse_tags(config)?;
-        let tags = tags_to_jetty_node_helpers(parsed_tags, &self, config)?;
+        let tags = tags_to_jetty_node_helpers(parsed_tags, self, config)?;
         self.add_nodes(&ProcessedConnectorData {
             connector: "Jetty".to_owned(),
             data: ConnectorData {

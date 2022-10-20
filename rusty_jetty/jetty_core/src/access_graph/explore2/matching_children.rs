@@ -233,7 +233,7 @@ mod tests {
             None,
             None,
         );
-        a.iter().for_each(|p| debug!("{}", ag.path_as_string(&p)));
+        a.iter().for_each(|p| debug!("{}", ag.path_as_string(p)));
         assert_eq!(a.len(), 2);
 
         Ok(())

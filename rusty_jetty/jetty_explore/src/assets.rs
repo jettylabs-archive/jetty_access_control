@@ -138,8 +138,7 @@ async fn direct_users_handler(
             .iter()
             .map(|(u, ps)| {
                 let user_name = u
-                    .inner_value()
-                    .and_then(|s| Some(s.to_owned()))
+                    .inner_value().map(|s| s.to_owned())
                     .unwrap_or("".to_owned());
                 UserAssetsResponse {
                     name: user_name.to_owned(),
@@ -151,7 +150,7 @@ async fn direct_users_handler(
                         })
                         .collect(),
                     connectors: ag
-                        .get_node(&NodeName::User(user_name.to_owned()))
+                        .get_node(&NodeName::User(user_name))
                         .unwrap()
                         .get_node_connectors(),
                 }
@@ -176,20 +175,16 @@ async fn users_incl_downstream_handler(
 
     let user_asset_map = downstream_assets
         .into_iter()
-        .map(|a| {
-            ag.get_users_with_access_to_asset(Cual::new(&a))
-                .iter()
-                .map(|(u, _)| {
+        .flat_map(|a| {
+            ag.get_users_with_access_to_asset(Cual::new(&a)).keys().map(|u| {
                     (
-                        u.inner_value()
-                            .and_then(|s| Some(s.to_owned()))
+                        u.inner_value().map(|s| s.to_owned())
                             .unwrap_or_default(),
                         a.to_owned(),
                     )
                 })
                 .collect::<Vec<_>>()
         })
-        .flatten()
         .fold(
             HashMap::<String, HashSet<String>>::new(),
             |mut acc, (user, asset)| {
@@ -243,8 +238,7 @@ fn asset_genealogy_with_path(
                     .get_node_connectors()
                     .iter()
                     // Asset should only have one connector. To be cleaned up in a future version.
-                    .next()
-                    .and_then(|s| Some(s.to_owned()))
+                    .next().map(|s| s.to_owned())
                     .unwrap_or("unknown".to_owned()),
                 paths: v.iter().map(|p| ag.path_as_string(p)).collect::<Vec<_>>(),
             }
