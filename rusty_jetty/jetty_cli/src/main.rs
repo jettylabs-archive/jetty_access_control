@@ -81,7 +81,7 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn fetch(connectors: &Vec<String>, visualize: &bool) -> Result<()> {
+async fn fetch(connectors: &Vec<String>, &visualize: &bool) -> Result<()> {
     let jetty = Jetty::new()?;
     let creds = fetch_credentials()?;
 
@@ -172,7 +172,7 @@ async fn fetch(connectors: &Vec<String>, visualize: &bool) -> Result<()> {
     );
     ag.serialize_graph()?;
 
-    if *visualize {
+    if visualize {
         info!("visualizing access graph");
         let now = Instant::now();
         ag.visualize("/tmp/graph.svg")

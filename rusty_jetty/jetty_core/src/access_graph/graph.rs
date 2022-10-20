@@ -133,6 +133,7 @@ impl Graph {
         })?;
 
         let from = self.get_node(&edge.from).ok_or_else(|| {
+            dbg!(&self.nodes);
             anyhow![
                 "Unable to find \"from\" node: {:?} for \"to\" {:?}",
                 &edge.from,
@@ -309,28 +310,28 @@ mod tests {
     fn get_paths_works() -> Result<()> {
         let mut g = new_graph();
         g.add_node(&JettyNode::Asset(AssetAttributes {
-            cual: Cual::new("my_cual".to_owned()),
+            cual: Cual::new("mycual://a"),
             asset_type: AssetType::default(),
             metadata: HashMap::new(),
             connectors: HashSet::new(),
         }))?;
 
         g.add_node(&JettyNode::Asset(AssetAttributes {
-            cual: Cual::new("my_second_cual".to_owned()),
+            cual: Cual::new("mysecondcual://a"),
             asset_type: AssetType::default(),
             metadata: HashMap::new(),
             connectors: HashSet::new(),
         }))?;
 
         g.add_edge(JettyEdge {
-            from: NodeName::Asset("my_cual".to_owned()),
-            to: NodeName::Asset("my_second_cual".to_owned()),
+            from: NodeName::Asset("mycual://a".to_owned()),
+            to: NodeName::Asset("mysecondcual://a".to_owned()),
             edge_type: EdgeType::ParentOf,
         })?;
 
         let paths = g.get_paths(
-            &NodeName::Asset("my_cual".to_owned()),
-            &NodeName::Asset("my_second_cual".to_owned()),
+            &NodeName::Asset("mycual://a".to_owned()),
+            &NodeName::Asset("mysecondcual://a".to_owned()),
         )?;
         assert_eq!(
             paths.collect::<Vec<Vec<NodeIndex>>>(),

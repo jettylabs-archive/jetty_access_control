@@ -375,12 +375,12 @@ mod test {
         assert_eq!(input_origins,
             [
                 SourceOrigin::from_id_type(TableauAssetType::Datasource,"d99c9c85-a525-4cce-beaa-7ebcda1ea577".to_owned()),
-                SourceOrigin::from_cual(Cual::new("snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/GOLD/IRIS_JOINED_TABLE".to_owned())),
-                SourceOrigin::from_cual(Cual::new("snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/SILVER/SILVER_ADULT_AGGREGATED_VIEW".to_owned())),
-                SourceOrigin::from_cual(Cual::new("snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/GOLD/ADULT_AGGREGATED_VIEW".to_owned())),
+                SourceOrigin::from_cual(Cual::new("snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/GOLD/IRIS_JOINED_TABLE")),
+                SourceOrigin::from_cual(Cual::new("snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/SILVER/SILVER_ADULT_AGGREGATED_VIEW")),
+                SourceOrigin::from_cual(Cual::new("snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/GOLD/ADULT_AGGREGATED_VIEW")),
                 SourceOrigin::from_id_type(TableauAssetType::Datasource,"5f6df88d-aeb2-4551-a4c1-e326a45f4b91".to_owned()),
-                SourceOrigin::from_cual(Cual::new("snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/GOLD/IRIS_JOINED_VIEW".to_owned())),
-                SourceOrigin::from_cual(Cual::new("snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/GOLD/ADULT_AGGREGATED_TABLE".to_owned())),
+                SourceOrigin::from_cual(Cual::new("snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/GOLD/IRIS_JOINED_VIEW")),
+                SourceOrigin::from_cual(Cual::new("snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/GOLD/ADULT_AGGREGATED_TABLE")),
             ]
         .into_iter()
         .collect::<HashSet<SourceOrigin>>());
@@ -392,10 +392,10 @@ mod test {
                 SourceOrigin::from_id_type(TableauAssetType::Datasource,"91dae170-0191-4dba-8cef-5eda957bf122".to_owned()),
                 SourceOrigin::from_id_type(TableauAssetType::Datasource,"de1c1844-2ce6-480d-8016-afc7be49827e".to_owned()),
             SourceOrigin::from_cual(Cual::new("snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/GOLD/tableau_special"
-                .to_owned())),
+                )),
             SourceOrigin::from_cual(Cual::new(
             "snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB/RAW/%22Special%20Name%22"
-                .to_owned())),
+                )),
                 SourceOrigin::from_id_type(TableauAssetType::Datasource,"a27d260d-9ff9-4707-82fd-e66cda23275d".to_owned()),
         ]
         .into_iter()

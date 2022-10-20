@@ -69,7 +69,7 @@ mod tests {
     fn get_matching_children_works() -> Result<()> {
         let ag = AccessGraph::new_dummy(
             &[
-                &JettyNode::Asset(AssetAttributes::new(Cual::new("my_cual".to_owned()))),
+                &JettyNode::Asset(AssetAttributes::new(Cual::new("mycual://a"))),
                 &JettyNode::Policy(PolicyAttributes::new("policy".to_owned())),
                 &JettyNode::User(UserAttributes::new("user".to_owned())),
             ],
@@ -81,7 +81,7 @@ mod tests {
                 ),
                 (
                     NodeName::Policy("policy".to_owned()),
-                    NodeName::Asset("my_cual".to_owned()),
+                    NodeName::Asset("mycual://a".to_owned()),
                     EdgeType::Governs,
                 ),
             ],

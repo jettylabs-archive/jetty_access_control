@@ -499,8 +499,8 @@ mod test {
     fn ambiguous_asset_name_error_works() -> Result<()> {
         let ag = AccessGraph::new_dummy(
             &[
-                &JettyNode::Asset(AssetAttributes::new(Cual::new("asset1".to_owned()))),
-                &JettyNode::Asset(AssetAttributes::new(Cual::new("asset2".to_owned()))),
+                &JettyNode::Asset(AssetAttributes::new(Cual::new("asset1://a"))),
+                &JettyNode::Asset(AssetAttributes::new(Cual::new("asset2://a"))),
             ],
             &[],
         );
@@ -533,8 +533,8 @@ mod test {
     fn building_tags_works() -> Result<()> {
         let ag = AccessGraph::new_dummy(
             &[
-                &JettyNode::Asset(AssetAttributes::new(Cual::new("asset1".to_owned()))),
-                &JettyNode::Asset(AssetAttributes::new(Cual::new("asset2".to_owned()))),
+                &JettyNode::Asset(AssetAttributes::new(Cual::new("asset1://a"))),
+                &JettyNode::Asset(AssetAttributes::new(Cual::new("asset2://a"))),
             ],
             &[],
         );
@@ -560,14 +560,14 @@ pii2:
                 name: "pii".to_owned(),
                 description: Some("This data contains pii from ppis".to_owned()),
                 value: Some("I don't know if we want values, but Snowflake has them".to_owned()),
-                applied_to: HashSet::from(["asset1".to_owned()]),
-                removed_from: HashSet::from(["asset2".to_owned()]),
+                applied_to: HashSet::from(["asset1://a".to_owned()]),
+                removed_from: HashSet::from(["asset2://a".to_owned()]),
                 ..Default::default()
             },
             Tag {
                 name: "pii2".to_owned(),
                 pass_through_lineage: true,
-                applied_to: HashSet::from(["asset1".to_owned()]),
+                applied_to: HashSet::from(["asset1://a".to_owned()]),
                 ..Default::default()
             },
         ];

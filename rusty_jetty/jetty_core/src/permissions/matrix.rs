@@ -195,14 +195,14 @@ mod tests {
         let mut matrix = HashMap::from([(
             UserIdentifier::Email("".to_owned()),
             HashMap::from([(
-                Cual::new("my_cual".to_owned()),
+                Cual::new("mycual://a"),
                 HashSet::from([EffectivePermission::default()]),
             )]),
         )]);
         matrix.insert_or_merge(
             UserIdentifier::Email("".to_owned()),
             HashMap::from([(
-                Cual::new("my_cual2".to_owned()),
+                Cual::new("mycual2://a"),
                 HashSet::from([EffectivePermission::default()]),
             )]),
         );
@@ -212,11 +212,11 @@ mod tests {
                 UserIdentifier::Email("".to_owned()),
                 HashMap::from([
                     (
-                        Cual::new("my_cual2".to_owned()),
+                        Cual::new("mycual2://a"),
                         HashSet::from([EffectivePermission::default()]),
                     ),
                     (
-                        Cual::new("my_cual".to_owned()),
+                        Cual::new("mycual://a"),
                         HashSet::from([EffectivePermission::default()]),
                     )
                 ])
@@ -229,14 +229,14 @@ mod tests {
         let mut matrix = HashMap::from([(
             UserIdentifier::Email("".to_owned()),
             HashMap::from([(
-                Cual::new("my_cual".to_owned()),
+                Cual::new("mycual://a"),
                 HashSet::from([EffectivePermission::default()]),
             )]),
         )]);
         matrix.insert_or_merge(
             UserIdentifier::Email("".to_owned()),
             HashMap::from([(
-                Cual::new("my_cual".to_owned()),
+                Cual::new("mycual://a"),
                 HashSet::from([EffectivePermission::new(
                     "priv".to_owned(),
                     PermissionMode::None,
@@ -249,7 +249,7 @@ mod tests {
             HashMap::from([(
                 UserIdentifier::Email("".to_owned()),
                 HashMap::from([(
-                    Cual::new("my_cual".to_owned()),
+                    Cual::new("mycual://a"),
                     HashSet::from([
                         EffectivePermission::default(),
                         EffectivePermission::new("priv".to_owned(), PermissionMode::None, vec![],)

@@ -9,8 +9,9 @@ mod helpers;
 #[cfg(test)]
 pub mod test_util;
 
-use crate::connectors::nodes::{ConnectorData, EffectivePermission, SparseMatrix};
+use crate::connectors::nodes::{Asset, ConnectorData, EffectivePermission, SparseMatrix};
 use crate::connectors::UserIdentifier;
+use crate::logging::debug;
 use crate::tag_parser::{parse_tags, tags_to_jetty_node_helpers};
 use crate::{connectors::AssetType, cual::Cual};
 
@@ -577,11 +578,15 @@ impl AccessGraph {
     }
 
     pub(crate) fn add_nodes(&mut self, data: &ProcessedConnectorData) -> Result<()> {
-        self.register_nodes_and_edges(&data.data.groups, &data.connector)?;
-        self.register_nodes_and_edges(&data.data.users, &data.connector)?;
-        self.register_nodes_and_edges(&data.data.assets, &data.connector)?;
-        self.register_nodes_and_edges(&data.data.policies, &data.connector)?;
-        self.register_nodes_and_edges(&data.data.tags, &data.connector)?;
+        self.register_nodes_and_edges(&data.data.groups, &data.connector, None)?;
+        self.register_nodes_and_edges(&data.data.users, &data.connector, None)?;
+        self.register_nodes_and_edges(
+            &data.data.assets,
+            &data.connector,
+            Some(|node, connector| node.cual.scheme() != connector.trim()),
+        )?;
+        self.register_nodes_and_edges(&data.data.policies, &data.connector, None)?;
+        self.register_nodes_and_edges(&data.data.tags, &data.connector, None)?;
         Ok(())
     }
 
@@ -600,8 +605,18 @@ impl AccessGraph {
         &mut self,
         nodes: &Vec<T>,
         connector: &String,
+        filter: Option<fn(&T, &str) -> bool>,
     ) -> Result<()> {
         for n in nodes {
+            if let Some(should_filter) = filter {
+                if should_filter(n, connector) {
+                    debug!(
+                        "Filtering node {:?}",
+                        n.get_node(connector.to_owned()).get_string_name()
+                    );
+                    continue;
+                }
+            }
             let node = n.get_node(connector.to_owned());
             self.graph.add_node(&node)?;
             let edges = n.get_edges();
@@ -793,7 +808,7 @@ mod tests {
             },
         ]);
 
-        ag.register_nodes_and_edges(&input_group, &("test".to_string()))?;
+        ag.register_nodes_and_edges(&input_group, &("test".to_string()), None)?;
         assert_eq!(ag.edge_cache, output_edges);
         Ok(())
     }
