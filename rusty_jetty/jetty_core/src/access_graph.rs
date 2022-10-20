@@ -32,7 +32,7 @@ use std::ops::{Index, IndexMut};
 use anyhow::{anyhow, bail, Context, Result};
 // reexporting for use in other packages
 pub use petgraph::stable_graph::NodeIndex;
-use petgraph::Directed;
+
 use serde::Deserialize;
 use serde::Serialize;
 use time::OffsetDateTime;

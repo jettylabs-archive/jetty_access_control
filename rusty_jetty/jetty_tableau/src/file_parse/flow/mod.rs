@@ -369,7 +369,7 @@ mod test {
             ),
         ]);
 
-        let cual_prefix = rest::get_cual_prefix()?;
+        let _cual_prefix = rest::get_cual_prefix()?;
         let doc = super::FlowDoc::new(data).unwrap();
         let (input_origins, output_origins) = doc.parse(&coord);
         assert_eq!(input_origins,

@@ -13,7 +13,7 @@ use jetty_core::{
     connectors::ConnectorClient,
     fetch_credentials,
     jetty::ConnectorNamespace,
-    logging::{self, error, info, warn, LevelFilter},
+    logging::{self, info, warn, LevelFilter},
     Connector, Jetty,
 };
 

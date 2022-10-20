@@ -4,7 +4,7 @@ use petgraph::stable_graph::NodeIndex;
 use std::cmp::max;
 use std::collections::{HashSet, VecDeque};
 use std::fmt::Display;
-use std::{collections::HashMap, fs};
+use std::{collections::HashMap};
 
 use yaml_peg::{parse, repr::RcRepr, NodeRc};
 
@@ -467,11 +467,11 @@ pub(crate) fn tags_to_jetty_node_helpers(
 #[cfg(test)]
 mod test {
 
-    use std::collections::BTreeSet;
+    
 
     use crate::connectors::nodes::Tag;
     use crate::cual::Cual;
-    use crate::logging::{error, info};
+    
 
     use super::*;
 
@@ -518,7 +518,7 @@ mod test {
         let t = tags_to_jetty_node_helpers(tag_map, &ag, &config);
 
         match t {
-            Ok(tags) => bail!("should have returned an error"),
+            Ok(_tags) => bail!("should have returned an error"),
             Err(e) => {
                 if e.to_string().contains("unable to disambiguate asset") {
                     Ok(())

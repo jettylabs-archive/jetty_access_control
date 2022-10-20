@@ -4,7 +4,7 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::{
-    access_graph::{AccessGraph, NodeName},
+    access_graph::{AccessGraph},
     connectors::{
         nodes::{EffectivePermission, PermissionMode},
         UserIdentifier,

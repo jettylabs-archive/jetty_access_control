@@ -2,7 +2,7 @@ use jetty_core::{
     connectors::ConnectorClient,
     fetch_credentials,
     jetty::ConnectorNamespace,
-    logging::{self, info},
+    logging::{info},
     Connector, Jetty,
 };
 
