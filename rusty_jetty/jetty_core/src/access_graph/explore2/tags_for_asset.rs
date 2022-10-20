@@ -99,8 +99,6 @@ impl AccessGraph {
             via_lineage: remove_poisoned_paths(lineage_paths, &poison_nodes),
             via_hierarchy: remove_poisoned_paths(hierarchy_paths, &poison_nodes),
         }
-
-        // Now get the hierarchy-based tags that don't have a poison tag in their path
     }
 
     /// get all tags applied to an asset
