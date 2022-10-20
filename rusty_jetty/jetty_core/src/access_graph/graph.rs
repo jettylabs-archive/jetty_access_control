@@ -1,5 +1,6 @@
 //! Graph stuff
 //!
+pub mod typed_indices;
 
 use anyhow::bail;
 use anyhow::{anyhow, Context, Result};
