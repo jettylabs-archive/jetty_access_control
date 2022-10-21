@@ -14,3 +14,4 @@ jetty_explore = { path = "../jetty_explore" }
 tokio = { version = "1.20.1", features = ["rt", "macros"] }
 anyhow = "^1"
 clap = { version = "3.2.22", features = ["derive"] }
+colored = "2"

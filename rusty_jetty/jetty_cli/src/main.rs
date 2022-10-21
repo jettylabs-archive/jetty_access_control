@@ -3,10 +3,13 @@
 
 #![deny(missing_docs)]
 
+mod ascii;
+
 use std::{path::Path, sync::Arc, time::Instant};
 
 use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
+use colored::Colorize;
 
 use jetty_core::{
     access_graph::AccessGraph,
@@ -16,6 +19,8 @@ use jetty_core::{
     logging::{self, error, info, warn, LevelFilter},
     Connector, Jetty,
 };
+
+use ascii::print_banner;
 
 const TAGS_PATH: &str = "tags.yaml";
 
@@ -31,6 +36,8 @@ struct Args {
 
 #[derive(Subcommand, Debug)]
 enum JettyCommand {
+    /// Initialize a Jetty project.
+    Init,
     Fetch {
         /// Visualize the graph in an SVG file.
         #[clap(short, long, value_parser, default_value = "false")]
@@ -48,6 +55,12 @@ async fn main() -> Result<()> {
     logging::setup(args.log_level);
 
     match &args.command {
+        JettyCommand::Init => {
+            print_banner();
+
+            println!("Welcome to Jetty! We are so glad you're here.")
+        }
+
         JettyCommand::Fetch {
             visualize,
             connectors,
