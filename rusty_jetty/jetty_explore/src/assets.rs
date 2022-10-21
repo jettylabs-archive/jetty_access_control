@@ -159,7 +159,7 @@ async fn direct_users_handler(
                         })
                         .collect(),
                     connectors: ag
-                        .get_node(&NodeName::User(user_name.to_owned()))
+                        .get_node(&NodeName::User(user_name))
                         .unwrap()
                         .get_node_connectors(),
                 }
@@ -194,7 +194,6 @@ async fn users_incl_downstream_handler(
             .map(|(u, _)| (ag[*u].get_string_name(), a.to_owned()))
             .collect::<Vec<_>>()
         })
-        .flatten()
         .fold(
             HashMap::<String, HashSet<String>>::new(),
             |mut acc, (user, asset)| {
@@ -202,7 +201,7 @@ async fn users_incl_downstream_handler(
                     .and_modify(|a| {
                         a.insert(asset.to_owned());
                     })
-                    .or_insert(HashSet::from([asset]));
+                    .or_insert_with(|| HashSet::from([asset]));
                 acc
             },
         );
@@ -254,8 +253,8 @@ fn asset_genealogy_with_path(
                     .iter()
                     // Asset should only have one connector. To be cleaned up in a future version.
                     .next()
-                    .and_then(|s| Some(s.to_owned()))
-                    .unwrap_or("unknown".to_owned()),
+                    .map(|s| s.to_owned())
+                    .unwrap_or_else(|| "unknown".to_owned()),
                 paths: v.iter().map(|p| ag.path_as_string(p)).collect::<Vec<_>>(),
             }
         })

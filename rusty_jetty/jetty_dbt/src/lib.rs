@@ -87,8 +87,8 @@ impl Connector for DbtConnector {
             .manifest
             .get_nodes()
             .unwrap()
-            .iter()
-            .map(|(_, node)| node.to_jetty_asset(&self.manifest))
+            .values()
+            .map(|node| node.to_jetty_asset(&self.manifest))
             .collect();
         ConnectorData {
             // No groups in dbt.

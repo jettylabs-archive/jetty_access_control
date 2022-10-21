@@ -622,7 +622,10 @@ impl AccessGraph {
         self.register_nodes_and_edges(
             &data.data.assets,
             &data.connector,
-            Some(|node, connector| node.cual.scheme() != connector.trim()),
+            Some(|node, connector| {
+                debug!("Filtering non-connector edge");
+                node.cual.scheme() != connector.trim()
+            }),
         )?;
         self.register_nodes_and_edges(&data.data.policies, &data.connector, None)?;
         self.register_nodes_and_edges(&data.data.tags, &data.connector, None)?;
@@ -647,6 +650,9 @@ impl AccessGraph {
         filter: Option<fn(&T, &str) -> bool>,
     ) -> Result<()> {
         for n in nodes {
+            // Edges get added regardless of connector.
+            let edges = n.get_edges();
+            self.edge_cache.extend(edges);
             if let Some(should_filter) = filter {
                 if should_filter(n, connector) {
                     debug!(
@@ -658,8 +664,6 @@ impl AccessGraph {
             }
             let node = n.get_node(connector.to_owned());
             self.graph.add_node(&node)?;
-            let edges = n.get_edges();
-            self.edge_cache.extend(edges);
         }
         Ok(())
     }
@@ -691,7 +695,7 @@ impl AccessGraph {
     /// add tags and appropriate edges from a configuration file to the graph
     pub fn add_tags(&mut self, config: &String) -> Result<()> {
         let parsed_tags = parse_tags(config)?;
-        let tags = tags_to_jetty_node_helpers(parsed_tags, &self, config)?;
+        let tags = tags_to_jetty_node_helpers(parsed_tags, self, config)?;
         self.add_nodes(&ProcessedConnectorData {
             connector: "Jetty".to_owned(),
             data: ConnectorData {
@@ -701,7 +705,7 @@ impl AccessGraph {
         })?;
 
         // add edges from the cache
-        self.add_edges();
+        self.add_edges()?;
 
         Ok(())
     }

@@ -49,13 +49,9 @@ impl Project {
 
     /// Determine whether the given user is the project leader.
     pub(crate) fn is_leader(&self, user: &super::User) -> bool {
-        self.permissions
-            .iter()
-            .find(|p| {
-                p.has_capability("ProjectLeader", "Allow")
-                    && p.grantee_user_ids().contains(&user.id)
-            })
-            .is_some()
+        self.permissions.iter().any(|p| {
+            p.has_capability("ProjectLeader", "Allow") && p.grantee_user_ids().contains(&user.id)
+        })
     }
 }
 
@@ -176,7 +172,7 @@ impl FromTableau<Project> for jetty_nodes::Asset {
         .expect("Generating cual from flow");
         let parent_cuals = val
             .get_parent_project_cual(env)
-            .map_or_else(|| HashSet::new(), |c| HashSet::from([c.uri()]));
+            .map_or_else(HashSet::new, |c| HashSet::from([c.uri()]));
         jetty_nodes::Asset::new(
             cual,
             val.name,

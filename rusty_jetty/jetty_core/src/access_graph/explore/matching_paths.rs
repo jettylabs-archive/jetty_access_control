@@ -240,7 +240,7 @@ mod tests {
             None,
         );
         a.iter()
-            .for_each(|p| crate::logging::debug!("{}", ag.path_as_string(&p)));
+            .for_each(|p| crate::logging::debug!("{}", ag.path_as_string(p)));
         assert_eq!(a.len(), 2);
 
         Ok(())

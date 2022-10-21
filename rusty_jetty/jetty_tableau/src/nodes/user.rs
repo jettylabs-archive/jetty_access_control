@@ -91,7 +91,7 @@ pub(crate) async fn get_basic_users(tc: &rest::TableauRestClient) -> Result<Hash
 #[cfg(test)]
 mod tests {
     use super::*;
-    use jetty_core::logging::debug;
+    
 
     #[test]
     #[allow(unused_must_use)]

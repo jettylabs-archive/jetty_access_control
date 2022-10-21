@@ -86,10 +86,8 @@ pub(crate) fn get_tableau_cual(
                             .expect("getting parent view for metric")
                             .to_owned(),
                     )
-                    .expect(&format!(
-                        "Getting parent view {:#?} for metric {:#?}",
-                        immediate_parent_id, name,
-                    ));
+                    .unwrap_or_else(|| panic!("Getting parent view {:#?} for metric {:#?}",
+                        immediate_parent_id, name));
                 let grandparent_workbook = env
                     .workbooks
                     .get(&parent_view.workbook_id)
@@ -126,7 +124,7 @@ pub(crate) fn get_tableau_cual(
             "{}/{}/{}?type={}",
             get_cual_prefix()?,
             parent_path,
-            urlencoding::encode(&name),
+            urlencoding::encode(name),
             asset_type
         )))
         .context("Getting tableau CUAL")
@@ -135,7 +133,7 @@ pub(crate) fn get_tableau_cual(
         Ok(Cual::new(&format!(
             "{}/{}?type={}",
             get_cual_prefix()?,
-            urlencoding::encode(&name),
+            urlencoding::encode(name),
             asset_type
         )))
         .context("Getting tableau CUAL")

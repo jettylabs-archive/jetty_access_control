@@ -106,7 +106,7 @@ fn remove_poisoned_paths<'a>(
                 p.iter()
                     .filter(|NodePath(vn)| {
                         poison_nodes
-                            .intersection(&HashSet::from_iter(vn.iter().map(|i| *i)))
+                            .intersection(&HashSet::from_iter(vn.iter().copied()))
                             .next()
                             .is_none()
                     })

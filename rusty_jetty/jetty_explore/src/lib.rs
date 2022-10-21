@@ -19,7 +19,7 @@ use tower_http::trace::TraceLayer;
 
 use jetty_core::{
     access_graph,
-    logging::{debug, error, info, warn},
+    logging::{debug, error, info},
 };
 
 /// This is a commonly used response format

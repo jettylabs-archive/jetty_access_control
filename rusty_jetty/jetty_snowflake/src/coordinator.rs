@@ -6,7 +6,7 @@ use std::sync::Mutex;
 use futures::future::join_all;
 use futures::future::BoxFuture;
 use futures::StreamExt;
-use jetty_core::connectors;
+
 use jetty_core::connectors::nodes;
 use jetty_core::connectors::AssetType;
 use jetty_core::connectors::UserIdentifier;

@@ -1,7 +1,7 @@
 use anyhow::{anyhow, bail, Context, Result};
 use jetty_core::{
     cual::Cual,
-    logging::{debug, error},
+    logging::{error},
 };
 
 #[derive(Debug, Clone)]

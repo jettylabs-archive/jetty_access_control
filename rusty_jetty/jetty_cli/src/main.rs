@@ -16,7 +16,7 @@ use jetty_core::{
     connectors::ConnectorClient,
     fetch_credentials,
     jetty::ConnectorNamespace,
-    logging::{self, error, info, warn, LevelFilter},
+    logging::{self, info, warn, LevelFilter},
     Connector, Jetty,
 };
 
@@ -46,7 +46,10 @@ enum JettyCommand {
         #[clap(short, long, use_value_delimiter=true, value_delimiter=',', default_values_t = vec!["snowflake".to_owned(),"tableau".to_owned(),"dbt".to_owned()])]
         connectors: Vec<String>,
     },
-    Explore,
+    Explore {
+        #[clap(short, long, value_parser, default_value = "false")]
+        fetch_first: bool,
+    },
 }
 
 #[tokio::main]
@@ -68,8 +71,20 @@ async fn main() -> Result<()> {
             fetch(connectors, visualize).await?;
         }
 
-        JettyCommand::Explore => match AccessGraph::deserialize_graph() {
+        JettyCommand::Explore { fetch_first } => match AccessGraph::deserialize_graph() {
             Ok(mut ag) => {
+                if *fetch_first {
+                    info!("Fetching all data first.");
+                    fetch(
+                        &vec![
+                            "snowflake".to_owned(),
+                            "tableau".to_owned(),
+                            "dbt".to_owned(),
+                        ],
+                        &false,
+                    )
+                    .await?;
+                }
                 if Path::new(TAGS_PATH).exists() {
                     let tag_config = std::fs::read_to_string(TAGS_PATH);
                     match tag_config {
