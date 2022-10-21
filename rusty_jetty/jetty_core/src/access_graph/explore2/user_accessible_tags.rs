@@ -18,7 +18,7 @@ impl AccessGraph {
         let accessable_assets = self.get_user_accessible_assets(user);
         let tag_asset_map = accessable_assets
             .iter()
-            .map(|(c, _)| (c, self.tags_for_asset(&NodeName::Asset(c.to_string()))))
+            .map(|(c, _)| (c, self.tags_for_asset(&NodeName::Asset(c.to_owned()))))
             .map(|(c, i)| i.iter().map(|n| (n.clone(), c)).collect::<Vec<_>>())
             .flatten()
             .fold(
@@ -27,14 +27,14 @@ impl AccessGraph {
                     acc.entry(tag_node)
                         .and_modify(|e| {
                             e.push(
-                                self.get_node(&NodeName::Asset(asset_cual.to_string()))
+                                self.get_node(&NodeName::Asset(asset_cual.to_owned()))
                                     .context("nonexistent asset")
                                     .unwrap()
                                     .to_owned(),
                             );
                         })
                         .or_insert(vec![self
-                            .get_node(&NodeName::Asset(asset_cual.to_string()))
+                            .get_node(&NodeName::Asset(asset_cual.to_owned()))
                             .context("nonexistent asset")
                             .unwrap()
                             .to_owned()]);

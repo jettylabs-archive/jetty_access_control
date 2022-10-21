@@ -2,7 +2,6 @@
 //!
 //! `access_graph` is a library for modeling data access permissions and metadata as a graph.
 
-pub mod explore;
 pub mod explore2;
 pub mod graph;
 mod helpers;
@@ -408,7 +407,7 @@ impl JettyNode {
     /// wrapped in the appropriate enum.
     fn get_node_name(&self) -> NodeName {
         match &self {
-            JettyNode::Asset(a) => NodeName::Asset(a.cual.uri()),
+            JettyNode::Asset(a) => NodeName::Asset(a.cual.to_owned()),
             JettyNode::Group(a) => NodeName::Group(a.name.to_owned()),
             JettyNode::Policy(a) => NodeName::Policy(a.name.to_owned()),
             JettyNode::Tag(a) => NodeName::Tag(a.name.to_owned()),
@@ -481,7 +480,7 @@ pub enum NodeName {
     /// Group node
     Group(String),
     /// Asset node
-    Asset(String),
+    Asset(Cual),
     /// Policy node
     Policy(String),
     /// Tag node

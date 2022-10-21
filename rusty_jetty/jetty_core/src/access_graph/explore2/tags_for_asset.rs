@@ -184,72 +184,72 @@ mod tests {
             ],
             &[
                 (
-                    NodeName::Asset("asset1://a".to_owned()),
+                    NodeName::Asset(Cual::new("asset1://a")),
                     NodeName::Tag("tag1".to_owned()),
                     EdgeType::TaggedAs,
                 ),
                 (
-                    NodeName::Asset("asset1://a".to_owned()),
+                    NodeName::Asset(Cual::new("asset1://a")),
                     NodeName::Tag("tag2".to_owned()),
                     EdgeType::TaggedAs,
                 ),
                 (
-                    NodeName::Asset("asset1://a".to_owned()),
+                    NodeName::Asset(Cual::new("asset1://a")),
                     NodeName::Tag("tag3".to_owned()),
                     EdgeType::TaggedAs,
                 ),
                 (
-                    NodeName::Asset("asset1://a".to_owned()),
+                    NodeName::Asset(Cual::new("asset1://a")),
                     NodeName::Tag("tag4".to_owned()),
                     EdgeType::TaggedAs,
                 ),
                 (
-                    NodeName::Asset("asset4://a".to_owned()),
-                    NodeName::Asset("asset1://a".to_owned()),
+                    NodeName::Asset(Cual::new("asset4://a")),
+                    NodeName::Asset(Cual::new("asset1://a")),
                     EdgeType::ChildOf,
                 ),
                 (
-                    NodeName::Asset("asset6://a".to_owned()),
-                    NodeName::Asset("asset4://a".to_owned()),
+                    NodeName::Asset(Cual::new("asset6://a")),
+                    NodeName::Asset(Cual::new("asset4://a")),
                     EdgeType::ChildOf,
                 ),
                 (
-                    NodeName::Asset("asset8://a".to_owned()),
-                    NodeName::Asset("asset6://a".to_owned()),
+                    NodeName::Asset(Cual::new("asset8://a")),
+                    NodeName::Asset(Cual::new("asset6://a")),
                     EdgeType::ChildOf,
                 ),
                 (
-                    NodeName::Asset("asset3://a".to_owned()),
-                    NodeName::Asset("asset1://a".to_owned()),
+                    NodeName::Asset(Cual::new("asset3://a")),
+                    NodeName::Asset(Cual::new("asset1://a")),
                     EdgeType::DerivedFrom,
                 ),
                 (
-                    NodeName::Asset("asset5://a".to_owned()),
-                    NodeName::Asset("asset3://a".to_owned()),
+                    NodeName::Asset(Cual::new("asset5://a")),
+                    NodeName::Asset(Cual::new("asset3://a")),
                     EdgeType::DerivedFrom,
                 ),
                 (
-                    NodeName::Asset("asset7://a".to_owned()),
-                    NodeName::Asset("asset5://a".to_owned()),
+                    NodeName::Asset(Cual::new("asset7://a")),
+                    NodeName::Asset(Cual::new("asset5://a")),
                     EdgeType::DerivedFrom,
                 ),
                 (
-                    NodeName::Asset("asset6://a".to_owned()),
+                    NodeName::Asset(Cual::new("asset6://a")),
                     NodeName::Tag("tag1".to_owned()),
                     EdgeType::UntaggedAs,
                 ),
                 (
-                    NodeName::Asset("asset6://a".to_owned()),
+                    NodeName::Asset(Cual::new("asset6://a")),
                     NodeName::Tag("tag2".to_owned()),
                     EdgeType::UntaggedAs,
                 ),
                 (
-                    NodeName::Asset("asset5://a".to_owned()),
+                    NodeName::Asset(Cual::new("asset5://a")),
                     NodeName::Tag("tag1".to_owned()),
                     EdgeType::UntaggedAs,
                 ),
                 (
-                    NodeName::Asset("asset5://a".to_owned()),
+                    NodeName::Asset(Cual::new("asset5://a")),
                     NodeName::Tag("tag2".to_owned()),
                     EdgeType::UntaggedAs,
                 ),
@@ -260,7 +260,7 @@ mod tests {
     #[test]
     fn nodes_for_asset_lineage_works() -> Result<()> {
         let ag = get_test_graph();
-        let a = ag.tags_for_asset(&NodeName::Asset("asset3://a".to_owned()));
+        let a = ag.tags_for_asset(&NodeName::Asset(Cual::new("asset3://a")));
         assert_eq!(a.len(), 2);
         Ok(())
     }
@@ -268,7 +268,7 @@ mod tests {
     #[test]
     fn nodes_for_asset_hierarchy_works() -> Result<()> {
         let ag = get_test_graph();
-        let a = ag.tags_for_asset(&NodeName::Asset("asset4://a".to_owned()));
+        let a = ag.tags_for_asset(&NodeName::Asset(Cual::new("asset4://a")));
         assert_eq!(a.len(), 2);
 
         Ok(())
@@ -277,7 +277,7 @@ mod tests {
     #[test]
     fn directly_applied_tags_works() -> Result<()> {
         let ag = get_test_graph();
-        let a = ag.tags_for_asset(&NodeName::Asset("asset1://a".to_owned()));
+        let a = ag.tags_for_asset(&NodeName::Asset(Cual::new("asset1://a")));
 
         assert_eq!(a.len(), 4);
 
@@ -288,16 +288,16 @@ mod tests {
     fn tag_removal_works() -> Result<()> {
         let ag = get_test_graph();
 
-        let a = ag.tags_for_asset(&NodeName::Asset("asset6://a".to_owned()));
+        let a = ag.tags_for_asset(&NodeName::Asset(Cual::new("asset6://a")));
         assert_eq!(a.len(), 1);
 
-        let a = ag.tags_for_asset(&NodeName::Asset("asset8://a".to_owned()));
+        let a = ag.tags_for_asset(&NodeName::Asset(Cual::new("asset8://a")));
         assert_eq!(a.len(), 1);
 
-        let a = ag.tags_for_asset(&NodeName::Asset("asset5://a".to_owned()));
+        let a = ag.tags_for_asset(&NodeName::Asset(Cual::new("asset5://a")));
         assert_eq!(a.len(), 1);
 
-        let a = ag.tags_for_asset(&NodeName::Asset("asset7://a".to_owned()));
+        let a = ag.tags_for_asset(&NodeName::Asset(Cual::new("asset7://a")));
         assert_eq!(a.len(), 1);
 
         Ok(())

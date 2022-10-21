@@ -330,15 +330,15 @@ mod tests {
         }))?;
 
         let add_success = g.add_edge(JettyEdge {
-            from: NodeName::Asset("mycual://a".to_owned()),
-            to: NodeName::Asset("mysecondcual://a".to_owned()),
+            from: NodeName::Asset(Cual::new("mycual://a")),
+            to: NodeName::Asset(Cual::new("mysecondcual://a")),
             edge_type: EdgeType::ParentOf,
         });
         assert!(add_success);
 
         let paths = g.get_paths(
-            &NodeName::Asset("mycual://a".to_owned()),
-            &NodeName::Asset("mysecondcual://a".to_owned()),
+            &NodeName::Asset(Cual::new("mycual://a")),
+            &NodeName::Asset(Cual::new("mysecondcual://a")),
         )?;
         assert_eq!(
             paths.collect::<Vec<Vec<NodeIndex>>>(),

@@ -81,7 +81,7 @@ mod tests {
                 ),
                 (
                     NodeName::Policy("policy".to_owned()),
-                    NodeName::Asset("mycual://a".to_owned()),
+                    NodeName::Asset(Cual::new("mycual://a")),
                     EdgeType::Governs,
                 ),
             ],
