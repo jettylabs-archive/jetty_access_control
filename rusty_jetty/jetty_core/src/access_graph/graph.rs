@@ -64,30 +64,6 @@ impl Graph {
         Ok(())
     }
 
-    #[allow(dead_code)]
-    fn get_paths(
-        &self,
-        from_node_name: &NodeName,
-        to_node_name: &NodeName,
-    ) -> Result<impl Iterator<Item = Vec<NodeIndex>> + '_> {
-        if let (Some(from), Some(to)) = (self.get_node(from_node_name), self.get_node(to_node_name))
-        {
-            Ok(petgraph::algo::all_simple_paths::<Vec<_>, _>(
-                &self.graph,
-                *from,
-                *to,
-                0,
-                None,
-            ))
-        } else {
-            bail!(
-                "node names {:?} -> {:?} not found.",
-                from_node_name,
-                to_node_name
-            )
-        }
-    }
-
     /// Get the neighbors for the node with the given name.
     ///
     /// Get all neighbors for a node, filtered by thos that yield true when
@@ -309,41 +285,6 @@ mod tests {
 
         assert_eq!(merged_node, combined_node);
 
-        Ok(())
-    }
-
-    #[test]
-    fn get_paths_works() -> Result<()> {
-        let mut g = new_graph();
-        g.add_node(&JettyNode::Asset(AssetAttributes {
-            cual: Cual::new("mycual://a"),
-            asset_type: AssetType::default(),
-            metadata: HashMap::new(),
-            connectors: HashSet::new(),
-        }))?;
-
-        g.add_node(&JettyNode::Asset(AssetAttributes {
-            cual: Cual::new("mysecondcual://a"),
-            asset_type: AssetType::default(),
-            metadata: HashMap::new(),
-            connectors: HashSet::new(),
-        }))?;
-
-        let add_success = g.add_edge(JettyEdge {
-            from: NodeName::Asset(Cual::new("mycual://a")),
-            to: NodeName::Asset(Cual::new("mysecondcual://a")),
-            edge_type: EdgeType::ParentOf,
-        });
-        assert!(add_success);
-
-        let paths = g.get_paths(
-            &NodeName::Asset(Cual::new("mycual://a")),
-            &NodeName::Asset(Cual::new("mysecondcual://a")),
-        )?;
-        assert_eq!(
-            paths.collect::<Vec<Vec<NodeIndex>>>(),
-            vec![vec![NodeIndex::new(0), NodeIndex::new(1)]]
-        );
         Ok(())
     }
 }
