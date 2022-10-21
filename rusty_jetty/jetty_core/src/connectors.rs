@@ -55,19 +55,6 @@ pub enum UserIdentifier {
     Unknown,
 }
 
-impl UserIdentifier {
-    /// Helper function to return the inner value of a UserIdentifier.
-    pub fn inner_value(&self) -> Option<&String> {
-        match self {
-            UserIdentifier::FirstName(s) => Some(s),
-            UserIdentifier::LastName(s) => Some(s),
-            UserIdentifier::FullName(s) => Some(s),
-            UserIdentifier::Email(s) => Some(s),
-            UserIdentifier::Unknown => None,
-        }
-    }
-}
-
 /// The kind of asset within a connector
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct AssetType(pub String);

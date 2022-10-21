@@ -7,9 +7,11 @@ pub mod graph;
 mod helpers;
 #[cfg(test)]
 pub mod test_util;
+mod translate;
 
 use crate::connectors::nodes::{ConnectorData, EffectivePermission, SparseMatrix};
 use crate::connectors::UserIdentifier;
+use crate::jetty::ConnectorNamespace;
 use crate::logging::debug;
 use crate::tag_parser::{parse_tags, tags_to_jetty_node_helpers};
 use crate::{connectors::AssetType, cual::Cual};
@@ -54,6 +56,16 @@ pub struct UserAttributes {
     pub metadata: HashMap<String, String>,
     /// Connectors the user is present in
     pub connectors: HashSet<String>,
+}
+/// The name for a user node
+#[derive(Eq, Hash, PartialEq)]
+pub struct UserName(String);
+
+impl UserName {
+    /// create a new UserName from a string
+    pub fn new(name: String) -> Self {
+        UserName(name)
+    }
 }
 
 impl UserAttributes {
@@ -110,6 +122,19 @@ pub struct GroupAttributes {
     pub metadata: HashMap<String, String>,
     /// All the connectors the group is present in
     pub connectors: HashSet<String>,
+}
+
+/// The name for a Group node
+#[derive(Eq, Hash, PartialEq)]
+pub struct GroupName {
+    name: String,
+    origin: ConnectorNamespace,
+}
+
+impl GroupName {
+    pub(crate) fn new(name: String, origin: ConnectorNamespace) -> Self {
+        Self { name, origin }
+    }
 }
 
 impl GroupAttributes {

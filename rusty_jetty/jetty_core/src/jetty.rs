@@ -9,7 +9,7 @@ use serde::Deserialize;
 use yaml_peg::serde as yaml;
 
 /// The user-defined namespace corresponding to the connector.
-#[derive(Deserialize, Debug, Hash, PartialEq, Eq)]
+#[derive(Deserialize, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct ConnectorNamespace(pub String);
 /// Struct representing the jetty_config.yaml file.
 #[allow(dead_code)]
