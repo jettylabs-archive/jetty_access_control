@@ -4,7 +4,7 @@ use anyhow::Context;
 use petgraph::stable_graph::NodeIndex;
 
 use crate::{
-    access_graph::{graph::typed_indices::UserIndex, AccessGraph, JettyNode, NodeName},
+    access_graph::{graph::typed_indices::UserIndex, AccessGraph, JettyNode},
     connectors::UserIdentifier,
 };
 

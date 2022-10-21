@@ -8,7 +8,7 @@ use serde::Serialize;
 
 use crate::access_graph::{
     graph::typed_indices::{AssetIndex, ToNodeIndex},
-    AccessGraph, EdgeType, JettyNode, NodeName, TagAttributes,
+    AccessGraph, EdgeType, JettyNode, TagAttributes,
 };
 
 use super::NodePath;
@@ -163,7 +163,7 @@ fn remove_poisoned_paths<'a>(
 #[cfg(test)]
 mod tests {
 
-    use crate::access_graph::AssetAttributes;
+    use crate::access_graph::{AssetAttributes, NodeName};
     use crate::cual::Cual;
 
     use anyhow::Result;

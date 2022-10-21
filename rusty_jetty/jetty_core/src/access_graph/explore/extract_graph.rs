@@ -6,9 +6,7 @@ use std::collections::HashMap;
 use petgraph::{stable_graph::NodeIndex, visit::EdgeRef};
 
 use super::SubGraph;
-use crate::access_graph::{
-    graph::typed_indices::ToNodeIndex, AccessGraph, EdgeType, JettyNode, NodeName,
-};
+use crate::access_graph::{graph::typed_indices::ToNodeIndex, AccessGraph, EdgeType, JettyNode};
 
 impl AccessGraph {
     /// Extract the graph surrounding a node to max_depth
@@ -79,7 +77,7 @@ impl AccessGraph {
 #[cfg(test)]
 mod tests {
 
-    use crate::access_graph::{GroupAttributes, UserAttributes};
+    use crate::access_graph::{GroupAttributes, NodeName, UserAttributes};
 
     use anyhow::{anyhow, Result};
     use petgraph::algo::is_isomorphic_matching;

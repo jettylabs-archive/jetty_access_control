@@ -7,7 +7,7 @@ use petgraph::{stable_graph::NodeIndex, Direction};
 
 use crate::access_graph::graph::typed_indices::ToNodeIndex;
 
-use super::{AccessGraph, EdgeType, JettyNode, NodeName};
+use super::{AccessGraph, EdgeType, JettyNode};
 
 impl AccessGraph {
     /// Get all the children nodes up to a particular depth by following non-repeating paths given certain
@@ -125,7 +125,7 @@ impl AccessGraph {
 mod tests {
 
     use crate::{
-        access_graph::{GroupAttributes, UserAttributes},
+        access_graph::{GroupAttributes, NodeName, UserAttributes},
         logging::debug,
     };
 

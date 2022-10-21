@@ -13,7 +13,7 @@ mod user_accessible_tags;
 
 use petgraph::{stable_graph::NodeIndex, visit::IntoNodeReferences};
 
-use super::{AccessGraph, EdgeType, JettyNode, NodeName};
+use super::{AccessGraph, EdgeType, JettyNode};
 pub use tags_for_asset::AssetTags;
 
 /// A path from one node to another, including start and end nodes.
@@ -56,7 +56,9 @@ impl AccessGraph {
 mod tests {
 
     use crate::{
-        access_graph::{AssetAttributes, GroupAttributes, PolicyAttributes, UserAttributes},
+        access_graph::{
+            AssetAttributes, GroupAttributes, NodeName, PolicyAttributes, UserAttributes,
+        },
         cual::Cual,
         logging::debug,
     };

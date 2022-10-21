@@ -3,12 +3,9 @@
 
 use std::collections::{HashMap, HashSet};
 
-use anyhow::Context;
 use petgraph::stable_graph::NodeIndex;
 
-use crate::access_graph::{
-    graph::typed_indices::TagIndex, AccessGraph, EdgeType, JettyNode, NodeName,
-};
+use crate::access_graph::{graph::typed_indices::TagIndex, AccessGraph, EdgeType, JettyNode};
 
 use super::NodePath;
 
@@ -131,7 +128,7 @@ fn remove_poisoned_paths<'a>(
 mod tests {
 
     use crate::{
-        access_graph::{AssetAttributes, TagAttributes},
+        access_graph::{AssetAttributes, NodeName, TagAttributes},
         cual::Cual,
     };
 
