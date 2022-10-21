@@ -1,6 +1,6 @@
 # Jetty Explore (explore-ui)
 
-Jetty Explore
+Explore your permissions with Jetty
 
 ## Install the dependencies
 
@@ -14,12 +14,6 @@ npm install
 
 ```bash
 quasar dev
-```
-
-if that doesn't work, you probably don't have the quasar CLI installed. In that case, try
-
-```bash
-yarn quasar dev
 ```
 
 ### Lint the files
@@ -46,4 +40,4 @@ quasar build
 
 ### Customize the configuration
 
-See [Configuring quasar.config.js](https://v2.quasar.dev/quasar-cli-vite/quasar-config-js).
+See [Configuring quasar.config.js](https://v2.quasar.dev/quasar-cli-webpack/quasar-config-js).

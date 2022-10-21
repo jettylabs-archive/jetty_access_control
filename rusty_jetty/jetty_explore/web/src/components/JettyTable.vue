@@ -51,24 +51,24 @@
   </div>
 </template>
 
-<script setup>
-import { ref, reactive } from "vue";
-import { downloadCSV, fetchJson } from "src/util";
+<script lang="ts" setup>
+import { ref } from 'vue';
+import { downloadCSV, fetchJson } from 'src/util';
 
 const props = defineProps([
-  "title",
-  "rowsPerPage",
-  "filterMethod",
-  "columns",
-  "csvConfig",
-  "fetchPath",
-  "tip",
+  'title',
+  'rowsPerPage',
+  'filterMethod',
+  'columns',
+  'csvConfig',
+  'fetchPath',
+  'tip',
 ]);
 
 var rows = ref([]);
 
 const pagination = ref({
-  sortBy: "name",
+  sortBy: 'name',
   descending: false,
   page: 1,
   rowsPerPage: props.rowsPerPage,
@@ -87,5 +87,5 @@ const exportTable = () => {
 
 fetchJson(props.fetchPath)
   .then((r) => (rows.value = r))
-  .catch((error) => console.log("unable to fetch: ", error));
+  .catch((error) => console.log('unable to fetch: ', error));
 </script>
