@@ -64,28 +64,6 @@ impl Graph {
         Ok(())
     }
 
-    /// Get the neighbors for the node with the given name.
-    ///
-    /// Get all neighbors for a node, filtered by thos that yield true when
-    /// `matcher` is applied to them.
-    pub(crate) fn get_neighbors_for_node(
-        &self,
-        node_name: &NodeName,
-        matcher: fn(&JettyNode) -> bool,
-    ) -> Result<impl Iterator<Item = &JettyNode>> {
-        let node = self
-            .get_node(node_name)
-            .ok_or_else(|| anyhow!("node not found"))?;
-        Ok(self.graph.neighbors(*node).filter_map(move |target_node| {
-            let target = &self.graph[target_node];
-            if matcher(target) {
-                Some(target)
-            } else {
-                None
-            }
-        }))
-    }
-
     /// Updates a node. Should return the updated node. Returns an
     /// error if the nodes are incompatible (would require overwriting values).
     /// To be compatible, metadata from each
