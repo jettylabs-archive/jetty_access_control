@@ -5,6 +5,8 @@ use std::collections::HashSet;
 
 use petgraph::{stable_graph::NodeIndex, Direction};
 
+use crate::access_graph::graph::typed_indices::ToNodeIndex;
+
 use super::{AccessGraph, EdgeType, JettyNode, NodeName};
 
 impl AccessGraph {
@@ -18,16 +20,16 @@ impl AccessGraph {
     /// - `min_depth` is the minimum depth at which a target may be found
     /// - `max_depth` is how deep to search for children. If None, will continue until it runs out of children to visit.
 
-    pub fn get_matching_children(
+    pub fn get_matching_children<T: ToNodeIndex>(
         &self,
-        from: &NodeName,
+        from: T,
         edge_matcher: fn(&EdgeType) -> bool,
         passthrough_matcher: fn(&JettyNode) -> bool,
         target_matcher: fn(&JettyNode) -> bool,
         min_depth: Option<usize>,
         max_depth: Option<usize>,
     ) -> Vec<NodeIndex> {
-        let idx = self.graph.nodes.get(from).unwrap();
+        let idx = from.get_index();
 
         let max_depth = if let Some(l) = max_depth {
             l
@@ -42,7 +44,7 @@ impl AccessGraph {
         let mut results = vec![];
 
         self.get_matching_children_recursive(
-            *idx,
+            idx,
             edge_matcher,
             passthrough_matcher,
             target_matcher,
@@ -182,8 +184,10 @@ mod tests {
 
         // Test path generation
         let a = ag.all_matching_simple_paths(
-            &NodeName::User("user".to_owned()),
-            &NodeName::Group("group1".to_owned()),
+            ag.get_untyped_index_from_name(&NodeName::User("user".to_owned()))
+                .unwrap(),
+            ag.get_untyped_index_from_name(&NodeName::Group("group1".to_owned()))
+                .unwrap(),
             |_| true,
             |_| true,
             None,
@@ -193,8 +197,10 @@ mod tests {
 
         // Test depth limits
         let a = ag.all_matching_simple_paths(
-            &NodeName::User("user".to_owned()),
-            &NodeName::Group("group1".to_owned()),
+            ag.get_untyped_index_from_name(&NodeName::User("user".to_owned()))
+                .unwrap(),
+            ag.get_untyped_index_from_name(&NodeName::Group("group1".to_owned()))
+                .unwrap(),
             |_| true,
             |_| true,
             Some(2),
@@ -204,8 +210,10 @@ mod tests {
 
         // Test depth limits again
         let a = ag.all_matching_simple_paths(
-            &NodeName::User("user".to_owned()),
-            &NodeName::Group("group1".to_owned()),
+            ag.get_untyped_index_from_name(&NodeName::User("user".to_owned()))
+                .unwrap(),
+            ag.get_untyped_index_from_name(&NodeName::Group("group1".to_owned()))
+                .unwrap(),
             |_| true,
             |_| true,
             Some(2),
@@ -215,8 +223,10 @@ mod tests {
 
         // Test edge matching
         let a = ag.all_matching_simple_paths(
-            &NodeName::User("user".to_owned()),
-            &NodeName::Group("group1".to_owned()),
+            ag.get_untyped_index_from_name(&NodeName::User("user".to_owned()))
+                .unwrap(),
+            ag.get_untyped_index_from_name(&NodeName::Group("group1".to_owned()))
+                .unwrap(),
             |n| matches!(n, EdgeType::Other),
             |_| true,
             None,
@@ -226,8 +236,10 @@ mod tests {
 
         // Test passthrough matching
         let a = ag.all_matching_simple_paths(
-            &NodeName::User("user".to_owned()),
-            &NodeName::Group("group1".to_owned()),
+            ag.get_untyped_index_from_name(&NodeName::User("user".to_owned()))
+                .unwrap(),
+            ag.get_untyped_index_from_name(&NodeName::Group("group1".to_owned()))
+                .unwrap(),
             |_| true,
             |n| n.get_string_name() == *"group2",
             None,

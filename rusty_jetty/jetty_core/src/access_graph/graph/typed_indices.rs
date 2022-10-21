@@ -1,10 +1,18 @@
 //! Typed graph indices
 //!
-use crate::access_graph::{
-    AccessGraph, AssetAttributes, GroupAttributes, NodeIndex, TagAttributes, UserAttributes,
+use serde::{Deserialize, Serialize};
+
+use crate::{
+    access_graph::{
+        AccessGraph, AssetAttributes, GroupAttributes, NodeIndex, PolicyAttributes, TagAttributes,
+        UserAttributes,
+    },
+    connectors::nodes::Asset,
 };
 
-pub(crate) trait ToNodeIndex {
+/// Objects that can return a NodeIndex
+pub trait ToNodeIndex: Copy {
+    /// Get a NodeIndex
     fn get_index(&self) -> NodeIndex;
 }
 
@@ -25,10 +33,10 @@ macro_rules! impl_to_node_index {
     }
 }
 
-impl_to_node_index!(for AssetIndex, UserIndex, TagIndex, GroupIndex);
+impl_to_node_index!(for AssetIndex, UserIndex, TagIndex, GroupIndex, PolicyIndex);
 
 /// Index to an Asset node in the AccessGraph
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct AssetIndex {
     idx: NodeIndex,
 }
@@ -42,10 +50,14 @@ impl AssetIndex {
             _ => panic!("mismatch in node type; expected asset"),
         }
     }
+    /// Create a new AssetIndex from a NodeIndex
+    pub(crate) fn new(idx: NodeIndex) -> Self {
+        AssetIndex { idx }
+    }
 }
 
 /// Index to an User node in the AccessGraph
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct UserIndex {
     idx: NodeIndex,
 }
@@ -59,11 +71,14 @@ impl UserIndex {
             _ => panic!("mismatch in node type; expected user"),
         }
     }
+    pub(crate) fn new(idx: NodeIndex) -> Self {
+        UserIndex { idx }
+    }
 }
 
 /// Index to an Group node in the AccessGraph
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
-struct GroupIndex {
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct GroupIndex {
     idx: NodeIndex,
 }
 impl GroupIndex {
@@ -75,11 +90,14 @@ impl GroupIndex {
             _ => panic!("mismatch in node type; expected group"),
         }
     }
+    pub(crate) fn new(idx: NodeIndex) -> Self {
+        GroupIndex { idx }
+    }
 }
 
 /// Index to an Tag node in the AccessGraph
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
-struct TagIndex {
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct TagIndex {
     idx: NodeIndex,
 }
 impl TagIndex {
@@ -90,5 +108,27 @@ impl TagIndex {
             crate::access_graph::JettyNode::Tag(a) => a,
             _ => panic!("mismatch in node type; expected tag"),
         }
+    }
+    pub(crate) fn new(idx: NodeIndex) -> Self {
+        TagIndex { idx }
+    }
+}
+
+/// Index to an Policy node in the AccessGraph
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct PolicyIndex {
+    idx: NodeIndex,
+}
+impl PolicyIndex {
+    /// get reference ot the PolicyAttributes corresponding to the node index
+    pub fn get_attributes<'a>(&self, ag: &'a AccessGraph) -> &'a PolicyAttributes {
+        let x = &ag[*self];
+        match x {
+            crate::access_graph::JettyNode::Policy(a) => a,
+            _ => panic!("mismatch in node type; expected policy"),
+        }
+    }
+    pub(crate) fn new(idx: NodeIndex) -> Self {
+        PolicyIndex { idx }
     }
 }

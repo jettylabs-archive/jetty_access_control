@@ -2,7 +2,6 @@
 //!
 pub mod typed_indices;
 
-use anyhow::bail;
 use anyhow::{anyhow, Context, Result};
 use graphviz_rust as graphviz;
 use graphviz_rust::cmd::CommandArg;
@@ -14,6 +13,13 @@ use petgraph::{dot, stable_graph::StableDiGraph};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+use self::typed_indices::AssetIndex;
+use self::typed_indices::GroupIndex;
+use self::typed_indices::PolicyIndex;
+use self::typed_indices::TagIndex;
+use self::typed_indices::ToNodeIndex;
+use self::typed_indices::UserIndex;
+
 use super::{EdgeType, JettyNode, NodeName};
 use crate::logging::warn;
 
@@ -21,8 +27,18 @@ use crate::logging::warn;
 #[derive(Serialize, Deserialize)]
 pub(crate) struct Graph {
     pub(crate) graph: StableDiGraph<JettyNode, EdgeType>,
-    /// A map of node identifiers to indicies
-    pub(crate) nodes: HashMap<NodeName, NodeIndex>,
+    /// A map of node identifiers to indices
+    pub(crate) nodes: NodeMap,
+}
+
+/// The main graph wrapper
+#[derive(Serialize, Deserialize, Default, Debug)]
+pub(crate) struct NodeMap {
+    assets: HashMap<NodeName, typed_indices::AssetIndex>,
+    users: HashMap<NodeName, typed_indices::UserIndex>,
+    groups: HashMap<NodeName, typed_indices::GroupIndex>,
+    tags: HashMap<NodeName, typed_indices::TagIndex>,
+    policies: HashMap<NodeName, typed_indices::PolicyIndex>,
 }
 
 impl Graph {
@@ -44,21 +60,97 @@ impl Graph {
         Ok(draw)
     }
 
-    /// Check whether a given node already exists in the graph
-    #[inline(always)]
-    pub fn get_node(&self, node: &NodeName) -> Option<&NodeIndex> {
-        self.nodes.get(node)
+    /// Check whether a given node already exists in the graph, and, if so, return the NodeIndex
+    pub(crate) fn get_untyped_node_index(&self, node: &NodeName) -> Option<NodeIndex> {
+        // I was hoping to do this with a trait object, but it turns out that
+        // I couldn't easily return Option<&dyn ToNodeIndex> from the match -
+        // apparently because of the Option (it worked fine without)
+        match node {
+            NodeName::User(_) => self.nodes.users.get(node).and_then(|n| Some(n.get_index())),
+            NodeName::Group(_) => self
+                .nodes
+                .groups
+                .get(node)
+                .and_then(|n| Some(n.get_index())),
+            NodeName::Asset(_) => self
+                .nodes
+                .assets
+                .get(node)
+                .and_then(|n| Some(n.get_index())),
+            NodeName::Policy(_) => self
+                .nodes
+                .policies
+                .get(node)
+                .and_then(|n| Some(n.get_index())),
+            NodeName::Tag(_) => self.nodes.tags.get(node).and_then(|n| Some(n.get_index())),
+        }
+    }
+
+    /// Check whether a given node already exists in the graph, and, if so, return a typed index
+    pub(crate) fn get_asset_node_index(&self, node: &NodeName) -> Option<AssetIndex> {
+        match node {
+            NodeName::Asset(_) => self.nodes.assets.get(node).and_then(|i| Some(i.to_owned())),
+            _ => None,
+        }
+    }
+    /// Check whether a given node already exists in the graph, and, if so, return a typed index
+    pub(crate) fn get_user_node_index(&self, node: &NodeName) -> Option<UserIndex> {
+        match node {
+            NodeName::User(_) => self.nodes.users.get(node).and_then(|i| Some(i.to_owned())),
+            _ => None,
+        }
+    }
+    /// Check whether a given node already exists in the graph, and, if so, return a typed index
+    pub(crate) fn get_group_node_index(&self, node: &NodeName) -> Option<GroupIndex> {
+        match node {
+            NodeName::Group(_) => self.nodes.groups.get(node).and_then(|i| Some(i.to_owned())),
+            _ => None,
+        }
+    }
+    /// Check whether a given node already exists in the graph, and, if so, return a typed index
+    pub(crate) fn get_tag_node_index(&self, node: &NodeName) -> Option<TagIndex> {
+        match node {
+            NodeName::Tag(_) => self.nodes.tags.get(node).and_then(|i| Some(i.to_owned())),
+            _ => None,
+        }
+    }
+    /// Check whether a given node already exists in the graph, and, if so, return a typed index
+    pub(crate) fn get_policy_node_index(&self, node: &NodeName) -> Option<PolicyIndex> {
+        match node {
+            NodeName::Policy(_) => self
+                .nodes
+                .policies
+                .get(node)
+                .and_then(|i| Some(i.to_owned())),
+            _ => None,
+        }
     }
 
     /// Adds a node to the graph and returns the index.
     pub(crate) fn add_node(&mut self, node: &JettyNode) -> Result<()> {
         let node_name = node.get_node_name();
         // Check for duplicate
-        if let Some(&idx) = self.get_node(&node_name) {
+        if let Some(idx) = self.get_untyped_node_index(&node_name) {
             self.merge_nodes(idx, node)?;
         } else {
             let idx = self.graph.add_node(node.to_owned());
-            self.nodes.insert(node_name, idx);
+            match node {
+                JettyNode::Group(_) => {
+                    self.nodes.groups.insert(node_name, GroupIndex::new(idx));
+                }
+                JettyNode::User(_) => {
+                    self.nodes.users.insert(node_name, UserIndex::new(idx));
+                }
+                JettyNode::Asset(_) => {
+                    self.nodes.assets.insert(node_name, AssetIndex::new(idx));
+                }
+                JettyNode::Tag(_) => {
+                    self.nodes.tags.insert(node_name, TagIndex::new(idx));
+                }
+                JettyNode::Policy(_) => {
+                    self.nodes.policies.insert(node_name, PolicyIndex::new(idx));
+                }
+            };
         };
 
         Ok(())
@@ -80,7 +172,7 @@ impl Graph {
 
     /// Add edges from cache. Return false if to/from doesn't exist
     pub(crate) fn add_edge(&mut self, edge: super::JettyEdge) -> bool {
-        let to = self.get_node(&edge.to).or_else(|| {
+        let to = self.get_untyped_node_index(&edge.to).or_else(|| {
             warn![
                 "Unable to find \"to\" node: {:?} for \"from\" {:?}",
                 &edge.to, &edge.from
@@ -88,7 +180,7 @@ impl Graph {
             None
         });
 
-        let from = self.get_node(&edge.from).or_else(|| {
+        let from = self.get_untyped_node_index(&edge.from).or_else(|| {
             dbg!(&self.nodes);
             warn![
                 "Unable to find \"from\" node: {:?} for \"to\" {:?}",
@@ -98,7 +190,7 @@ impl Graph {
         });
 
         if let (Some(to), Some(from)) = (to, from) {
-            self.graph.add_edge(*from, *to, edge.edge_type);
+            self.graph.add_edge(from, to, edge.edge_type);
             true
         } else {
             false
@@ -147,8 +239,8 @@ mod tests {
 
         g.add_node(&original_node)?;
 
-        let &idx = g
-            .get_node(&original_node.get_node_name())
+        let idx = g
+            .get_untyped_node_index(&original_node.get_node_name())
             .ok_or(anyhow!["Unable to find \"to\" node: {:?}", &original_node])?;
 
         let merged_node = g
@@ -179,8 +271,8 @@ mod tests {
 
         g.add_node(&original_node)?;
 
-        let &idx = g
-            .get_node(&original_node.get_node_name())
+        let idx = g
+            .get_untyped_node_index(&original_node.get_node_name())
             .ok_or(anyhow!["Unable to find \"to\" node: {:?}", &original_node])?;
 
         let merged_node = g
@@ -211,8 +303,8 @@ mod tests {
 
         g.add_node(&original_node)?;
 
-        let &idx = g
-            .get_node(&original_node.get_node_name())
+        let idx = g
+            .get_untyped_node_index(&original_node.get_node_name())
             .ok_or(anyhow!["Unable to find \"to\" node: {:?}", &original_node])?;
 
         let merged_node = g
@@ -253,8 +345,8 @@ mod tests {
 
         g.add_node(&original_node)?;
 
-        let &idx = g
-            .get_node(&original_node.get_node_name())
+        let idx = g
+            .get_untyped_node_index(&original_node.get_node_name())
             .ok_or(anyhow!["Unable to find \"to\" node: {:?}", &original_node])?;
 
         let merged_node = g

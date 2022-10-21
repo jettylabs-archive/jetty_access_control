@@ -6,25 +6,27 @@ use std::collections::HashMap;
 use petgraph::{stable_graph::NodeIndex, visit::EdgeRef};
 
 use super::SubGraph;
-use crate::access_graph::{AccessGraph, EdgeType, JettyNode, NodeName};
+use crate::access_graph::{
+    graph::typed_indices::ToNodeIndex, AccessGraph, EdgeType, JettyNode, NodeName,
+};
 
 impl AccessGraph {
     /// Extract the graph surrounding a node to max_depth
-    pub fn extract_graph(&self, from: &NodeName, max_depth: usize) -> SubGraph {
-        let idx = self.graph.nodes.get(from).unwrap();
+    pub fn extract_graph<T: ToNodeIndex>(&self, from: T, max_depth: usize) -> SubGraph {
+        let idx = from.get_index();
         let mut final_graph: petgraph::graph::DiGraph<JettyNode, EdgeType> = petgraph::Graph::new();
 
-        let new_idx = final_graph.add_node(self[*idx].to_owned());
+        let new_idx = final_graph.add_node(self[idx].to_owned());
 
-        self.add_children(idx, &new_idx, max_depth, &mut final_graph);
+        self.add_children(idx, new_idx, max_depth, &mut final_graph);
 
         SubGraph(final_graph)
     }
 
     fn add_children(
         &self,
-        source_idx: &NodeIndex,
-        new_idx: &NodeIndex,
+        source_idx: NodeIndex,
+        new_idx: NodeIndex,
         max_depth: usize,
         graph: &mut petgraph::graph::DiGraph<JettyNode, EdgeType>,
     ) {
@@ -35,7 +37,7 @@ impl AccessGraph {
         }
 
         // Otherwise, get the children, insert them
-        let neighbors = old_graph.neighbors_undirected(*source_idx);
+        let neighbors = old_graph.neighbors_undirected(source_idx);
 
         let mut old_new_map: HashMap<NodeIndex, NodeIndex> = HashMap::new();
         for o in neighbors.clone() {
@@ -51,26 +53,26 @@ impl AccessGraph {
         // And then insert edges to the new
 
         // outgoing edges
-        let edges = old_graph.edges_directed(*source_idx, petgraph::Direction::Outgoing);
+        let edges = old_graph.edges_directed(source_idx, petgraph::Direction::Outgoing);
         for o in edges {
             graph.add_edge(
-                *new_idx,
+                new_idx,
                 *old_new_map.get(&o.target()).unwrap(),
                 o.weight().to_owned(),
             );
         }
         // incoming edges
-        let edges = old_graph.edges_directed(*source_idx, petgraph::Direction::Incoming);
+        let edges = old_graph.edges_directed(source_idx, petgraph::Direction::Incoming);
         for o in edges {
             graph.add_edge(
                 *old_new_map.get(&o.source()).unwrap(),
-                *new_idx,
+                new_idx,
                 o.weight().to_owned(),
             );
         }
 
         for n in neighbors {
-            self.add_children(&n, old_new_map.get(&n).unwrap(), max_depth - 1, graph)
+            self.add_children(n, *old_new_map.get(&n).unwrap(), max_depth - 1, graph)
         }
     }
 }
@@ -79,7 +81,7 @@ mod tests {
 
     use crate::access_graph::{GroupAttributes, UserAttributes};
 
-    use anyhow::Result;
+    use anyhow::{anyhow, Result};
     use petgraph::algo::is_isomorphic_matching;
 
     use super::*;
@@ -167,7 +169,11 @@ mod tests {
             ],
         );
 
-        let SubGraph(extracted) = ag.extract_graph(&NodeName::Group("group3".to_owned()), 1);
+        let SubGraph(extracted) = ag.extract_graph(
+            ag.get_untyped_index_from_name(&NodeName::Group("group3".to_owned()))
+                .ok_or(anyhow!("unable to find node"))?,
+            1,
+        );
 
         assert!(is_isomorphic_matching(
             &extracted,

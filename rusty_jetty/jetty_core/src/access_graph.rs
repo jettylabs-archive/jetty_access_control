@@ -14,6 +14,9 @@ use crate::logging::debug;
 use crate::tag_parser::{parse_tags, tags_to_jetty_node_helpers};
 use crate::{connectors::AssetType, cual::Cual};
 
+use self::graph::typed_indices::{
+    AssetIndex, GroupIndex, PolicyIndex, TagIndex, ToNodeIndex, UserIndex,
+};
 use self::helpers::NodeHelper;
 pub use self::helpers::ProcessedConnectorData;
 
@@ -539,7 +542,7 @@ impl AccessGraph {
         let mut ag = AccessGraph {
             graph: graph::Graph {
                 graph: petgraph::stable_graph::StableDiGraph::new(),
-                nodes: HashMap::new(),
+                nodes: Default::default(),
             },
             edge_cache: HashSet::new(),
             last_modified: OffsetDateTime::now_utc(),
@@ -556,6 +559,32 @@ impl AccessGraph {
         }
         ag.add_edges()?;
         Ok(ag)
+    }
+
+    /// Get the untyped node index for a given NodeName
+    pub fn get_untyped_index_from_name(&self, node_name: &NodeName) -> Option<NodeIndex> {
+        self.graph.get_untyped_node_index(node_name)
+    }
+
+    /// Get the typed node index for a given NodeName
+    pub fn get_asset_index_from_name(&self, node_name: &NodeName) -> Option<AssetIndex> {
+        self.graph.get_asset_node_index(node_name)
+    }
+    /// Get the untyped node index for a given NodeName
+    pub fn get_user_index_from_name(&self, node_name: &NodeName) -> Option<UserIndex> {
+        self.graph.get_user_node_index(node_name)
+    }
+    /// Get the untyped node index for a given NodeName
+    pub fn get_tag_index_from_name(&self, node_name: &NodeName) -> Option<TagIndex> {
+        self.graph.get_tag_node_index(node_name)
+    }
+    /// Get the untyped node index for a given NodeName
+    pub fn get_policy_index_from_name(&self, node_name: &NodeName) -> Option<PolicyIndex> {
+        self.graph.get_policy_node_index(node_name)
+    }
+    /// Get the untyped node index for a given NodeName
+    pub fn get_group_index_from_name(&self, node_name: &NodeName) -> Option<GroupIndex> {
+        self.graph.get_group_node_index(node_name)
     }
 
     #[cfg(test)]

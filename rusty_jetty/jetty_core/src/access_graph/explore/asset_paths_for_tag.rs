@@ -3,9 +3,12 @@
 
 use std::collections::{HashMap, HashSet};
 
+use anyhow::Context;
 use petgraph::stable_graph::NodeIndex;
 
-use crate::access_graph::{AccessGraph, EdgeType, JettyNode, NodeName};
+use crate::access_graph::{
+    graph::typed_indices::TagIndex, AccessGraph, EdgeType, JettyNode, NodeName,
+};
 
 use super::NodePath;
 
@@ -24,8 +27,8 @@ pub struct TaggedAssets {
 
 impl AccessGraph {
     /// Return accessible assets
-    pub fn asset_paths_for_tag(&self, tag: &NodeName) -> TaggedAssets {
-        let jetty_node = self.get_node(tag).unwrap();
+    pub fn asset_paths_for_tag(&self, tag: TagIndex) -> TaggedAssets {
+        let jetty_node = &self[tag];
 
         let tag_node = match jetty_node {
             JettyNode::Tag(t) => t,
@@ -229,7 +232,10 @@ mod tests {
     #[test]
     fn no_inheritance_works() -> Result<()> {
         let ag = get_test_graph();
-        let a = ag.asset_paths_for_tag(&NodeName::Tag("tag4".to_owned()));
+        let a = ag.asset_paths_for_tag(
+            ag.get_tag_index_from_name(&NodeName::Tag("tag4".to_owned()))
+                .unwrap(),
+        );
         assert_eq!(a.directly_tagged.len(), 1);
         assert_eq!(a.via_hierarchy.len(), 0);
         assert_eq!(a.via_lineage.len(), 0);
@@ -240,7 +246,10 @@ mod tests {
     #[test]
     fn lineage_inheritance_works() -> Result<()> {
         let ag = get_test_graph();
-        let a = ag.asset_paths_for_tag(&NodeName::Tag("tag2".to_owned()));
+        let a = ag.asset_paths_for_tag(
+            ag.get_tag_index_from_name(&NodeName::Tag("tag2".to_owned()))
+                .unwrap(),
+        );
         assert_eq!(a.directly_tagged.len(), 1);
         assert_eq!(a.via_hierarchy.len(), 0);
         assert_eq!(a.via_lineage.len(), 1);
@@ -251,7 +260,10 @@ mod tests {
     #[test]
     fn hierarchy_inheritance_works() -> Result<()> {
         let ag = get_test_graph();
-        let a = ag.asset_paths_for_tag(&NodeName::Tag("tag1".to_owned()));
+        let a = ag.asset_paths_for_tag(
+            ag.get_tag_index_from_name(&NodeName::Tag("tag1".to_owned()))
+                .unwrap(),
+        );
         assert_eq!(a.directly_tagged.len(), 1);
         assert_eq!(a.via_hierarchy.len(), 1);
         assert_eq!(a.via_lineage.len(), 0);
@@ -262,7 +274,10 @@ mod tests {
     #[test]
     fn both_inheritance_works() -> Result<()> {
         let ag = get_test_graph();
-        let a = ag.asset_paths_for_tag(&NodeName::Tag("tag3".to_owned()));
+        let a = ag.asset_paths_for_tag(
+            ag.get_tag_index_from_name(&NodeName::Tag("tag3".to_owned()))
+                .unwrap(),
+        );
         assert_eq!(a.directly_tagged.len(), 1);
         assert_eq!(a.via_hierarchy.len(), 3);
         assert_eq!(a.via_lineage.len(), 3);

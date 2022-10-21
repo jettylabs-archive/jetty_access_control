@@ -89,7 +89,8 @@ mod tests {
 
         // Test Edge Matching
         let a = ag.get_matching_children(
-            &NodeName::User("user".to_owned()),
+            ag.get_untyped_index_from_name(&NodeName::User("user".to_owned()))
+                .unwrap(),
             |n| matches!(n, EdgeType::MemberOf),
             |_| true,
             |_| true,
@@ -100,7 +101,8 @@ mod tests {
 
         // Test getting all children
         let a = ag.get_matching_children(
-            &NodeName::User("user".to_owned()),
+            ag.get_untyped_index_from_name(&NodeName::User("user".to_owned()))
+                .unwrap(),
             |_| true,
             |_| true,
             |_| true,
@@ -111,7 +113,8 @@ mod tests {
 
         // Test target matching
         let a = ag.get_matching_children(
-            &NodeName::User("user".to_owned()),
+            ag.get_untyped_index_from_name(&NodeName::User("user".to_owned()))
+                .unwrap(),
             |_| true,
             |_| true,
             |n| matches!(n, JettyNode::Asset(_)),
@@ -122,7 +125,8 @@ mod tests {
 
         // Test passthrough matching
         let a = ag.get_matching_children(
-            &NodeName::User("user".to_owned()),
+            ag.get_untyped_index_from_name(&NodeName::User("user".to_owned()))
+                .unwrap(),
             |_| true,
             |n| matches!(n, JettyNode::Policy(_)),
             |n| matches!(n, JettyNode::Asset(_)),
@@ -132,7 +136,8 @@ mod tests {
         assert_eq!(a.len(), 1);
 
         let a = ag.get_matching_children(
-            &NodeName::User("user".to_owned()),
+            ag.get_untyped_index_from_name(&NodeName::User("user".to_owned()))
+                .unwrap(),
             |n| matches!(n, EdgeType::Other),
             |n| matches!(n, JettyNode::User(_)),
             |n| matches!(n, JettyNode::Asset(_)),
@@ -194,8 +199,10 @@ mod tests {
 
         // Test path generation
         let a = ag.all_matching_simple_paths(
-            &NodeName::User("user".to_owned()),
-            &NodeName::Group("group1".to_owned()),
+            ag.get_untyped_index_from_name(&NodeName::User("user".to_owned()))
+                .unwrap(),
+            ag.get_untyped_index_from_name(&NodeName::Group("group1".to_owned()))
+                .unwrap(),
             |_| true,
             |_| true,
             None,
@@ -205,8 +212,10 @@ mod tests {
 
         // Test depth limits
         let a = ag.all_matching_simple_paths(
-            &NodeName::User("user".to_owned()),
-            &NodeName::Group("group1".to_owned()),
+            ag.get_untyped_index_from_name(&NodeName::User("user".to_owned()))
+                .unwrap(),
+            ag.get_untyped_index_from_name(&NodeName::Group("group1".to_owned()))
+                .unwrap(),
             |_| true,
             |_| true,
             Some(2),
@@ -216,8 +225,10 @@ mod tests {
 
         // Test depth limits again
         let a = ag.all_matching_simple_paths(
-            &NodeName::User("user".to_owned()),
-            &NodeName::Group("group1".to_owned()),
+            ag.get_untyped_index_from_name(&NodeName::User("user".to_owned()))
+                .unwrap(),
+            ag.get_untyped_index_from_name(&NodeName::Group("group1".to_owned()))
+                .unwrap(),
             |_| true,
             |_| true,
             Some(2),
@@ -227,8 +238,10 @@ mod tests {
 
         // Test edge matching
         let a = ag.all_matching_simple_paths(
-            &NodeName::User("user".to_owned()),
-            &NodeName::Group("group1".to_owned()),
+            ag.get_untyped_index_from_name(&NodeName::User("user".to_owned()))
+                .unwrap(),
+            ag.get_untyped_index_from_name(&NodeName::Group("group1".to_owned()))
+                .unwrap(),
             |n| matches!(n, EdgeType::Other),
             |_| true,
             None,
@@ -238,8 +251,10 @@ mod tests {
 
         // Test passthrough matching
         let a = ag.all_matching_simple_paths(
-            &NodeName::User("user".to_owned()),
-            &NodeName::Group("group1".to_owned()),
+            ag.get_untyped_index_from_name(&NodeName::User("user".to_owned()))
+                .unwrap(),
+            ag.get_untyped_index_from_name(&NodeName::Group("group1".to_owned()))
+                .unwrap(),
             |_| true,
             |n| n.get_string_name() == *"group2",
             None,

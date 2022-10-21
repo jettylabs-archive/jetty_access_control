@@ -18,7 +18,16 @@ impl AccessGraph {
         let accessable_assets = self.get_user_accessible_assets(user);
         let tag_asset_map = accessable_assets
             .iter()
-            .map(|(c, _)| (c, self.tags_for_asset(&NodeName::Asset(c.to_owned()))))
+            .map(|(c, _)| {
+                (
+                    c,
+                    self.tags_for_asset(
+                        self.get_untyped_index_from_name(&NodeName::Asset(c.to_owned()))
+                            .context("find index from name")
+                            .unwrap(),
+                    ),
+                )
+            })
             .map(|(c, i)| i.iter().map(|n| (n.clone(), c)).collect::<Vec<_>>())
             .flatten()
             .fold(
