@@ -134,7 +134,6 @@ impl Graph {
         });
 
         let from = self.get_node(&edge.from).or_else(|| {
-            dbg!(&self.nodes);
             warn![
                 "Unable to find \"from\" node: {:?} for \"to\" {:?}",
                 &edge.from, &edge.to

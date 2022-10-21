@@ -64,12 +64,12 @@ impl DbtManifest {
 
 impl DbtProjectManifest for DbtManifest {
     fn init(&mut self, file_path: &Option<PathBuf>) -> Result<()> {
-        #[derive(Deserialize)]
+        #[derive(Deserialize, Debug)]
         struct Config {
             enabled: bool,
         }
 
-        #[derive(Deserialize)]
+        #[derive(Deserialize, Debug)]
         struct DbtManifestNode {
             relation_name: Option<String>,
             resource_type: String,
@@ -81,11 +81,36 @@ impl DbtProjectManifest for DbtManifest {
             relation_name: Option<String>,
         }
 
-        #[derive(Deserialize)]
+        #[derive(Deserialize, Debug)]
         struct DbtManifestJson {
             nodes: HashMap<String, DbtManifestNode>,
             sources: HashMap<String, DbtManifestSourceNode>,
             child_map: HashMap<String, HashSet<String>>,
+        }
+
+        fn get_node_relation_name_from_mani(manifest: &DbtManifestJson, name: &str) -> String {
+            if name.starts_with("source") {
+                manifest
+                    .sources
+                    .get(name)
+                    .unwrap()
+                    .relation_name
+                    .as_ref()
+                    .unwrap()
+                    .to_owned()
+            } else {
+                manifest
+                    .nodes
+                    .get(name)
+                    .unwrap()
+                    .relation_name
+                    .as_ref()
+                    .expect(&format!(
+                        "trying to get {} from {:#?}",
+                        name, &manifest.nodes
+                    ))
+                    .to_owned()
+            }
         }
 
         // Initialization only happens once.
@@ -101,14 +126,14 @@ impl DbtProjectManifest for DbtManifest {
             format!("deserializing manifest json from {:?}", manifest_path),
         )?;
         // First we will ingest the nodes.
-        for (_node_name, node) in json_manifest.nodes {
+        for (_node_name, node) in &json_manifest.nodes {
             let asset_type = node.resource_type.try_to_asset_type()?;
             if let Some(ty) = asset_type {
                 self.nodes.insert(
                     node.relation_name.clone().unwrap().to_owned(),
                     DbtNode::ModelNode(DbtModelNode {
                         // All  model nodes should have relation names
-                        name: node.relation_name.unwrap().to_owned(),
+                        name: node.relation_name.as_ref().unwrap().to_owned(),
                         enabled: node.config.enabled.to_owned(),
                         materialized_as: ty,
                     }),
@@ -119,27 +144,37 @@ impl DbtProjectManifest for DbtManifest {
             }
         }
         // Now we'll ingest sources.
-        for (_source_name, source) in json_manifest.sources {
+        for (_source_name, source) in &json_manifest.sources {
             self.nodes.insert(
                 source.relation_name.clone().unwrap().to_owned(),
                 DbtNode::SourceNode(DbtSourceNode {
                     // All  source nodes should have relation names
-                    name: source.relation_name.unwrap().to_owned(),
+                    name: source.relation_name.as_ref().unwrap().to_owned(),
                 }),
             );
         }
         // Now we'll record the dependencies between nodes.
-        for (name, new_deps) in json_manifest.child_map {
-            // We only ignore test nodes right now.
-            if name.starts_with("test") {
-                continue;
-            }
-            let new_deps = new_deps
-                .iter()
-                .cloned()
-                // Filter out test nodes.
-                .filter(|d| !d.starts_with("test"))
-                .collect();
+        // First we'll transform the child map ("source.x.y" -> "model.x.y")
+        // to a relation child map ("db.schema.table" -> "db.schema.view")
+        let relation_child_map = json_manifest
+            .child_map
+            .iter()
+            .filter_map(|(name, new_deps)| {
+                // Filter test nodes.
+                if name.starts_with("test") {
+                    None
+                } else {
+                    let relation_name = get_node_relation_name_from_mani(&json_manifest, &name);
+                    let new_relation_deps: HashSet<_> = new_deps
+                        .iter()
+                        .cloned()
+                        .filter(|d| !d.starts_with("test"))
+                        .map(|dep| get_node_relation_name_from_mani(&json_manifest, &dep))
+                        .collect();
+                    Some((relation_name, new_relation_deps))
+                }
+            });
+        for (name, new_deps) in relation_child_map {
             if let Some(deps) = self.dependencies.get_mut(&name) {
                 // Combine the new deps with the existing ones.
                 deps.extend(new_deps);
@@ -151,6 +186,10 @@ impl DbtProjectManifest for DbtManifest {
 
         self.initialized = true;
         Ok(())
+    }
+
+    fn get_project_dir(&self) -> String {
+        self.project_dir.to_owned()
     }
 
     fn get_nodes(&self) -> Result<HashMap<String, DbtNode>> {
@@ -169,9 +208,5 @@ impl DbtProjectManifest for DbtManifest {
         } else {
             bail!("couldn't get node for name {}", node_name);
         }
-    }
-
-    fn get_project_dir(&self) -> String {
-        self.project_dir.to_owned()
     }
 }
