@@ -594,12 +594,6 @@ impl AccessGraph {
 
     /// Adds all the edges from the edge cache, draining the cache as it goes.
     pub(crate) fn add_edges(&mut self) -> Result<()> {
-        let e = self
-            .edge_cache
-            .clone()
-            .iter()
-            .filter(|e| e.edge_type == EdgeType::DerivedFrom)
-            .collect::<Vec<_>>();
         for edge in self.edge_cache.drain() {
             if !self.graph.add_edge(edge.to_owned()) {
                 debug!("couldn't add edge {:?} to graph", edge);
