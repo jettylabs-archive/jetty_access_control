@@ -4,7 +4,7 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::{
-    access_graph::{AccessGraph, NodeName},
+    access_graph::{AccessGraph},
     connectors::{
         nodes::{EffectivePermission, PermissionMode},
         UserIdentifier,
@@ -67,6 +67,6 @@ fn get_access_by_asset(
     cual: Cual,
 ) -> HashMap<UserIdentifier, &HashSet<EffectivePermission>> {
     m.iter()
-        .filter_map(|(k, v)| v.get(&cual).and_then(|ep| Some((k.to_owned(), ep))))
+        .filter_map(|(k, v)| v.get(&cual).map(|ep| (k.to_owned(), ep)))
         .collect::<HashMap<_, _>>()
 }

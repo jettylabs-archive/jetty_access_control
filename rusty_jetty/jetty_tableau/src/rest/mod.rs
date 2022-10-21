@@ -350,11 +350,7 @@ impl FetchJson for reqwest::RequestBuilder {
                 anyhow!["cannot use paginated results without path_to_paginated_iterable"]
             })?;
 
-            let extra_page = if total_available % page_size == 0 {
-                0
-            } else {
-                1
-            };
+            let extra_page = usize::from(total_available % page_size != 0);
             let total_required_pages = total_available / page_size + extra_page;
 
             let mut results_vec = vec![];

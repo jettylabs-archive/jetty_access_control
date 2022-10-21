@@ -69,15 +69,11 @@ impl<'a> EffectivePermissionMap<'a> {
     ) -> HashSet<EffectivePermission> {
         let user_roles = self.get_recursive_roles(user);
         // Get the db + schema permissions for this object.
-        let db_grants: Vec<_> = env
-            .standard_grants
-            .iter()
-            .filter(|sg| {
-                // Find grants of this db to any of the user's roles.
-                sg.granted_on_name() == object.database_name
-                    && user_roles.contains(&RoleName(sg.role_name().to_owned()))
-            })
-            .collect();
+        let mut db_grants = env.standard_grants.iter().filter(|sg| {
+            // Find grants of this db to any of the user's roles.
+            sg.granted_on_name() == object.database_name
+                && user_roles.contains(&RoleName(sg.role_name().to_owned()))
+        });
         let schema_grants: Vec<_> = env
             .standard_grants
             .iter()
@@ -106,10 +102,8 @@ impl<'a> EffectivePermissionMap<'a> {
         //
         // So the user should have USAGE on the schema and ANY permission on the
         // database in order to use this object.
-        let has_any_db_grant = !db_grants.is_empty();
-        let has_schema_usage = schema_grants
-            .iter()
-            .any(|g| g.privilege == "USAGE");
+        let has_any_db_grant = !db_grants.next().is_some();
+        let has_schema_usage = schema_grants.iter().any(|g| g.privilege == "USAGE");
 
         if !has_any_db_grant || !has_schema_usage {
             return get_effective_permissions_for_all_privileges(

@@ -88,7 +88,7 @@ impl AccessGraph {
                 (
                     *n,
                     p.iter()
-                        .map(|NodePath(v)| *(&v[v.len() - 2]))
+                        .map(|NodePath(v)| v[v.len() - 2])
                         .collect::<HashSet<_>>(),
                 )
             })
@@ -143,7 +143,7 @@ fn remove_poisoned_paths<'a>(
                 p.iter()
                     .filter(|NodePath(vn)| match poison_nodes.get(n) {
                         Some(z) => z
-                            .intersection(&HashSet::from_iter(vn.iter().map(|i| *i)))
+                            .intersection(&HashSet::from_iter(vn.iter().copied()))
                             .next()
                             .is_none(),
                         None => true,

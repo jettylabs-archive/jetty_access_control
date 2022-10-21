@@ -303,18 +303,16 @@ impl SnowflakeConnector {
             panic!("Unexpected partitioned return value: {}", info);
         }
         let rows_data = rows_value["data"].clone();
-        let rows: Vec<Vec<String>> = serde_json::from_value::<Vec<Vec<Option<String>>>>(rows_data)
+        let rows = serde_json::from_value::<Vec<Vec<Option<String>>>>(rows_data)
             .context("failed to deserialize rows")?
             .into_iter()
-            .map(|v| v.iter().map(|f| f.clone().unwrap_or_default()).collect())
-            .collect();
+            .map(|v| v.iter().map(|f| f.clone().unwrap_or_default()).collect());
         let fields_intermediate: Vec<SnowflakeField> =
             serde_json::from_value(rows_value["resultSetMetaData"]["rowType"].clone())
                 .context("failed to deserialize fields")?;
         let fields: Vec<String> = fields_intermediate.iter().map(|i| i.name.clone()).collect();
         Ok(rows
-            .into_iter()
-            .map(|i| {
+            .map(|i: Vec<_>| {
                 // Zip field - i
                 let vals: HashMap<String, String> = zip(fields.clone(), i).collect();
                 T::deserialize(MapDeserializer::<

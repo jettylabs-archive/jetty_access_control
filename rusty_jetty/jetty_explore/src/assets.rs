@@ -139,8 +139,8 @@ async fn direct_users_handler(
             .map(|(u, ps)| {
                 let user_name = u
                     .inner_value()
-                    .and_then(|s| Some(s.to_owned()))
-                    .unwrap_or("".to_owned());
+                    .map(|s| s.to_owned())
+                    .unwrap_or_else(|| "".to_owned());
                 UserAssetsResponse {
                     name: user_name.to_owned(),
                     privileges: ps
@@ -151,7 +151,7 @@ async fn direct_users_handler(
                         })
                         .collect(),
                     connectors: ag
-                        .get_node(&NodeName::User(user_name.to_owned()))
+                        .get_node(&NodeName::User(user_name))
                         .unwrap()
                         .get_node_connectors(),
                 }
@@ -176,20 +176,17 @@ async fn users_incl_downstream_handler(
 
     let user_asset_map = downstream_assets
         .into_iter()
-        .map(|a| {
+        .flat_map(|a| {
             ag.get_users_with_access_to_asset(Cual::new(&a))
-                .iter()
-                .map(|(u, _)| {
+                .keys()
+                .map(|u| {
                     (
-                        u.inner_value()
-                            .and_then(|s| Some(s.to_owned()))
-                            .unwrap_or_default(),
+                        u.inner_value().map(|s| s.to_owned()).unwrap_or_default(),
                         a.to_owned(),
                     )
                 })
                 .collect::<Vec<_>>()
         })
-        .flatten()
         .fold(
             HashMap::<String, HashSet<String>>::new(),
             |mut acc, (user, asset)| {
@@ -197,7 +194,7 @@ async fn users_incl_downstream_handler(
                     .and_modify(|a| {
                         a.insert(asset.to_owned());
                     })
-                    .or_insert(HashSet::from([asset]));
+                    .or_insert_with(|| HashSet::from([asset]));
                 acc
             },
         );
@@ -244,8 +241,8 @@ fn asset_genealogy_with_path(
                     .iter()
                     // Asset should only have one connector. To be cleaned up in a future version.
                     .next()
-                    .and_then(|s| Some(s.to_owned()))
-                    .unwrap_or("unknown".to_owned()),
+                    .map(|s| s.to_owned())
+                    .unwrap_or_else(|| "unknown".to_owned()),
                 paths: v.iter().map(|p| ag.path_as_string(p)).collect::<Vec<_>>(),
             }
         })

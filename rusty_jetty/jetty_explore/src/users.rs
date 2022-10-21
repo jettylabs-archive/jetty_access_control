@@ -1,21 +1,19 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{HashSet},
     sync::Arc,
 };
 
 use anyhow::Context;
 use axum::{extract::Path, routing::get, Extension, Json, Router};
-use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde::{Serialize};
+
 
 use crate::{PrivilegeResponse, UserAssetsResponse};
 
 use super::ObjectWithPathResponse;
 use jetty_core::{
-    access_graph::{self, EdgeType, JettyNode, NodeIndex, NodeName},
+    access_graph::{self, EdgeType, JettyNode, NodeName},
     connectors::UserIdentifier,
-    cual::Cual,
-    logging::info,
 };
 
 /// Return a router to handle all user-related requests
