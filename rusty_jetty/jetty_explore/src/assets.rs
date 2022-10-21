@@ -194,6 +194,7 @@ async fn users_incl_downstream_handler(
             .map(|(u, _)| (ag[*u].get_string_name(), a.to_owned()))
             .collect::<Vec<_>>()
         })
+        .flatten()
         .fold(
             HashMap::<String, HashSet<String>>::new(),
             |mut acc, (user, asset)| {
