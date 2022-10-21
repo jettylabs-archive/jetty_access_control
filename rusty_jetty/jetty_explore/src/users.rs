@@ -45,7 +45,7 @@ async fn assets_handler(
             // get the JettyNodes for all of the accessible assets
             .map(|(k, v)| {
                 (
-                    ag.get_node(&NodeName::Asset(k.to_string()))
+                    ag.get_node(&NodeName::Asset(k.to_owned()))
                         .context("fetching asset index from node map")
                         .unwrap(),
                     v,

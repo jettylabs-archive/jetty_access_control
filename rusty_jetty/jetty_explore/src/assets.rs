@@ -104,7 +104,7 @@ async fn tags_handler(
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<AssetTagNames> {
-    let tags = ag.tags_for_asset_by_source(&NodeName::Asset(node_id));
+    let tags = ag.tags_for_asset_by_source(&NodeName::Asset(Cual::new(node_id.as_str())));
 
     Json(AssetTagNames {
         direct: tags
@@ -225,7 +225,7 @@ fn asset_genealogy_with_path(
     edge_matcher: fn(&EdgeType) -> bool,
 ) -> Vec<AssetWithPaths> {
     let paths = ag.all_matching_simple_paths_to_children(
-        &NodeName::Asset(node_id),
+        &NodeName::Asset(Cual::new(node_id.as_str())),
         edge_matcher,
         |n| matches!(n, JettyNode::Asset(_)),
         |n| matches!(n, JettyNode::Asset(_)),
