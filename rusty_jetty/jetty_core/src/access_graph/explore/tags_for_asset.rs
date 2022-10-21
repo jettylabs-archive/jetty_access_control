@@ -7,7 +7,8 @@ use petgraph::stable_graph::NodeIndex;
 use serde::Serialize;
 
 use crate::access_graph::{
-    graph::typed_indices::ToNodeIndex, AccessGraph, EdgeType, JettyNode, NodeName, TagAttributes,
+    graph::typed_indices::{AssetIndex, ToNodeIndex},
+    AccessGraph, EdgeType, JettyNode, NodeName, TagAttributes,
 };
 
 use super::NodePath;
@@ -104,7 +105,7 @@ impl AccessGraph {
     }
 
     /// get all tags applied to an asset
-    pub fn tags_for_asset<T: ToNodeIndex>(&self, asset: T) -> HashSet<NodeIndex> {
+    pub fn tags_for_asset(&self, asset: AssetIndex) -> HashSet<NodeIndex> {
         let asset_tags = self.tags_for_asset_by_source(asset);
         let mut return_tags = asset_tags.direct;
         return_tags.extend(asset_tags.via_lineage);
@@ -263,7 +264,7 @@ mod tests {
     fn nodes_for_asset_lineage_works() -> Result<()> {
         let ag = get_test_graph();
         let a = ag.tags_for_asset(
-            ag.get_untyped_index_from_name(&NodeName::Asset(Cual::new("asset3://a")))
+            ag.get_asset_index_from_name(&NodeName::Asset(Cual::new("asset3://a")))
                 .unwrap(),
         );
         assert_eq!(a.len(), 2);
@@ -274,7 +275,7 @@ mod tests {
     fn nodes_for_asset_hierarchy_works() -> Result<()> {
         let ag = get_test_graph();
         let a = ag.tags_for_asset(
-            ag.get_untyped_index_from_name(&NodeName::Asset(Cual::new("asset4://a")))
+            ag.get_asset_index_from_name(&NodeName::Asset(Cual::new("asset4://a")))
                 .unwrap(),
         );
         assert_eq!(a.len(), 2);
@@ -286,7 +287,7 @@ mod tests {
     fn directly_applied_tags_works() -> Result<()> {
         let ag = get_test_graph();
         let a = ag.tags_for_asset(
-            ag.get_untyped_index_from_name(&NodeName::Asset(Cual::new("asset1://a")))
+            ag.get_asset_index_from_name(&NodeName::Asset(Cual::new("asset1://a")))
                 .unwrap(),
         );
 
@@ -300,25 +301,25 @@ mod tests {
         let ag = get_test_graph();
 
         let a = ag.tags_for_asset(
-            ag.get_untyped_index_from_name(&NodeName::Asset(Cual::new("asset6://a")))
+            ag.get_asset_index_from_name(&NodeName::Asset(Cual::new("asset6://a")))
                 .unwrap(),
         );
         assert_eq!(a.len(), 1);
 
         let a = ag.tags_for_asset(
-            ag.get_untyped_index_from_name(&NodeName::Asset(Cual::new("asset8://a")))
+            ag.get_asset_index_from_name(&NodeName::Asset(Cual::new("asset8://a")))
                 .unwrap(),
         );
         assert_eq!(a.len(), 1);
 
         let a = ag.tags_for_asset(
-            ag.get_untyped_index_from_name(&NodeName::Asset(Cual::new("asset5://a")))
+            ag.get_asset_index_from_name(&NodeName::Asset(Cual::new("asset5://a")))
                 .unwrap(),
         );
         assert_eq!(a.len(), 1);
 
         let a = ag.tags_for_asset(
-            ag.get_untyped_index_from_name(&NodeName::Asset(Cual::new("asset7://a")))
+            ag.get_asset_index_from_name(&NodeName::Asset(Cual::new("asset7://a")))
                 .unwrap(),
         );
         assert_eq!(a.len(), 1);

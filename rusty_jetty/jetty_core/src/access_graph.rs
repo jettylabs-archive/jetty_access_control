@@ -517,7 +517,7 @@ pub struct AccessGraph {
     /// Unix timestamp of when the graph was built
     last_modified: OffsetDateTime,
     /// The merged effective permissions from all connectors
-    effective_permissions: SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>>,
+    effective_permissions: SparseMatrix<UserIndex, AssetIndex, HashSet<EffectivePermission>>,
 }
 
 impl<T: graph::typed_indices::ToNodeIndex> Index<T> for AccessGraph {
@@ -553,12 +553,23 @@ impl AccessGraph {
             ag.add_nodes(&connector_data)?;
             // Merge effective permissions into the access graph
             ag.effective_permissions
-                .merge(connector_data.data.effective_permissions)
+                .merge(ag.translate_effective_permissions_matrix_to_global(
+                    connector_data.data.effective_permissions,
+                ))
                 .context("merging effective permissions")
                 .unwrap();
         }
         ag.add_edges()?;
         Ok(ag)
+    }
+
+    /// This is a placeholder for the translation layer. The final access graph will need effective permissions with different axes than
+    /// the connectors provide.
+    fn translate_effective_permissions_matrix_to_global(
+        &self,
+        local: SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>>,
+    ) -> SparseMatrix<UserIndex, AssetIndex, HashSet<EffectivePermission>> {
+        todo!()
     }
 
     /// Get the untyped node index for a given NodeName

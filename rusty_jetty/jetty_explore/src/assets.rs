@@ -3,6 +3,7 @@ use std::{
     sync::Arc,
 };
 
+use anyhow::Context;
 use axum::{extract::Path, routing::get, Extension, Json, Router};
 use jetty_core::{
     access_graph::{self, EdgeType, JettyNode, NodeName},
@@ -147,10 +148,7 @@ async fn direct_users_handler(
         users
             .iter()
             .map(|(u, ps)| {
-                let user_name = u
-                    .inner_value()
-                    .and_then(|s| Some(s.to_owned()))
-                    .unwrap_or("".to_owned());
+                let user_name = ag[*u].get_string_name();
                 UserAssetsResponse {
                     name: user_name.to_owned(),
                     privileges: ps
@@ -187,17 +185,14 @@ async fn users_incl_downstream_handler(
     let user_asset_map = downstream_assets
         .into_iter()
         .map(|a| {
-            ag.get_users_with_access_to_asset(Cual::new(&a))
-                .iter()
-                .map(|(u, _)| {
-                    (
-                        u.inner_value()
-                            .and_then(|s| Some(s.to_owned()))
-                            .unwrap_or_default(),
-                        a.to_owned(),
-                    )
-                })
-                .collect::<Vec<_>>()
+            ag.get_users_with_access_to_asset(
+                ag.get_asset_index_from_name(&NodeName::Asset(Cual::new(&a)))
+                    .context("finding asset")
+                    .unwrap(),
+            )
+            .iter()
+            .map(|(u, _)| (ag[*u].get_string_name(), a.to_owned()))
+            .collect::<Vec<_>>()
         })
         .flatten()
         .fold(
@@ -234,8 +229,13 @@ fn asset_genealogy_with_path(
     ag: Arc<access_graph::AccessGraph>,
     edge_matcher: fn(&EdgeType) -> bool,
 ) -> Vec<AssetWithPaths> {
+    let asset_index = ag
+        .get_asset_index_from_name(&NodeName::Asset(Cual::new(node_id.as_str())))
+        .context("getting asset node index")
+        .unwrap();
+
     let paths = ag.all_matching_simple_paths_to_children(
-        &NodeName::Asset(Cual::new(node_id.as_str())),
+        asset_index,
         edge_matcher,
         |n| matches!(n, JettyNode::Asset(_)),
         |n| matches!(n, JettyNode::Asset(_)),
