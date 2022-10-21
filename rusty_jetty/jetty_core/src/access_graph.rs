@@ -25,14 +25,12 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::fs::File;
-use std::hash::Hasher;
 use std::io::BufWriter;
 use std::ops::{Index, IndexMut};
 
 use anyhow::{anyhow, bail, Context, Result};
 // reexporting for use in other packages
 pub use petgraph::stable_graph::NodeIndex;
-use petgraph::Directed;
 use serde::Deserialize;
 use serde::Serialize;
 use time::OffsetDateTime;
@@ -520,17 +518,19 @@ pub struct AccessGraph {
     effective_permissions: SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>>,
 }
 
-impl Index<NodeIndex> for AccessGraph {
+impl<T: graph::typed_indices::ToNodeIndex> Index<T> for AccessGraph {
     type Output = JettyNode;
 
-    fn index(&self, index: NodeIndex) -> &Self::Output {
-        &self.graph.graph.index(index)
+    fn index(&self, index: T) -> &Self::Output {
+        let node_index = index.get_index();
+        self.graph.graph.index(node_index)
     }
 }
 
-impl IndexMut<NodeIndex> for AccessGraph {
-    fn index_mut(&mut self, index: NodeIndex) -> &mut Self::Output {
-        self.graph.graph.index_mut(index)
+impl<T: graph::typed_indices::ToNodeIndex> IndexMut<T> for AccessGraph {
+    fn index_mut(&mut self, index: T) -> &mut Self::Output {
+        let node_index = index.get_index();
+        self.graph.graph.index_mut(node_index)
     }
 }
 
