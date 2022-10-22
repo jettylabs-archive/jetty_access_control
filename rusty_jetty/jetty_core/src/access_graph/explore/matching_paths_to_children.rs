@@ -147,37 +147,73 @@ mod tests {
             &[
                 (
                     NodeName::User("user".to_owned()),
-                    NodeName::Group("group1".to_owned()),
+                    NodeName::Group {
+                        name: "group1".to_owned(),
+                        origin: Default::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
                 (
                     NodeName::User("user".to_owned()),
-                    NodeName::Group("group2".to_owned()),
+                    NodeName::Group {
+                        name: "group2".to_owned(),
+                        origin: Default::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
                 (
-                    NodeName::Group("group2".to_owned()),
-                    NodeName::Group("group1".to_owned()),
+                    NodeName::Group {
+                        name: "group2".to_owned(),
+                        origin: Default::default(),
+                    },
+                    NodeName::Group {
+                        name: "group1".to_owned(),
+                        origin: Default::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
                 (
-                    NodeName::Group("group2".to_owned()),
-                    NodeName::Group("group3".to_owned()),
+                    NodeName::Group {
+                        name: "group2".to_owned(),
+                        origin: Default::default(),
+                    },
+                    NodeName::Group {
+                        name: "group3".to_owned(),
+                        origin: Default::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
                 (
-                    NodeName::Group("group2".to_owned()),
-                    NodeName::Group("group4".to_owned()),
+                    NodeName::Group {
+                        name: "group2".to_owned(),
+                        origin: Default::default(),
+                    },
+                    NodeName::Group {
+                        name: "group4".to_owned(),
+                        origin: Default::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
                 (
-                    NodeName::Group("group3".to_owned()),
-                    NodeName::Group("group4".to_owned()),
+                    NodeName::Group {
+                        name: "group3".to_owned(),
+                        origin: Default::default(),
+                    },
+                    NodeName::Group {
+                        name: "group4".to_owned(),
+                        origin: Default::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
                 (
-                    NodeName::Group("group4".to_owned()),
-                    NodeName::Group("group1".to_owned()),
+                    NodeName::Group {
+                        name: "group4".to_owned(),
+                        origin: Default::default(),
+                    },
+                    NodeName::Group {
+                        name: "group1".to_owned(),
+                        origin: Default::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
             ],
@@ -196,7 +232,7 @@ mod tests {
             from_index,
             |_| true,
             |_| true,
-            |n| n.get_string_name() == *"group4",
+            |n| n.get_string_name() == *"::group4",
             None,
             None,
         );

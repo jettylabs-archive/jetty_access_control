@@ -206,6 +206,7 @@ mod tests {
         access_graph::{test_util::new_graph, AssetAttributes, GroupAttributes, JettyEdge},
         connectors::AssetType,
         cual::Cual,
+        jetty::ConnectorNamespace,
     };
 
     use super::*;
@@ -218,23 +219,35 @@ mod tests {
         let mut g = new_graph();
 
         let original_node = JettyNode::Group(GroupAttributes {
-            name: "Group 1".to_string(),
+            name: NodeName::Group {
+                name: "Group 1".to_string(),
+                origin: Default::default(),
+            },
             metadata: HashMap::new(),
-            connectors: HashSet::from(["test1".to_string()]),
+            connectors: HashSet::from([ConnectorNamespace("test1".to_string())]),
         });
 
         // new_node introduces a new connector value
         let new_node = JettyNode::Group(GroupAttributes {
-            name: "Group 1".to_string(),
+            name: NodeName::Group {
+                name: "Group 1".to_string(),
+                origin: Default::default(),
+            },
             metadata: HashMap::new(),
-            connectors: HashSet::from(["test2".to_string()]),
+            connectors: HashSet::from([ConnectorNamespace("test2".to_string())]),
         });
 
         // desired output
         let combined_node = JettyNode::Group(GroupAttributes {
-            name: "Group 1".to_string(),
+            name: NodeName::Group {
+                name: "Group 1".to_string(),
+                origin: Default::default(),
+            },
             metadata: HashMap::new(),
-            connectors: HashSet::from(["test2".to_string(), "test1".to_string()]),
+            connectors: HashSet::from([
+                ConnectorNamespace("test2".to_string()),
+                ConnectorNamespace("test1".to_string()),
+            ]),
         });
 
         g.add_node(&original_node)?;
@@ -257,14 +270,20 @@ mod tests {
         let mut g = new_graph();
 
         let original_node = JettyNode::Group(GroupAttributes {
-            name: "Group 1".to_string(),
+            name: NodeName::Group {
+                name: "Group 1".to_string(),
+                origin: Default::default(),
+            },
             metadata: HashMap::new(),
             connectors: HashSet::new(),
         });
 
         // new_node introduces a connector value
         let new_node = JettyNode::Group(GroupAttributes {
-            name: "Group 2".to_string(),
+            name: NodeName::Group {
+                name: "Group 2".to_string(),
+                origin: Default::default(),
+            },
             metadata: HashMap::new(),
             connectors: HashSet::new(),
         });
@@ -289,14 +308,20 @@ mod tests {
         let mut g = new_graph();
 
         let original_node = JettyNode::Group(GroupAttributes {
-            name: "Group 1".to_string(),
+            name: NodeName::Group {
+                name: "Group 1".to_string(),
+                origin: Default::default(),
+            },
             metadata: HashMap::from([("test1".to_string(), "value2".to_string())]),
             connectors: HashSet::new(),
         });
 
         // new_node introduces a conflicting metadata value
         let new_node = JettyNode::Group(GroupAttributes {
-            name: "Group 1".to_string(),
+            name: NodeName::Group {
+                name: "Group 1".to_string(),
+                origin: Default::default(),
+            },
             metadata: HashMap::from([("test1".to_string(), "other_value".to_string())]),
             connectors: HashSet::new(),
         });
@@ -321,21 +346,30 @@ mod tests {
         let mut g = new_graph();
 
         let original_node = JettyNode::Group(GroupAttributes {
-            name: "Group 1".to_string(),
+            name: NodeName::Group {
+                name: "Group 1".to_string(),
+                origin: Default::default(),
+            },
             metadata: HashMap::from([("test1".to_string(), "value2".to_string())]),
             connectors: HashSet::new(),
         });
 
         // new_node introduces a new metadata key
         let new_node = JettyNode::Group(GroupAttributes {
-            name: "Group 1".to_string(),
+            name: NodeName::Group {
+                name: "Group 1".to_string(),
+                origin: Default::default(),
+            },
             metadata: HashMap::from([("test2".to_string(), "value 3".to_string())]),
             connectors: HashSet::new(),
         });
 
         // when merged, the result should be:
         let combined_node = JettyNode::Group(GroupAttributes {
-            name: "Group 1".to_string(),
+            name: NodeName::Group {
+                name: "Group 1".to_string(),
+                origin: Default::default(),
+            },
             metadata: HashMap::from([
                 ("test2".to_string(), "value 3".to_string()),
                 ("test1".to_string(), "value2".to_string()),

@@ -126,6 +126,7 @@ mod tests {
 
     use crate::{
         access_graph::{GroupAttributes, NodeName, UserAttributes},
+        jetty::ConnectorNamespace,
         logging::debug,
     };
 
@@ -146,37 +147,73 @@ mod tests {
             &[
                 (
                     NodeName::User("user".to_owned()),
-                    NodeName::Group("group1".to_owned()),
+                    NodeName::Group {
+                        name: "group1".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
                 (
                     NodeName::User("user".to_owned()),
-                    NodeName::Group("group2".to_owned()),
+                    NodeName::Group {
+                        name: "group2".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
                 (
-                    NodeName::Group("group2".to_owned()),
-                    NodeName::Group("group1".to_owned()),
+                    NodeName::Group {
+                        name: "group2".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
+                    NodeName::Group {
+                        name: "group1".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
                 (
-                    NodeName::Group("group2".to_owned()),
-                    NodeName::Group("group3".to_owned()),
+                    NodeName::Group {
+                        name: "group2".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
+                    NodeName::Group {
+                        name: "group3".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
                 (
-                    NodeName::Group("group2".to_owned()),
-                    NodeName::Group("group4".to_owned()),
+                    NodeName::Group {
+                        name: "group2".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
+                    NodeName::Group {
+                        name: "group4".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
                 (
-                    NodeName::Group("group3".to_owned()),
-                    NodeName::Group("group4".to_owned()),
+                    NodeName::Group {
+                        name: "group3".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
+                    NodeName::Group {
+                        name: "group4".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
                 (
-                    NodeName::Group("group4".to_owned()),
-                    NodeName::Group("group1".to_owned()),
+                    NodeName::Group {
+                        name: "group4".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
+                    NodeName::Group {
+                        name: "group1".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
             ],
@@ -186,8 +223,11 @@ mod tests {
         let a = ag.all_matching_simple_paths(
             ag.get_untyped_index_from_name(&NodeName::User("user".to_owned()))
                 .unwrap(),
-            ag.get_untyped_index_from_name(&NodeName::Group("group1".to_owned()))
-                .unwrap(),
+            ag.get_untyped_index_from_name(&NodeName::Group {
+                name: "group1".to_owned(),
+                origin: ConnectorNamespace::default(),
+            })
+            .unwrap(),
             |_| true,
             |_| true,
             None,
@@ -199,8 +239,11 @@ mod tests {
         let a = ag.all_matching_simple_paths(
             ag.get_untyped_index_from_name(&NodeName::User("user".to_owned()))
                 .unwrap(),
-            ag.get_untyped_index_from_name(&NodeName::Group("group1".to_owned()))
-                .unwrap(),
+            ag.get_untyped_index_from_name(&NodeName::Group {
+                name: "group1".to_owned(),
+                origin: ConnectorNamespace::default(),
+            })
+            .unwrap(),
             |_| true,
             |_| true,
             Some(2),
@@ -212,8 +255,11 @@ mod tests {
         let a = ag.all_matching_simple_paths(
             ag.get_untyped_index_from_name(&NodeName::User("user".to_owned()))
                 .unwrap(),
-            ag.get_untyped_index_from_name(&NodeName::Group("group1".to_owned()))
-                .unwrap(),
+            ag.get_untyped_index_from_name(&NodeName::Group {
+                name: "group1".to_owned(),
+                origin: ConnectorNamespace::default(),
+            })
+            .unwrap(),
             |_| true,
             |_| true,
             Some(2),
@@ -225,8 +271,11 @@ mod tests {
         let a = ag.all_matching_simple_paths(
             ag.get_untyped_index_from_name(&NodeName::User("user".to_owned()))
                 .unwrap(),
-            ag.get_untyped_index_from_name(&NodeName::Group("group1".to_owned()))
-                .unwrap(),
+            ag.get_untyped_index_from_name(&NodeName::Group {
+                name: "group1".to_owned(),
+                origin: ConnectorNamespace::default(),
+            })
+            .unwrap(),
             |n| matches!(n, EdgeType::Other),
             |_| true,
             None,
@@ -238,14 +287,19 @@ mod tests {
         let a = ag.all_matching_simple_paths(
             ag.get_untyped_index_from_name(&NodeName::User("user".to_owned()))
                 .unwrap(),
-            ag.get_untyped_index_from_name(&NodeName::Group("group1".to_owned()))
-                .unwrap(),
+            ag.get_untyped_index_from_name(&NodeName::Group {
+                name: "group1".to_owned(),
+                origin: ConnectorNamespace::default(),
+            })
+            .unwrap(),
             |_| true,
-            |n| n.get_string_name() == *"group2",
+            |n| n.get_string_name() == *"::group2",
             None,
             None,
         );
-        a.iter().for_each(|p| debug!("{}", ag.path_as_string(p)));
+        a.iter().for_each(|p| {
+            dbg!(ag.path_as_string(p));
+        });
         assert_eq!(a.len(), 2);
 
         Ok(())

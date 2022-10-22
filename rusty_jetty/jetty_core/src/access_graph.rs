@@ -814,89 +814,143 @@ mod tests {
 
     use anyhow::Result;
 
-    use crate::connectors::nodes::{self, ConnectorData};
+    use crate::connectors::{
+        nodes::{self, ConnectorData},
+        processed_nodes::ProcessedGroup,
+    };
 
     use super::*;
 
     #[test]
     fn edges_generated_from_group() -> Result<()> {
-        let input_group = vec![nodes::Group {
-            name: "Group 1".to_string(),
-            member_of: HashSet::from(["Group a".to_string(), "Group b".to_string()]),
-            includes_users: HashSet::from(["User a".to_string()]),
-            includes_groups: HashSet::from(["Group c".to_string()]),
-            granted_by: HashSet::from(["Policy 1".to_string()]),
+        let input_group = vec![ProcessedGroup {
+            name: NodeName::Group {
+                name: "Group 1".to_string(),
+                origin: Default::default(),
+            },
+            member_of: HashSet::from([
+                NodeName::Group {
+                    name: "Group a".to_string(),
+                    origin: Default::default(),
+                },
+                NodeName::Group {
+                    name: "Group b".to_string(),
+                    origin: Default::default(),
+                },
+            ]),
+            includes_users: HashSet::from([NodeName::User("User a".to_string())]),
+            includes_groups: HashSet::from([NodeName::Group {
+                name: "Group c".to_string(),
+                origin: Default::default(),
+            }]),
+            granted_by: HashSet::from([NodeName::Policy("Policy 1".to_string())]),
             ..Default::default()
         }];
 
-        let data = ProcessedConnectorData {
-            connector: "test".to_string(),
-            data: ConnectorData {
-                groups: vec![],
-                users: vec![],
-                assets: vec![],
-                policies: vec![],
-                tags: vec![],
-                effective_permissions: HashMap::new(),
-            },
-        };
-
-        let mut ag = AccessGraph::new(vec![data])?;
+        let mut ag = AccessGraph::new(Default::default())?;
 
         let output_edges = HashSet::from([
             JettyEdge {
-                from: NodeName::Group("Group 1".to_string()),
-                to: NodeName::Group("Group a".to_string()),
+                from: NodeName::Group {
+                    name: "Group 1".to_string(),
+                    origin: Default::default(),
+                },
+                to: NodeName::Group {
+                    name: "Group a".to_string(),
+                    origin: Default::default(),
+                },
                 edge_type: EdgeType::MemberOf,
             },
             JettyEdge {
-                to: NodeName::Group("Group 1".to_string()),
-                from: NodeName::Group("Group a".to_string()),
+                to: NodeName::Group {
+                    name: "Group 1".to_string(),
+                    origin: Default::default(),
+                },
+                from: NodeName::Group {
+                    name: "Group a".to_string(),
+                    origin: Default::default(),
+                },
                 edge_type: EdgeType::Includes,
             },
             JettyEdge {
-                to: NodeName::Group("Group b".to_string()),
-                from: NodeName::Group("Group 1".to_string()),
+                to: NodeName::Group {
+                    name: "Group b".to_string(),
+                    origin: Default::default(),
+                },
+                from: NodeName::Group {
+                    name: "Group 1".to_string(),
+                    origin: Default::default(),
+                },
                 edge_type: EdgeType::MemberOf,
             },
             JettyEdge {
-                from: NodeName::Group("Group b".to_string()),
-                to: NodeName::Group("Group 1".to_string()),
+                from: NodeName::Group {
+                    name: "Group b".to_string(),
+                    origin: Default::default(),
+                },
+                to: NodeName::Group {
+                    name: "Group 1".to_string(),
+                    origin: Default::default(),
+                },
                 edge_type: EdgeType::Includes,
             },
             JettyEdge {
-                from: NodeName::Group("Group 1".to_string()),
+                from: NodeName::Group {
+                    name: "Group 1".to_string(),
+                    origin: Default::default(),
+                },
                 to: NodeName::User("User a".to_string()),
                 edge_type: EdgeType::Includes,
             },
             JettyEdge {
                 from: NodeName::User("User a".to_string()),
-                to: NodeName::Group("Group 1".to_string()),
+                to: NodeName::Group {
+                    name: "Group 1".to_string(),
+                    origin: Default::default(),
+                },
                 edge_type: EdgeType::MemberOf,
             },
             JettyEdge {
-                from: NodeName::Group("Group 1".to_string()),
-                to: NodeName::Group("Group c".to_string()),
+                from: NodeName::Group {
+                    name: "Group 1".to_string(),
+                    origin: Default::default(),
+                },
+                to: NodeName::Group {
+                    name: "Group c".to_string(),
+                    origin: Default::default(),
+                },
                 edge_type: EdgeType::Includes,
             },
             JettyEdge {
-                from: NodeName::Group("Group c".to_string()),
-                to: NodeName::Group("Group 1".to_string()),
+                from: NodeName::Group {
+                    name: "Group c".to_string(),
+                    origin: Default::default(),
+                },
+                to: NodeName::Group {
+                    name: "Group 1".to_string(),
+                    origin: Default::default(),
+                },
                 edge_type: EdgeType::MemberOf,
             },
             JettyEdge {
-                from: NodeName::Group("Group 1".to_string()),
+                from: NodeName::Group {
+                    name: "Group 1".to_string(),
+                    origin: Default::default(),
+                },
                 to: NodeName::Policy("Policy 1".to_string()),
                 edge_type: EdgeType::GrantedBy,
             },
             JettyEdge {
                 from: NodeName::Policy("Policy 1".to_string()),
-                to: NodeName::Group("Group 1".to_string()),
+                to: NodeName::Group {
+                    name: "Group 1".to_string(),
+                    origin: Default::default(),
+                },
                 edge_type: EdgeType::GrantedTo,
             },
         ]);
 
-        ag.register_nodes_and_edges(&input_group, &("test".to_string()), None)?;
+        ag.register_nodes_and_edges(&input_group, None)?;
         assert_eq!(ag.edge_cache, output_edges);
         Ok(())
     }
