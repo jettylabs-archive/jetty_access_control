@@ -79,8 +79,8 @@ async fn inherited_groups_handler(
         .filter_map(|(i, p)| {
             if let JettyNode::Group(g) = &ag.graph()[i] {
                 Some(ObjectWithPathResponse {
-                    name: g.name.to_owned(),
-                    connectors: g.connectors.to_owned(),
+                    name: g.name.to_string(),
+                    connectors: g.connectors.iter().map(|n| n.to_string()).collect(),
                     membership_paths: p.iter().map(|p| ag.path_as_string(p)).collect(),
                 })
             } else {
@@ -180,8 +180,8 @@ async fn all_members_handler(
         .filter_map(|(i, p)| {
             if let JettyNode::User(u) = &ag.graph()[i] {
                 Some(ObjectWithPathResponse {
-                    name: u.name.to_owned(),
-                    connectors: u.connectors.to_owned(),
+                    name: u.name.to_string(),
+                    connectors: u.connectors.iter().map(|n| n.to_string()).collect(),
                     membership_paths: p.iter().map(|p| ag.path_as_string(p)).collect(),
                 })
             } else {

@@ -67,7 +67,7 @@ impl Graph {
         // apparently because of the Option (it worked fine without)
         match node {
             NodeName::User(_) => self.nodes.users.get(node).and_then(|n| Some(n.get_index())),
-            NodeName::Group(_) => self
+            NodeName::Group { .. } => self
                 .nodes
                 .groups
                 .get(node)
@@ -103,7 +103,7 @@ impl Graph {
     /// Check whether a given node already exists in the graph, and, if so, return a typed index
     pub(crate) fn get_group_node_index(&self, node: &NodeName) -> Option<GroupIndex> {
         match node {
-            NodeName::Group(_) => self.nodes.groups.get(node).and_then(|i| Some(i.to_owned())),
+            NodeName::Group { .. } => self.nodes.groups.get(node).and_then(|i| Some(i.to_owned())),
             _ => None,
         }
     }

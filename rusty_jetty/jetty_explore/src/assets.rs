@@ -161,7 +161,10 @@ async fn direct_users_handler(
                     connectors: ag
                         .get_node(&NodeName::User(user_name))
                         .unwrap()
-                        .get_node_connectors(),
+                        .get_node_connectors()
+                        .iter()
+                        .map(|n| n.to_string())
+                        .collect(),
                 }
             })
             .collect(),
@@ -215,7 +218,10 @@ async fn users_incl_downstream_handler(
                 connectors: ag
                     .get_node(&NodeName::User(u))
                     .unwrap()
-                    .get_node_connectors(),
+                    .get_node_connectors()
+                    .iter()
+                    .map(|n| n.to_string())
+                    .collect(),
                 assets,
             })
             .collect::<Vec<_>>(),
@@ -254,7 +260,7 @@ fn asset_genealogy_with_path(
                     .iter()
                     // Asset should only have one connector. To be cleaned up in a future version.
                     .next()
-                    .map(|s| s.to_owned())
+                    .map(|s| s.to_string())
                     .unwrap_or_else(|| "unknown".to_owned()),
                 paths: v.iter().map(|p| ag.path_as_string(p)).collect::<Vec<_>>(),
             }

@@ -63,6 +63,8 @@ pub struct ProcessedGroup {
     pub includes_groups: HashSet<NodeName>,
     /// IDs of policies that are applied to this group
     pub granted_by: HashSet<NodeName>,
+    /// Names of connector
+    pub connector: ConnectorNamespace,
 }
 
 /// User data provided by connectors
@@ -83,6 +85,8 @@ pub struct ProcessedUser {
     pub member_of: HashSet<NodeName>,
     /// IDs of policies that are applied to this user
     pub granted_by: HashSet<NodeName>,
+    /// Names of connector
+    pub connector: ConnectorNamespace,
 }
 
 /// Struct used to populate asset nodes and edges in the graph
@@ -108,6 +112,8 @@ pub struct ProcessedAsset {
     pub derived_to: HashSet<NodeName>,
     /// IDs of tags associated with this asset
     pub tagged_as: HashSet<NodeName>,
+    /// Names of connector
+    pub connector: ConnectorNamespace,
 }
 
 impl Ord for ProcessedAsset {
@@ -143,6 +149,8 @@ pub struct ProcessedTag {
     pub removed_from: HashSet<NodeName>,
     /// IDs of policies that are applied to this asset
     pub governed_by: HashSet<NodeName>,
+    /// Names of connector
+    pub connector: ConnectorNamespace,
 }
 
 /// Struct used to populate policy nodes and edges in the graph
@@ -165,14 +173,16 @@ pub struct ProcessedPolicy {
     pub pass_through_hierarchy: bool,
     /// Whether the policy also applies to derived assets
     pub pass_through_lineage: bool,
+    /// Names of connector
+    pub connector: ConnectorNamespace,
 }
 
 impl NodeHelper for ProcessedGroup {
-    fn get_node(&self, connector: ConnectorNamespace) -> JettyNode {
+    fn get_node(&self) -> JettyNode {
         JettyNode::Group(GroupAttributes {
             name: self.name.to_owned(),
             metadata: self.metadata.to_owned(),
-            connectors: HashSet::from([connector]),
+            connectors: HashSet::from([self.connector.to_owned()]),
         })
     }
 
@@ -212,17 +222,20 @@ impl NodeHelper for ProcessedGroup {
         }
         hs
     }
+    fn get_connector(&self) -> &ConnectorNamespace {
+        &self.connector
+    }
 }
 
 /// Object used to populate user nodes and edges in the graph
 
 impl NodeHelper for ProcessedUser {
-    fn get_node(&self, connector: ConnectorNamespace) -> JettyNode {
+    fn get_node(&self) -> JettyNode {
         JettyNode::User(UserAttributes {
             name: self.name.to_owned(),
             identifiers: self.identifiers.to_owned(),
             metadata: self.metadata.to_owned(),
-            connectors: HashSet::from([connector]),
+            connectors: HashSet::from([self.connector.to_owned()]),
         })
     }
 
@@ -246,15 +259,18 @@ impl NodeHelper for ProcessedUser {
         }
         hs
     }
+    fn get_connector(&self) -> &ConnectorNamespace {
+        &self.connector
+    }
 }
 
 impl NodeHelper for ProcessedAsset {
-    fn get_node(&self, connector: ConnectorNamespace) -> JettyNode {
+    fn get_node(&self) -> JettyNode {
         JettyNode::Asset(AssetAttributes {
             name: self.name.to_owned(),
             asset_type: self.asset_type.to_owned(),
             metadata: self.metadata.to_owned(),
-            connectors: HashSet::from([connector]),
+            connectors: HashSet::from([self.connector.to_owned()]),
         })
     }
 
@@ -310,17 +326,20 @@ impl NodeHelper for ProcessedAsset {
         }
         hs
     }
+    fn get_connector(&self) -> &ConnectorNamespace {
+        &self.connector
+    }
 }
 
 impl NodeHelper for ProcessedTag {
-    fn get_node(&self, connector: ConnectorNamespace) -> JettyNode {
+    fn get_node(&self) -> JettyNode {
         JettyNode::Tag(TagAttributes {
             name: self.name.to_owned(),
             value: self.value.to_owned(),
             description: self.description.to_owned(),
             pass_through_hierarchy: self.pass_through_hierarchy,
             pass_through_lineage: self.pass_through_lineage,
-            connectors: HashSet::from([connector]),
+            connectors: HashSet::from([self.connector.to_owned()]),
         })
     }
 
@@ -352,16 +371,19 @@ impl NodeHelper for ProcessedTag {
         }
         hs
     }
+    fn get_connector(&self) -> &ConnectorNamespace {
+        &self.connector
+    }
 }
 
 impl NodeHelper for ProcessedPolicy {
-    fn get_node(&self, connector: ConnectorNamespace) -> JettyNode {
+    fn get_node(&self) -> JettyNode {
         JettyNode::Policy(PolicyAttributes {
             name: self.name.to_owned(),
             privileges: self.privileges.to_owned(),
             pass_through_hierarchy: self.pass_through_hierarchy,
             pass_through_lineage: self.pass_through_lineage,
-            connectors: HashSet::from([connector]),
+            connectors: HashSet::from([self.connector.to_owned()]),
         })
     }
 
@@ -400,5 +422,9 @@ impl NodeHelper for ProcessedPolicy {
             );
         }
         hs
+    }
+
+    fn get_connector(&self) -> &ConnectorNamespace {
+        &self.connector
     }
 }

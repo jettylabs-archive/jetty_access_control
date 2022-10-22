@@ -1,12 +1,8 @@
-use std::{
-    collections::{HashSet},
-    sync::Arc,
-};
+use std::{collections::HashSet, sync::Arc};
 
 use anyhow::Context;
 use axum::{extract::Path, routing::get, Extension, Json, Router};
-use serde::{Serialize};
-
+use serde::Serialize;
 
 use crate::{PrivilegeResponse, UserAssetsResponse};
 
@@ -57,7 +53,11 @@ async fn assets_handler(
                         explanations: p.reasons.to_owned(),
                     })
                     .collect(),
-                connectors: k.get_node_connectors(),
+                connectors: k
+                    .get_node_connectors()
+                    .iter()
+                    .map(|n| n.to_string())
+                    .collect(),
             })
             .collect(),
     )
@@ -97,7 +97,11 @@ async fn tags_handler(
                 .iter()
                 .map(|v| AssetBasics {
                     name: v.get_string_name(),
-                    connectors: v.get_node_connectors(),
+                    connectors: v
+                        .get_node_connectors()
+                        .iter()
+                        .map(|n| n.to_string())
+                        .collect(),
                 })
                 .collect(),
         })
@@ -163,8 +167,8 @@ async fn inherited_groups_handler(
         .filter_map(|(i, p)| {
             if let JettyNode::Group(g) = &ag.graph()[i] {
                 Some(ObjectWithPathResponse {
-                    name: g.name.to_owned(),
-                    connectors: g.connectors.to_owned(),
+                    name: g.name.to_string(),
+                    connectors: g.connectors.iter().map(|n| n.to_string()).collect(),
                     membership_paths: p.iter().map(|p| ag.path_as_string(p)).collect(),
                 })
             } else {

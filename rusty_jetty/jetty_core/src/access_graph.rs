@@ -7,9 +7,10 @@ pub mod graph;
 pub mod helpers;
 #[cfg(test)]
 pub mod test_util;
-mod translate;
+pub mod translate;
 
 use crate::connectors::nodes::{ConnectorData, EffectivePermission, SparseMatrix};
+use crate::connectors::processed_nodes::ProcessedConnectorData;
 use crate::connectors::UserIdentifier;
 use crate::jetty::ConnectorNamespace;
 use crate::logging::debug;
@@ -20,7 +21,6 @@ use self::graph::typed_indices::{
     AssetIndex, GroupIndex, PolicyIndex, TagIndex, ToNodeIndex, UserIndex,
 };
 use self::helpers::NodeHelper;
-pub use self::helpers::ProcessedConnectorData;
 
 use super::connectors;
 use core::hash::Hash;
@@ -147,7 +147,10 @@ impl GroupAttributes {
     #[cfg(test)]
     fn new(name: String) -> Self {
         Self {
-            NodeName::Group(),
+            name: NodeName::Group {
+                name,
+                origin: ConnectorNamespace("".to_owned()),
+            },
             ..Default::default()
         }
     }
@@ -168,10 +171,10 @@ impl TryFrom<JettyNode> for GroupAttributes {
 /// A struct defining the attributes of an asset
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AssetAttributes {
-    name: NodeName,
-    asset_type: AssetType,
-    metadata: HashMap<String, String>,
-    connectors: HashSet<ConnectorNamespace>,
+    pub(crate) name: NodeName,
+    pub(crate) asset_type: AssetType,
+    pub(crate) metadata: HashMap<String, String>,
+    pub(crate) connectors: HashSet<ConnectorNamespace>,
 }
 
 impl AssetAttributes {
@@ -238,7 +241,7 @@ pub struct TagAttributes {
     pub pass_through_lineage: bool,
     /// Connector the tag is from. This is not all the connectors that the tag may be applied to.
     /// We don't yet support specifying that.
-    connectors: HashSet<ConnectorNamespace>,
+    pub connectors: HashSet<ConnectorNamespace>,
 }
 
 impl TagAttributes {
@@ -275,12 +278,12 @@ impl TagAttributes {
     #[cfg(test)]
     fn new(name: String, pass_through_hierarchy: bool, pass_through_lineage: bool) -> Self {
         Self {
-            name,
+            name: NodeName::Tag(name),
             description: None,
             value: Default::default(),
             pass_through_hierarchy,
             pass_through_lineage,
-            connectors: HashSet::from(["Jetty".to_owned()]),
+            connectors: HashSet::from([ConnectorNamespace("Jetty".to_owned())]),
         }
     }
 }
@@ -300,11 +303,16 @@ impl TryFrom<JettyNode> for TagAttributes {
 /// A struct describing the attributes of a policy
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PolicyAttributes {
-    name: NodeName,
-    privileges: HashSet<String>,
-    pass_through_hierarchy: bool,
-    pass_through_lineage: bool,
-    connectors: HashSet<ConnectorNamespace>,
+    /// Policy name
+    pub name: NodeName,
+    /// Policy privileges
+    pub privileges: HashSet<String>,
+    /// Whether the policy is passed through hierarchy
+    pub pass_through_hierarchy: bool,
+    /// Whether the policy is passed through lineage
+    pub pass_through_lineage: bool,
+    /// Policy connectors
+    pub connectors: HashSet<ConnectorNamespace>,
 }
 
 #[derive(Default, Debug, PartialEq, Eq, Hash)]
@@ -341,7 +349,7 @@ impl PolicyAttributes {
     #[cfg(test)]
     fn new(name: String) -> Self {
         Self {
-            name,
+            name: NodeName::Policy(name),
             privileges: Default::default(),
             pass_through_hierarchy: Default::default(),
             pass_through_lineage: Default::default(),
@@ -382,15 +390,15 @@ impl JettyNode {
     pub fn get_string_name(&self) -> String {
         match &self {
             JettyNode::Group(g) => g.name.to_string(),
-            JettyNode::User(u) => u.name.to_owned(),
+            JettyNode::User(u) => u.name.to_string(),
             JettyNode::Asset(a) => a.name.to_string(),
-            JettyNode::Tag(t) => t.name.to_owned(),
-            JettyNode::Policy(p) => p.name.to_owned(),
+            JettyNode::Tag(t) => t.name.to_string(),
+            JettyNode::Policy(p) => p.name.to_string(),
         }
     }
 
     /// Get a Vec of the connectors for a node
-    pub fn get_node_connectors(&self) -> HashSet<String> {
+    pub fn get_node_connectors(&self) -> HashSet<ConnectorNamespace> {
         match &self {
             JettyNode::Group(g) => g.connectors.to_owned(),
             JettyNode::User(u) => u.connectors.to_owned(),
@@ -431,11 +439,11 @@ impl JettyNode {
     /// wrapped in the appropriate enum.
     fn get_node_name(&self) -> NodeName {
         match &self {
-            JettyNode::Asset(a) => NodeName::Asset(a.cual.to_owned()),
-            JettyNode::Group(a) => NodeName::Group(a.name.to_owned()),
-            JettyNode::Policy(a) => NodeName::Policy(a.name.to_owned()),
-            JettyNode::Tag(a) => NodeName::Tag(a.name.to_owned()),
-            JettyNode::User(a) => NodeName::User(a.name.to_owned()),
+            JettyNode::Asset(a) => a.name.to_owned(),
+            JettyNode::Group(a) => a.name.to_owned(),
+            JettyNode::Policy(a) => a.name.to_owned(),
+            JettyNode::Tag(a) => a.name.to_owned(),
+            JettyNode::User(a) => a.name.to_owned(),
         }
     }
 }
@@ -502,7 +510,12 @@ pub enum NodeName {
     /// User node
     User(String),
     /// Group node
-    Group{name: String, connector: ConnectorNamespace},
+    Group {
+        /// Group name
+        name: String,
+        /// Origin connector
+        origin: ConnectorNamespace,
+    },
     /// Asset node
     Asset(Cual),
     /// Policy node
@@ -521,12 +534,11 @@ impl Display for NodeName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             NodeName::User(n) => write!(f, "{}", n.to_owned()),
-            NodeName::Group { name, connector } => write!(f, "{}::{}", connector, name),
+            NodeName::Group { name, origin } => write!(f, "{}::{}", origin, name),
             NodeName::Asset(c) => write!(f, "{}", c.to_string()),
             NodeName::Policy(n) => write!(f, "{}", n.to_owned()),
             NodeName::Tag(n) => write!(f, "{}", n.to_owned()),
         }
-        
     }
 }
 
@@ -578,7 +590,7 @@ impl<T: graph::typed_indices::ToNodeIndex> IndexMut<T> for AccessGraph {
 
 impl AccessGraph {
     /// New graph
-    pub fn new(data: Vec<ProcessedConnectorData>) -> Result<Self> {
+    pub fn new(connector_data: ProcessedConnectorData) -> Result<Self> {
         let mut ag = AccessGraph {
             graph: graph::Graph {
                 graph: petgraph::stable_graph::StableDiGraph::new(),
@@ -588,17 +600,14 @@ impl AccessGraph {
             last_modified: OffsetDateTime::now_utc(),
             effective_permissions: Default::default(),
         };
-        for connector_data in data {
-            // Create all nodes first, then create edges.
-            ag.add_nodes(&connector_data)?;
-            // Merge effective permissions into the access graph
-            ag.effective_permissions
-                .merge(ag.translate_effective_permissions_matrix_to_global(
-                    connector_data.data.effective_permissions,
-                ))
-                .context("merging effective permissions")
-                .unwrap();
-        }
+        // Create all nodes first, then create edges.
+        ag.add_nodes(&connector_data)?;
+        // Merge effective permissions into the access graph
+        ag.effective_permissions
+            .merge(connector_data.effective_permissions)
+            .context("merging effective permissions")
+            .unwrap();
+
         ag.add_edges()?;
         Ok(ag)
     }
@@ -657,18 +666,21 @@ impl AccessGraph {
     }
 
     pub(crate) fn add_nodes(&mut self, data: &ProcessedConnectorData) -> Result<()> {
-        self.register_nodes_and_edges(&data.data.groups, &data.connector, None)?;
-        self.register_nodes_and_edges(&data.data.users, &data.connector, None)?;
+        self.register_nodes_and_edges(&data.groups, None)?;
+        self.register_nodes_and_edges(&data.users, None)?;
         self.register_nodes_and_edges(
-            &data.data.assets,
-            &data.connector,
+            &data.assets,
             Some(|node, connector| {
                 debug!("Filtering non-connector edge");
-                node.cual.scheme() != connector.trim()
+                if let NodeName::Asset(cual) = &node.name {
+                    cual.scheme() != connector.to_string().trim()
+                } else {
+                    panic!("improper node type")
+                }
             }),
         )?;
-        self.register_nodes_and_edges(&data.data.policies, &data.connector, None)?;
-        self.register_nodes_and_edges(&data.data.tags, &data.connector, None)?;
+        self.register_nodes_and_edges(&data.policies, None)?;
+        self.register_nodes_and_edges(&data.tags, None)?;
         Ok(())
     }
 
@@ -686,23 +698,19 @@ impl AccessGraph {
     fn register_nodes_and_edges<T: NodeHelper>(
         &mut self,
         nodes: &Vec<T>,
-        connector: &String,
-        filter: Option<fn(&T, &str) -> bool>,
+        filter: Option<fn(&T, &ConnectorNamespace) -> bool>,
     ) -> Result<()> {
         for n in nodes {
             // Edges get added regardless of connector.
             let edges = n.get_edges();
             self.edge_cache.extend(edges);
             if let Some(should_filter) = filter {
-                if should_filter(n, connector) {
-                    debug!(
-                        "Filtering node {:?}",
-                        n.get_node(connector.to_owned()).get_string_name()
-                    );
+                if should_filter(n, &n.get_connector()) {
+                    debug!("Filtering node {:?}", n.get_node().get_string_name());
                     continue;
                 }
             }
-            let node = n.get_node(connector.to_owned());
+            let node = n.get_node();
             self.graph.add_node(&node)?;
         }
         Ok(())
@@ -737,11 +745,8 @@ impl AccessGraph {
         let parsed_tags = parse_tags(config)?;
         let tags = tags_to_jetty_node_helpers(parsed_tags, self, config)?;
         self.add_nodes(&ProcessedConnectorData {
-            connector: "Jetty".to_owned(),
-            data: ConnectorData {
-                tags,
-                ..Default::default()
-            },
+            tags,
+            ..Default::default()
         })?;
 
         // add edges from the cache
