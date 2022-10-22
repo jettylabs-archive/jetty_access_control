@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 
-use crate::cual::Cual;
+use crate::{cual::Cual, jetty::ConnectorNamespace};
 
 use super::{
     connectors::nodes, AssetAttributes, EdgeType, GroupAttributes, JettyEdge, JettyNode, NodeName,
@@ -22,7 +22,7 @@ pub struct ProcessedConnectorData {
 /// All helper types implement NodeHelpers.
 pub(crate) trait NodeHelper {
     /// Return a JettyNode from the helper
-    fn get_node(&self, connector: String) -> JettyNode;
+    fn get_node(&self, connector: ConnectorNamespace) -> JettyNode;
     /// Return a set of JettyEdges from the helper
     fn get_edges(&self) -> HashSet<JettyEdge>;
 }

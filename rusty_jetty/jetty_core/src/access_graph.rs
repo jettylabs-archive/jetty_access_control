@@ -47,15 +47,13 @@ const SAVED_GRAPH_PATH: &str = "jetty_graph";
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UserAttributes {
     /// User name
-    pub name: String,
+    pub name: NodeName,
     /// Specific user identifiers
     pub identifiers: HashSet<connectors::UserIdentifier>,
     /// Misc user identifiers
-    pub other_identifiers: HashSet<String>,
-    /// K-V pairs of user-specific metadata
     pub metadata: HashMap<String, String>,
     /// Connectors the user is present in
-    pub connectors: HashSet<String>,
+    pub connectors: HashSet<ConnectorNamespace>,
 }
 /// The name for a user node
 #[derive(Eq, Hash, PartialEq, Debug, Default)]
@@ -73,15 +71,12 @@ impl UserAttributes {
         let name = merge_matched_field(&self.name, &new_attributes.name)
             .context("field: UserAttributes.name")?;
         let identifiers = merge_set(&self.identifiers, &new_attributes.identifiers);
-        let other_identifiers =
-            merge_set(&self.other_identifiers, &new_attributes.other_identifiers);
         let metadata = merge_map(&self.metadata, &new_attributes.metadata)
             .context("field: UserAttributes.metadata")?;
         let connectors = merge_set(&self.connectors, &new_attributes.connectors);
         Ok(UserAttributes {
             name,
             identifiers,
-            other_identifiers,
             metadata,
             connectors,
         })
@@ -91,9 +86,8 @@ impl UserAttributes {
     #[cfg(test)]
     fn new(name: String) -> Self {
         Self {
-            name,
+            name: NodeName::User(name),
             identifiers: Default::default(),
-            other_identifiers: Default::default(),
             metadata: Default::default(),
             connectors: Default::default(),
         }
@@ -120,7 +114,7 @@ pub struct GroupAttributes {
     /// k-v pairs of group metadata
     pub metadata: HashMap<String, String>,
     /// All the connectors the group is present in
-    pub connectors: HashSet<String>,
+    pub connectors: HashSet<ConnectorNamespace>,
 }
 
 /// The name for a Group node
@@ -174,31 +168,31 @@ impl TryFrom<JettyNode> for GroupAttributes {
 /// A struct defining the attributes of an asset
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AssetAttributes {
-    cual: Cual,
+    name: NodeName,
     asset_type: AssetType,
     metadata: HashMap<String, String>,
-    connectors: HashSet<String>,
+    connectors: HashSet<ConnectorNamespace>,
 }
 
 impl AssetAttributes {
     fn merge_attributes(&self, new_attributes: &AssetAttributes) -> Result<AssetAttributes> {
-        let cual = merge_matched_field(&self.cual, &new_attributes.cual)
-            .context("field: GroupAttributes.cual")?;
+        let name = merge_matched_field(&self.name, &new_attributes.name)
+            .context("field: GroupAttributes.name")?;
         let asset_type = merge_matched_field(&self.asset_type, &self.asset_type)
             .context("field: AssetAttributes.asset_type")?;
         let metadata = merge_map(&self.metadata, &new_attributes.metadata)
             .context("field: AssetAttributes.metadata")?;
         let connectors = merge_set(&self.connectors, &new_attributes.connectors);
         Ok(AssetAttributes {
-            cual,
+            name,
             asset_type,
             metadata,
             connectors,
         })
     }
 
-    pub(crate) fn cual(&self) -> &Cual {
-        &self.cual
+    pub(crate) fn name(&self) -> &NodeName {
+        &self.name
     }
 
     pub(crate) fn asset_type(&self) -> &AssetType {
@@ -209,7 +203,7 @@ impl AssetAttributes {
     #[cfg(test)]
     pub(crate) fn new(cual: Cual) -> Self {
         Self {
-            cual,
+            name: NodeName::Asset(cual),
             asset_type: AssetType::default(),
             metadata: Default::default(),
             connectors: Default::default(),
@@ -233,7 +227,7 @@ impl TryFrom<JettyNode> for AssetAttributes {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TagAttributes {
     /// Name of tag
-    pub name: String,
+    pub name: NodeName,
     /// optional discription of the tag
     pub description: Option<String>,
     /// an optional value
@@ -244,7 +238,7 @@ pub struct TagAttributes {
     pub pass_through_lineage: bool,
     /// Connector the tag is from. This is not all the connectors that the tag may be applied to.
     /// We don't yet support specifying that.
-    connectors: HashSet<String>,
+    connectors: HashSet<ConnectorNamespace>,
 }
 
 impl TagAttributes {
@@ -306,11 +300,11 @@ impl TryFrom<JettyNode> for TagAttributes {
 /// A struct describing the attributes of a policy
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PolicyAttributes {
-    name: String,
+    name: NodeName,
     privileges: HashSet<String>,
     pass_through_hierarchy: bool,
     pass_through_lineage: bool,
-    connectors: HashSet<String>,
+    connectors: HashSet<ConnectorNamespace>,
 }
 
 #[derive(Default, Debug, PartialEq, Eq, Hash)]

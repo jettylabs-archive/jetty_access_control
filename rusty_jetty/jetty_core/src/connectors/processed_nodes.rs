@@ -12,9 +12,12 @@ use crate::{
     access_graph::{
         graph::typed_indices::{AssetIndex, UserIndex},
         helpers::{insert_edge_pair, NodeHelper},
-        EdgeType, GroupAttributes, GroupName, JettyEdge, JettyNode, NodeName, PolicyName, UserName,
+        AssetAttributes, EdgeType, GroupAttributes, GroupName, JettyEdge, JettyNode, NodeName,
+        PolicyAttributes, PolicyName, TagAttributes, UserAttributes, UserName,
     },
     cual::Cual,
+    jetty::ConnectorNamespace,
+    Connector,
 };
 
 use super::{
@@ -165,7 +168,7 @@ pub struct ProcessedPolicy {
 }
 
 impl NodeHelper for ProcessedGroup {
-    fn get_node(&self, connector: String) -> JettyNode {
+    fn get_node(&self, connector: ConnectorNamespace) -> JettyNode {
         JettyNode::Group(GroupAttributes {
             name: self.name.to_owned(),
             metadata: self.metadata.to_owned(),
@@ -213,12 +216,11 @@ impl NodeHelper for ProcessedGroup {
 
 /// Object used to populate user nodes and edges in the graph
 
-impl NodeHelper for nodes::User {
-    fn get_node(&self, connector: String) -> JettyNode {
+impl NodeHelper for ProcessedUser {
+    fn get_node(&self, connector: ConnectorNamespace) -> JettyNode {
         JettyNode::User(UserAttributes {
             name: self.name.to_owned(),
             identifiers: self.identifiers.to_owned(),
-            other_identifiers: self.other_identifiers.to_owned(),
             metadata: self.metadata.to_owned(),
             connectors: HashSet::from([connector]),
         })
@@ -229,16 +231,16 @@ impl NodeHelper for nodes::User {
         for v in &self.member_of {
             insert_edge_pair(
                 &mut hs,
-                NodeName::User(self.name.to_owned()),
-                NodeName::Group(v.to_owned()),
+                self.name.to_owned(),
+                v.to_owned(),
                 EdgeType::MemberOf,
             );
         }
         for v in &self.granted_by {
             insert_edge_pair(
                 &mut hs,
-                NodeName::User(self.name.to_owned()),
-                NodeName::Policy(v.to_owned()),
+                self.name.to_owned(),
+                v.to_owned(),
                 EdgeType::GrantedBy,
             );
         }
@@ -246,10 +248,10 @@ impl NodeHelper for nodes::User {
     }
 }
 
-impl NodeHelper for nodes::Asset {
-    fn get_node(&self, connector: String) -> JettyNode {
+impl NodeHelper for ProcessedAsset {
+    fn get_node(&self, connector: ConnectorNamespace) -> JettyNode {
         JettyNode::Asset(AssetAttributes {
-            cual: self.cual.clone(),
+            name: self.name.to_owned(),
             asset_type: self.asset_type.to_owned(),
             metadata: self.metadata.to_owned(),
             connectors: HashSet::from([connector]),
@@ -261,48 +263,48 @@ impl NodeHelper for nodes::Asset {
         for v in &self.governed_by {
             insert_edge_pair(
                 &mut hs,
-                NodeName::Asset(self.cual.to_owned()),
-                NodeName::Policy(v.to_owned()),
+                self.name.to_owned(),
+                v.to_owned(),
                 EdgeType::GovernedBy,
             );
         }
         for v in &self.child_of {
             insert_edge_pair(
                 &mut hs,
-                NodeName::Asset(self.cual.to_owned()),
-                NodeName::Asset(Cual::new(v)),
+                self.name.to_owned(),
+                v.to_owned(),
                 EdgeType::ChildOf,
             );
         }
         for v in &self.parent_of {
             insert_edge_pair(
                 &mut hs,
-                NodeName::Asset(self.cual.to_owned()),
-                NodeName::Asset(Cual::new(v)),
+                self.name.to_owned(),
+                v.to_owned(),
                 EdgeType::ParentOf,
             );
         }
         for v in &self.derived_from {
             insert_edge_pair(
                 &mut hs,
-                NodeName::Asset(self.cual.to_owned()),
-                NodeName::Asset(Cual::new(v)),
+                self.name.to_owned(),
+                v.to_owned(),
                 EdgeType::DerivedFrom,
             );
         }
         for v in &self.derived_to {
             insert_edge_pair(
                 &mut hs,
-                NodeName::Asset(self.cual.to_owned()),
-                NodeName::Asset(Cual::new(v)),
+                self.name.to_owned(),
+                v.to_owned(),
                 EdgeType::DerivedTo,
             );
         }
         for v in &self.tagged_as {
             insert_edge_pair(
                 &mut hs,
-                NodeName::Asset(self.cual.to_owned()),
-                NodeName::Tag(v.to_owned()),
+                self.name.to_owned(),
+                v.to_owned(),
                 EdgeType::TaggedAs,
             );
         }
@@ -310,8 +312,8 @@ impl NodeHelper for nodes::Asset {
     }
 }
 
-impl NodeHelper for nodes::Tag {
-    fn get_node(&self, connector: String) -> JettyNode {
+impl NodeHelper for ProcessedTag {
+    fn get_node(&self, connector: ConnectorNamespace) -> JettyNode {
         JettyNode::Tag(TagAttributes {
             name: self.name.to_owned(),
             value: self.value.to_owned(),
@@ -327,24 +329,24 @@ impl NodeHelper for nodes::Tag {
         for v in &self.applied_to {
             insert_edge_pair(
                 &mut hs,
-                NodeName::Tag(self.name.to_owned()),
-                NodeName::Asset(Cual::new(v)),
+                self.name.to_owned(),
+                v.to_owned(),
                 EdgeType::AppliedTo,
             );
         }
         for v in &self.governed_by {
             insert_edge_pair(
                 &mut hs,
-                NodeName::Tag(self.name.to_owned()),
-                NodeName::Policy(v.to_owned()),
+                self.name.to_owned(),
+                v.to_owned(),
                 EdgeType::GovernedBy,
             );
         }
         for v in &self.removed_from {
             insert_edge_pair(
                 &mut hs,
-                NodeName::Tag(self.name.to_owned()),
-                NodeName::Asset(Cual::new(v)),
+                self.name.to_owned(),
+                v.to_owned(),
                 EdgeType::RemovedFrom,
             );
         }
@@ -352,8 +354,8 @@ impl NodeHelper for nodes::Tag {
     }
 }
 
-impl NodeHelper for nodes::Policy {
-    fn get_node(&self, connector: String) -> JettyNode {
+impl NodeHelper for ProcessedPolicy {
+    fn get_node(&self, connector: ConnectorNamespace) -> JettyNode {
         JettyNode::Policy(PolicyAttributes {
             name: self.name.to_owned(),
             privileges: self.privileges.to_owned(),
@@ -368,32 +370,32 @@ impl NodeHelper for nodes::Policy {
         for v in &self.governs_assets {
             insert_edge_pair(
                 &mut hs,
-                NodeName::Policy(self.name.to_owned()),
-                NodeName::Asset(Cual::new(v)),
+                self.name.to_owned(),
+                v.to_owned(),
                 EdgeType::Governs,
             );
         }
         for v in &self.governs_tags {
             insert_edge_pair(
                 &mut hs,
-                NodeName::Policy(self.name.to_owned()),
-                NodeName::Tag(v.to_owned()),
+                self.name.to_owned(),
+                v.to_owned(),
                 EdgeType::Governs,
             );
         }
         for v in &self.granted_to_groups {
             insert_edge_pair(
                 &mut hs,
-                NodeName::Policy(self.name.to_owned()),
-                NodeName::Group(v.to_owned()),
+                self.name.to_owned(),
+                v.to_owned(),
                 EdgeType::GrantedTo,
             );
         }
         for v in &self.granted_to_users {
             insert_edge_pair(
                 &mut hs,
-                NodeName::Policy(self.name.to_owned()),
-                NodeName::User(v.to_owned()),
+                self.name.to_owned(),
+                v.to_owned(),
                 EdgeType::GrantedTo,
             );
         }
