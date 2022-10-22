@@ -4,7 +4,7 @@
 
 pub mod explore;
 pub mod graph;
-mod helpers;
+pub mod helpers;
 #[cfg(test)]
 pub mod test_util;
 mod translate;
@@ -27,7 +27,7 @@ use core::hash::Hash;
 
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use std::fs::File;
 use std::io::BufWriter;
 use std::ops::{Index, IndexMut};
@@ -58,7 +58,7 @@ pub struct UserAttributes {
     pub connectors: HashSet<String>,
 }
 /// The name for a user node
-#[derive(Eq, Hash, PartialEq)]
+#[derive(Eq, Hash, PartialEq, Debug, Default)]
 pub struct UserName(String);
 
 impl UserName {
@@ -113,11 +113,10 @@ impl TryFrom<JettyNode> for UserAttributes {
 }
 
 /// Attributes associated with a Group node
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct GroupAttributes {
     /// Name of group
-    pub name: String,
+    pub name: NodeName,
     /// k-v pairs of group metadata
     pub metadata: HashMap<String, String>,
     /// All the connectors the group is present in
@@ -125,7 +124,7 @@ pub struct GroupAttributes {
 }
 
 /// The name for a Group node
-#[derive(Eq, Hash, PartialEq)]
+#[derive(Eq, Hash, PartialEq, Debug, Default)]
 pub struct GroupName {
     name: String,
     origin: ConnectorNamespace,
@@ -154,7 +153,7 @@ impl GroupAttributes {
     #[cfg(test)]
     fn new(name: String) -> Self {
         Self {
-            name,
+            NodeName::Group(),
             ..Default::default()
         }
     }
@@ -314,6 +313,9 @@ pub struct PolicyAttributes {
     connectors: HashSet<String>,
 }
 
+#[derive(Default, Debug, PartialEq, Eq, Hash)]
+pub(crate) struct PolicyName(String);
+
 impl PolicyAttributes {
     fn merge_attributes(&self, new_attributes: &PolicyAttributes) -> Result<PolicyAttributes> {
         let name = merge_matched_field(&self.name, &new_attributes.name)
@@ -385,9 +387,9 @@ impl JettyNode {
     /// Get the type (as a string) of the node.
     pub fn get_string_name(&self) -> String {
         match &self {
-            JettyNode::Group(g) => g.name.to_owned(),
+            JettyNode::Group(g) => g.name.to_string(),
             JettyNode::User(u) => u.name.to_owned(),
-            JettyNode::Asset(a) => a.cual.uri(),
+            JettyNode::Asset(a) => a.name.to_string(),
             JettyNode::Tag(t) => t.name.to_owned(),
             JettyNode::Policy(p) => p.name.to_owned(),
         }
@@ -501,18 +503,37 @@ fn get_edge_type_pair(edge_type: &EdgeType) -> EdgeType {
 }
 
 /// Mapping of node identifiers (like asset name) to their id in the graph
-#[derive(PartialEq, Eq, Hash, Clone, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Hash, Clone, Debug, Serialize, Deserialize, PartialOrd, Ord)]
 pub enum NodeName {
     /// User node
     User(String),
     /// Group node
-    Group(String),
+    Group{name: String, connector: ConnectorNamespace},
     /// Asset node
     Asset(Cual),
     /// Policy node
     Policy(String),
     /// Tag node
     Tag(String),
+}
+
+impl Default for NodeName {
+    fn default() -> Self {
+        NodeName::User("".to_owned())
+    }
+}
+
+impl Display for NodeName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            NodeName::User(n) => write!(f, "{}", n.to_owned()),
+            NodeName::Group { name, connector } => write!(f, "{}::{}", connector, name),
+            NodeName::Asset(c) => write!(f, "{}", c.to_string()),
+            NodeName::Policy(n) => write!(f, "{}", n.to_owned()),
+            NodeName::Tag(n) => write!(f, "{}", n.to_owned()),
+        }
+        
+    }
 }
 
 #[derive(Hash, Eq, PartialEq, Debug, Clone, Serialize, Deserialize)]

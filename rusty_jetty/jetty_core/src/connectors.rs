@@ -2,6 +2,7 @@
 //!
 
 pub mod nodes;
+pub mod processed_nodes;
 
 use anyhow::Result;
 use async_trait::async_trait;
@@ -50,6 +51,8 @@ pub enum UserIdentifier {
     FullName(String),
     /// User's email address
     Email(String),
+    /// Other identifiers that can be used for matching
+    Other(String),
     /// Shouldn't be used other than as a default.
     #[default]
     Unknown,
