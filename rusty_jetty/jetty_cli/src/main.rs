@@ -188,7 +188,7 @@ async fn fetch(connectors: &Vec<String>, &visualize: &bool) -> Result<()> {
     // Build the translator
     let tr = Translator::new(&data_from_connectors);
     // Process the connector data
-    let pcd = tr.local_to_processed_connector_data(data_from_connectors)?;
+    let pcd = tr.local_to_processed_connector_data(data_from_connectors);
     let ag = AccessGraph::new(pcd)?;
     info!(
         "access graph creation took {} seconds",
