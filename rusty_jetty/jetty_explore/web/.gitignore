@@ -34,6 +34,7 @@ yarn-error.log*
 
 # yarn lock
 yarn.lock
+package-lock.json
 
 # Include index.html in repo to keep the directory structure intact
 dist/*
