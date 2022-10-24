@@ -19,6 +19,7 @@ use crate::{connectors::AssetType, cual::Cual};
 
 use self::graph::typed_indices::{AssetIndex, GroupIndex, PolicyIndex, TagIndex, UserIndex};
 use self::helpers::NodeHelper;
+use self::translate::Translator;
 
 use super::connectors;
 use core::hash::Hash;
@@ -590,6 +591,18 @@ impl AccessGraph {
         );
 
         Ok(ag)
+    }
+
+    /// Create a new Access Graph from a Vec<(ConnectorData, ConnectorNamespace)>.
+    /// This handles the translation from connectors local state to a global state
+    pub fn new_from_connector_data(
+        connector_data: Vec<(ConnectorData, ConnectorNamespace)>,
+    ) -> Result<Self> {
+        // Build the translator
+        let tr = Translator::new(&connector_data);
+        // Process the connector data
+        let pcd = tr.local_to_processed_connector_data(connector_data);
+        AccessGraph::new(pcd)
     }
 
     /// This is a placeholder for the translation layer. The final access graph will need effective permissions with different axes than

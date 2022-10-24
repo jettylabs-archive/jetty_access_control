@@ -21,6 +21,7 @@ use crate::{
 };
 
 /// Struct to translate local data to global data and back again
+/// Eventually, this will need to be persisted with the graph to enable the write path
 #[derive(Default)]
 pub struct Translator {
     global_to_local: GlobalToLocalIdentifiers,
