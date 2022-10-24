@@ -12,18 +12,15 @@ use crate::{
     access_graph::{
         graph::typed_indices::{AssetIndex, UserIndex},
         helpers::{insert_edge_pair, NodeHelper},
-        AssetAttributes, EdgeType, GroupAttributes, GroupName, JettyEdge, JettyNode, NodeName,
-        PolicyAttributes, PolicyName, TagAttributes, UserAttributes, UserName,
+        AssetAttributes, EdgeType, GroupAttributes, JettyEdge, JettyNode, NodeName,
+        PolicyAttributes, TagAttributes, UserAttributes,
     },
     cual::Cual,
     jetty::ConnectorNamespace,
     Connector,
 };
 
-use super::{
-    nodes::{EffectivePermission, SparseMatrix},
-    UserIdentifier,
-};
+use super::nodes::{EffectivePermission, SparseMatrix};
 
 /// Container for all node data for a given connector
 #[derive(Debug, Default, PartialEq, Eq)]

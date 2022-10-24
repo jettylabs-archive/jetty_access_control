@@ -13,7 +13,7 @@ use crate::{
     permissions::matrix::DoubleInsert,
 };
 
-use super::{GroupName, UserName};
+use super::NodeName;
 
 /// Struct to translate local data to global data and back again
 #[derive(Default)]
@@ -24,14 +24,14 @@ pub struct Translator {
 
 #[derive(Default)]
 pub(crate) struct GlobalToLocalIdentifiers {
-    users: SparseMatrix<ConnectorNamespace, UserName, String>,
-    groups: SparseMatrix<ConnectorNamespace, GroupName, String>,
+    users: SparseMatrix<ConnectorNamespace, NodeName, String>,
+    groups: SparseMatrix<ConnectorNamespace, NodeName, String>,
 }
 
 #[derive(Default)]
 pub(crate) struct LocalToGlobalIdentifiers {
-    users: SparseMatrix<ConnectorNamespace, String, UserName>,
-    groups: SparseMatrix<ConnectorNamespace, String, GroupName>,
+    users: SparseMatrix<ConnectorNamespace, String, NodeName>,
+    groups: SparseMatrix<ConnectorNamespace, String, NodeName>,
 }
 
 impl Translator {
@@ -57,11 +57,11 @@ impl Translator {
                         self.local_to_global.users.double_insert(
                             connector.1.to_owned(),
                             user.name.to_owned(),
-                            UserName::new(email.to_owned()),
+                            NodeName::User(email.to_owned()),
                         );
                         self.global_to_local.users.double_insert(
                             connector.1.to_owned(),
-                            UserName::new(email.to_owned()),
+                            NodeName::User(email.to_owned()),
                             user.name.to_owned(),
                         );
                     }
@@ -70,11 +70,11 @@ impl Translator {
                         self.local_to_global.users.double_insert(
                             connector.1.to_owned(),
                             user.name.to_owned(),
-                            UserName::new(user.name.to_owned()),
+                            NodeName::User(user.name.to_owned()),
                         );
                         self.global_to_local.users.double_insert(
                             connector.1.to_owned(),
-                            UserName::new(user.name.to_owned()),
+                            NodeName::User(user.name.to_owned()),
                             user.name.to_owned(),
                         );
                     }
@@ -93,11 +93,17 @@ impl Translator {
                 self.local_to_global.groups.double_insert(
                     connector.1.to_owned(),
                     group.name.to_owned(),
-                    GroupName::new(group.name.to_owned(), connector.1.to_owned()),
+                    NodeName::Group {
+                        name: group.name.to_owned(),
+                        origin: connector.1.to_owned(),
+                    },
                 );
                 self.global_to_local.groups.double_insert(
                     connector.1.to_owned(),
-                    GroupName::new(group.name.to_owned(), connector.1.to_owned()),
+                    NodeName::Group {
+                        name: group.name.to_owned(),
+                        origin: connector.1.to_owned(),
+                    },
                     group.name.to_owned(),
                 );
             }

@@ -55,16 +55,6 @@ pub struct UserAttributes {
     /// Connectors the user is present in
     pub connectors: HashSet<ConnectorNamespace>,
 }
-/// The name for a user node
-#[derive(Eq, Hash, PartialEq, Debug, Default)]
-pub struct UserName(String);
-
-impl UserName {
-    /// create a new UserName from a string
-    pub fn new(name: String) -> Self {
-        UserName(name)
-    }
-}
 
 impl UserAttributes {
     fn merge_attributes(&self, new_attributes: &UserAttributes) -> Result<UserAttributes> {
@@ -115,19 +105,6 @@ pub struct GroupAttributes {
     pub metadata: HashMap<String, String>,
     /// All the connectors the group is present in
     pub connectors: HashSet<ConnectorNamespace>,
-}
-
-/// The name for a Group node
-#[derive(Eq, Hash, PartialEq, Debug, Default)]
-pub struct GroupName {
-    name: String,
-    origin: ConnectorNamespace,
-}
-
-impl GroupName {
-    pub(crate) fn new(name: String, origin: ConnectorNamespace) -> Self {
-        Self { name, origin }
-    }
 }
 
 impl GroupAttributes {
@@ -314,9 +291,6 @@ pub struct PolicyAttributes {
     /// Policy connectors
     pub connectors: HashSet<ConnectorNamespace>,
 }
-
-#[derive(Default, Debug, PartialEq, Eq, Hash)]
-pub(crate) struct PolicyName(String);
 
 impl PolicyAttributes {
     fn merge_attributes(&self, new_attributes: &PolicyAttributes) -> Result<PolicyAttributes> {
