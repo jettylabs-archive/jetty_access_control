@@ -268,11 +268,16 @@ impl<'a> Coordinator<'a> {
                     user.first_name, user.last_name
                 )));
             };
+            if user.display_name != "" {
+                identifiers.insert(UserIdentifier::Other(user.display_name.to_owned()));
+            };
+            if user.login_name != "" {
+                identifiers.insert(UserIdentifier::Other(user.login_name.to_owned()));
+            };
 
             res.push(nodes::User::new(
                 user.name.to_owned(),
                 identifiers,
-                HashSet::from([user.display_name.to_owned(), user.login_name.to_owned()]),
                 HashMap::new(),
                 self.get_role_grant_names(&Grantee::User(user.name.to_owned())),
                 HashSet::new(),

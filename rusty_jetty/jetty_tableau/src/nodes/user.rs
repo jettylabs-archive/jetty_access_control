@@ -64,7 +64,6 @@ impl From<User> for jetty_nodes::User {
                 UserIdentifier::FullName(val.full_name),
                 UserIdentifier::Other(val.external_auth_user_id),
             ]),
-            HashSet::from([]),
             HashMap::new(),
             // Handled in groups.
             HashSet::new(),
