@@ -60,68 +60,73 @@ impl Graph {
         Ok(draw)
     }
 
-    /// Check whether a given node already exists in the graph, and, if so, return the NodeIndex
+    /// Check whether a given node already exists in the graph, and, if so, return the NodeIndex.
+    /// If if the NodeName does not exist in the graph, returns None
     pub(crate) fn get_untyped_node_index(&self, node: &NodeName) -> Option<NodeIndex> {
         // I was hoping to do this with a trait object, but it turns out that
         // I couldn't easily return Option<&dyn ToNodeIndex> from the match -
         // apparently because of the Option (it worked fine without)
         match node {
-            NodeName::User(_) => self.nodes.users.get(node).and_then(|n| Some(n.get_index())),
+            NodeName::User(_) => self
+                .nodes
+                .users
+                .get(node)
+                .map(|n| NodeIndex::from(n.to_owned())),
             NodeName::Group { .. } => self
                 .nodes
                 .groups
                 .get(node)
-                .and_then(|n| Some(n.get_index())),
+                .map(|n| NodeIndex::from(n.to_owned())),
             NodeName::Asset(_) => self
                 .nodes
                 .assets
                 .get(node)
-                .and_then(|n| Some(n.get_index())),
+                .map(|n| NodeIndex::from(n.to_owned())),
             NodeName::Policy { .. } => self
                 .nodes
                 .policies
                 .get(node)
-                .and_then(|n| Some(n.get_index())),
-            NodeName::Tag(_) => self.nodes.tags.get(node).and_then(|n| Some(n.get_index())),
+                .map(|n| NodeIndex::from(n.to_owned())),
+            NodeName::Tag(_) => self
+                .nodes
+                .tags
+                .get(node)
+                .map(|n| NodeIndex::from(n.to_owned())),
         }
     }
 
     /// Check whether a given node already exists in the graph, and, if so, return a typed index
     pub(crate) fn get_asset_node_index(&self, node: &NodeName) -> Option<AssetIndex> {
         match node {
-            NodeName::Asset(_) => self.nodes.assets.get(node).and_then(|i| Some(i.to_owned())),
+            NodeName::Asset(_) => self.nodes.assets.get(node).map(|i| i.to_owned()),
             _ => None,
         }
     }
     /// Check whether a given node already exists in the graph, and, if so, return a typed index
     pub(crate) fn get_user_node_index(&self, node: &NodeName) -> Option<UserIndex> {
         match node {
-            NodeName::User(_) => self.nodes.users.get(node).and_then(|i| Some(i.to_owned())),
+            NodeName::User(_) => self.nodes.users.get(node).map(|i| i.to_owned()),
             _ => None,
         }
     }
     /// Check whether a given node already exists in the graph, and, if so, return a typed index
     pub(crate) fn get_group_node_index(&self, node: &NodeName) -> Option<GroupIndex> {
         match node {
-            NodeName::Group { .. } => self.nodes.groups.get(node).and_then(|i| Some(i.to_owned())),
+            NodeName::Group { .. } => self.nodes.groups.get(node).map(|i| i.to_owned()),
             _ => None,
         }
     }
     /// Check whether a given node already exists in the graph, and, if so, return a typed index
     pub(crate) fn get_tag_node_index(&self, node: &NodeName) -> Option<TagIndex> {
         match node {
-            NodeName::Tag(_) => self.nodes.tags.get(node).and_then(|i| Some(i.to_owned())),
+            NodeName::Tag(_) => self.nodes.tags.get(node).map(|i| i.to_owned()),
             _ => None,
         }
     }
     /// Check whether a given node already exists in the graph, and, if so, return a typed index
     pub(crate) fn get_policy_node_index(&self, node: &NodeName) -> Option<PolicyIndex> {
         match node {
-            NodeName::Policy { .. } => self
-                .nodes
-                .policies
-                .get(node)
-                .and_then(|i| Some(i.to_owned())),
+            NodeName::Policy { .. } => self.nodes.policies.get(node).map(|i| i.to_owned()),
             _ => None,
         }
     }

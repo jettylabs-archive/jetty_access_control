@@ -25,9 +25,9 @@ impl ToNodeIndex for NodeIndex {
 /// Implements the ToNodeIndex trait for one or more types that have an `idx` field.
 macro_rules! impl_to_node_index {
     (for $($t:ty),+) => {
-        $(impl ToNodeIndex for $t {
-            fn get_index(&self) -> NodeIndex {
-                self.idx
+        $(impl From<$t> for NodeIndex {
+            fn from(idx: $t) -> Self {
+                idx.idx
             }
         })*
     }

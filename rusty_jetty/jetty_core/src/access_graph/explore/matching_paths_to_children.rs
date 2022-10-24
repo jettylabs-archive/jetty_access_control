@@ -13,7 +13,7 @@ use super::{AccessGraph, EdgeType, JettyNode, NodePath};
 impl AccessGraph {
     /// Return the descendent node and matching paths from a provided node to all of its matching descendants.
     /// Specify filter functions to match edges and passthrough nodes.
-    pub fn all_matching_simple_paths_to_children<T: ToNodeIndex>(
+    pub fn all_matching_simple_paths_to_children<T: Into<NodeIndex>>(
         &self,
         from: T,
         edge_matcher: fn(&EdgeType) -> bool,
@@ -22,7 +22,7 @@ impl AccessGraph {
         min_depth: Option<usize>,
         max_depth: Option<usize>,
     ) -> HashMap<NodeIndex, Vec<NodePath>> {
-        let from_idx = from.get_index();
+        let from_idx: NodeIndex = from.into();
 
         let max_depth = if let Some(l) = max_depth {
             l

@@ -554,18 +554,18 @@ pub struct AccessGraph {
     effective_permissions: SparseMatrix<UserIndex, AssetIndex, HashSet<EffectivePermission>>,
 }
 
-impl<T: graph::typed_indices::ToNodeIndex> Index<T> for AccessGraph {
+impl<T: Into<NodeIndex>> Index<T> for AccessGraph {
     type Output = JettyNode;
 
     fn index(&self, index: T) -> &Self::Output {
-        let node_index = index.get_index();
+        let node_index: NodeIndex = index.into();
         self.graph.graph.index(node_index)
     }
 }
 
-impl<T: graph::typed_indices::ToNodeIndex> IndexMut<T> for AccessGraph {
+impl<T: Into<NodeIndex>> IndexMut<T> for AccessGraph {
     fn index_mut(&mut self, index: T) -> &mut Self::Output {
-        let node_index = index.get_index();
+        let node_index: NodeIndex = index.into();
         self.graph.graph.index_mut(node_index)
     }
 }
