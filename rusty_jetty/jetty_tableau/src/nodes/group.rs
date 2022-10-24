@@ -145,21 +145,21 @@ mod tests {
     }
 
     #[test]
-    fn test_group_with_users_into_jetty_group_gets_email() {
-        let email = "email@email.email";
+    fn test_group_with_users_into_jetty_group_gets_id() {
+        let id = "pizza-pizza";
         let g = Group::new(
             "id".to_owned(),
             "name".to_owned(),
             vec![tableau_nodes::User::new(
-                "id".to_owned(),
+                id.to_owned(),
                 "name".to_owned(),
-                email.to_owned(),
+                "email".to_owned(),
                 "eauid".to_owned(),
                 "full name".to_owned(),
                 Default::default(),
             )],
         );
         let a: jetty_nodes::Group = g.into();
-        assert_eq!(a.includes_users, HashSet::from([email.to_owned()]));
+        assert_eq!(a.includes_users, HashSet::from([id.to_owned()]));
     }
 }
