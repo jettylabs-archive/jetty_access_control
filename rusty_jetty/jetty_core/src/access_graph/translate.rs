@@ -1,7 +1,7 @@
 //! Types and functionality to translate between connectors' local representation
 //! and Jetty's global representation
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use super::NodeName;
 use crate::{
@@ -17,7 +17,7 @@ use crate::{
     },
     cual::Cual,
     jetty::ConnectorNamespace,
-    permissions::matrix::DoubleInsert,
+    permissions::matrix::{DoubleInsert, InsertOrMerge},
 };
 
 /// Struct to translate local data to global data and back again
@@ -49,6 +49,7 @@ impl Translator {
         t.resolve_users(data);
         t.resolve_groups(data);
         t.resolve_policies(data);
+
         t
     }
 
@@ -58,34 +59,24 @@ impl Translator {
         // for each connector, look over all the users.
         for connector in user_data {
             for user in connector.0 {
+                let mut node_name = NodeName::User(user.name.to_owned());
                 for id in &user.identifiers {
                     //If they have an Email address, make that the identifier.
                     if let UserIdentifier::Email(email) = id {
-                        self.local_to_global.users.double_insert(
-                            connector.1.to_owned(),
-                            user.name.to_owned(),
-                            NodeName::User(email.to_owned()),
-                        );
-                        self.global_to_local.users.double_insert(
-                            connector.1.to_owned(),
-                            NodeName::User(email.to_owned()),
-                            user.name.to_owned(),
-                        );
-                    }
-                    // Otherwise, use whatever the connector is using for their name
-                    else {
-                        self.local_to_global.users.double_insert(
-                            connector.1.to_owned(),
-                            user.name.to_owned(),
-                            NodeName::User(user.name.to_owned()),
-                        );
-                        self.global_to_local.users.double_insert(
-                            connector.1.to_owned(),
-                            NodeName::User(user.name.to_owned()),
-                            user.name.to_owned(),
-                        );
+                        node_name = NodeName::User(email.to_owned())
                     }
                 }
+
+                self.local_to_global.users.double_insert(
+                    connector.1.to_owned(),
+                    user.name.to_owned(),
+                    node_name.to_owned(),
+                );
+                self.global_to_local.users.double_insert(
+                    connector.1.to_owned(),
+                    node_name,
+                    user.name.to_owned(),
+                );
             }
         }
     }
@@ -151,6 +142,9 @@ impl Translator {
     ) -> ProcessedConnectorData {
         let mut result = ProcessedConnectorData::default();
 
+        result.effective_permissions =
+            self.translate_effective_permissions_axes_to_global_node_names(&data);
+
         for (cd, namespace) in data {
             // convert the users
             result.users.extend(
@@ -192,6 +186,7 @@ impl Translator {
         result
     }
 
+    /// Convert node from connector into ProcessedNode by converting all references to global NodeNames
     fn translate_user_to_global(&self, user: User, connector: ConnectorNamespace) -> ProcessedUser {
         ProcessedUser {
             name: self.local_to_global.users[&connector][&user.name].to_owned(),
@@ -211,6 +206,7 @@ impl Translator {
         }
     }
 
+    /// Convert node from connector into ProcessedNode by converting all references to global NodeNames
     fn translate_group_to_global(
         &self,
         group: Group,
@@ -243,6 +239,7 @@ impl Translator {
         }
     }
 
+    /// Convert node from connector into ProcessedNode by converting all references to global NodeNames
     fn translate_asset_to_global(
         &self,
         asset: Asset,
@@ -286,6 +283,7 @@ impl Translator {
         }
     }
 
+    /// Convert node from connector into ProcessedNode by converting all references to global NodeNames
     fn translate_tag_to_global(&self, tag: Tag, connector: ConnectorNamespace) -> ProcessedTag {
         ProcessedTag {
             name: NodeName::Tag(tag.name),
@@ -312,6 +310,7 @@ impl Translator {
         }
     }
 
+    /// Convert node from connector into ProcessedNode by converting all references to global NodeNames
     fn translate_policy_to_global(
         &self,
         policy: Policy,
@@ -346,10 +345,27 @@ impl Translator {
         }
     }
 
+    /// Take the permissions from a connector and convert them to a single matrix using
+    /// NodeNames. After this conversion there is still one more step - they need to be converted
+    /// into a NodeIndex-axis matrix.
     fn translate_effective_permissions_axes_to_global_node_names(
         &self,
         data: &Vec<(ConnectorData, ConnectorNamespace)>,
     ) -> SparseMatrix<NodeName, NodeName, HashSet<EffectivePermission>> {
-        todo!()
+        let result: SparseMatrix<NodeName, NodeName, HashSet<EffectivePermission>> =
+            SparseMatrix::new();
+
+        for (c_data, namespace) in data {
+            let mut new_permissions = SparseMatrix::new();
+            for (k1, v1) in &c_data.effective_permissions {
+                for (k2, v2) in v1 {
+                    new_permissions.insert_or_merge(
+                        self.local_to_global.users[&namespace][k1].to_owned(),
+                        HashMap::from([(NodeName::Asset(k2.to_owned()), v2.to_owned())]),
+                    );
+                }
+            }
+        }
+        result
     }
 }

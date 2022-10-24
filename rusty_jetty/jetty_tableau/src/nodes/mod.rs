@@ -312,18 +312,6 @@ impl Permission {
             Grantee::Group(g) => g.includes.clone().iter().map(|u| u.id.to_owned()).collect(),
         }
     }
-
-    pub(crate) fn grantee_user_emails(&self) -> Vec<String> {
-        match &self.grantee {
-            Grantee::User(u) => vec![u.email.to_owned()],
-            Grantee::Group(g) => g
-                .includes
-                .clone()
-                .iter()
-                .map(|u| u.email.to_owned())
-                .collect(),
-        }
-    }
 }
 
 /// Permissions and Jetty policies map 1:1.
@@ -336,7 +324,7 @@ impl From<Permission> for jetty_nodes::Policy {
 
         match val.grantee {
             Grantee::Group(tableau_nodes::Group { id, .. }) => granted_to_groups.insert(id),
-            Grantee::User(tableau_nodes::User { email, .. }) => granted_to_users.insert(email),
+            Grantee::User(tableau_nodes::User { id, .. }) => granted_to_users.insert(id),
         };
 
         jetty_nodes::Policy::new(

@@ -65,7 +65,7 @@ impl From<Group> for jetty_nodes::Group {
             HashMap::from([("tableau::id".to_owned(), val.id)]),
             // No nested groups in tableau
             HashSet::new(),
-            val.includes.iter().map(|u| u.email.to_owned()).collect(),
+            val.includes.iter().map(|u| u.id.to_owned()).collect(),
             // No nested groups in tableau?
             HashSet::new(),
             // Handled in permissions/policies.

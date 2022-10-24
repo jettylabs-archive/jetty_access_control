@@ -41,7 +41,7 @@ pub struct ProcessedConnectorData {
     /// `effective_permissions["user_identifier"]["asset://cual"]` would contain the effective
     /// permissions for that user,asset combination, with one EffectivePermission
     /// per privilege containing possible explanations.
-    pub effective_permissions: SparseMatrix<UserIndex, AssetIndex, HashSet<EffectivePermission>>,
+    pub effective_permissions: SparseMatrix<NodeName, NodeName, HashSet<EffectivePermission>>,
 }
 
 #[derive(Default, Debug, PartialEq, Eq)]

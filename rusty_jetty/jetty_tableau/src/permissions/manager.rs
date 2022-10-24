@@ -135,7 +135,7 @@ impl<'x> PermissionManager<'x> {
                     })
                     .collect();
                 ep.insert_or_merge(
-                    su.email.to_owned(),
+                    su.id.to_owned(),
                     HashMap::from([(cual.clone(), effective_permissions)]),
                 );
             }
@@ -165,7 +165,7 @@ impl<'x> PermissionManager<'x> {
                     })
                     .collect();
                 ep.insert_or_merge(
-                    user.email.to_owned(),
+                    user.id.to_owned(),
                     HashMap::from([(cual.clone(), effective_permissions)]),
                 );
             }
@@ -282,7 +282,7 @@ impl<'x> PermissionManager<'x> {
                     })
                     .collect();
                 ep.insert_or_merge(
-                    owner.email.to_owned(),
+                    owner.id.to_owned(),
                     HashMap::from([(asset.cual(&self.coordinator.env), perms)]),
                 );
 
@@ -304,9 +304,9 @@ impl<'x> PermissionManager<'x> {
                                     )
                                 })
                                 .collect();
-                        for grantee_email in perm.grantee_user_emails() {
+                        for grantee_id in perm.grantee_user_ids() {
                             ep.insert_or_merge(
-                                grantee_email,
+                                grantee_id,
                                 HashMap::from([(
                                     asset.cual(&self.coordinator.env),
                                     leader_effective_permissions.clone(),

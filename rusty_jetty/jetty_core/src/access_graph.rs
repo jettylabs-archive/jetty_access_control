@@ -39,7 +39,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use time::OffsetDateTime;
 
-use crate::permissions::matrix::Merge;
+use crate::permissions::matrix::{InsertOrMerge, Merge};
 
 const SAVED_GRAPH_PATH: &str = "jetty_graph";
 
@@ -584,23 +584,36 @@ impl AccessGraph {
         };
         // Create all nodes first, then create edges.
         ag.add_nodes(&connector_data)?;
-        // Merge effective permissions into the access graph
-        ag.effective_permissions
-            .merge(connector_data.effective_permissions)
-            .context("merging effective permissions")
-            .unwrap();
-
         ag.add_edges()?;
+
+        // Merge effective permissions into the access graph
+        ag.effective_permissions = ag.translate_effective_permissions_to_global_indices(
+            connector_data.effective_permissions,
+        );
+
         Ok(ag)
     }
 
     /// This is a placeholder for the translation layer. The final access graph will need effective permissions with different axes than
     /// the connectors provide.
-    fn translate_effective_permissions_matrix_to_global(
+    fn translate_effective_permissions_to_global_indices(
         &self,
-        local: SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>>,
+        // This should match SparseMatrix<NodeName::User(), NodeName::Asset(), HashSet<_>>
+        node_name_permissions: SparseMatrix<NodeName, NodeName, HashSet<EffectivePermission>>,
     ) -> SparseMatrix<UserIndex, AssetIndex, HashSet<EffectivePermission>> {
-        todo!()
+        let result: SparseMatrix<UserIndex, AssetIndex, HashSet<EffectivePermission>> =
+            SparseMatrix::new();
+
+        let mut new_permissions = SparseMatrix::new();
+        for (k1, v1) in &node_name_permissions {
+            for (k2, v2) in v1 {
+                new_permissions.insert_or_merge(
+                    self.get_user_index_from_name(k1),
+                    HashMap::from([(self.get_asset_index_from_name(k2), v2.to_owned())]),
+                );
+            }
+        }
+        result
     }
 
     /// Get the untyped node index for a given NodeName

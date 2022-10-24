@@ -58,12 +58,13 @@ impl User {
 impl From<User> for jetty_nodes::User {
     fn from(val: User) -> Self {
         jetty_nodes::User::new(
-            val.email.to_owned(),
+            val.id,
             HashSet::from([
                 UserIdentifier::Email(val.email),
                 UserIdentifier::FullName(val.full_name),
+                UserIdentifier::Other(val.external_auth_user_id),
             ]),
-            HashSet::from([val.external_auth_user_id, format!("{:?}", val.site_role)]),
+            HashSet::from([]),
             HashMap::new(),
             // Handled in groups.
             HashSet::new(),
@@ -91,7 +92,6 @@ pub(crate) async fn get_basic_users(tc: &rest::TableauRestClient) -> Result<Hash
 #[cfg(test)]
 mod tests {
     use super::*;
-    
 
     #[test]
     #[allow(unused_must_use)]
