@@ -4,6 +4,7 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::{
+    access_graph::graph::typed_indices::{AssetIndex, UserIndex},
     connectors::{
         nodes::{EffectivePermission, SparseMatrix},
         UserIdentifier,
@@ -41,6 +42,26 @@ impl InsertOrMerge<UserIdentifier, HashMap<Cual, HashSet<EffectivePermission>>>
     }
 }
 
+/// Top-level impl for a `SparseMatrix` like the one that holds effective
+/// permissions for Tableau.
+impl InsertOrMerge<UserIndex, HashMap<AssetIndex, HashSet<EffectivePermission>>>
+    for SparseMatrix<UserIndex, AssetIndex, HashSet<EffectivePermission>>
+{
+    fn insert_or_merge(
+        &mut self,
+        key: UserIndex,
+        new_asset_perms: HashMap<AssetIndex, HashSet<EffectivePermission>>,
+    ) {
+        if let Some(user_perms) = self.get_mut(&key) {
+            for (asset, new_perms) in new_asset_perms {
+                user_perms.insert_or_merge(asset, new_perms);
+            }
+        } else {
+            self.insert(key, new_asset_perms);
+        }
+    }
+}
+
 /// Inner impl for the SparseMatrix asset map from `CUAL` -> [`EffectivePermission`].
 ///
 /// When there is a hash collision, use `EffectivePermission`'s merge impl to
@@ -71,6 +92,40 @@ impl InsertOrMerge<Cual, HashSet<EffectivePermission>>
     }
 }
 
+/// Inner impl for the SparseMatrix asset map from `AssetIndex` -> [`EffectivePermission`].
+///
+/// When there is a hash collision, use `EffectivePermission`'s merge impl to
+/// gracefully merge them.
+impl InsertOrMerge<AssetIndex, HashSet<EffectivePermission>>
+    for HashMap<AssetIndex, HashSet<EffectivePermission>>
+{
+    fn insert_or_merge(
+        &mut self,
+        asset_index: AssetIndex,
+        new_perms: HashSet<EffectivePermission>,
+    ) {
+        let mut new_perms = new_perms;
+        if let Some(existing_user_asset_perms) = self.get_mut(&asset_index) {
+            let mut merged_perms: HashSet<EffectivePermission> = existing_user_asset_perms
+                .clone()
+                .into_iter()
+                .map(|mut existing_effective_permission| {
+                    if let Some(new_ep) = new_perms.take(&existing_effective_permission) {
+                        // Matched permissions. Merge mode and reasons.
+                        existing_effective_permission.merge(new_ep).unwrap();
+                    }
+                    existing_effective_permission
+                })
+                .collect();
+            // Add the remaining new permissions
+            merged_perms.extend(new_perms);
+            *existing_user_asset_perms = merged_perms;
+        } else {
+            self.insert(asset_index, new_perms);
+        }
+    }
+}
+
 /// Utility trait for merging two copies of the same struct. Like
 /// `std::iter::Extend` except we can use it on types declared
 /// outside this crate.
@@ -89,6 +144,20 @@ impl Merge<SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>>>
     fn merge(
         &mut self,
         other: SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>>,
+    ) -> Result<()> {
+        for (uid, asset_map) in other {
+            self.insert_or_merge(uid, asset_map);
+        }
+        Ok(())
+    }
+}
+
+impl Merge<SparseMatrix<UserIndex, AssetIndex, HashSet<EffectivePermission>>>
+    for SparseMatrix<UserIndex, AssetIndex, HashSet<EffectivePermission>>
+{
+    fn merge(
+        &mut self,
+        other: SparseMatrix<UserIndex, AssetIndex, HashSet<EffectivePermission>>,
     ) -> Result<()> {
         for (uid, asset_map) in other {
             self.insert_or_merge(uid, asset_map);

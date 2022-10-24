@@ -6,7 +6,10 @@ use std::collections::{HashMap, HashSet};
 use petgraph::stable_graph::NodeIndex;
 use serde::Serialize;
 
-use crate::access_graph::{AccessGraph, EdgeType, JettyNode, NodeName, TagAttributes};
+use crate::access_graph::{
+    graph::typed_indices::{AssetIndex, ToNodeIndex},
+    AccessGraph, EdgeType, JettyNode, TagAttributes,
+};
 
 use super::NodePath;
 
@@ -23,7 +26,7 @@ pub struct AssetTags {
 
 impl AccessGraph {
     /// Return tags for an asset, grouped by the tag source.
-    pub fn tags_for_asset_by_source(&self, asset: &NodeName) -> AssetTags {
+    pub fn tags_for_asset_by_source<T: ToNodeIndex>(&self, asset: T) -> AssetTags {
         // get paths of tags applied through hierarchy
         let hierarchy_paths = self.get_paths_to_tags_via_inheritance(
             asset,
@@ -102,7 +105,7 @@ impl AccessGraph {
     }
 
     /// get all tags applied to an asset
-    pub fn tags_for_asset(&self, asset: &NodeName) -> HashSet<NodeIndex> {
+    pub fn tags_for_asset(&self, asset: AssetIndex) -> HashSet<NodeIndex> {
         let asset_tags = self.tags_for_asset_by_source(asset);
         let mut return_tags = asset_tags.direct;
         return_tags.extend(asset_tags.via_lineage);
@@ -111,9 +114,9 @@ impl AccessGraph {
         return_tags
     }
 
-    fn get_paths_to_tags_via_inheritance(
+    fn get_paths_to_tags_via_inheritance<T: ToNodeIndex>(
         &self,
-        from: &NodeName,
+        from: T,
         edge_matcher: fn(&EdgeType) -> bool,
         target_matcher: fn(&JettyNode) -> bool,
         min_depth: usize,
@@ -160,7 +163,7 @@ fn remove_poisoned_paths<'a>(
 #[cfg(test)]
 mod tests {
 
-    use crate::access_graph::AssetAttributes;
+    use crate::access_graph::{AssetAttributes, NodeName};
     use crate::cual::Cual;
 
     use anyhow::Result;
@@ -184,72 +187,72 @@ mod tests {
             ],
             &[
                 (
-                    NodeName::Asset("asset1://a".to_owned()),
+                    NodeName::Asset(Cual::new("asset1://a")),
                     NodeName::Tag("tag1".to_owned()),
                     EdgeType::TaggedAs,
                 ),
                 (
-                    NodeName::Asset("asset1://a".to_owned()),
+                    NodeName::Asset(Cual::new("asset1://a")),
                     NodeName::Tag("tag2".to_owned()),
                     EdgeType::TaggedAs,
                 ),
                 (
-                    NodeName::Asset("asset1://a".to_owned()),
+                    NodeName::Asset(Cual::new("asset1://a")),
                     NodeName::Tag("tag3".to_owned()),
                     EdgeType::TaggedAs,
                 ),
                 (
-                    NodeName::Asset("asset1://a".to_owned()),
+                    NodeName::Asset(Cual::new("asset1://a")),
                     NodeName::Tag("tag4".to_owned()),
                     EdgeType::TaggedAs,
                 ),
                 (
-                    NodeName::Asset("asset4://a".to_owned()),
-                    NodeName::Asset("asset1://a".to_owned()),
+                    NodeName::Asset(Cual::new("asset4://a")),
+                    NodeName::Asset(Cual::new("asset1://a")),
                     EdgeType::ChildOf,
                 ),
                 (
-                    NodeName::Asset("asset6://a".to_owned()),
-                    NodeName::Asset("asset4://a".to_owned()),
+                    NodeName::Asset(Cual::new("asset6://a")),
+                    NodeName::Asset(Cual::new("asset4://a")),
                     EdgeType::ChildOf,
                 ),
                 (
-                    NodeName::Asset("asset8://a".to_owned()),
-                    NodeName::Asset("asset6://a".to_owned()),
+                    NodeName::Asset(Cual::new("asset8://a")),
+                    NodeName::Asset(Cual::new("asset6://a")),
                     EdgeType::ChildOf,
                 ),
                 (
-                    NodeName::Asset("asset3://a".to_owned()),
-                    NodeName::Asset("asset1://a".to_owned()),
+                    NodeName::Asset(Cual::new("asset3://a")),
+                    NodeName::Asset(Cual::new("asset1://a")),
                     EdgeType::DerivedFrom,
                 ),
                 (
-                    NodeName::Asset("asset5://a".to_owned()),
-                    NodeName::Asset("asset3://a".to_owned()),
+                    NodeName::Asset(Cual::new("asset5://a")),
+                    NodeName::Asset(Cual::new("asset3://a")),
                     EdgeType::DerivedFrom,
                 ),
                 (
-                    NodeName::Asset("asset7://a".to_owned()),
-                    NodeName::Asset("asset5://a".to_owned()),
+                    NodeName::Asset(Cual::new("asset7://a")),
+                    NodeName::Asset(Cual::new("asset5://a")),
                     EdgeType::DerivedFrom,
                 ),
                 (
-                    NodeName::Asset("asset6://a".to_owned()),
+                    NodeName::Asset(Cual::new("asset6://a")),
                     NodeName::Tag("tag1".to_owned()),
                     EdgeType::UntaggedAs,
                 ),
                 (
-                    NodeName::Asset("asset6://a".to_owned()),
+                    NodeName::Asset(Cual::new("asset6://a")),
                     NodeName::Tag("tag2".to_owned()),
                     EdgeType::UntaggedAs,
                 ),
                 (
-                    NodeName::Asset("asset5://a".to_owned()),
+                    NodeName::Asset(Cual::new("asset5://a")),
                     NodeName::Tag("tag1".to_owned()),
                     EdgeType::UntaggedAs,
                 ),
                 (
-                    NodeName::Asset("asset5://a".to_owned()),
+                    NodeName::Asset(Cual::new("asset5://a")),
                     NodeName::Tag("tag2".to_owned()),
                     EdgeType::UntaggedAs,
                 ),
@@ -260,7 +263,10 @@ mod tests {
     #[test]
     fn nodes_for_asset_lineage_works() -> Result<()> {
         let ag = get_test_graph();
-        let a = ag.tags_for_asset(&NodeName::Asset("asset3://a".to_owned()));
+        let a = ag.tags_for_asset(
+            ag.get_asset_index_from_name(&NodeName::Asset(Cual::new("asset3://a")))
+                .unwrap(),
+        );
         assert_eq!(a.len(), 2);
         Ok(())
     }
@@ -268,7 +274,10 @@ mod tests {
     #[test]
     fn nodes_for_asset_hierarchy_works() -> Result<()> {
         let ag = get_test_graph();
-        let a = ag.tags_for_asset(&NodeName::Asset("asset4://a".to_owned()));
+        let a = ag.tags_for_asset(
+            ag.get_asset_index_from_name(&NodeName::Asset(Cual::new("asset4://a")))
+                .unwrap(),
+        );
         assert_eq!(a.len(), 2);
 
         Ok(())
@@ -277,7 +286,10 @@ mod tests {
     #[test]
     fn directly_applied_tags_works() -> Result<()> {
         let ag = get_test_graph();
-        let a = ag.tags_for_asset(&NodeName::Asset("asset1://a".to_owned()));
+        let a = ag.tags_for_asset(
+            ag.get_asset_index_from_name(&NodeName::Asset(Cual::new("asset1://a")))
+                .unwrap(),
+        );
 
         assert_eq!(a.len(), 4);
 
@@ -288,16 +300,28 @@ mod tests {
     fn tag_removal_works() -> Result<()> {
         let ag = get_test_graph();
 
-        let a = ag.tags_for_asset(&NodeName::Asset("asset6://a".to_owned()));
+        let a = ag.tags_for_asset(
+            ag.get_asset_index_from_name(&NodeName::Asset(Cual::new("asset6://a")))
+                .unwrap(),
+        );
         assert_eq!(a.len(), 1);
 
-        let a = ag.tags_for_asset(&NodeName::Asset("asset8://a".to_owned()));
+        let a = ag.tags_for_asset(
+            ag.get_asset_index_from_name(&NodeName::Asset(Cual::new("asset8://a")))
+                .unwrap(),
+        );
         assert_eq!(a.len(), 1);
 
-        let a = ag.tags_for_asset(&NodeName::Asset("asset5://a".to_owned()));
+        let a = ag.tags_for_asset(
+            ag.get_asset_index_from_name(&NodeName::Asset(Cual::new("asset5://a")))
+                .unwrap(),
+        );
         assert_eq!(a.len(), 1);
 
-        let a = ag.tags_for_asset(&NodeName::Asset("asset7://a".to_owned()));
+        let a = ag.tags_for_asset(
+            ag.get_asset_index_from_name(&NodeName::Asset(Cual::new("asset7://a")))
+                .unwrap(),
+        );
         assert_eq!(a.len(), 1);
 
         Ok(())

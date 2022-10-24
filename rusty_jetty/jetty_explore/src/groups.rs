@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use anyhow::Context;
 use axum::{extract::Path, routing::get, Extension, Json, Router};
 use jetty_core::access_graph::{self, EdgeType, JettyNode, NodeName};
 
@@ -26,10 +27,13 @@ async fn direct_groups_handler(
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<access_graph::GroupAttributes>> {
-    let from = NodeName::Group(node_id);
+    let from = ag
+        .get_group_index_from_name(&NodeName::User(node_id))
+        .context("fetching user node")
+        .unwrap();
 
     let group_nodes = ag.get_matching_children(
-        &from,
+        from,
         |n| matches!(n, EdgeType::MemberOf),
         |n| matches!(n, JettyNode::Group(_)),
         |n| matches!(n, JettyNode::Group(_)),
@@ -56,10 +60,13 @@ async fn inherited_groups_handler(
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<ObjectWithPathResponse>> {
-    let from = NodeName::Group(node_id);
+    let from = ag
+        .get_group_index_from_name(&NodeName::User(node_id))
+        .context("fetching user node")
+        .unwrap();
 
     let res = ag.all_matching_simple_paths_to_children(
-        &from,
+        from,
         |n| matches!(n, EdgeType::MemberOf),
         |n| matches!(n, JettyNode::Group(_)),
         |n| matches!(n, JettyNode::Group(_)),
@@ -89,10 +96,13 @@ async fn direct_members_groups_handler(
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<access_graph::GroupAttributes>> {
-    let from = NodeName::Group(node_id);
+    let from = ag
+        .get_group_index_from_name(&NodeName::User(node_id))
+        .context("fetching user node")
+        .unwrap();
 
     let group_nodes = ag.get_matching_children(
-        &from,
+        from,
         |n| matches!(n, EdgeType::Includes),
         |n| matches!(n, JettyNode::Group(_)),
         |n| matches!(n, JettyNode::Group(_)),
@@ -119,10 +129,13 @@ async fn direct_members_users_handler(
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<access_graph::UserAttributes>> {
-    let from = NodeName::Group(node_id);
+    let from = ag
+        .get_group_index_from_name(&NodeName::User(node_id))
+        .context("fetching user node")
+        .unwrap();
 
     let group_nodes = ag.get_matching_children(
-        &from,
+        from,
         |n| matches!(n, EdgeType::Includes),
         |n| matches!(n, JettyNode::Group(_)),
         |n| matches!(n, JettyNode::User(_)),
@@ -148,10 +161,13 @@ async fn all_members_handler(
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<ObjectWithPathResponse>> {
-    let from = NodeName::Group(node_id);
+    let from = ag
+        .get_group_index_from_name(&NodeName::User(node_id))
+        .context("fetching user node")
+        .unwrap();
 
     let res = ag.all_matching_simple_paths_to_children(
-        &from,
+        from,
         |n| matches!(n, EdgeType::Includes),
         |n| matches!(n, JettyNode::Group(_)),
         |n| matches!(n, JettyNode::User(_)),

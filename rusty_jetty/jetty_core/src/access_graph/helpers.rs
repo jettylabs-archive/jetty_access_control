@@ -2,6 +2,8 @@
 
 use std::collections::HashSet;
 
+use crate::cual::Cual;
+
 use super::{
     connectors::nodes, AssetAttributes, EdgeType, GroupAttributes, JettyEdge, JettyNode, NodeName,
     PolicyAttributes, TagAttributes, UserAttributes,
@@ -122,7 +124,7 @@ impl NodeHelper for nodes::Asset {
         for v in &self.governed_by {
             insert_edge_pair(
                 &mut hs,
-                NodeName::Asset(self.cual.uri()),
+                NodeName::Asset(self.cual.to_owned()),
                 NodeName::Policy(v.to_owned()),
                 EdgeType::GovernedBy,
             );
@@ -130,39 +132,39 @@ impl NodeHelper for nodes::Asset {
         for v in &self.child_of {
             insert_edge_pair(
                 &mut hs,
-                NodeName::Asset(self.cual.uri()),
-                NodeName::Asset(v.to_owned()),
+                NodeName::Asset(self.cual.to_owned()),
+                NodeName::Asset(Cual::new(v)),
                 EdgeType::ChildOf,
             );
         }
         for v in &self.parent_of {
             insert_edge_pair(
                 &mut hs,
-                NodeName::Asset(self.cual.uri()),
-                NodeName::Asset(v.to_owned()),
+                NodeName::Asset(self.cual.to_owned()),
+                NodeName::Asset(Cual::new(v)),
                 EdgeType::ParentOf,
             );
         }
         for v in &self.derived_from {
             insert_edge_pair(
                 &mut hs,
-                NodeName::Asset(self.cual.uri()),
-                NodeName::Asset(v.to_owned()),
+                NodeName::Asset(self.cual.to_owned()),
+                NodeName::Asset(Cual::new(v)),
                 EdgeType::DerivedFrom,
             );
         }
         for v in &self.derived_to {
             insert_edge_pair(
                 &mut hs,
-                NodeName::Asset(self.cual.uri()),
-                NodeName::Asset(v.to_owned()),
+                NodeName::Asset(self.cual.to_owned()),
+                NodeName::Asset(Cual::new(v)),
                 EdgeType::DerivedTo,
             );
         }
         for v in &self.tagged_as {
             insert_edge_pair(
                 &mut hs,
-                NodeName::Asset(self.cual.uri()),
+                NodeName::Asset(self.cual.to_owned()),
                 NodeName::Tag(v.to_owned()),
                 EdgeType::TaggedAs,
             );
@@ -189,7 +191,7 @@ impl NodeHelper for nodes::Tag {
             insert_edge_pair(
                 &mut hs,
                 NodeName::Tag(self.name.to_owned()),
-                NodeName::Asset(v.to_owned()),
+                NodeName::Asset(Cual::new(v)),
                 EdgeType::AppliedTo,
             );
         }
@@ -205,7 +207,7 @@ impl NodeHelper for nodes::Tag {
             insert_edge_pair(
                 &mut hs,
                 NodeName::Tag(self.name.to_owned()),
-                NodeName::Asset(v.to_owned()),
+                NodeName::Asset(Cual::new(v)),
                 EdgeType::RemovedFrom,
             );
         }
@@ -230,7 +232,7 @@ impl NodeHelper for nodes::Policy {
             insert_edge_pair(
                 &mut hs,
                 NodeName::Policy(self.name.to_owned()),
-                NodeName::Asset(v.to_owned()),
+                NodeName::Asset(Cual::new(v)),
                 EdgeType::Governs,
             );
         }

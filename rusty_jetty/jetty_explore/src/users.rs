@@ -33,22 +33,19 @@ async fn assets_handler(
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<UserAssetsResponse>> {
+    let from = ag
+        .get_user_index_from_name(&NodeName::User(node_id))
+        .context("fetching user node")
+        .unwrap();
     // use the effective permissions to get all the assets that a user has access to
-    let assets_and_permissions = ag.get_user_accessible_assets(&UserIdentifier::Email(node_id));
+    let assets_and_permissions = ag.get_user_accessible_assets(from);
     // get the name and connectors from each asset
 
     Json(
         assets_and_permissions
             .iter()
             // get the JettyNodes for all of the accessible assets
-            .map(|(k, v)| {
-                (
-                    ag.get_node(&NodeName::Asset(k.to_string()))
-                        .context("fetching asset index from node map")
-                        .unwrap(),
-                    v,
-                )
-            })
+            .map(|(k, v)| (&ag[*k], v))
             // adding second map for clarity
             // build Vec of UserAssetResponse structs
             .map(|(k, v)| UserAssetsResponse {
@@ -83,8 +80,13 @@ async fn tags_handler(
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<TagWithAssets>> {
+    let from = ag
+        .get_user_index_from_name(&NodeName::User(node_id))
+        .context("fetching user node")
+        .unwrap();
+
     // get all the user_accessable assets
-    let tag_asset_map = ag.get_user_accessible_tags(&UserIdentifier::Email(node_id));
+    let tag_asset_map = ag.get_user_accessible_tags(from);
 
     let response = tag_asset_map
         .into_iter()
@@ -109,10 +111,13 @@ async fn direct_groups_handler(
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<access_graph::GroupAttributes>> {
-    let from = NodeName::User(node_id);
+    let from = ag
+        .get_user_index_from_name(&NodeName::User(node_id))
+        .context("fetching user node")
+        .unwrap();
 
     let group_nodes = ag.get_matching_children(
-        &from,
+        from,
         |n| matches!(n, EdgeType::MemberOf),
         |n| matches!(n, JettyNode::Group(_)),
         |n| matches!(n, JettyNode::Group(_)),
@@ -139,10 +144,13 @@ async fn inherited_groups_handler(
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<ObjectWithPathResponse>> {
-    let from = NodeName::User(node_id);
+    let from = ag
+        .get_user_index_from_name(&NodeName::User(node_id))
+        .context("fetching user node")
+        .unwrap();
 
     let res = ag.all_matching_simple_paths_to_children(
-        &from,
+        from,
         |n| matches!(n, EdgeType::MemberOf),
         |n| matches!(n, JettyNode::Group(_)),
         |n| matches!(n, JettyNode::Group(_)),

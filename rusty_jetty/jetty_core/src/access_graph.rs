@@ -3,7 +3,6 @@
 //! `access_graph` is a library for modeling data access permissions and metadata as a graph.
 
 pub mod explore;
-pub mod explore2;
 pub mod graph;
 mod helpers;
 #[cfg(test)]
@@ -15,6 +14,9 @@ use crate::logging::debug;
 use crate::tag_parser::{parse_tags, tags_to_jetty_node_helpers};
 use crate::{connectors::AssetType, cual::Cual};
 
+use self::graph::typed_indices::{
+    AssetIndex, GroupIndex, PolicyIndex, TagIndex, ToNodeIndex, UserIndex,
+};
 use self::helpers::NodeHelper;
 pub use self::helpers::ProcessedConnectorData;
 
@@ -31,7 +33,6 @@ use std::ops::{Index, IndexMut};
 use anyhow::{anyhow, bail, Context, Result};
 // reexporting for use in other packages
 pub use petgraph::stable_graph::NodeIndex;
-
 use serde::Deserialize;
 use serde::Serialize;
 use time::OffsetDateTime;
@@ -409,7 +410,7 @@ impl JettyNode {
     /// wrapped in the appropriate enum.
     fn get_node_name(&self) -> NodeName {
         match &self {
-            JettyNode::Asset(a) => NodeName::Asset(a.cual.uri()),
+            JettyNode::Asset(a) => NodeName::Asset(a.cual.to_owned()),
             JettyNode::Group(a) => NodeName::Group(a.name.to_owned()),
             JettyNode::Policy(a) => NodeName::Policy(a.name.to_owned()),
             JettyNode::Tag(a) => NodeName::Tag(a.name.to_owned()),
@@ -482,7 +483,7 @@ pub enum NodeName {
     /// Group node
     Group(String),
     /// Asset node
-    Asset(String),
+    Asset(Cual),
     /// Policy node
     Policy(String),
     /// Tag node
@@ -516,20 +517,22 @@ pub struct AccessGraph {
     /// Unix timestamp of when the graph was built
     last_modified: OffsetDateTime,
     /// The merged effective permissions from all connectors
-    effective_permissions: SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>>,
+    effective_permissions: SparseMatrix<UserIndex, AssetIndex, HashSet<EffectivePermission>>,
 }
 
-impl Index<NodeIndex> for AccessGraph {
+impl<T: graph::typed_indices::ToNodeIndex> Index<T> for AccessGraph {
     type Output = JettyNode;
 
-    fn index(&self, index: NodeIndex) -> &Self::Output {
-        self.graph.graph.index(index)
+    fn index(&self, index: T) -> &Self::Output {
+        let node_index = index.get_index();
+        self.graph.graph.index(node_index)
     }
 }
 
-impl IndexMut<NodeIndex> for AccessGraph {
-    fn index_mut(&mut self, index: NodeIndex) -> &mut Self::Output {
-        self.graph.graph.index_mut(index)
+impl<T: graph::typed_indices::ToNodeIndex> IndexMut<T> for AccessGraph {
+    fn index_mut(&mut self, index: T) -> &mut Self::Output {
+        let node_index = index.get_index();
+        self.graph.graph.index_mut(node_index)
     }
 }
 
@@ -539,7 +542,7 @@ impl AccessGraph {
         let mut ag = AccessGraph {
             graph: graph::Graph {
                 graph: petgraph::stable_graph::StableDiGraph::new(),
-                nodes: HashMap::new(),
+                nodes: Default::default(),
             },
             edge_cache: HashSet::new(),
             last_modified: OffsetDateTime::now_utc(),
@@ -550,12 +553,49 @@ impl AccessGraph {
             ag.add_nodes(&connector_data)?;
             // Merge effective permissions into the access graph
             ag.effective_permissions
-                .merge(connector_data.data.effective_permissions)
+                .merge(ag.translate_effective_permissions_matrix_to_global(
+                    connector_data.data.effective_permissions,
+                ))
                 .context("merging effective permissions")
                 .unwrap();
         }
         ag.add_edges()?;
         Ok(ag)
+    }
+
+    /// This is a placeholder for the translation layer. The final access graph will need effective permissions with different axes than
+    /// the connectors provide.
+    fn translate_effective_permissions_matrix_to_global(
+        &self,
+        local: SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>>,
+    ) -> SparseMatrix<UserIndex, AssetIndex, HashSet<EffectivePermission>> {
+        todo!()
+    }
+
+    /// Get the untyped node index for a given NodeName
+    pub fn get_untyped_index_from_name(&self, node_name: &NodeName) -> Option<NodeIndex> {
+        self.graph.get_untyped_node_index(node_name)
+    }
+
+    /// Get the typed node index for a given NodeName
+    pub fn get_asset_index_from_name(&self, node_name: &NodeName) -> Option<AssetIndex> {
+        self.graph.get_asset_node_index(node_name)
+    }
+    /// Get the untyped node index for a given NodeName
+    pub fn get_user_index_from_name(&self, node_name: &NodeName) -> Option<UserIndex> {
+        self.graph.get_user_node_index(node_name)
+    }
+    /// Get the untyped node index for a given NodeName
+    pub fn get_tag_index_from_name(&self, node_name: &NodeName) -> Option<TagIndex> {
+        self.graph.get_tag_node_index(node_name)
+    }
+    /// Get the untyped node index for a given NodeName
+    pub fn get_policy_index_from_name(&self, node_name: &NodeName) -> Option<PolicyIndex> {
+        self.graph.get_policy_node_index(node_name)
+    }
+    /// Get the untyped node index for a given NodeName
+    pub fn get_group_index_from_name(&self, node_name: &NodeName) -> Option<GroupIndex> {
+        self.graph.get_group_node_index(node_name)
     }
 
     #[cfg(test)]

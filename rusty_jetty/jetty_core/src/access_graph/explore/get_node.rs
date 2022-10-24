@@ -9,9 +9,8 @@ impl AccessGraph {
     /// Return a node when given a name
     pub fn get_node<'a>(&'a self, node_name: &NodeName) -> Result<&'a JettyNode> {
         let idx = self
-            .graph
-            .get_node(node_name)
+            .get_untyped_index_from_name(node_name)
             .ok_or_else(|| anyhow!("unable to find node"))?;
-        Ok(&self[*idx])
+        Ok(&self[idx])
     }
 }

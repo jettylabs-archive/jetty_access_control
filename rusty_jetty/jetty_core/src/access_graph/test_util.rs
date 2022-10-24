@@ -29,6 +29,6 @@ pub(crate) fn new_graph_with(
 pub(crate) fn new_graph() -> Graph {
     Graph {
         graph: petgraph::stable_graph::StableDiGraph::new(),
-        nodes: HashMap::new(),
+        nodes: Default::default(),
     }
 }
