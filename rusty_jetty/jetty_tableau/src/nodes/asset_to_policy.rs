@@ -12,13 +12,13 @@ use super::{
 /// each individual asset.
 macro_rules! impl_from_asset_to_policy {
     ($struct:ty) => {
-        impl FromTableau<$struct> for Vec<jetty_nodes::Policy> {
+        impl FromTableau<$struct> for Vec<jetty_nodes::RawPolicy> {
             fn from(val: $struct, env: &Environment) -> Self {
                 let cual = val.cual(env).uri();
                 val.permissions
                     .into_iter()
                     .map(|p| {
-                        let mut policy: jetty_nodes::Policy = Into::into(p.clone());
+                        let mut policy: jetty_nodes::RawPolicy = Into::into(p.clone());
                         policy.governs_assets.insert(cual.to_owned());
                         policy
                     })
