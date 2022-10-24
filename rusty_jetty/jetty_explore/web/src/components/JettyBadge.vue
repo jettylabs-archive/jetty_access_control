@@ -20,8 +20,8 @@
   </span>
 </template>
 
-<script setup>
-import { getBadgeColor } from "src/util";
+<script lang="ts" setup>
+import { getBadgeColor } from 'src/util';
 
 const props = defineProps({ name: String, big: Boolean });
 </script>

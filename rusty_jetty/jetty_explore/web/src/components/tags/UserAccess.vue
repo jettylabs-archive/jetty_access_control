@@ -33,39 +33,39 @@
   </JettyTable>
 </template>
 
-<script setup>
-import JettyTable from "../JettyTable.vue";
-import JettyBadge from "../JettyBadge.vue";
+<script lang="ts" setup>
+import JettyTable from '../JettyTable.vue';
+import JettyBadge from '../JettyBadge.vue';
 
-const props = defineProps(["node"]);
+const props = defineProps(['node']);
 
 const columns = [
   {
-    name: "name",
-    label: "User",
-    field: "name",
+    name: 'name',
+    label: 'User',
+    field: 'name',
     sortable: true,
-    align: "left",
+    align: 'left',
   },
 ];
 
 // Filters by name or platform
 const filterMethod = (rows, terms) => {
-  const needles = terms.toLocaleLowerCase().split(" ");
+  const needles = terms.toLocaleLowerCase().split(' ');
   return rows.filter((r) =>
     needles.every(
       (needle) =>
         r.name.toLocaleLowerCase().indexOf(needle) > -1 ||
-        r.platforms.join(" ").toLocaleLowerCase().indexOf(needle) > -1
+        r.platforms.join(' ').toLocaleLowerCase().indexOf(needle) > -1
     )
   );
 };
 
 const csvConfig = {
-  filename: props.node.name + "_user_access.csv",
-  columnNames: ["User", "Platforms"],
+  filename: props.node.name + '_user_access.csv',
+  columnNames: ['User', 'Platforms'],
   // accepts filtered sorted rows and returns the proper mapping
   mappingFn: (filteredSortedRows) =>
-    filteredSortedRows.map((r) => [r.name, r.platforms.join(", ")]),
+    filteredSortedRows.map((r) => [r.name, r.platforms.join(', ')]),
 };
 </script>

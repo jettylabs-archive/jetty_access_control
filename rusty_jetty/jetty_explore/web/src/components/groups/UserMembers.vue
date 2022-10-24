@@ -5,7 +5,11 @@
     :filter-method="filterMethod"
     :columns="columns"
     :csv-config="csvConfig"
-    :fetchPath="'/api/group/' + encodeURIComponent(props.node.name) + '/direct_members_users'"
+    :fetchPath="
+      '/api/group/' +
+      encodeURIComponent(props.node.name) +
+      '/direct_members_users'
+    "
     v-slot="slotProps"
     :tip="`All the users who are explicitly assigned as members of ${props.node.name}`"
   >
@@ -33,39 +37,39 @@
   </JettyTable>
 </template>
 
-<script setup>
-import JettyTable from "../JettyTable.vue";
-import JettyBadge from "../JettyBadge.vue";
+<script lang="ts" setup>
+import JettyTable from '../JettyTable.vue';
+import JettyBadge from '../JettyBadge.vue';
 
-const props = defineProps(["node"]);
+const props = defineProps(['node']);
 
 const columns = [
   {
-    name: "name",
-    label: "User",
-    field: "name",
+    name: 'name',
+    label: 'User',
+    field: 'name',
     sortable: true,
-    align: "left",
+    align: 'left',
   },
 ];
 
 // Filters by name or platform
 const filterMethod = (rows, terms) => {
-  const needles = terms.toLocaleLowerCase().split(" ");
+  const needles = terms.toLocaleLowerCase().split(' ');
   return rows.filter((r) =>
     needles.every(
       (needle) =>
         r.name.toLocaleLowerCase().indexOf(needle) > -1 ||
-        r.connectors.join(", ").toLocaleLowerCase().indexOf(needle) > -1
+        r.connectors.join(', ').toLocaleLowerCase().indexOf(needle) > -1
     )
   );
 };
 
 const csvConfig = {
-  filename: props.node.name + "_direct_members_users.csv",
-  columnNames: ["User", "Platforms"],
+  filename: props.node.name + '_direct_members_users.csv',
+  columnNames: ['User', 'Platforms'],
   // accepts filtered sorted rows and returns the proper mapping
   mappingFn: (filteredSortedRows) =>
-    filteredSortedRows.map((r) => [r.name, r.connectors.join(", ")]),
+    filteredSortedRows.map((r) => [r.name, r.connectors.join(', ')]),
 };
 </script>

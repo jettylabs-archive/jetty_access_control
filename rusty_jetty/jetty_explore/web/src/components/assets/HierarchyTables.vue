@@ -5,9 +5,9 @@
   </div>
 </template>
 
-<script setup>
-import HierarchyUpstream from "./HierarchyUpstream.vue";
-import HierarchyDownstream from "./HierarchyDownstream.vue";
+<script lang="ts" setup>
+import HierarchyUpstream from './HierarchyUpstream.vue';
+import HierarchyDownstream from './HierarchyDownstream.vue';
 
-const props = defineProps(["node"]);
+const props = defineProps(['node']);
 </script>

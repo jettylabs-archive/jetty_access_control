@@ -58,23 +58,23 @@
   </JettyTable>
 </template>
 
-<script setup>
-import JettyTable from "../JettyTable.vue";
-import JettyBadge from "../JettyBadge.vue";
+<script lang="ts" setup>
+import JettyTable from '../JettyTable.vue';
+import JettyBadge from '../JettyBadge.vue';
 
-const props = defineProps(["node"]);
+const props = defineProps(['node']);
 
 // Filters by name, privileges, or platform
 const filterMethod = (rows, terms) => {
-  const needles = terms.toLocaleLowerCase().split(" ");
+  const needles = terms.toLocaleLowerCase().split(' ');
   return rows.filter((r) =>
     needles.every(
       (needle) =>
         r.name.toLocaleLowerCase().indexOf(needle) > -1 ||
-        r.platforms.join(" ").toLocaleLowerCase().indexOf(needle) > -1 ||
+        r.platforms.join(' ').toLocaleLowerCase().indexOf(needle) > -1 ||
         r.privileges
           .map((a) => a.name)
-          .join(" ")
+          .join(' ')
           .toLocaleLowerCase()
           .indexOf(needle) > -1
     )
@@ -83,24 +83,24 @@ const filterMethod = (rows, terms) => {
 
 const columns = [
   {
-    name: "name",
-    label: "User",
-    field: "name",
+    name: 'name',
+    label: 'User',
+    field: 'name',
     sortable: true,
-    align: "left",
+    align: 'left',
   },
   {
-    name: "privileges",
-    label: "Privilege and Explanation",
-    field: "privileges",
+    name: 'privileges',
+    label: 'Privilege and Explanation',
+    field: 'privileges',
     sortable: false,
-    align: "left",
+    align: 'left',
   },
 ];
 
 const csvConfig = {
-  filename: props.node.name + "_direct_access.csv",
-  columnNames: ["Asset Name", "Privilege", "Explanation"],
+  filename: props.node.name + '_direct_access.csv',
+  columnNames: ['Asset Name', 'Privilege', 'Explanation'],
   // accepts a row and returns the proper mapping
   mappingFn: (filteredSortedRows) =>
     filteredSortedRows.flatMap((r) =>

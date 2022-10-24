@@ -59,23 +59,23 @@
   </JettyTable>
 </template>
 
-<script setup>
-import JettyTable from "../JettyTable.vue";
-import JettyBadge from "../JettyBadge.vue";
+<script lang="ts" setup>
+import JettyTable from '../JettyTable.vue';
+import JettyBadge from '../JettyBadge.vue';
 
-const props = defineProps(["node"]);
+const props = defineProps(['node']);
 
 // Filters by name, privileges, or connector
 const filterMethod = (rows, terms) => {
-  const needles = terms.toLocaleLowerCase().split(" ");
+  const needles = terms.toLocaleLowerCase().split(' ');
   return rows.filter((r) =>
     needles.every(
       (needle) =>
         r.name.toLocaleLowerCase().indexOf(needle) > -1 ||
-        r.connectors.join(" ").toLocaleLowerCase().indexOf(needle) > -1 ||
+        r.connectors.join(' ').toLocaleLowerCase().indexOf(needle) > -1 ||
         r.privileges
           .map((a) => a.name)
-          .join(" ")
+          .join(' ')
           .toLocaleLowerCase()
           .indexOf(needle) > -1
     )
@@ -84,29 +84,29 @@ const filterMethod = (rows, terms) => {
 
 const columns = [
   {
-    name: "name",
-    label: "Asset Name",
-    field: "name",
+    name: 'name',
+    label: 'Asset Name',
+    field: 'name',
     sortable: true,
-    align: "left",
+    align: 'left',
   },
   {
-    name: "privileges",
-    label: "Privileges",
-    field: "privileges",
+    name: 'privileges',
+    label: 'Privileges',
+    field: 'privileges',
     sortable: false,
-    align: "left",
+    align: 'left',
   },
 ];
 
 const csvConfig = {
-  filename: props.node.name + "_assets.csv",
-  columnNames: ["Asset Name", "Asset Platform", "Privilege", "Explanation"],
+  filename: props.node.name + '_assets.csv',
+  columnNames: ['Asset Name', 'Asset Platform', 'Privilege', 'Explanation'],
   // accepts a row and returns the proper mapping
   mappingFn: (filteredSortedRows) =>
     filteredSortedRows.flatMap((r) =>
       r.privileges.flatMap((p) =>
-        p.explanations.map((e) => [r.name, r.connectors.join(", "), p.name, e])
+        p.explanations.map((e) => [r.name, r.connectors.join(', '), p.name, e])
       )
     ),
 };

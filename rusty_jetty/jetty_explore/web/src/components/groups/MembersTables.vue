@@ -5,9 +5,9 @@
   </div>
 </template>
 
-<script setup>
-import GroupMembers from "./GroupMembers.vue";
-import UserMembers from "./UserMembers.vue";
+<script lang="ts" setup>
+import GroupMembers from './GroupMembers.vue';
+import UserMembers from './UserMembers.vue';
 
-const props = defineProps(["node"]);
+const props = defineProps(['node']);
 </script>

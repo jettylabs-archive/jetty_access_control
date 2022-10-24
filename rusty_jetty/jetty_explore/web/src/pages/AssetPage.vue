@@ -19,7 +19,11 @@
             Inherited Tags - Hierarchy
           </div>
           <div class="flex justify-center">
-            <JettyBadge v-for="tag in allTags.via_hierarchy" :key="tag" :name="tag" />
+            <JettyBadge
+              v-for="tag in allTags.via_hierarchy"
+              :key="tag"
+              :name="tag"
+            />
           </div>
         </q-card-section>
       </q-card>
@@ -30,7 +34,11 @@
             Inherited Tags - Lineage
           </div>
           <div class="flex justify-center">
-            <JettyBadge v-for="tag in allTags.via_lineage" :key="tag" :name="tag" />
+            <JettyBadge
+              v-for="tag in allTags.via_lineage"
+              :key="tag"
+              :name="tag"
+            />
           </div>
         </q-card-section>
       </q-card>
@@ -97,15 +105,15 @@
   </q-page>
 </template>
 
-<script setup>
-import { ref, computed } from "vue";
-import JettyHeader from "src/components/JettyHeader.vue";
-import { useJettyStore } from "stores/jetty";
-import { useRouter, useRoute } from "vue-router";
-import JettyBadge from "src/components/JettyBadge.vue";
-import { fetchJson } from "src/util";
+<script setup lang="ts">
+import { ref, computed } from 'vue';
+import JettyHeader from 'src/components/JettyHeader.vue';
+import { useJettyStore } from 'stores/jetty';
+import { useRouter, useRoute } from 'vue-router';
+import JettyBadge from 'src/components/JettyBadge.vue';
+import { fetchJson } from 'src/util';
 
-const props = defineProps(["node_id"]);
+const props = defineProps(['node_id']);
 const router = useRouter();
 const route = useRoute();
 
@@ -115,23 +123,23 @@ const currentNode = computed(() => {
   let returnNode;
   if (nodeList.value != null) {
     returnNode = nodeList.value.find(
-      (node) => node.name == props.node_id && node.type == "asset"
+      (node) => node.name == props.node_id && node.type == 'asset'
     );
   }
   return returnNode;
 });
 
 if (!currentNode.value) {
-  router.push("/notfound");
+  router.push('/notfound');
 }
 
-const tab = ref("users");
+const tab = ref('users');
 
-const allTags = ref({direct: [], via_lineage:[], via_hierarchy: []});
+const allTags = ref({ direct: [], via_lineage: [], via_hierarchy: [] });
 
-fetchJson("/api/asset/" + encodeURIComponent(props.node_id) + "/tags")
+fetchJson('/api/asset/' + encodeURIComponent(props.node_id) + '/tags')
   .then((r) => (allTags.value = r))
-  .catch((error) => console.log("unable to fetch: ", error));
+  .catch((error) => console.log('unable to fetch: ', error));
 </script>
 
 <style lang="scss">

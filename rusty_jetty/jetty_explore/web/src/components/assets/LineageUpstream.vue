@@ -5,7 +5,9 @@
     :filter-method="filterMethod"
     :columns="columns"
     :csv-config="csvConfig"
-    :fetchPath="'/api/asset/' + encodeURIComponent(props.node.name) + '/lineage_upstream'"
+    :fetchPath="
+      '/api/asset/' + encodeURIComponent(props.node.name) + '/lineage_upstream'
+    "
     v-slot="slotProps"
     :tip="`Assets upstream from ${props.node.name}, based on data lineage`"
   >
@@ -42,15 +44,15 @@
   </JettyTable>
 </template>
 
-<script setup>
-import JettyTable from "../JettyTable.vue";
-import JettyBadge from "../JettyBadge.vue";
+<script lang="ts" setup>
+import JettyTable from '../JettyTable.vue';
+import JettyBadge from '../JettyBadge.vue';
 
-const props = defineProps(["node"]);
+const props = defineProps(['node']);
 
 // Filters by name, privileges, or connector
 const filterMethod = (rows, terms) => {
-  const needles = terms.toLocaleLowerCase().split(" ");
+  const needles = terms.toLocaleLowerCase().split(' ');
   return rows.filter((r) =>
     needles.every(
       (needle) =>
@@ -62,24 +64,24 @@ const filterMethod = (rows, terms) => {
 
 const columns = [
   {
-    name: "name",
-    label: "Asset Name",
-    field: "name",
+    name: 'name',
+    label: 'Asset Name',
+    field: 'name',
     sortable: true,
-    align: "left",
+    align: 'left',
   },
   {
-    name: "paths",
-    label: "Paths",
-    field: "paths",
+    name: 'paths',
+    label: 'Paths',
+    field: 'paths',
     sortable: false,
-    align: "left",
+    align: 'left',
   },
 ];
 
 const csvConfig = {
-  filename: props.node.name + "_upstream_assets_by_lineage.csv",
-  columnNames: ["Asset Name", "Asset Platform", "Path"],
+  filename: props.node.name + '_upstream_assets_by_lineage.csv',
+  columnNames: ['Asset Name', 'Asset Platform', 'Path'],
   // accepts a row and returns the proper mapping
   mappingFn: (filteredSortedRows) =>
     filteredSortedRows.flatMap((r) =>
