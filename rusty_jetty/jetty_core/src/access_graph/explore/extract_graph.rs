@@ -77,7 +77,10 @@ impl AccessGraph {
 #[cfg(test)]
 mod tests {
 
-    use crate::access_graph::{GroupAttributes, NodeName, UserAttributes};
+    use crate::{
+        access_graph::{GroupAttributes, NodeName, UserAttributes},
+        jetty::ConnectorNamespace,
+    };
 
     use anyhow::{anyhow, Result};
     use petgraph::algo::is_isomorphic_matching;
@@ -96,42 +99,84 @@ mod tests {
             &[
                 (
                     NodeName::User("user".to_owned()),
-                    NodeName::Group("group1".to_owned()),
+                    NodeName::Group {
+                        name: "group1".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
                 (
                     NodeName::User("user".to_owned()),
-                    NodeName::Group("group2".to_owned()),
+                    NodeName::Group {
+                        name: "group2".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
                 (
-                    NodeName::Group("group2".to_owned()),
-                    NodeName::Group("group1".to_owned()),
+                    NodeName::Group {
+                        name: "group2".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
+                    NodeName::Group {
+                        name: "group1".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
                 (
-                    NodeName::Group("group2".to_owned()),
-                    NodeName::Group("group3".to_owned()),
+                    NodeName::Group {
+                        name: "group2".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
+                    NodeName::Group {
+                        name: "group3".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
                 (
-                    NodeName::Group("group2".to_owned()),
-                    NodeName::Group("group4".to_owned()),
+                    NodeName::Group {
+                        name: "group2".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
+                    NodeName::Group {
+                        name: "group4".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
                 (
-                    NodeName::Group("group3".to_owned()),
-                    NodeName::Group("group4".to_owned()),
+                    NodeName::Group {
+                        name: "group3".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
+                    NodeName::Group {
+                        name: "group4".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
                 (
-                    NodeName::Group("group4".to_owned()),
-                    NodeName::Group("group1".to_owned()),
+                    NodeName::Group {
+                        name: "group4".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
+                    NodeName::Group {
+                        name: "group1".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
                 (
-                    NodeName::Group("group4".to_owned()),
-                    NodeName::Group("group3".to_owned()),
+                    NodeName::Group {
+                        name: "group4".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
+                    NodeName::Group {
+                        name: "group3".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
                     EdgeType::Includes,
                 ),
             ],
@@ -150,26 +195,47 @@ mod tests {
             ],
             &[
                 (
-                    NodeName::Group("group2".to_owned()),
-                    NodeName::Group("group3".to_owned()),
+                    NodeName::Group {
+                        name: "group2".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
+                    NodeName::Group {
+                        name: "group3".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
                 (
-                    NodeName::Group("group3".to_owned()),
-                    NodeName::Group("group4".to_owned()),
+                    NodeName::Group {
+                        name: "group3".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
+                    NodeName::Group {
+                        name: "group4".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
                 (
-                    NodeName::Group("group4".to_owned()),
-                    NodeName::Group("group3".to_owned()),
+                    NodeName::Group {
+                        name: "group4".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
+                    NodeName::Group {
+                        name: "group3".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
                     EdgeType::Includes,
                 ),
             ],
         );
 
         let SubGraph(extracted) = ag.extract_graph(
-            ag.get_untyped_index_from_name(&NodeName::Group("group3".to_owned()))
-                .ok_or(anyhow!("unable to find node"))?,
+            ag.get_untyped_index_from_name(&NodeName::Group {
+                name: "group3".to_owned(),
+                origin: ConnectorNamespace::default(),
+            })
+            .ok_or(anyhow!("unable to find node"))?,
             1,
         );
 

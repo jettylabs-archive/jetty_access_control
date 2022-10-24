@@ -1,0 +1,430 @@
+//! Types and functions for the processed nodes. These are used after the translation layer, and all
+//! references to other nodes are NodeNames
+use std::{
+    cmp::Ordering,
+    collections::{HashMap, HashSet},
+};
+
+use derivative::Derivative;
+use serde::{Deserialize, Serialize};
+
+use crate::{
+    access_graph::{
+        graph::typed_indices::{AssetIndex, UserIndex},
+        helpers::{insert_edge_pair, NodeHelper},
+        AssetAttributes, EdgeType, GroupAttributes, GroupName, JettyEdge, JettyNode, NodeName,
+        PolicyAttributes, PolicyName, TagAttributes, UserAttributes, UserName,
+    },
+    cual::Cual,
+    jetty::ConnectorNamespace,
+    Connector,
+};
+
+use super::{
+    nodes::{EffectivePermission, SparseMatrix},
+    UserIdentifier,
+};
+
+/// Container for all node data for a given connector
+#[derive(Debug, Default, PartialEq, Eq)]
+pub struct ProcessedConnectorData {
+    /// All groups in the connector
+    pub groups: Vec<ProcessedGroup>,
+    /// All users in the connector
+    pub users: Vec<ProcessedUser>,
+    /// All assets in the connector
+    pub assets: Vec<ProcessedAsset>,
+    /// All tags in the connector
+    pub tags: Vec<ProcessedTag>,
+    /// All policies in the connector
+    pub policies: Vec<ProcessedPolicy>,
+    /// Mapping of all users to the assets they have permissions granted
+    /// to.
+    ///
+    /// `effective_permissions["user_identifier"]["asset://cual"]` would contain the effective
+    /// permissions for that user,asset combination, with one EffectivePermission
+    /// per privilege containing possible explanations.
+    pub effective_permissions: SparseMatrix<UserIndex, AssetIndex, HashSet<EffectivePermission>>,
+}
+
+#[derive(Default, Debug, PartialEq, Eq)]
+/// Group data provided by connectors
+pub struct ProcessedGroup {
+    /// Group name
+    pub name: NodeName,
+    /// K-V pairs of group-specific metadata. When sent to the graph
+    /// the keys should be namespaced (e.g. `snow::key : value`)
+    pub metadata: HashMap<String, String>,
+    /// IDs of the groups this group is a member of
+    pub member_of: HashSet<NodeName>,
+    /// IDs of users that are members of this group
+    pub includes_users: HashSet<NodeName>,
+    /// IDs of groups that are members of this group
+    pub includes_groups: HashSet<NodeName>,
+    /// IDs of policies that are applied to this group
+    pub granted_by: HashSet<NodeName>,
+    /// Names of connector
+    pub connector: ConnectorNamespace,
+}
+
+/// User data provided by connectors
+#[derive(Default, Debug, PartialEq, Eq)]
+pub struct ProcessedUser {
+    /// The name of the user. When coming from a connector, this
+    /// should be the name the connector uses to refer to a person.
+    /// When sent to the graph, it should be the Jetty identifier for
+    /// the user (which may be different)
+    pub name: NodeName,
+    /// Additional user identifiers that are used to resolve users
+    /// cross-platform
+    pub identifiers: HashSet<super::UserIdentifier>,
+    /// K-V pairs of user-specific metadata. When sent to the graph
+    /// the keys should be namespaced (e.g. `snow::key : value`)
+    pub metadata: HashMap<String, String>,
+    /// IDs of the groups this user is a member of
+    pub member_of: HashSet<NodeName>,
+    /// IDs of policies that are applied to this user
+    pub granted_by: HashSet<NodeName>,
+    /// Names of connector
+    pub connector: ConnectorNamespace,
+}
+
+/// Struct used to populate asset nodes and edges in the graph
+#[derive(Default, PartialEq, Eq, Debug)]
+pub struct ProcessedAsset {
+    /// Connector Universal Asset Locator
+    pub name: NodeName,
+    /// Type of asset being modeled
+    pub asset_type: super::AssetType,
+    /// K-V pairs of asset-specific metadata. When sent to the graph
+    /// the keys should be namespaced (e.g. `snow::key : value`)
+    pub metadata: HashMap<String, String>,
+    /// IDs of policies that govern this asset.
+    /// Jetty will dedup these with Policy.governs_assets.
+    pub governed_by: HashSet<NodeName>,
+    /// IDs of hierarchical children of the asset
+    pub child_of: HashSet<NodeName>,
+    /// IDs of hierarchical parents of the asset
+    pub parent_of: HashSet<NodeName>,
+    /// IDs of assets this asset is derived from
+    pub derived_from: HashSet<NodeName>,
+    /// IDs of assets that are derived from this one
+    pub derived_to: HashSet<NodeName>,
+    /// IDs of tags associated with this asset
+    pub tagged_as: HashSet<NodeName>,
+    /// Names of connector
+    pub connector: ConnectorNamespace,
+}
+
+impl Ord for ProcessedAsset {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.name.cmp(&other.name)
+    }
+}
+
+impl PartialOrd for ProcessedAsset {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+/// Struct used to populate tag nodes and edges in the graph
+#[derive(Debug, PartialEq, Eq, Default)]
+pub struct ProcessedTag {
+    /// context
+    pub name: NodeName,
+    /// Optional value for the tag (for the case of key-value tags)
+    pub value: Option<String>,
+    /// Optional description for the tag
+    pub description: Option<String>,
+    /// Whether the tag is to be passed through asset hierarchy (only to direct
+    /// descendants of this node)
+    pub pass_through_hierarchy: bool,
+    /// Whether the tag is to be passed through asset lineage (only to direct
+    /// descendants of this node)
+    pub pass_through_lineage: bool,
+    /// IDs of assets the tag is applied to
+    pub applied_to: HashSet<NodeName>,
+    /// IDs of assets the tag is applied to
+    pub removed_from: HashSet<NodeName>,
+    /// IDs of policies that are applied to this asset
+    pub governed_by: HashSet<NodeName>,
+    /// Names of connector
+    pub connector: ConnectorNamespace,
+}
+
+/// Struct used to populate policy nodes and edges in the graph
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ProcessedPolicy {
+    /// ID of the Policy, namespaced for the relevant context
+    pub name: NodeName,
+    /// Privileges associated with the policy, scoped to
+    /// relevant context
+    pub privileges: HashSet<String>,
+    /// IDs of assets governed by the policy
+    pub governs_assets: HashSet<NodeName>,
+    /// IDs of tags governed by the policy
+    pub governs_tags: HashSet<NodeName>,
+    /// IDs or goups the policy is applied to
+    pub granted_to_groups: HashSet<NodeName>,
+    /// IDs of users the policy is applied to
+    pub granted_to_users: HashSet<NodeName>,
+    /// Whether the policy also applies to child assets
+    pub pass_through_hierarchy: bool,
+    /// Whether the policy also applies to derived assets
+    pub pass_through_lineage: bool,
+    /// Names of connector
+    pub connector: ConnectorNamespace,
+}
+
+impl NodeHelper for ProcessedGroup {
+    fn get_node(&self) -> JettyNode {
+        JettyNode::Group(GroupAttributes {
+            name: self.name.to_owned(),
+            metadata: self.metadata.to_owned(),
+            connectors: HashSet::from([self.connector.to_owned()]),
+        })
+    }
+
+    fn get_edges(&self) -> HashSet<JettyEdge> {
+        let mut hs = HashSet::<JettyEdge>::new();
+        for v in &self.member_of {
+            insert_edge_pair(
+                &mut hs,
+                self.name.to_owned(),
+                v.to_owned(),
+                EdgeType::MemberOf,
+            );
+        }
+        for v in &self.includes_users {
+            insert_edge_pair(
+                &mut hs,
+                self.name.to_owned(),
+                v.to_owned(),
+                EdgeType::Includes,
+            );
+        }
+        for v in &self.includes_groups {
+            insert_edge_pair(
+                &mut hs,
+                self.name.to_owned(),
+                v.to_owned(),
+                EdgeType::Includes,
+            );
+        }
+        for v in &self.granted_by {
+            insert_edge_pair(
+                &mut hs,
+                self.name.to_owned(),
+                v.to_owned(),
+                EdgeType::GrantedBy,
+            );
+        }
+        hs
+    }
+    fn get_connector(&self) -> &ConnectorNamespace {
+        &self.connector
+    }
+}
+
+/// Object used to populate user nodes and edges in the graph
+
+impl NodeHelper for ProcessedUser {
+    fn get_node(&self) -> JettyNode {
+        JettyNode::User(UserAttributes {
+            name: self.name.to_owned(),
+            identifiers: self.identifiers.to_owned(),
+            metadata: self.metadata.to_owned(),
+            connectors: HashSet::from([self.connector.to_owned()]),
+        })
+    }
+
+    fn get_edges(&self) -> HashSet<JettyEdge> {
+        let mut hs = HashSet::<JettyEdge>::new();
+        for v in &self.member_of {
+            insert_edge_pair(
+                &mut hs,
+                self.name.to_owned(),
+                v.to_owned(),
+                EdgeType::MemberOf,
+            );
+        }
+        for v in &self.granted_by {
+            insert_edge_pair(
+                &mut hs,
+                self.name.to_owned(),
+                v.to_owned(),
+                EdgeType::GrantedBy,
+            );
+        }
+        hs
+    }
+    fn get_connector(&self) -> &ConnectorNamespace {
+        &self.connector
+    }
+}
+
+impl NodeHelper for ProcessedAsset {
+    fn get_node(&self) -> JettyNode {
+        JettyNode::Asset(AssetAttributes {
+            name: self.name.to_owned(),
+            asset_type: self.asset_type.to_owned(),
+            metadata: self.metadata.to_owned(),
+            connectors: HashSet::from([self.connector.to_owned()]),
+        })
+    }
+
+    fn get_edges(&self) -> HashSet<JettyEdge> {
+        let mut hs = HashSet::<JettyEdge>::new();
+        for v in &self.governed_by {
+            insert_edge_pair(
+                &mut hs,
+                self.name.to_owned(),
+                v.to_owned(),
+                EdgeType::GovernedBy,
+            );
+        }
+        for v in &self.child_of {
+            insert_edge_pair(
+                &mut hs,
+                self.name.to_owned(),
+                v.to_owned(),
+                EdgeType::ChildOf,
+            );
+        }
+        for v in &self.parent_of {
+            insert_edge_pair(
+                &mut hs,
+                self.name.to_owned(),
+                v.to_owned(),
+                EdgeType::ParentOf,
+            );
+        }
+        for v in &self.derived_from {
+            insert_edge_pair(
+                &mut hs,
+                self.name.to_owned(),
+                v.to_owned(),
+                EdgeType::DerivedFrom,
+            );
+        }
+        for v in &self.derived_to {
+            insert_edge_pair(
+                &mut hs,
+                self.name.to_owned(),
+                v.to_owned(),
+                EdgeType::DerivedTo,
+            );
+        }
+        for v in &self.tagged_as {
+            insert_edge_pair(
+                &mut hs,
+                self.name.to_owned(),
+                v.to_owned(),
+                EdgeType::TaggedAs,
+            );
+        }
+        hs
+    }
+    fn get_connector(&self) -> &ConnectorNamespace {
+        &self.connector
+    }
+}
+
+impl NodeHelper for ProcessedTag {
+    fn get_node(&self) -> JettyNode {
+        JettyNode::Tag(TagAttributes {
+            name: self.name.to_owned(),
+            value: self.value.to_owned(),
+            description: self.description.to_owned(),
+            pass_through_hierarchy: self.pass_through_hierarchy,
+            pass_through_lineage: self.pass_through_lineage,
+            connectors: HashSet::from([self.connector.to_owned()]),
+        })
+    }
+
+    fn get_edges(&self) -> HashSet<JettyEdge> {
+        let mut hs = HashSet::<JettyEdge>::new();
+        for v in &self.applied_to {
+            insert_edge_pair(
+                &mut hs,
+                self.name.to_owned(),
+                v.to_owned(),
+                EdgeType::AppliedTo,
+            );
+        }
+        for v in &self.governed_by {
+            insert_edge_pair(
+                &mut hs,
+                self.name.to_owned(),
+                v.to_owned(),
+                EdgeType::GovernedBy,
+            );
+        }
+        for v in &self.removed_from {
+            insert_edge_pair(
+                &mut hs,
+                self.name.to_owned(),
+                v.to_owned(),
+                EdgeType::RemovedFrom,
+            );
+        }
+        hs
+    }
+    fn get_connector(&self) -> &ConnectorNamespace {
+        &self.connector
+    }
+}
+
+impl NodeHelper for ProcessedPolicy {
+    fn get_node(&self) -> JettyNode {
+        JettyNode::Policy(PolicyAttributes {
+            name: self.name.to_owned(),
+            privileges: self.privileges.to_owned(),
+            pass_through_hierarchy: self.pass_through_hierarchy,
+            pass_through_lineage: self.pass_through_lineage,
+            connectors: HashSet::from([self.connector.to_owned()]),
+        })
+    }
+
+    fn get_edges(&self) -> HashSet<JettyEdge> {
+        let mut hs = HashSet::<JettyEdge>::new();
+        for v in &self.governs_assets {
+            insert_edge_pair(
+                &mut hs,
+                self.name.to_owned(),
+                v.to_owned(),
+                EdgeType::Governs,
+            );
+        }
+        for v in &self.governs_tags {
+            insert_edge_pair(
+                &mut hs,
+                self.name.to_owned(),
+                v.to_owned(),
+                EdgeType::Governs,
+            );
+        }
+        for v in &self.granted_to_groups {
+            insert_edge_pair(
+                &mut hs,
+                self.name.to_owned(),
+                v.to_owned(),
+                EdgeType::GrantedTo,
+            );
+        }
+        for v in &self.granted_to_users {
+            insert_edge_pair(
+                &mut hs,
+                self.name.to_owned(),
+                v.to_owned(),
+                EdgeType::GrantedTo,
+            );
+        }
+        hs
+    }
+
+    fn get_connector(&self) -> &ConnectorNamespace {
+        &self.connector
+    }
+}

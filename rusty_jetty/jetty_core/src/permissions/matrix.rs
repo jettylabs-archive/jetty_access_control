@@ -1,7 +1,10 @@
 //! Operational utilities for dealing with the effective permissions matrix.
 //!
 
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    hash::Hash,
+};
 
 use crate::{
     access_graph::graph::typed_indices::{AssetIndex, UserIndex},
@@ -163,6 +166,24 @@ impl Merge<SparseMatrix<UserIndex, AssetIndex, HashSet<EffectivePermission>>>
             self.insert_or_merge(uid, asset_map);
         }
         Ok(())
+    }
+}
+
+/// Trait to insert into a nested HashMap
+pub trait DoubleInsert<K, Y, V> {
+    /// Insert `key1` into the map if it doesn't exist. Insert `key2` if it doesn't exist, with value V.
+    /// Will override any previous value
+    fn double_insert(&mut self, key1: K, key2: Y, val: V) -> Option<V>;
+}
+
+impl<K, Y, V> DoubleInsert<K, Y, V> for SparseMatrix<K, Y, V>
+where
+    K: Hash + Eq,
+    Y: Hash + Eq,
+{
+    fn double_insert(&mut self, key1: K, key2: Y, val: V) -> Option<V> {
+        let x = self.entry(key1).or_insert(Default::default());
+        x.insert(key2, val)
     }
 }
 

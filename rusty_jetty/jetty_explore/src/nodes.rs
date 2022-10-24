@@ -97,7 +97,7 @@ fn get_all_nodes(ag: Arc<AccessGraph>) -> Vec<Node> {
                 platforms: n
                     .get_node_connectors()
                     .iter()
-                    .map(|n| n.to_owned())
+                    .map(|n| n.to_string())
                     .collect(),
             }
         })
