@@ -5,7 +5,9 @@
     :filter-method="filterMethod"
     :columns="columns"
     :csv-config="csvConfig"
-    :fetchPath="'/api/tag/' + encodeURIComponent(props.node.name) + '/direct_assets'"
+    :fetchPath="
+      '/api/tag/' + encodeURIComponent(props.node.name) + '/direct_assets'
+    "
     v-slot="slotProps"
     :tip="`Assets directly tagged with ${props.node.name}`"
   >
@@ -29,25 +31,25 @@
   </JettyTable>
 </template>
 
-<script setup>
-import JettyTable from "../JettyTable.vue";
-import JettyBadge from "../JettyBadge.vue";
+<script lang="ts" setup>
+import JettyTable from '../JettyTable.vue';
+import JettyBadge from '../JettyBadge.vue';
 
-const props = defineProps(["node"]);
+const props = defineProps(['node']);
 
 const columns = [
   {
-    name: "name",
-    label: "Asset Name",
-    field: "name",
+    name: 'name',
+    label: 'Asset Name',
+    field: 'name',
     sortable: true,
-    align: "left",
+    align: 'left',
   },
 ];
 
 // Filters by name or platform
 const filterMethod = (rows, terms) => {
-  const needles = terms.toLocaleLowerCase().split(" ");
+  const needles = terms.toLocaleLowerCase().split(' ');
   return rows.filter((r) =>
     needles.every(
       (needle) =>
@@ -58,8 +60,8 @@ const filterMethod = (rows, terms) => {
 };
 
 const csvConfig = {
-  filename: props.node.name + "_direct_assets.csv",
-  columnNames: ["Asset Name", "Asset Platform"],
+  filename: props.node.name + '_direct_assets.csv',
+  columnNames: ['Asset Name', 'Asset Platform'],
   // accepts filtered sorted rows and returns the proper mapping
   mappingFn: (filteredSortedRows) =>
     filteredSortedRows.flatMap((r) => [r.name, r.platform]),

@@ -20,8 +20,8 @@
   </q-layout>
 </template>
 
-<script setup>
-import SearchInput from "src/components/SearchInput.vue";
+<script setup lang="ts">
+import SearchInput from 'src/components/SearchInput.vue';
 </script>
 
 <style lang="scss">

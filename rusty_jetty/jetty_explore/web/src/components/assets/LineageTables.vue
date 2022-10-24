@@ -5,9 +5,9 @@
   </div>
 </template>
 
-<script setup>
-import LineageUpstream from "./LineageUpstream.vue";
-import LineageDownstream from "./LineageDownstream.vue";
+<script lang="ts" setup>
+import LineageUpstream from './LineageUpstream.vue';
+import LineageDownstream from './LineageDownstream.vue';
 
-const props = defineProps(["node"]);
+const props = defineProps(['node']);
 </script>

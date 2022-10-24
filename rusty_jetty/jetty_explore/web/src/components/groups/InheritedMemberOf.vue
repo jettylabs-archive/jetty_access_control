@@ -5,7 +5,9 @@
     :filter-method="filterMethod"
     :columns="columns"
     :csv-config="csvConfig"
-    :fetchPath="'/api/group/' + encodeURIComponent(props.node.name) + '/inherited_groups'"
+    :fetchPath="
+      '/api/group/' + encodeURIComponent(props.node.name) + '/inherited_groups'
+    "
     v-slot="slotProps"
     :tip="`The groups that ${props.node.name} is an inherited member of through child relationships`"
   >
@@ -46,48 +48,48 @@
   </JettyTable>
 </template>
 
-<script setup>
-import JettyTable from "../JettyTable.vue";
-import JettyBadge from "../JettyBadge.vue";
+<script lang="ts" setup>
+import JettyTable from '../JettyTable.vue';
+import JettyBadge from '../JettyBadge.vue';
 
-const props = defineProps(["node"]);
+const props = defineProps(['node']);
 
 const columns = [
   {
-    name: "name",
-    label: "Group Name",
-    field: "name",
+    name: 'name',
+    label: 'Group Name',
+    field: 'name',
     sortable: true,
-    align: "left",
+    align: 'left',
   },
   {
-    name: "membership_paths",
-    label: "Membership Paths",
-    field: "membership_paths",
+    name: 'membership_paths',
+    label: 'Membership Paths',
+    field: 'membership_paths',
     sortable: false,
-    align: "left",
+    align: 'left',
   },
 ];
 
 // Filters by name or platform
 const filterMethod = (rows, terms) => {
-  const needles = terms.toLocaleLowerCase().split(" ");
+  const needles = terms.toLocaleLowerCase().split(' ');
   return rows.filter((r) =>
     needles.every(
       (needle) =>
         r.name.toLocaleLowerCase().indexOf(needle) > -1 ||
-        r.connectors.join(" ").toLocaleLowerCase().indexOf(needle) > -1
+        r.connectors.join(' ').toLocaleLowerCase().indexOf(needle) > -1
     )
   );
 };
 
 const csvConfig = {
-  filename: props.node.name + "_indirect_groups.csv",
-  columnNames: ["Group Name", "Platform", "Membership Paths"],
+  filename: props.node.name + '_indirect_groups.csv',
+  columnNames: ['Group Name', 'Platform', 'Membership Paths'],
   // accepts filtered sorted rows and returns the proper mapping
   mappingFn: (filteredSortedRows) =>
     filteredSortedRows.flatMap((r) =>
-      r.membership_paths.map((m) => [r.name, r.connectors.join(", "), m])
+      r.membership_paths.map((m) => [r.name, r.connectors.join(', '), m])
     ),
 };
 </script>

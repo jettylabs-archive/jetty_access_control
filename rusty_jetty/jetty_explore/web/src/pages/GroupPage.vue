@@ -18,7 +18,9 @@
         <q-route-tab
           name="direct_members"
           label="Direct Members"
-          :to="'/group/' + encodeURIComponent(props.node_id) + '/direct_members'"
+          :to="
+            '/group/' + encodeURIComponent(props.node_id) + '/direct_members'
+          "
         />
         <q-route-tab
           name="member_of"
@@ -50,16 +52,15 @@
   </q-page>
 </template>
 
-<script setup>
-import { ref, computed } from "vue";
-import JettyHeader from "src/components/JettyHeader.vue";
-import { useJettyStore } from "stores/jetty";
-import { useRouter, useRoute } from "vue-router";
+<script setup lang="ts">
+import { ref, computed } from 'vue';
+import JettyHeader from 'src/components/JettyHeader.vue';
+import { useJettyStore } from 'stores/jetty';
+import { useRouter, useRoute } from 'vue-router';
 
-const props = defineProps(["node_id"]);
+const props = defineProps(['node_id']);
 const router = useRouter();
 const route = useRoute();
-
 
 const store = useJettyStore();
 const nodeList = computed(() => store.nodes);
@@ -67,17 +68,17 @@ const currentNode = computed(() => {
   let returnNode;
   if (nodeList.value != null) {
     returnNode = nodeList.value.find(
-      (node) => node.name == props.node_id && node.type == "group"
+      (node) => node.name == props.node_id && node.type == 'group'
     );
   }
   return returnNode;
 });
 
 if (!currentNode.value) {
-  router.push("/notfound");
+  router.push('/notfound');
 }
 
-const tab = ref("direct_members");
+const tab = ref('direct_members');
 </script>
 
 <style lang="scss">

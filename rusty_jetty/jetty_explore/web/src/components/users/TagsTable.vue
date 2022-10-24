@@ -46,44 +46,44 @@
   </JettyTable>
 </template>
 
-<script setup>
-import JettyTable from "../JettyTable.vue";
-import JettyBadge from "../JettyBadge.vue";
+<script lang="ts" setup>
+import JettyTable from '../JettyTable.vue';
+import JettyBadge from '../JettyBadge.vue';
 
-const props = defineProps(["node"]);
+const props = defineProps(['node']);
 
 const columns = [
   {
-    name: "name",
-    label: "Tag Name",
-    field: "name",
+    name: 'name',
+    label: 'Tag Name',
+    field: 'name',
     sortable: true,
-    align: "left",
+    align: 'left',
   },
   {
-    name: "assets",
-    label: "Accessible Assets",
-    field: "assets",
+    name: 'assets',
+    label: 'Accessible Assets',
+    field: 'assets',
     sortable: false,
-    align: "left",
+    align: 'left',
   },
 ];
 
 // Filters by name, asset name, or asset platform
 const filterMethod = (rows, terms) => {
-  const needles = terms.toLocaleLowerCase().split(" ");
+  const needles = terms.toLocaleLowerCase().split(' ');
   return rows.filter((r) =>
     needles.every(
       (needle) =>
         r.name.toLocaleLowerCase().indexOf(needle) > -1 ||
         r.assets
           .map((a) => a.name)
-          .join(" ")
+          .join(' ')
           .toLocaleLowerCase()
           .indexOf(needle) > -1 ||
         r.assets
           .map((a) => a.platform)
-          .join(" ")
+          .join(' ')
           .toLocaleLowerCase()
           .indexOf(needle) > -1
     )
@@ -91,8 +91,8 @@ const filterMethod = (rows, terms) => {
 };
 
 const csvConfig = {
-  filename: props.node.name + "_tags.csv",
-  columnNames: ["Tag Name", "Accessible Asset", "Asset Platform"],
+  filename: props.node.name + '_tags.csv',
+  columnNames: ['Tag Name', 'Accessible Asset', 'Asset Platform'],
   // accepts a row and returns the proper mapping
   mappingFn: (filteredSortedRows) =>
     filteredSortedRows.flatMap((r) =>

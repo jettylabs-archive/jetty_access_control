@@ -5,9 +5,9 @@
   </div>
 </template>
 
-<script setup>
-import DirectGroups from "./DirectGroups.vue";
-import InheritedGroups from "./InheritedGroups.vue";
+<script lang="ts" setup>
+import DirectGroups from './DirectGroups.vue';
+import InheritedGroups from './InheritedGroups.vue';
 
-const props = defineProps(["node"]);
+const props = defineProps(['node']);
 </script>
