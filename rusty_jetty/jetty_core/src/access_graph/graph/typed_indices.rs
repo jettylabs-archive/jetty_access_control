@@ -2,25 +2,10 @@
 //!
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    access_graph::{
-        AccessGraph, AssetAttributes, GroupAttributes, NodeIndex, PolicyAttributes, TagAttributes,
-        UserAttributes,
-    },
-    connectors::nodes::Asset,
+use crate::access_graph::{
+    AccessGraph, AssetAttributes, GroupAttributes, NodeIndex, PolicyAttributes, TagAttributes,
+    UserAttributes,
 };
-
-/// Objects that can return a NodeIndex
-pub trait ToNodeIndex: Copy {
-    /// Get a NodeIndex
-    fn get_index(&self) -> NodeIndex;
-}
-
-impl ToNodeIndex for NodeIndex {
-    fn get_index(&self) -> NodeIndex {
-        *self
-    }
-}
 
 /// Implements the ToNodeIndex trait for one or more types that have an `idx` field.
 macro_rules! impl_to_node_index {

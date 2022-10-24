@@ -1,5 +1,6 @@
-//! Types and functions for the processed nodes. These are used after the translation layer, and all
-//! references to other nodes are NodeNames
+//! Types and functions for processed nodes. Processed nodes are used after the translation layer - all
+//! references to other nodes have been converted to NodeNames
+
 use std::{
     cmp::Ordering,
     collections::{HashMap, HashSet},

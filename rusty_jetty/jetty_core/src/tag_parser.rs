@@ -9,7 +9,6 @@ use std::fmt::Display;
 use yaml_peg::{parse, repr::RcRepr, NodeRc};
 
 use crate::access_graph::{AccessGraph, AssetAttributes, JettyNode, NodeName};
-use crate::connectors::nodes;
 use crate::connectors::processed_nodes::ProcessedTag;
 use crate::jetty::ConnectorNamespace;
 

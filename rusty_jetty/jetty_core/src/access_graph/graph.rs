@@ -17,7 +17,6 @@ use self::typed_indices::AssetIndex;
 use self::typed_indices::GroupIndex;
 use self::typed_indices::PolicyIndex;
 use self::typed_indices::TagIndex;
-use self::typed_indices::ToNodeIndex;
 use self::typed_indices::UserIndex;
 
 use super::{EdgeType, JettyNode, NodeName};

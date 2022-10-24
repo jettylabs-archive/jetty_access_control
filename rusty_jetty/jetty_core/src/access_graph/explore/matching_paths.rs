@@ -4,14 +4,12 @@
 use indexmap::IndexSet;
 use petgraph::{stable_graph::NodeIndex, Direction};
 
-use crate::access_graph::graph::typed_indices::ToNodeIndex;
-
 use super::{AccessGraph, EdgeType, JettyNode, NodePath};
 
 impl AccessGraph {
     /// Return all the matching paths from one node to another. Specify filter functions
     /// to match edges and passthrough nodes
-    pub fn all_matching_simple_paths<T: ToNodeIndex>(
+    pub fn all_matching_simple_paths<T: Into<NodeIndex> + Copy>(
         &self,
         from: T,
         to: T,
@@ -20,8 +18,8 @@ impl AccessGraph {
         min_depth: Option<usize>,
         max_depth: Option<usize>,
     ) -> Vec<NodePath> {
-        let from_idx = from.get_index();
-        let to_idx = to.get_index();
+        let from_idx: NodeIndex = from.into();
+        let to_idx = to.into();
 
         let max_depth = if let Some(l) = max_depth {
             l

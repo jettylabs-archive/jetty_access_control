@@ -5,8 +5,6 @@ use std::collections::HashSet;
 
 use petgraph::{stable_graph::NodeIndex, Direction};
 
-use crate::access_graph::graph::typed_indices::ToNodeIndex;
-
 use super::{AccessGraph, EdgeType, JettyNode};
 
 impl AccessGraph {

@@ -7,8 +7,7 @@ use petgraph::stable_graph::NodeIndex;
 use serde::Serialize;
 
 use crate::access_graph::{
-    graph::typed_indices::{AssetIndex, ToNodeIndex},
-    AccessGraph, EdgeType, JettyNode, TagAttributes,
+    graph::typed_indices::AssetIndex, AccessGraph, EdgeType, JettyNode, TagAttributes,
 };
 
 use super::NodePath;

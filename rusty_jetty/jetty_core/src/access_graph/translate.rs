@@ -31,6 +31,7 @@ pub struct Translator {
 pub(crate) struct GlobalToLocalIdentifiers {
     users: SparseMatrix<ConnectorNamespace, NodeName, String>,
     groups: SparseMatrix<ConnectorNamespace, NodeName, String>,
+    policies: SparseMatrix<ConnectorNamespace, NodeName, String>,
 }
 
 #[derive(Default)]
@@ -57,8 +58,8 @@ impl Translator {
     fn resolve_users(&mut self, data: &Vec<(ConnectorData, ConnectorNamespace)>) {
         let user_data: Vec<_> = data.iter().map(|(c, n)| (&c.users, n)).collect();
         // for each connector, look over all the users.
-        for connector in user_data {
-            for user in connector.0 {
+        for (users, namespace) in user_data {
+            for user in users {
                 let mut node_name = NodeName::User(user.name.to_owned());
                 for id in &user.identifiers {
                     //If they have an Email address, make that the identifier.
@@ -68,12 +69,12 @@ impl Translator {
                 }
 
                 self.local_to_global.users.double_insert(
-                    connector.1.to_owned(),
+                    namespace.to_owned(),
                     user.name.to_owned(),
                     node_name.to_owned(),
                 );
                 self.global_to_local.users.double_insert(
-                    connector.1.to_owned(),
+                    namespace.to_owned(),
                     node_name,
                     user.name.to_owned(),
                 );
@@ -86,21 +87,21 @@ impl Translator {
     fn resolve_groups(&mut self, data: &Vec<(ConnectorData, ConnectorNamespace)>) {
         let group_data: Vec<_> = data.iter().map(|(c, n)| (&c.groups, n)).collect();
         // for each connector, look over all the users.
-        for connector in group_data {
-            for group in connector.0 {
+        for (groups, namespace) in group_data {
+            for group in groups {
                 self.local_to_global.groups.double_insert(
-                    connector.1.to_owned(),
+                    namespace.to_owned(),
                     group.name.to_owned(),
                     NodeName::Group {
                         name: group.name.to_owned(),
-                        origin: connector.1.to_owned(),
+                        origin: namespace.to_owned(),
                     },
                 );
                 self.global_to_local.groups.double_insert(
-                    connector.1.to_owned(),
+                    namespace.to_owned(),
                     NodeName::Group {
                         name: group.name.to_owned(),
-                        origin: connector.1.to_owned(),
+                        origin: namespace.to_owned(),
                     },
                     group.name.to_owned(),
                 );
@@ -113,21 +114,21 @@ impl Translator {
     fn resolve_policies(&mut self, data: &Vec<(ConnectorData, ConnectorNamespace)>) {
         let policy_data: Vec<_> = data.iter().map(|(c, n)| (&c.policies, n)).collect();
         // for each connector, look over all the users.
-        for connector in policy_data {
-            for policy in connector.0 {
+        for (policies, namespace) in policy_data {
+            for policy in policies {
                 self.local_to_global.policies.double_insert(
-                    connector.1.to_owned(),
+                    namespace.to_owned(),
                     policy.name.to_owned(),
                     NodeName::Policy {
                         name: policy.name.to_owned(),
-                        origin: connector.1.to_owned(),
+                        origin: namespace.to_owned(),
                     },
                 );
-                self.global_to_local.groups.double_insert(
-                    connector.1.to_owned(),
+                self.global_to_local.policies.double_insert(
+                    namespace.to_owned(),
                     NodeName::Policy {
                         name: policy.name.to_owned(),
-                        origin: connector.1.to_owned(),
+                        origin: namespace.to_owned(),
                     },
                     policy.name.to_owned(),
                 );

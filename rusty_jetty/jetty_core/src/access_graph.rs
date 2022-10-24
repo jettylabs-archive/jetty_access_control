@@ -17,9 +17,7 @@ use crate::logging::debug;
 use crate::tag_parser::{parse_tags, tags_to_jetty_node_helpers};
 use crate::{connectors::AssetType, cual::Cual};
 
-use self::graph::typed_indices::{
-    AssetIndex, GroupIndex, PolicyIndex, TagIndex, ToNodeIndex, UserIndex,
-};
+use self::graph::typed_indices::{AssetIndex, GroupIndex, PolicyIndex, TagIndex, UserIndex};
 use self::helpers::NodeHelper;
 
 use super::connectors;
