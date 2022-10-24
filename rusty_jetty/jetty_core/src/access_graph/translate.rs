@@ -1,17 +1,17 @@
 //! Types and functionality to translate between connectors' local representation
 //! and Jetty's global representation
 
-use std::collections::HashMap;
-
-use anyhow::Result;
-
 use super::NodeName;
 use crate::{
     connectors::{
-        nodes::{ConnectorData, SparseMatrix, User},
-        processed_nodes::{ProcessedConnectorData, ProcessedUser},
+        nodes::{Asset, ConnectorData, Group, Policy, SparseMatrix, Tag, User},
+        processed_nodes::{
+            ProcessedAsset, ProcessedConnectorData, ProcessedGroup, ProcessedPolicy, ProcessedTag,
+            ProcessedUser,
+        },
         UserIdentifier,
     },
+    cual::Cual,
     jetty::ConnectorNamespace,
     permissions::matrix::DoubleInsert,
 };
@@ -27,7 +27,6 @@ pub struct Translator {
 pub(crate) struct GlobalToLocalIdentifiers {
     users: SparseMatrix<ConnectorNamespace, NodeName, String>,
     groups: SparseMatrix<ConnectorNamespace, NodeName, String>,
-    policies: SparseMatrix<ConnectorNamespace, NodeName, String>,
 }
 
 #[derive(Default)]
@@ -45,6 +44,7 @@ impl Translator {
         // Start by pulling out all the user nodes and resolving them to single identities
         t.resolve_users(data);
         t.resolve_groups(data);
+        t.resolve_policies(data);
         t
     }
 
@@ -144,7 +144,7 @@ impl Translator {
     pub fn local_to_processed_connector_data(
         &self,
         data: Vec<(ConnectorData, ConnectorNamespace)>,
-    ) -> Result<ProcessedConnectorData> {
+    ) -> ProcessedConnectorData {
         let mut result = ProcessedConnectorData::default();
 
         for (cd, namespace) in data {
@@ -153,15 +153,43 @@ impl Translator {
                 cd.users
                     .into_iter()
                     .map(|u| self.translate_user(u, namespace.to_owned()))
-                    .collect::<Result<Vec<ProcessedUser>>>()?,
+                    .collect::<Vec<ProcessedUser>>(),
+            );
+            // convert the groups
+            result.groups.extend(
+                cd.groups
+                    .into_iter()
+                    .map(|g| self.translate_group(g, namespace.to_owned()))
+                    .collect::<Vec<ProcessedGroup>>(),
+            );
+            // convert the assets
+            result.assets.extend(
+                cd.assets
+                    .into_iter()
+                    .map(|a| self.translate_asset(a, namespace.to_owned()))
+                    .collect::<Vec<ProcessedAsset>>(),
+            );
+            // convert the tags
+            result.tags.extend(
+                cd.tags
+                    .into_iter()
+                    .map(|t| self.translate_tag(t, namespace.to_owned()))
+                    .collect::<Vec<ProcessedTag>>(),
+            );
+            // convert the policies
+            result.policies.extend(
+                cd.policies
+                    .into_iter()
+                    .map(|p| self.translate_policy(p, namespace.to_owned()))
+                    .collect::<Vec<ProcessedPolicy>>(),
             );
         }
 
-        Ok(result)
+        result
     }
 
-    fn translate_user(&self, user: User, connector: ConnectorNamespace) -> Result<ProcessedUser> {
-        Ok(ProcessedUser {
+    fn translate_user(&self, user: User, connector: ConnectorNamespace) -> ProcessedUser {
+        ProcessedUser {
             name: self.local_to_global.users[&connector][&user.name].to_owned(),
             identifiers: user.identifiers,
             metadata: user.metadata,
@@ -170,8 +198,135 @@ impl Translator {
                 .iter()
                 .map(|g| self.local_to_global.groups[&connector][g].to_owned())
                 .collect(),
-            granted_by: todo!(),
+            granted_by: user
+                .granted_by
+                .iter()
+                .map(|g| self.local_to_global.policies[&connector][g].to_owned())
+                .collect(),
             connector,
-        })
+        }
+    }
+
+    fn translate_group(&self, group: Group, connector: ConnectorNamespace) -> ProcessedGroup {
+        ProcessedGroup {
+            name: self.local_to_global.groups[&connector][&group.name].to_owned(),
+            metadata: group.metadata,
+            member_of: group
+                .member_of
+                .iter()
+                .map(|g| self.local_to_global.groups[&connector][g].to_owned())
+                .collect(),
+            includes_users: group
+                .includes_users
+                .iter()
+                .map(|u| self.local_to_global.users[&connector][u].to_owned())
+                .collect(),
+            includes_groups: group
+                .includes_groups
+                .iter()
+                .map(|g| self.local_to_global.groups[&connector][g].to_owned())
+                .collect(),
+            granted_by: group
+                .granted_by
+                .iter()
+                .map(|p| self.local_to_global.policies[&connector][p].to_owned())
+                .collect(),
+            connector,
+        }
+    }
+
+    fn translate_asset(&self, asset: Asset, connector: ConnectorNamespace) -> ProcessedAsset {
+        ProcessedAsset {
+            name: NodeName::Asset(asset.cual),
+            asset_type: asset.asset_type,
+            metadata: asset.metadata,
+            governed_by: asset
+                .governed_by
+                .iter()
+                .map(|g| self.local_to_global.policies[&connector][g].to_owned())
+                .collect(),
+            child_of: asset
+                .child_of
+                .into_iter()
+                .map(|g| NodeName::Asset(Cual::new(g.as_str())))
+                .collect(),
+            parent_of: asset
+                .parent_of
+                .into_iter()
+                .map(|g| NodeName::Asset(Cual::new(g.as_str())))
+                .collect(),
+            derived_from: asset
+                .derived_from
+                .into_iter()
+                .map(|g| NodeName::Asset(Cual::new(g.as_str())))
+                .collect(),
+            derived_to: asset
+                .derived_to
+                .into_iter()
+                .map(|g| NodeName::Asset(Cual::new(g.as_str())))
+                .collect(),
+            tagged_as: asset
+                .tagged_as
+                .into_iter()
+                .map(|t| NodeName::Tag(t))
+                .collect(),
+            connector,
+        }
+    }
+
+    fn translate_tag(&self, tag: Tag, connector: ConnectorNamespace) -> ProcessedTag {
+        ProcessedTag {
+            name: NodeName::Tag(tag.name),
+            value: tag.value,
+            description: tag.description,
+            pass_through_hierarchy: tag.pass_through_hierarchy,
+            pass_through_lineage: tag.pass_through_lineage,
+            applied_to: tag
+                .applied_to
+                .into_iter()
+                .map(|t| NodeName::Asset(Cual::new(t.as_str())))
+                .collect(),
+            removed_from: tag
+                .removed_from
+                .into_iter()
+                .map(|t| NodeName::Asset(Cual::new(t.as_str())))
+                .collect(),
+            governed_by: tag
+                .governed_by
+                .iter()
+                .map(|p| self.local_to_global.policies[&connector][p].to_owned())
+                .collect(),
+            connector,
+        }
+    }
+
+    fn translate_policy(&self, policy: Policy, connector: ConnectorNamespace) -> ProcessedPolicy {
+        ProcessedPolicy {
+            name: self.local_to_global.policies[&connector][&policy.name].to_owned(),
+            privileges: policy.privileges,
+            governs_assets: policy
+                .governs_assets
+                .into_iter()
+                .map(|a| NodeName::Asset(Cual::new(a.as_str())))
+                .collect(),
+            governs_tags: policy
+                .governs_tags
+                .into_iter()
+                .map(|t| NodeName::Tag(t))
+                .collect(),
+            granted_to_groups: policy
+                .granted_to_groups
+                .iter()
+                .map(|g| self.local_to_global.groups[&connector][g].to_owned())
+                .collect(),
+            granted_to_users: policy
+                .granted_to_users
+                .iter()
+                .map(|u| self.local_to_global.users[&connector][u].to_owned())
+                .collect(),
+            pass_through_hierarchy: policy.pass_through_hierarchy,
+            pass_through_lineage: policy.pass_through_lineage,
+            connector,
+        }
     }
 }
