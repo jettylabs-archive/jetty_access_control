@@ -153,7 +153,7 @@ impl Permissionable for Flow {
     }
 }
 
-impl FromTableau<Flow> for jetty_nodes::Asset {
+impl FromTableau<Flow> for jetty_nodes::RawAsset {
     fn from(val: Flow, env: &Environment) -> Self {
         let cual = get_tableau_cual(
             TableauAssetType::Flow,
@@ -167,7 +167,7 @@ impl FromTableau<Flow> for jetty_nodes::Asset {
             .get_parent_project_cual(env)
             .expect("getting parent cual")
             .uri();
-        jetty_nodes::Asset::new(
+        jetty_nodes::RawAsset::new(
             cual,
             val.name,
             AssetType(FLOW.to_owned()),

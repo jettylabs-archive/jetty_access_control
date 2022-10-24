@@ -315,7 +315,7 @@ impl Permission {
 }
 
 /// Permissions and Jetty policies map 1:1.
-impl From<Permission> for jetty_nodes::Policy {
+impl From<Permission> for jetty_nodes::RawPolicy {
     /// In order to get a Jetty policy from a permission, we need to grab
     /// the user or group it's been granted to.
     fn from(val: Permission) -> Self {
@@ -327,7 +327,7 @@ impl From<Permission> for jetty_nodes::Policy {
             Grantee::User(tableau_nodes::User { id, .. }) => granted_to_users.insert(id),
         };
 
-        jetty_nodes::Policy::new(
+        jetty_nodes::RawPolicy::new(
             // Leaving names empty for now for policies since they don't have
             // a lot of significance for policies here anyway.
             Uuid::new_v4().to_string(),

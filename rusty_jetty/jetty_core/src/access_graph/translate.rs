@@ -7,7 +7,8 @@ use super::NodeName;
 use crate::{
     connectors::{
         nodes::{
-            Asset, ConnectorData, EffectivePermission, Group, Policy, SparseMatrix, Tag, User,
+            ConnectorData, EffectivePermission, RawAsset, RawGroup, RawPolicy, RawTag, RawUser,
+            SparseMatrix,
         },
         processed_nodes::{
             ProcessedAsset, ProcessedConnectorData, ProcessedGroup, ProcessedPolicy, ProcessedTag,
@@ -189,7 +190,11 @@ impl Translator {
     }
 
     /// Convert node from connector into ProcessedNode by converting all references to global NodeNames
-    fn translate_user_to_global(&self, user: User, connector: ConnectorNamespace) -> ProcessedUser {
+    fn translate_user_to_global(
+        &self,
+        user: RawUser,
+        connector: ConnectorNamespace,
+    ) -> ProcessedUser {
         ProcessedUser {
             name: self.local_to_global.users[&connector][&user.name].to_owned(),
             identifiers: user.identifiers,
@@ -211,7 +216,7 @@ impl Translator {
     /// Convert node from connector into ProcessedNode by converting all references to global NodeNames
     fn translate_group_to_global(
         &self,
-        group: Group,
+        group: RawGroup,
         connector: ConnectorNamespace,
     ) -> ProcessedGroup {
         ProcessedGroup {
@@ -244,7 +249,7 @@ impl Translator {
     /// Convert node from connector into ProcessedNode by converting all references to global NodeNames
     fn translate_asset_to_global(
         &self,
-        asset: Asset,
+        asset: RawAsset,
         connector: ConnectorNamespace,
     ) -> ProcessedAsset {
         ProcessedAsset {
@@ -286,7 +291,7 @@ impl Translator {
     }
 
     /// Convert node from connector into ProcessedNode by converting all references to global NodeNames
-    fn translate_tag_to_global(&self, tag: Tag, connector: ConnectorNamespace) -> ProcessedTag {
+    fn translate_tag_to_global(&self, tag: RawTag, connector: ConnectorNamespace) -> ProcessedTag {
         ProcessedTag {
             name: NodeName::Tag(tag.name),
             value: tag.value,
@@ -315,7 +320,7 @@ impl Translator {
     /// Convert node from connector into ProcessedNode by converting all references to global NodeNames
     fn translate_policy_to_global(
         &self,
-        policy: Policy,
+        policy: RawPolicy,
         connector: ConnectorNamespace,
     ) -> ProcessedPolicy {
         ProcessedPolicy {

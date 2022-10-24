@@ -3,7 +3,7 @@ use std::{boxed::Box, collections::HashSet};
 
 use jetty_core::{
     connectors::{
-        nodes::{self, Group},
+        nodes::{self, RawGroup},
         ConnectorClient,
     },
     jetty::ConnectorConfig,
@@ -243,7 +243,7 @@ async fn construct_connector_from(input: &TestInput) -> TestHarness<SnowflakeCon
 
 #[tokio::test]
 async fn input_produces_correct_results() {
-    let expected_groups: Vec<Group> = vec![Group {
+    let expected_groups: Vec<RawGroup> = vec![RawGroup {
         name: "my_role".to_owned(),
         metadata: HashMap::new(),
         member_of: HashSet::new(),

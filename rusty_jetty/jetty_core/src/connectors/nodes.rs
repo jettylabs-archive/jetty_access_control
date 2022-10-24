@@ -125,15 +125,15 @@ type UserName = String;
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ConnectorData {
     /// All groups in the connector
-    pub groups: Vec<Group>,
+    pub groups: Vec<RawGroup>,
     /// All users in the connector
-    pub users: Vec<User>,
+    pub users: Vec<RawUser>,
     /// All assets in the connector
-    pub assets: Vec<Asset>,
+    pub assets: Vec<RawAsset>,
     /// All tags in the connector
-    pub tags: Vec<Tag>,
+    pub tags: Vec<RawTag>,
     /// All policies in the connector
-    pub policies: Vec<Policy>,
+    pub policies: Vec<RawPolicy>,
     /// Mapping of all users to the assets they have permissions granted
     /// to.
     ///
@@ -146,11 +146,11 @@ pub struct ConnectorData {
 impl ConnectorData {
     /// Basic constructor
     pub fn new(
-        groups: Vec<Group>,
-        users: Vec<User>,
-        assets: Vec<Asset>,
-        tags: Vec<Tag>,
-        policies: Vec<Policy>,
+        groups: Vec<RawGroup>,
+        users: Vec<RawUser>,
+        assets: Vec<RawAsset>,
+        tags: Vec<RawTag>,
+        policies: Vec<RawPolicy>,
         effective_permissions: SparseMatrix<UserName, Cual, HashSet<EffectivePermission>>,
     ) -> Self {
         Self {
@@ -166,7 +166,7 @@ impl ConnectorData {
 
 #[derive(Default, Debug, PartialEq, Eq)]
 /// Group data provided by connectors
-pub struct Group {
+pub struct RawGroup {
     /// Group name
     pub name: String,
     /// K-V pairs of group-specific metadata. When sent to the graph
@@ -182,7 +182,7 @@ pub struct Group {
     pub granted_by: HashSet<String>,
 }
 
-impl Group {
+impl RawGroup {
     /// Basic constructor.
     pub fn new(
         name: String,
@@ -205,7 +205,7 @@ impl Group {
 
 /// User data provided by connectors
 #[derive(Default, Debug, PartialEq, Eq)]
-pub struct User {
+pub struct RawUser {
     /// The name of the user. When coming from a connector, this
     /// should be the name the connector uses to refer to a person.
     /// When sent to the graph, it should be the Jetty identifier for
@@ -223,7 +223,7 @@ pub struct User {
     pub granted_by: HashSet<String>,
 }
 
-impl User {
+impl RawUser {
     /// Basic constructor.
     pub fn new(
         name: String,
@@ -244,7 +244,7 @@ impl User {
 
 /// Struct used to populate asset nodes and edges in the graph
 #[derive(Default, PartialEq, Eq, Debug)]
-pub struct Asset {
+pub struct RawAsset {
     /// Connector Universal Asset Locator
     pub cual: Cual,
     /// Name of asset, fully qualified for the scope of use (connector)
@@ -270,7 +270,7 @@ pub struct Asset {
     pub tagged_as: HashSet<String>,
 }
 
-impl Asset {
+impl RawAsset {
     /// Basic constructor.
     pub fn new(
         cual: Cual,
@@ -299,13 +299,13 @@ impl Asset {
     }
 }
 
-impl Ord for Asset {
+impl Ord for RawAsset {
     fn cmp(&self, other: &Self) -> Ordering {
         self.cual.uri().cmp(&other.cual.uri())
     }
 }
 
-impl PartialOrd for Asset {
+impl PartialOrd for RawAsset {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
@@ -313,7 +313,7 @@ impl PartialOrd for Asset {
 
 /// Struct used to populate tag nodes and edges in the graph
 #[derive(Debug, PartialEq, Eq, Default)]
-pub struct Tag {
+pub struct RawTag {
     /// context
     pub name: String,
     /// Optional value for the tag (for the case of key-value tags)
@@ -337,7 +337,7 @@ pub struct Tag {
 /// Struct used to populate policy nodes and edges in the graph
 #[derive(Debug, Derivative, Clone, PartialEq, Eq)]
 #[derivative(Default)]
-pub struct Policy {
+pub struct RawPolicy {
     /// ID of the Policy, namespaced for the relevant context
     pub name: String,
     /// Privileges associated with the policy, scoped to
@@ -358,7 +358,7 @@ pub struct Policy {
     pub pass_through_lineage: bool,
 }
 
-impl Policy {
+impl RawPolicy {
     /// Basic constructor.
     pub fn new(
         name: String,

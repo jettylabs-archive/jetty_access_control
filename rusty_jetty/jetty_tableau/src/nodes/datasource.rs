@@ -60,7 +60,7 @@ impl Downloadable for Datasource {
     }
 }
 
-impl FromTableau<Datasource> for jetty_nodes::Asset {
+impl FromTableau<Datasource> for jetty_nodes::RawAsset {
     fn from(val: Datasource, env: &Environment) -> Self {
         let cual = get_tableau_cual(
             TableauAssetType::Datasource,
@@ -74,7 +74,7 @@ impl FromTableau<Datasource> for jetty_nodes::Asset {
             .get_parent_project_cual(env)
             .expect("getting parent cual")
             .uri();
-        jetty_nodes::Asset::new(
+        jetty_nodes::RawAsset::new(
             cual,
             val.name,
             AssetType(DATASOURCE.to_owned()),

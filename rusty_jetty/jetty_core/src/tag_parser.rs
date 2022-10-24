@@ -469,7 +469,7 @@ pub(crate) fn tags_to_jetty_node_helpers(
 #[cfg(test)]
 mod test {
 
-    use crate::connectors::nodes::Tag;
+    use crate::connectors::nodes::RawTag;
     use crate::cual::Cual;
 
     use super::*;

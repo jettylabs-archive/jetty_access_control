@@ -58,9 +58,9 @@ impl Group {
     }
 }
 
-impl From<Group> for jetty_nodes::Group {
+impl From<Group> for jetty_nodes::RawGroup {
     fn from(val: Group) -> Self {
-        jetty_nodes::Group::new(
+        jetty_nodes::RawGroup::new(
             val.id.to_owned(),
             HashMap::from([("tableau::id".to_owned(), val.id)]),
             // No nested groups in tableau
@@ -123,7 +123,7 @@ mod tests {
                 Default::default(),
             )],
         );
-        jetty_nodes::Group::from(g);
+        jetty_nodes::RawGroup::from(g);
     }
 
     #[test]
@@ -141,7 +141,7 @@ mod tests {
                 Default::default(),
             )],
         );
-        Into::<jetty_nodes::Group>::into(g);
+        Into::<jetty_nodes::RawGroup>::into(g);
     }
 
     #[test]
@@ -159,7 +159,7 @@ mod tests {
                 Default::default(),
             )],
         );
-        let a: jetty_nodes::Group = g.into();
+        let a: jetty_nodes::RawGroup = g.into();
         assert_eq!(a.includes_users, HashSet::from([id.to_owned()]));
     }
 }

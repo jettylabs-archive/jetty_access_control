@@ -82,7 +82,7 @@ pub(crate) async fn get_basic_lenses(
     super::to_asset_map(tc, node, &to_node)
 }
 
-impl FromTableau<Lens> for jetty_nodes::Asset {
+impl FromTableau<Lens> for jetty_nodes::RawAsset {
     fn from(val: Lens, env: &Environment) -> Self {
         let cual = get_tableau_cual(
             TableauAssetType::Lens,
@@ -105,7 +105,7 @@ impl FromTableau<Lens> for jetty_nodes::Asset {
         )
         .expect("getting parent cual")
         .uri();
-        jetty_nodes::Asset::new(
+        jetty_nodes::RawAsset::new(
             cual,
             val.name,
             AssetType(LENS.to_owned()),

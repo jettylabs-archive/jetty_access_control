@@ -231,11 +231,11 @@ impl<'a> Coordinator<'a> {
     }
 
     /// Get groups from environment
-    fn get_jetty_groups(&self) -> Vec<nodes::Group> {
+    fn get_jetty_groups(&self) -> Vec<nodes::RawGroup> {
         let mut res = vec![];
         for role in &self.env.roles {
             let RoleName(role_name) = &role.name;
-            res.push(nodes::Group::new(
+            res.push(nodes::RawGroup::new(
                 role_name.to_owned(),
                 HashMap::new(),
                 self.get_role_grant_names(&Grantee::Role(role_name.to_owned())),
@@ -248,7 +248,7 @@ impl<'a> Coordinator<'a> {
     }
 
     /// Get users from environment
-    fn get_jetty_users(&self) -> Vec<nodes::User> {
+    fn get_jetty_users(&self) -> Vec<nodes::RawUser> {
         let mut res = vec![];
         for user in &self.env.users {
             // only add user identifiers if they are not blank
@@ -275,7 +275,7 @@ impl<'a> Coordinator<'a> {
                 identifiers.insert(UserIdentifier::Other(user.login_name.to_owned()));
             };
 
-            res.push(nodes::User::new(
+            res.push(nodes::RawUser::new(
                 user.name.to_owned(),
                 identifiers,
                 HashMap::new(),
@@ -287,7 +287,7 @@ impl<'a> Coordinator<'a> {
     }
 
     /// get assets from environment
-    fn get_jetty_assets(&self) -> Vec<nodes::Asset> {
+    fn get_jetty_assets(&self) -> Vec<nodes::RawAsset> {
         let mut res = vec![];
         for object in &self.env.objects {
             let object_type = match object.kind {
@@ -295,7 +295,7 @@ impl<'a> Coordinator<'a> {
                 ObjectKind::View => VIEW,
             };
 
-            res.push(nodes::Asset::new(
+            res.push(nodes::RawAsset::new(
                 object.cual(),
                 "".to_owned(),
                 AssetType(object_type.to_owned()),
@@ -313,7 +313,7 @@ impl<'a> Coordinator<'a> {
         }
 
         for schema in &self.env.schemas {
-            res.push(nodes::Asset::new(
+            res.push(nodes::RawAsset::new(
                 schema.cual(),
                 format!("{}.{}", schema.database_name, schema.name),
                 AssetType(SCHEMA.to_owned()),
@@ -331,7 +331,7 @@ impl<'a> Coordinator<'a> {
         }
 
         for db in &self.env.databases {
-            res.push(nodes::Asset::new(
+            res.push(nodes::RawAsset::new(
                 db.cual(),
                 db.name.to_owned(),
                 AssetType(DATABASE.to_owned()),
@@ -353,12 +353,12 @@ impl<'a> Coordinator<'a> {
 
     /// get tags from environment
     /// NOT CURRENTLY IMPLEMENTED - This is an enterprise-only feature
-    fn get_jetty_tags(&self) -> Vec<nodes::Tag> {
+    fn get_jetty_tags(&self) -> Vec<nodes::RawTag> {
         vec![]
     }
 
     /// get policies from environment
-    fn get_jetty_policies(&self) -> Vec<nodes::Policy> {
+    fn get_jetty_policies(&self) -> Vec<nodes::RawPolicy> {
         let mut res = vec![];
 
         // For standard grants

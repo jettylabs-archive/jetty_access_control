@@ -55,9 +55,9 @@ impl User {
     }
 }
 
-impl From<User> for jetty_nodes::User {
+impl From<User> for jetty_nodes::RawUser {
     fn from(val: User) -> Self {
-        jetty_nodes::User::new(
+        jetty_nodes::RawUser::new(
             val.id,
             HashSet::from([
                 UserIdentifier::Email(val.email),
@@ -103,7 +103,7 @@ mod tests {
             "full_name".to_owned(),
             Default::default(),
         );
-        jetty_nodes::User::from(u);
+        jetty_nodes::RawUser::from(u);
     }
 
     #[test]
@@ -117,6 +117,6 @@ mod tests {
             "full_name".to_owned(),
             Default::default(),
         );
-        Into::<jetty_nodes::User>::into(u);
+        Into::<jetty_nodes::RawUser>::into(u);
     }
 }
