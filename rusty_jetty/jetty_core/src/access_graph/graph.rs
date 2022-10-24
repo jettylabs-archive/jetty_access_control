@@ -77,7 +77,7 @@ impl Graph {
                 .assets
                 .get(node)
                 .and_then(|n| Some(n.get_index())),
-            NodeName::Policy(_) => self
+            NodeName::Policy { .. } => self
                 .nodes
                 .policies
                 .get(node)
@@ -117,7 +117,7 @@ impl Graph {
     /// Check whether a given node already exists in the graph, and, if so, return a typed index
     pub(crate) fn get_policy_node_index(&self, node: &NodeName) -> Option<PolicyIndex> {
         match node {
-            NodeName::Policy(_) => self
+            NodeName::Policy { .. } => self
                 .nodes
                 .policies
                 .get(node)

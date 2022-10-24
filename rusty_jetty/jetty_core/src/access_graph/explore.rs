@@ -78,11 +78,17 @@ mod tests {
             &[
                 (
                     NodeName::User("user".to_owned()),
-                    NodeName::Policy("policy".to_owned()),
+                    NodeName::Policy {
+                        name: "policy".to_owned(),
+                        origin: Default::default(),
+                    },
                     EdgeType::GrantedBy,
                 ),
                 (
-                    NodeName::Policy("policy".to_owned()),
+                    NodeName::Policy {
+                        name: "policy".to_owned(),
+                        origin: Default::default(),
+                    },
                     NodeName::Asset(Cual::new("mycual://a")),
                     EdgeType::Governs,
                 ),

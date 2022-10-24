@@ -323,7 +323,10 @@ impl PolicyAttributes {
     #[cfg(test)]
     fn new(name: String) -> Self {
         Self {
-            name: NodeName::Policy(name),
+            name: NodeName::Policy {
+                name,
+                origin: Default::default(),
+            },
             privileges: Default::default(),
             pass_through_hierarchy: Default::default(),
             pass_through_lineage: Default::default(),
@@ -493,7 +496,12 @@ pub enum NodeName {
     /// Asset node
     Asset(Cual),
     /// Policy node
-    Policy(String),
+    Policy {
+        /// Policy name
+        name: String,
+        /// Origin connector
+        origin: ConnectorNamespace,
+    },
     /// Tag node
     Tag(String),
 }
@@ -510,7 +518,7 @@ impl Display for NodeName {
             NodeName::User(n) => write!(f, "{}", n.to_owned()),
             NodeName::Group { name, origin } => write!(f, "{}::{}", origin, name),
             NodeName::Asset(c) => write!(f, "{}", c.to_string()),
-            NodeName::Policy(n) => write!(f, "{}", n.to_owned()),
+            NodeName::Policy { name, origin } => write!(f, "{}::{}", origin, name),
             NodeName::Tag(n) => write!(f, "{}", n.to_owned()),
         }
     }
@@ -817,7 +825,10 @@ mod tests {
                 name: "Group c".to_string(),
                 origin: Default::default(),
             }]),
-            granted_by: HashSet::from([NodeName::Policy("Policy 1".to_string())]),
+            granted_by: HashSet::from([NodeName::Policy {
+                name: "Policy 1".to_string(),
+                origin: Default::default(),
+            }]),
             ..Default::default()
         }];
 
@@ -911,11 +922,17 @@ mod tests {
                     name: "Group 1".to_string(),
                     origin: Default::default(),
                 },
-                to: NodeName::Policy("Policy 1".to_string()),
+                to: NodeName::Policy {
+                    name: "Policy 1".to_string(),
+                    origin: Default::default(),
+                },
                 edge_type: EdgeType::GrantedBy,
             },
             JettyEdge {
-                from: NodeName::Policy("Policy 1".to_string()),
+                from: NodeName::Policy {
+                    name: "Policy 1".to_string(),
+                    origin: Default::default(),
+                },
                 to: NodeName::Group {
                     name: "Group 1".to_string(),
                     origin: Default::default(),
