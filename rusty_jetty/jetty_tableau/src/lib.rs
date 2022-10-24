@@ -112,9 +112,9 @@ impl TableauConnector {
 
     fn get_effective_permissions(
         &self,
-    ) -> SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> {
+    ) -> SparseMatrix<String, Cual, HashSet<EffectivePermission>> {
         let permission_manager = PermissionManager::new(&self.coordinator);
-        let mut final_eps: SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> =
+        let mut final_eps: SparseMatrix<String, Cual, HashSet<EffectivePermission>> =
             HashMap::new();
         let flow_eps =
             permission_manager.get_effective_permissions_for_asset(&self.coordinator.env.flows);

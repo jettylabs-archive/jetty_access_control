@@ -1,10 +1,14 @@
 //! Types and functionality to translate between connectors' local representation
 //! and Jetty's global representation
 
+use std::collections::HashSet;
+
 use super::NodeName;
 use crate::{
     connectors::{
-        nodes::{Asset, ConnectorData, Group, Policy, SparseMatrix, Tag, User},
+        nodes::{
+            Asset, ConnectorData, EffectivePermission, Group, Policy, SparseMatrix, Tag, User,
+        },
         processed_nodes::{
             ProcessedAsset, ProcessedConnectorData, ProcessedGroup, ProcessedPolicy, ProcessedTag,
             ProcessedUser,
@@ -152,35 +156,35 @@ impl Translator {
             result.users.extend(
                 cd.users
                     .into_iter()
-                    .map(|u| self.translate_user(u, namespace.to_owned()))
+                    .map(|u| self.translate_user_to_global(u, namespace.to_owned()))
                     .collect::<Vec<ProcessedUser>>(),
             );
             // convert the groups
             result.groups.extend(
                 cd.groups
                     .into_iter()
-                    .map(|g| self.translate_group(g, namespace.to_owned()))
+                    .map(|g| self.translate_group_to_global(g, namespace.to_owned()))
                     .collect::<Vec<ProcessedGroup>>(),
             );
             // convert the assets
             result.assets.extend(
                 cd.assets
                     .into_iter()
-                    .map(|a| self.translate_asset(a, namespace.to_owned()))
+                    .map(|a| self.translate_asset_to_global(a, namespace.to_owned()))
                     .collect::<Vec<ProcessedAsset>>(),
             );
             // convert the tags
             result.tags.extend(
                 cd.tags
                     .into_iter()
-                    .map(|t| self.translate_tag(t, namespace.to_owned()))
+                    .map(|t| self.translate_tag_to_global(t, namespace.to_owned()))
                     .collect::<Vec<ProcessedTag>>(),
             );
             // convert the policies
             result.policies.extend(
                 cd.policies
                     .into_iter()
-                    .map(|p| self.translate_policy(p, namespace.to_owned()))
+                    .map(|p| self.translate_policy_to_global(p, namespace.to_owned()))
                     .collect::<Vec<ProcessedPolicy>>(),
             );
         }
@@ -188,7 +192,7 @@ impl Translator {
         result
     }
 
-    fn translate_user(&self, user: User, connector: ConnectorNamespace) -> ProcessedUser {
+    fn translate_user_to_global(&self, user: User, connector: ConnectorNamespace) -> ProcessedUser {
         ProcessedUser {
             name: self.local_to_global.users[&connector][&user.name].to_owned(),
             identifiers: user.identifiers,
@@ -207,7 +211,11 @@ impl Translator {
         }
     }
 
-    fn translate_group(&self, group: Group, connector: ConnectorNamespace) -> ProcessedGroup {
+    fn translate_group_to_global(
+        &self,
+        group: Group,
+        connector: ConnectorNamespace,
+    ) -> ProcessedGroup {
         ProcessedGroup {
             name: self.local_to_global.groups[&connector][&group.name].to_owned(),
             metadata: group.metadata,
@@ -235,7 +243,11 @@ impl Translator {
         }
     }
 
-    fn translate_asset(&self, asset: Asset, connector: ConnectorNamespace) -> ProcessedAsset {
+    fn translate_asset_to_global(
+        &self,
+        asset: Asset,
+        connector: ConnectorNamespace,
+    ) -> ProcessedAsset {
         ProcessedAsset {
             name: NodeName::Asset(asset.cual),
             asset_type: asset.asset_type,
@@ -274,7 +286,7 @@ impl Translator {
         }
     }
 
-    fn translate_tag(&self, tag: Tag, connector: ConnectorNamespace) -> ProcessedTag {
+    fn translate_tag_to_global(&self, tag: Tag, connector: ConnectorNamespace) -> ProcessedTag {
         ProcessedTag {
             name: NodeName::Tag(tag.name),
             value: tag.value,
@@ -300,7 +312,11 @@ impl Translator {
         }
     }
 
-    fn translate_policy(&self, policy: Policy, connector: ConnectorNamespace) -> ProcessedPolicy {
+    fn translate_policy_to_global(
+        &self,
+        policy: Policy,
+        connector: ConnectorNamespace,
+    ) -> ProcessedPolicy {
         ProcessedPolicy {
             name: self.local_to_global.policies[&connector][&policy.name].to_owned(),
             privileges: policy.privileges,
@@ -328,5 +344,12 @@ impl Translator {
             pass_through_lineage: policy.pass_through_lineage,
             connector,
         }
+    }
+
+    fn translate_effective_permissions_axes_to_global_node_names(
+        &self,
+        data: &Vec<(ConnectorData, ConnectorNamespace)>,
+    ) -> SparseMatrix<NodeName, NodeName, HashSet<EffectivePermission>> {
+        todo!()
     }
 }

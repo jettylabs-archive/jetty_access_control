@@ -118,9 +118,9 @@ impl<'a> Coordinator<'a> {
         }
 
         // for each schema, get future grants
-        let futre_grants_arc = Arc::new(Mutex::new(&mut self.env.future_grants));
+        let future_grants_arc = Arc::new(Mutex::new(&mut self.env.future_grants));
         for schema in &self.env.schemas {
-            let m = Arc::clone(&futre_grants_arc);
+            let m = Arc::clone(&future_grants_arc);
             hold.push(Box::pin(
                 self.conn.get_future_grants_of_schema_future(schema, m),
             ));
@@ -128,7 +128,7 @@ impl<'a> Coordinator<'a> {
 
         // for database, get future grants, using the same Arc<Mutex>
         for database in &self.env.databases {
-            let m = Arc::clone(&futre_grants_arc);
+            let m = Arc::clone(&future_grants_arc);
             hold.push(Box::pin(
                 self.conn.get_future_grants_of_database_future(database, m),
             ));
@@ -251,13 +251,27 @@ impl<'a> Coordinator<'a> {
     fn get_jetty_users(&self) -> Vec<nodes::User> {
         let mut res = vec![];
         for user in &self.env.users {
+            // only add user identifiers if they are not blank
+            let mut identifiers = HashSet::new();
+            if user.email != "" {
+                identifiers.insert(UserIdentifier::Email(user.email.to_owned()));
+            };
+            if user.first_name != "" {
+                identifiers.insert(UserIdentifier::FirstName(user.first_name.to_owned()));
+            };
+            if user.last_name != "" {
+                identifiers.insert(UserIdentifier::LastName(user.last_name.to_owned()));
+            };
+            if user.first_name != "" && user.last_name != "" {
+                identifiers.insert(UserIdentifier::FullName(format!(
+                    "{} {}",
+                    user.first_name, user.last_name
+                )));
+            };
+
             res.push(nodes::User::new(
-                user.email.to_owned(),
-                HashSet::from([
-                    UserIdentifier::Email(user.email.to_owned()),
-                    UserIdentifier::FirstName(user.first_name.to_owned()),
-                    UserIdentifier::LastName(user.last_name.to_owned()),
-                ]),
+                user.name.to_owned(),
+                identifiers,
                 HashSet::from([user.display_name.to_owned(), user.login_name.to_owned()]),
                 HashMap::new(),
                 self.get_role_grant_names(&Grantee::User(user.name.to_owned())),
@@ -358,7 +372,7 @@ impl<'a> Coordinator<'a> {
     /// get effective_permissions from environment
     pub(crate) fn get_effective_permissions(
         &self,
-    ) -> SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> {
+    ) -> SparseMatrix<String, Cual, HashSet<EffectivePermission>> {
         let mut res = HashMap::new();
         let ep_map = EffectivePermissionMap::new(&self.role_grants);
 
@@ -372,7 +386,7 @@ impl<'a> Coordinator<'a> {
                     ep_map.get_effective_permissions_for_object(&self.env, user, obj),
                 );
             }
-            res.insert_or_merge(UserIdentifier::Email(user.email.to_owned()), obj_eps);
+            res.insert_or_merge(user.name.to_owned(), obj_eps);
             let mut db_eps = HashMap::new();
             for db in &self.env.databases {
                 db_eps.insert_or_merge(
@@ -384,7 +398,7 @@ impl<'a> Coordinator<'a> {
                     ),
                 );
             }
-            res.insert_or_merge(UserIdentifier::Email(user.email.to_owned()), db_eps);
+            res.insert_or_merge(user.name.to_owned(), db_eps);
             let mut schema_eps = HashMap::new();
             for schema in &self.env.schemas {
                 schema_eps.insert_or_merge(
@@ -396,7 +410,7 @@ impl<'a> Coordinator<'a> {
                     ),
                 )
             }
-            res.insert_or_merge(UserIdentifier::Email(user.email.to_owned()), schema_eps);
+            res.insert_or_merge(user.name.to_owned(), schema_eps);
         }
 
         res

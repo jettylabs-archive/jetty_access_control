@@ -39,7 +39,7 @@ impl From<&str> for PermissionMode {
     }
 }
 /// An effective permission
-#[derive(Debug, Default, Clone, Serialize, Deserialize, PartialOrd, Ord)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize, PartialOrd, Ord, Eq)]
 pub struct EffectivePermission {
     /// The privilege granted/denied for this permission.
     pub privilege: String,
@@ -120,8 +120,7 @@ impl PartialEq for EffectivePermission {
     }
 }
 
-impl Eq for EffectivePermission {}
-
+type UserName = String;
 /// Container for all node data for a given connector
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ConnectorData {
@@ -141,7 +140,7 @@ pub struct ConnectorData {
     /// `effective_permissions["user_identifier"]["asset://cual"]` would contain the effective
     /// permissions for that user,asset combination, with one EffectivePermission
     /// per privilege containing possible explanations.
-    pub effective_permissions: SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>>,
+    pub effective_permissions: SparseMatrix<UserName, Cual, HashSet<EffectivePermission>>,
 }
 
 impl ConnectorData {
@@ -152,7 +151,7 @@ impl ConnectorData {
         assets: Vec<Asset>,
         tags: Vec<Tag>,
         policies: Vec<Policy>,
-        effective_permissions: SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>>,
+        effective_permissions: SparseMatrix<UserName, Cual, HashSet<EffectivePermission>>,
     ) -> Self {
         Self {
             groups,

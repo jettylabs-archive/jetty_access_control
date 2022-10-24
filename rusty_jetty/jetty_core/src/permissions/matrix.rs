@@ -26,38 +26,18 @@ pub trait InsertOrMerge<K, V> {
 }
 
 /// Top-level impl for a `SparseMatrix` like the one that holds effective
-/// permissions for Tableau.
-impl InsertOrMerge<UserIdentifier, HashMap<Cual, HashSet<EffectivePermission>>>
-    for SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>>
-{
-    fn insert_or_merge(
-        &mut self,
-        key: UserIdentifier,
-        new_asset_perms: HashMap<Cual, HashSet<EffectivePermission>>,
-    ) {
-        if let Some(user_perms) = self.get_mut(&key) {
-            for (cual, new_perms) in new_asset_perms {
-                user_perms.insert_or_merge(cual, new_perms);
-            }
-        } else {
-            self.insert(key, new_asset_perms);
-        }
-    }
-}
+/// permissions
+impl<T, U, V> InsertOrMerge<T, HashMap<U, HashSet<V>>> for SparseMatrix<T, U, HashSet<V>>
+where
+    T: PartialEq + Hash + Eq,
+    U: PartialEq + Hash + Eq,
 
-/// Top-level impl for a `SparseMatrix` like the one that holds effective
-/// permissions for Tableau.
-impl InsertOrMerge<UserIndex, HashMap<AssetIndex, HashSet<EffectivePermission>>>
-    for SparseMatrix<UserIndex, AssetIndex, HashSet<EffectivePermission>>
+    V: Merge<V> + Clone + Eq + Hash,
 {
-    fn insert_or_merge(
-        &mut self,
-        key: UserIndex,
-        new_asset_perms: HashMap<AssetIndex, HashSet<EffectivePermission>>,
-    ) {
+    fn insert_or_merge(&mut self, key: T, new_asset_perms: HashMap<U, HashSet<V>>) {
         if let Some(user_perms) = self.get_mut(&key) {
-            for (asset, new_perms) in new_asset_perms {
-                user_perms.insert_or_merge(asset, new_perms);
+            for (second_key, new_perms) in new_asset_perms {
+                user_perms.insert_or_merge(second_key, new_perms);
             }
         } else {
             self.insert(key, new_asset_perms);
@@ -69,62 +49,30 @@ impl InsertOrMerge<UserIndex, HashMap<AssetIndex, HashSet<EffectivePermission>>>
 ///
 /// When there is a hash collision, use `EffectivePermission`'s merge impl to
 /// gracefully merge them.
-impl InsertOrMerge<Cual, HashSet<EffectivePermission>>
-    for HashMap<Cual, HashSet<EffectivePermission>>
+impl<U, V> InsertOrMerge<U, HashSet<V>> for HashMap<U, HashSet<V>>
+where
+    U: PartialEq + Hash + Eq,
+    V: Merge<V> + Clone + Eq + Hash,
 {
-    fn insert_or_merge(&mut self, cual: Cual, new_perms: HashSet<EffectivePermission>) {
-        let mut new_perms = new_perms;
-        if let Some(existing_user_asset_perms) = self.get_mut(&cual) {
-            let mut merged_perms: HashSet<EffectivePermission> = existing_user_asset_perms
+    fn insert_or_merge(&mut self, key: U, value: HashSet<V>) {
+        let mut new_perms = value;
+        if let Some(existing_values) = self.get_mut(&key) {
+            let mut merged_perms: HashSet<V> = existing_values
                 .clone()
                 .into_iter()
-                .map(|mut existing_effective_permission| {
-                    if let Some(new_ep) = new_perms.take(&existing_effective_permission) {
+                .map(|mut existing_value| {
+                    if let Some(new_ep) = new_perms.take(&existing_value) {
                         // Matched permissions. Merge mode and reasons.
-                        existing_effective_permission.merge(new_ep).unwrap();
+                        existing_value.merge(new_ep).unwrap();
                     }
-                    existing_effective_permission
+                    existing_value
                 })
                 .collect();
             // Add the remaining new permissions
             merged_perms.extend(new_perms);
-            *existing_user_asset_perms = merged_perms;
+            *existing_values = merged_perms;
         } else {
-            self.insert(cual, new_perms);
-        }
-    }
-}
-
-/// Inner impl for the SparseMatrix asset map from `AssetIndex` -> [`EffectivePermission`].
-///
-/// When there is a hash collision, use `EffectivePermission`'s merge impl to
-/// gracefully merge them.
-impl InsertOrMerge<AssetIndex, HashSet<EffectivePermission>>
-    for HashMap<AssetIndex, HashSet<EffectivePermission>>
-{
-    fn insert_or_merge(
-        &mut self,
-        asset_index: AssetIndex,
-        new_perms: HashSet<EffectivePermission>,
-    ) {
-        let mut new_perms = new_perms;
-        if let Some(existing_user_asset_perms) = self.get_mut(&asset_index) {
-            let mut merged_perms: HashSet<EffectivePermission> = existing_user_asset_perms
-                .clone()
-                .into_iter()
-                .map(|mut existing_effective_permission| {
-                    if let Some(new_ep) = new_perms.take(&existing_effective_permission) {
-                        // Matched permissions. Merge mode and reasons.
-                        existing_effective_permission.merge(new_ep).unwrap();
-                    }
-                    existing_effective_permission
-                })
-                .collect();
-            // Add the remaining new permissions
-            merged_perms.extend(new_perms);
-            *existing_user_asset_perms = merged_perms;
-        } else {
-            self.insert(asset_index, new_perms);
+            self.insert(key, new_perms);
         }
     }
 }
@@ -141,27 +89,13 @@ pub trait Merge<T> {
 
 /// Top-level impl for a SparseMatrix. The incoming (`other`) matrix takes precedence
 /// when there are clashes.
-impl Merge<SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>>>
-    for SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>>
+impl<T, U, V> Merge<SparseMatrix<T, U, HashSet<V>>> for SparseMatrix<T, U, HashSet<V>>
+where
+    T: PartialEq + Hash + Eq,
+    U: PartialEq + Hash + Eq,
+    V: Merge<V> + PartialEq + Hash + Eq + Clone,
 {
-    fn merge(
-        &mut self,
-        other: SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>>,
-    ) -> Result<()> {
-        for (uid, asset_map) in other {
-            self.insert_or_merge(uid, asset_map);
-        }
-        Ok(())
-    }
-}
-
-impl Merge<SparseMatrix<UserIndex, AssetIndex, HashSet<EffectivePermission>>>
-    for SparseMatrix<UserIndex, AssetIndex, HashSet<EffectivePermission>>
-{
-    fn merge(
-        &mut self,
-        other: SparseMatrix<UserIndex, AssetIndex, HashSet<EffectivePermission>>,
-    ) -> Result<()> {
+    fn merge(&mut self, other: SparseMatrix<T, U, HashSet<V>>) -> Result<()> {
         for (uid, asset_map) in other {
             self.insert_or_merge(uid, asset_map);
         }
@@ -273,7 +207,10 @@ mod tests {
     #[test]
     fn test_insert_or_merge_for_matrix_inserts() {
         let mut matrix = HashMap::new();
-        matrix.insert_or_merge(UserIdentifier::Email("".to_owned()), HashMap::new());
+        matrix.insert_or_merge(
+            UserIdentifier::Email("".to_owned()),
+            HashMap::<String, HashSet<EffectivePermission>>::new(),
+        );
         assert_eq!(
             matrix,
             HashMap::from([(UserIdentifier::Email("".to_owned()), HashMap::new())])
