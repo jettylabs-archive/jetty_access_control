@@ -36,12 +36,8 @@ async fn direct_groups_handler(
     // Group names in the url will be written as origin::group_name, so
     // we need to parse that out
     // Eventually, we could switch this to a hash
-    let (origin, name) = node_id.split_once("::").unwrap();
     let from = ag
-        .get_group_index_from_name(&NodeName::Group {
-            name: name.to_owned(),
-            origin: ConnectorNamespace(origin.to_owned()),
-        })
+        .get_group_index_from_name(&group_name_from_url_param(node_id))
         .context("fetching group node")
         .unwrap();
 
@@ -77,12 +73,8 @@ async fn inherited_groups_handler(
     // Group names in the url will be written as origin::group_name, so
     // we need to parse that out
     // Eventually, we could switch this to a hash
-    let (origin, name) = node_id.split_once("::").unwrap();
     let from = ag
-        .get_group_index_from_name(&NodeName::Group {
-            name: name.to_owned(),
-            origin: ConnectorNamespace(origin.to_owned()),
-        })
+        .get_group_index_from_name(&group_name_from_url_param(node_id))
         .context("fetching group node")
         .unwrap();
 
@@ -129,12 +121,8 @@ async fn direct_members_groups_handler(
     // Group names in the url will be written as origin::group_name, so
     // we need to parse that out
     // Eventually, we could switch this to a hash
-    let (origin, name) = node_id.split_once("::").unwrap();
     let from = ag
-        .get_group_index_from_name(&NodeName::Group {
-            name: name.to_owned(),
-            origin: ConnectorNamespace(origin.to_owned()),
-        })
+        .get_group_index_from_name(&group_name_from_url_param(node_id))
         .context("fetching group node")
         .unwrap();
 
@@ -170,12 +158,8 @@ async fn direct_members_users_handler(
     // Group names in the url will be written as origin::group_name, so
     // we need to parse that out
     // Eventually, we could switch this to a hash
-    let (origin, name) = node_id.split_once("::").unwrap();
     let from = ag
-        .get_group_index_from_name(&NodeName::Group {
-            name: name.to_owned(),
-            origin: ConnectorNamespace(origin.to_owned()),
-        })
+        .get_group_index_from_name(&group_name_from_url_param(node_id))
         .context("fetching group node")
         .unwrap();
     let group_nodes = ag.get_matching_children(
@@ -209,12 +193,8 @@ async fn all_members_handler(
     // Group names in the url will be written as origin::group_name, so
     // we need to parse that out
     // Eventually, we could switch this to a hash
-    let (origin, name) = node_id.split_once("::").unwrap();
     let from = ag
-        .get_group_index_from_name(&NodeName::Group {
-            name: name.to_owned(),
-            origin: ConnectorNamespace(origin.to_owned()),
-        })
+        .get_group_index_from_name(&group_name_from_url_param(node_id))
         .context("fetching group node")
         .unwrap();
 
@@ -250,4 +230,13 @@ async fn all_members_handler(
         })
         .collect::<Vec<_>>();
     Json(group_attributes)
+}
+
+/// Construct a NodeName::Group form the node_id url parameter
+fn group_name_from_url_param(node_id: String) -> NodeName {
+    let (origin, name) = node_id.split_once("::").unwrap();
+    NodeName::Group {
+        name: name.to_owned(),
+        origin: ConnectorNamespace(origin.to_owned()),
+    }
 }
