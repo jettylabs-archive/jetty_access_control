@@ -1,22 +1,21 @@
 <template>
   <JettyTable title="Inherited Group Membership" :rows-per-page="10" :filter-method="filterMethod" :columns="columns"
-    :csv-config="csvConfig" :fetchPath="
-      '/api/group/' + encodeURIComponent(props.node.name) + '/inherited_groups'
-    " v-slot="{ props: { row } }"
+    :csv-config="csvConfig" :fetchPath="'/api/group/' + encodeURIComponent(props.node.name) + '/inherited_groups'"
+    v-slot="{ props: { row } }: { props: { row: GroupWithPaths } }"
     :tip="`The groups that ${props.node.name} is an inherited member of through child relationships`">
     <q-tr>
       <q-td key="name">
         <q-item class="q-px-none">
           <q-item-section>
-            <router-link :to="'/group/' + encodeURIComponent(row.name)" style="text-decoration: none; color: inherit">
-              <q-item-label> {{ row.name }}</q-item-label>
+            <router-link :to="'/group/' + groupNameAsString(row.group.Group.name)"
+              style="text-decoration: none; color: inherit">
+              <q-item-label> {{ groupNameAsString(row.group.Group.name) }}</q-item-label>
             </router-link>
             <q-item-label caption>
-              <JettyBadge v-for="platform in row.connectors" :key="platform" :name="platform" />
+              <JettyBadge v-for="connector in row.group.Group.connectors" :key="connector" :name="connector" />
             </q-item-label>
           </q-item-section>
         </q-item>
-        {{ row }}
       </q-td>
       <q-td key="membership_paths" class="q-px-none">
         <div>
@@ -31,6 +30,13 @@
 import JettyTable from '../JettyTable.vue';
 import JettyBadge from '../JettyBadge.vue';
 import GroupPath from '../GroupPath.vue';
+import { GroupPath as GroupPathType, GroupSummary } from '../models';
+import { groupNameAsString } from 'src/util'
+
+interface GroupWithPaths {
+  group: GroupSummary,
+  paths: GroupPathType[]
+}
 
 const props = defineProps(['node']);
 

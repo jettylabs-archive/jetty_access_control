@@ -1,6 +1,7 @@
 import { exportFile } from 'quasar';
+import { GroupName } from './components/models';
 
-const getBadgeColor = (stringInput: string) => {
+export const getBadgeColor = (stringInput: string) => {
   if (stringInput.toLocaleLowerCase() == 'jetty') {
     return '#f47124';
   }
@@ -12,7 +13,7 @@ const getBadgeColor = (stringInput: string) => {
   return `hsl(${stringUniqueHash % 360}, 95%, 35%)`;
 };
 
-const getNodeIcon = (stringInput: string) => {
+export const getNodeIcon = (stringInput: string) => {
   let icon = 'person';
   switch (stringInput) {
     case 'user':
@@ -31,7 +32,7 @@ const getNodeIcon = (stringInput: string) => {
   return icon;
 };
 
-function wrapCsvValue(val) {
+export function wrapCsvValue(val) {
   let formatted = val === void 0 || val === null ? '' : String(val);
 
   formatted = formatted.split('"').join('""');
@@ -45,7 +46,7 @@ function wrapCsvValue(val) {
   return `"${formatted}"`;
 }
 
-function downloadCSV(filename, columns, rows) {
+export function downloadCSV(filename, columns, rows) {
   // naive encoding to csv format
   const content = [columns.map((c) => wrapCsvValue(c))]
     .concat(rows.map((row) => row.map((val) => wrapCsvValue(val)).join(',')))
@@ -58,7 +59,7 @@ function downloadCSV(filename, columns, rows) {
   }
 }
 
-function fetchJson(path: string) {
+export function fetchJson(path: string) {
   const requestOptions: RequestInit = {
     method: 'GET',
     redirect: 'follow',
@@ -69,4 +70,6 @@ function fetchJson(path: string) {
     .catch((error) => console.log('error fetching data:', error));
 }
 
-export { getBadgeColor, downloadCSV, fetchJson, getNodeIcon };
+export function groupNameAsString(name: GroupName) {
+  return name.Group.origin + '::' + name.Group.name;
+}

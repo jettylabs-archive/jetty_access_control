@@ -11,22 +11,11 @@
 </template>
 
 <script lang="ts" setup>
+import { groupNameAsString } from 'src/util';
+import { GroupPath } from './models';
 
-type GroupPath = GroupSummary[];
-
-interface GroupSummary {
-  Group: {
-    name: {
-      Group: {
-        name: string,
-        origin: string,
-      }
-    }
-    connectors: string[]
-  }
-};
 
 const props = defineProps<{ paths: GroupPath[] }>();
 
-const getPathString = (path: GroupPath) => { console.log(path); return path.map(g => g.Group.name.Group.origin + '::' + g.Group.name.Group.name).join(' ⇨ ') };
+const getPathString = (path: GroupPath) => { console.log(path); return path.map(g => groupNameAsString(g.Group.name)).join(' ⇨ ') };
 </script>
