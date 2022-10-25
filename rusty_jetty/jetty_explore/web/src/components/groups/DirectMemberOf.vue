@@ -16,7 +16,7 @@
         <q-item class="q-px-none">
           <q-item-section>
             <router-link
-              :to="'/group/' + encodeURIComponent(slotProps.props.row.name)"
+              :to="'/group/' + encodeURIComponent(slotProps.props.row.name.origin + '::' + slotProps.props.row.name.name)"
               style="text-decoration: none; color: inherit"
             >
               <q-item-label> {{ slotProps.props.row.name }}</q-item-label>
@@ -50,6 +50,9 @@ const columns = [
     align: 'left',
   },
 ];
+
+
+
 
 // Filters by name or platform
 const filterMethod = (rows, terms) => {

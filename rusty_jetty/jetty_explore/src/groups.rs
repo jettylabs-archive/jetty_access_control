@@ -2,7 +2,10 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use axum::{extract::Path, routing::get, Extension, Json, Router};
-use jetty_core::access_graph::{self, EdgeType, JettyNode, NodeName};
+use jetty_core::{
+    access_graph::{self, EdgeType, JettyNode, NodeName},
+    jetty::ConnectorNamespace,
+};
 
 use super::ObjectWithPathResponse;
 
@@ -27,9 +30,16 @@ async fn direct_groups_handler(
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<access_graph::GroupAttributes>> {
+    // Group names in the url will be written as origin::group_name, so
+    // we need to parse that out
+    // Eventually, we could switch this to a hash
+    let (origin, name) = node_id.split_once("::").unwrap();
     let from = ag
-        .get_group_index_from_name(&NodeName::User(node_id))
-        .context("fetching user node")
+        .get_group_index_from_name(&NodeName::Group {
+            name: name.to_owned(),
+            origin: ConnectorNamespace(origin.to_owned()),
+        })
+        .context("fetching group node")
         .unwrap();
 
     let group_nodes = ag.get_matching_children(
@@ -60,11 +70,19 @@ async fn inherited_groups_handler(
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<ObjectWithPathResponse>> {
+    // Group names in the url will be written as origin::group_name, so
+    // we need to parse that out
+    // Eventually, we could switch this to a hash
+    let (origin, name) = node_id.split_once("::").unwrap();
     let from = ag
-        .get_group_index_from_name(&NodeName::User(node_id))
-        .context("fetching user node")
+        .get_group_index_from_name(&NodeName::Group {
+            name: name.to_owned(),
+            origin: ConnectorNamespace(origin.to_owned()),
+        })
+        .context("fetching group node")
         .unwrap();
 
+    // return simple paths to all group children
     let res = ag.all_matching_simple_paths_to_children(
         from,
         |n| matches!(n, EdgeType::MemberOf),
@@ -96,9 +114,16 @@ async fn direct_members_groups_handler(
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<access_graph::GroupAttributes>> {
+    // Group names in the url will be written as origin::group_name, so
+    // we need to parse that out
+    // Eventually, we could switch this to a hash
+    let (origin, name) = node_id.split_once("::").unwrap();
     let from = ag
-        .get_group_index_from_name(&NodeName::User(node_id))
-        .context("fetching user node")
+        .get_group_index_from_name(&NodeName::Group {
+            name: name.to_owned(),
+            origin: ConnectorNamespace(origin.to_owned()),
+        })
+        .context("fetching group node")
         .unwrap();
 
     let group_nodes = ag.get_matching_children(
@@ -129,11 +154,17 @@ async fn direct_members_users_handler(
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<access_graph::UserAttributes>> {
+    // Group names in the url will be written as origin::group_name, so
+    // we need to parse that out
+    // Eventually, we could switch this to a hash
+    let (origin, name) = node_id.split_once("::").unwrap();
     let from = ag
-        .get_group_index_from_name(&NodeName::User(node_id))
-        .context("fetching user node")
+        .get_group_index_from_name(&NodeName::Group {
+            name: name.to_owned(),
+            origin: ConnectorNamespace(origin.to_owned()),
+        })
+        .context("fetching group node")
         .unwrap();
-
     let group_nodes = ag.get_matching_children(
         from,
         |n| matches!(n, EdgeType::Includes),
@@ -161,9 +192,16 @@ async fn all_members_handler(
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<ObjectWithPathResponse>> {
+    // Group names in the url will be written as origin::group_name, so
+    // we need to parse that out
+    // Eventually, we could switch this to a hash
+    let (origin, name) = node_id.split_once("::").unwrap();
     let from = ag
-        .get_group_index_from_name(&NodeName::User(node_id))
-        .context("fetching user node")
+        .get_group_index_from_name(&NodeName::Group {
+            name: name.to_owned(),
+            origin: ConnectorNamespace(origin.to_owned()),
+        })
+        .context("fetching group node")
         .unwrap();
 
     let res = ag.all_matching_simple_paths_to_children(
