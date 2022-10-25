@@ -605,8 +605,8 @@ impl AccessGraph {
         AccessGraph::new(pcd)
     }
 
-    /// This is a placeholder for the translation layer. The final access graph will need effective permissions with different axes than
-    /// the connectors provide.
+    /// This translate effective permissions from using node names for indices to using
+    /// node indices
     fn translate_effective_permissions_to_global_indices(
         &self,
         // This should match SparseMatrix<NodeName::User(), NodeName::Asset(), HashSet<_>>

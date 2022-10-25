@@ -253,25 +253,25 @@ impl<'a> Coordinator<'a> {
         for user in &self.env.users {
             // only add user identifiers if they are not blank
             let mut identifiers = HashSet::new();
-            if user.email != "" {
+            if !user.email.is_empty() {
                 identifiers.insert(UserIdentifier::Email(user.email.to_owned()));
             };
-            if user.first_name != "" {
+            if !user.first_name.is_empty() {
                 identifiers.insert(UserIdentifier::FirstName(user.first_name.to_owned()));
             };
-            if user.last_name != "" {
+            if !user.last_name.is_empty() {
                 identifiers.insert(UserIdentifier::LastName(user.last_name.to_owned()));
             };
-            if user.first_name != "" && user.last_name != "" {
+            if !user.first_name.is_empty() && !user.last_name.is_empty() {
                 identifiers.insert(UserIdentifier::FullName(format!(
                     "{} {}",
                     user.first_name, user.last_name
                 )));
             };
-            if user.display_name != "" {
+            if !user.display_name.is_empty() {
                 identifiers.insert(UserIdentifier::Other(user.display_name.to_owned()));
             };
-            if user.login_name != "" {
+            if !user.login_name.is_empty() {
                 identifiers.insert(UserIdentifier::Other(user.login_name.to_owned()));
             };
 
