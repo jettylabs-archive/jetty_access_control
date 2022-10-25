@@ -5,6 +5,7 @@
 
 mod assets;
 mod groups;
+mod node_summaries;
 mod nodes;
 mod static_server;
 mod tags;
