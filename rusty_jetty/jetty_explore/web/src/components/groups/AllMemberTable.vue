@@ -34,7 +34,7 @@
         </q-item>
       </q-td>
       <q-td key="membership_paths" class="q-px-none">
-        <GroupPath :paths="row.paths" />
+        <NodePath :paths="row.paths" />
       </q-td>
     </q-tr>
   </JettyTable>
@@ -43,15 +43,16 @@
 <script lang="ts" setup>
 import JettyTable from '../JettyTable.vue';
 import JettyBadge from '../JettyBadge.vue';
-import { NodePath as GroupPathType, UserSummary } from '../models';
-import { nodeNameAsString } from 'src/util';
-import GroupPath from '../GroupPath.vue';
+import { NodePath as NodePathType, UserSummary } from '../models';
+import { getPathAsString, nodeNameAsString } from 'src/util';
+import NodePath from '../NodePath.vue';
+import Fuse from 'fuse.js';
 
 const props = defineProps(['node']);
 
 interface UserWithPaths {
   node: UserSummary;
-  paths: GroupPathType[];
+  paths: NodePathType[];
 }
 
 const columns = [
@@ -72,15 +73,22 @@ const columns = [
 ];
 
 // Filters by name or platform
-const filterMethod = (rows, terms) => {
+const filterMethod = (rows: UserWithPaths[], terms) => {
+  const fuse = new Fuse(rows, {
+    keys: ['node.User.name.User', 'node.User.connectors'],
+  });
+
+  return fuse.search(terms).map((r) => r.item);
+
   const needles = terms.toLocaleLowerCase().split(' ');
   return rows.filter((r) =>
     needles.every(
       (needle) =>
-        r.name.toLocaleLowerCase().indexOf(needle) > -1 ||
+        r.node.User.name.User.toLocaleLowerCase().indexOf(needle) > -1 ||
         // because we don't care which platform it matches, just concatenate them
         // into a single string
-        r.platforms.join(' ').toLocaleLowerCase().indexOf(needle) > -1
+        r.node.User.connectors.join(' ').toLocaleLowerCase().indexOf(needle) >
+          -1
     )
   );
 };
@@ -89,9 +97,13 @@ const csvConfig = {
   filename: props.node.name + '_all_members.csv',
   columnNames: ['User', 'Platforms', 'Membership Path'],
   // accepts filtered sorted rows and returns the proper mapping
-  mappingFn: (filteredSortedRows) =>
+  mappingFn: (filteredSortedRows: UserWithPaths[]) =>
     filteredSortedRows.flatMap((r) =>
-      r.membership_paths.map((m) => [r.name, r.platforms.join(', '), m])
+      r.paths.map((m) => [
+        nodeNameAsString(r.node),
+        r.node.User.connectors.join(', '),
+        getPathAsString(m),
+      ])
     ),
 };
 </script>

@@ -33,7 +33,7 @@
       </q-td>
       <q-td key="membership_paths" class="q-px-none">
         <div>
-          <GroupPath :paths="row.paths" />
+          <NodePath :paths="row.paths" />
         </div>
       </q-td>
     </q-tr>
@@ -43,7 +43,7 @@
 <script lang="ts" setup>
 import JettyTable from '../JettyTable.vue';
 import JettyBadge from '../JettyBadge.vue';
-import GroupPath from '../GroupPath.vue';
+import NodePath from '../NodePath.vue';
 import { NodePath as GroupPathType, GroupSummary } from '../models';
 import { nodeNameAsString } from 'src/util';
 

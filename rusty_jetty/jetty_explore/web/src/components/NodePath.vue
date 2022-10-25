@@ -7,7 +7,7 @@
           :key="idx"
           style="padding-top: 2px; padding-bottom: 2px"
         >
-          {{ getPathString(item) }}
+          {{ getPathAsString(item) }}
         </li>
       </ul>
     </div>
@@ -15,13 +15,8 @@
 </template>
 
 <script lang="ts" setup>
-import { nodeNameAsString } from 'src/util';
+import { nodeNameAsString, getPathAsString } from 'src/util';
 import { NodePath } from './models';
 
 const props = defineProps<{ paths: NodePath[] }>();
-
-const getPathString = (path: NodePath) => {
-  console.log(path);
-  return path.map((g) => nodeNameAsString(g)).join(' ⇨ ');
-};
 </script>

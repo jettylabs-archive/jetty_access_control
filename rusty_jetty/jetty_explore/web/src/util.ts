@@ -2,6 +2,7 @@ import { exportFile } from 'quasar';
 import {
   GroupName,
   GroupSummary,
+  NodePath,
   UserName,
   UserSummary,
 } from './components/models';
@@ -82,3 +83,7 @@ export function nodeNameAsString(node: GroupSummary | UserSummary) {
     return node.User.name.User;
   }
 }
+
+export const getPathAsString = (path: NodePath) => {
+  return path.map((g) => nodeNameAsString(g)).join(' ⇨ ');
+};
