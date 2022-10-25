@@ -4,6 +4,7 @@ import {
   GroupName,
   GroupSummary,
   NodePath,
+  TagSummary,
   UserName,
   UserSummary,
 } from './components/models';
@@ -78,29 +79,33 @@ export function fetchJson(path: string) {
 }
 
 export function nodeNameAsString(
-  node: GroupSummary | UserSummary | AssetSummary
-) {
+  node: GroupSummary | UserSummary | AssetSummary | TagSummary
+): string {
   if ('Group' in node) {
     return node.Group.name.Group.origin + '::' + node.Group.name.Group.name;
   } else if ('User' in node) {
     return node.User.name.User;
   } else if ('Asset' in node) {
     return node.Asset.name.Asset.uri;
+  } else if ('Tag' in node) {
+    return node.Tag.name.Tag;
   }
 }
 
 export function nodeConnectors(
-  node: GroupSummary | UserSummary | AssetSummary
-) {
+  node: GroupSummary | UserSummary | AssetSummary | TagSummary
+): string[] {
   if ('Group' in node) {
     return node.Group.connectors;
   } else if ('User' in node) {
     return node.User.connectors;
   } else if ('Asset' in node) {
     return node.Asset.connectors;
+  } else if ('Tag' in node) {
+    return node.Tag.connectors;
   }
 }
 
-export const getPathAsString = (path: NodePath) => {
+export const getPathAsString = (path: NodePath): string => {
   return path.map((g) => nodeNameAsString(g)).join(' ⇨ ');
 };

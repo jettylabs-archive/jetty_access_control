@@ -25,7 +25,13 @@ pub(crate) enum NodeSummary {
         name: NodeName,
         connectors: HashSet<ConnectorNamespace>,
     },
-    Tag,
+    Tag {
+        name: NodeName,
+        description: Option<String>,
+        pass_through_hierarchy: bool,
+        pass_through_lineage: bool,
+        connectors: HashSet<ConnectorNamespace>,
+    },
     Policy,
 }
 
@@ -45,7 +51,13 @@ impl From<JettyNode> for NodeSummary {
                 asset_type: n.asset_type,
                 connectors: n.connectors,
             },
-            JettyNode::Tag(_) => todo!(),
+            JettyNode::Tag(n) => NodeSummary::Tag {
+                name: n.name,
+                description: n.description,
+                pass_through_hierarchy: n.pass_through_hierarchy,
+                pass_through_lineage: n.pass_through_lineage,
+                connectors: n.connectors,
+            },
             JettyNode::Policy(_) => todo!(),
         }
     }

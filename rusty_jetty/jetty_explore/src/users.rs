@@ -4,7 +4,9 @@ use anyhow::Context;
 use axum::{extract::Path, routing::get, Extension, Json, Router};
 use serde::Serialize;
 
-use crate::{NodeWithPrivileges, PrivilegeResponse, UserAssetsResponse};
+use crate::{
+    node_summaries::NodeSummary, NodeWithPrivileges, PrivilegeResponse, UserAssetsResponse,
+};
 
 use super::ObjectWithPathResponse;
 use jetty_core::{
@@ -53,22 +55,16 @@ async fn assets_handler(
 }
 
 #[derive(Serialize)]
-pub(crate) struct TagWithAssets {
-    name: String,
-    assets: Vec<AssetBasics>,
-}
-
-#[derive(Serialize)]
-pub(crate) struct AssetBasics {
-    name: String,
-    connectors: HashSet<String>,
+pub(crate) struct NodeWithListOfNodes {
+    node: NodeSummary,
+    list: Vec<NodeSummary>,
 }
 
 /// Return information about a users access to tagged assets, grouped by tag
 async fn tags_handler(
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
-) -> Json<Vec<TagWithAssets>> {
+) -> Json<Vec<NodeWithListOfNodes>> {
     let from = ag
         .get_user_index_from_name(&NodeName::User(node_id))
         .context("fetching user node")
@@ -80,18 +76,11 @@ async fn tags_handler(
     let response = tag_asset_map
         .into_iter()
         .map(|(t, v)| (&ag[t], v))
-        .map(|(t, v)| TagWithAssets {
-            name: t.get_string_name(),
-            assets: v
-                .iter()
-                .map(|v| AssetBasics {
-                    name: v.get_string_name(),
-                    connectors: v
-                        .get_node_connectors()
-                        .iter()
-                        .map(|n| n.to_string())
-                        .collect(),
-                })
+        .map(|(t, v)| NodeWithListOfNodes {
+            node: t.to_owned().into(),
+            list: v
+                .into_iter()
+                .map(|a| NodeSummary::from(ag[a].to_owned()))
                 .collect(),
         })
         .collect::<Vec<_>>();

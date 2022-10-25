@@ -55,3 +55,17 @@ export interface EffectivePermission {
   mode: 'Allow' | 'Deny';
   reasons: string[];
 }
+
+export interface TagName {
+  Tag: string;
+}
+
+export interface TagSummary {
+  Tag: {
+    name: TagName;
+    description: null | string;
+    pass_through_hierarch: boolean;
+    pass_through_lineage: boolean;
+    connectors: string[];
+  };
+}
