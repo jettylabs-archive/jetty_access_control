@@ -71,7 +71,10 @@ const csvConfig = {
   filename: props.node.name + '_direct_members_users.csv',
   columnNames: ['User', 'Platforms'],
   // accepts filtered sorted rows and returns the proper mapping
-  mappingFn: (filteredSortedRows) =>
-    filteredSortedRows.map((r) => [r.name, r.connectors.join(', ')]),
+  mappingFn: (filteredSortedRows: UserSummary[]) =>
+    filteredSortedRows.map((r) => [
+      nodeNameAsString(r),
+      r.User.connectors.join(', '),
+    ]),
 };
 </script>

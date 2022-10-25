@@ -45,7 +45,7 @@ import JettyTable from '../JettyTable.vue';
 import JettyBadge from '../JettyBadge.vue';
 import NodePath from '../NodePath.vue';
 import { NodePath as GroupPathType, GroupSummary } from '../models';
-import { nodeNameAsString } from 'src/util';
+import { getPathAsString, nodeNameAsString } from 'src/util';
 
 interface GroupWithPaths {
   node: GroupSummary;
@@ -87,9 +87,13 @@ const csvConfig = {
   filename: props.node.name + '_indirect_groups.csv',
   columnNames: ['Group Name', 'Platform', 'Membership Paths'],
   // accepts filtered sorted rows and returns the proper mapping
-  mappingFn: (filteredSortedRows) =>
+  mappingFn: (filteredSortedRows: GroupWithPaths[]) =>
     filteredSortedRows.flatMap((r) =>
-      r.membership_paths.map((m) => [r.name, r.connectors.join(', '), m])
+      r.paths.map((m) => [
+        nodeNameAsString(r.node),
+        r.node.Group.connectors.join(', '),
+        getPathAsString(m),
+      ])
     ),
 };
 </script>

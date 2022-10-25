@@ -69,7 +69,10 @@ const csvConfig = {
   filename: props.node.name + '_direct_groups.csv',
   columnNames: ['Group Name', 'Platforms'],
   // accepts filtered sorted rows and returns the proper mapping
-  mappingFn: (filteredSortedRows) =>
-    filteredSortedRows.map((r) => [r.name, r.connectors.join(', ')]),
+  mappingFn: (filteredSortedRows: GroupSummary[]) =>
+    filteredSortedRows.map((r) => [
+      nodeNameAsString(r),
+      r.Group.connectors.join(', '),
+    ]),
 };
 </script>
