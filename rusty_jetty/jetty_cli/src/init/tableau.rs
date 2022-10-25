@@ -1,9 +1,12 @@
+use std::collections::HashMap;
+
 use anyhow::Result;
 use inquire::{Password, PasswordDisplayMode, Text};
+use jetty_core::jetty::CredentialsMap;
 
 use super::validation::filled_validator;
 
-pub(crate) fn tableau_connector_setup() -> Result<()> {
+pub(crate) fn tableau_connector_setup() -> Result<CredentialsMap> {
     let tableau_server_name = Text::new("Tableau server url:")
         .with_validator(filled_validator)
         .with_placeholder("fs.online.tableau.com")
@@ -30,5 +33,10 @@ pub(crate) fn tableau_connector_setup() -> Result<()> {
         .with_validator(filled_validator)
         .with_help_message("Your password will be saved locally. Jetty doesn't store passwords. [Ctrl+R] to toggle visibility.")
         .prompt()?;
-    Ok(())
+    Ok(HashMap::from([
+        ("server_name".to_owned(), tableau_server_name),
+        ("site_name".to_owned(), tableau_site_name),
+        ("username".to_owned(), tableau_username),
+        ("password".to_owned(), tableau_password),
+    ]))
 }

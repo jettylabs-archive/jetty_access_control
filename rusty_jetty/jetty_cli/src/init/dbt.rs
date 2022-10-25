@@ -1,10 +1,13 @@
+use std::collections::HashMap;
+
 use anyhow::Result;
 use colored::Colorize;
 use inquire::Text;
+use jetty_core::jetty::CredentialsMap;
 
 use super::validation::filled_validator;
 
-pub(crate) fn dbt_connector_setup() -> Result<()> {
+pub(crate) fn dbt_connector_setup() -> Result<CredentialsMap> {
     println!(
         "{}",
         "Note: dbt only offers Snowflake support in this version".red()
@@ -19,5 +22,5 @@ pub(crate) fn dbt_connector_setup() -> Result<()> {
         .prompt()?;
 
     // TODO: Verify the project exists.
-    Ok(())
+    Ok(HashMap::from([("project_dir".to_owned(), dbt_project_dir)]))
 }

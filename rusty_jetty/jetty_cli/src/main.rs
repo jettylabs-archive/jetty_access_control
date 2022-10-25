@@ -58,7 +58,9 @@ async fn main() -> Result<()> {
     match &args.command {
         JettyCommand::Init => {
             println!("Welcome to Jetty! We are so glad you're here.");
-            init::init();
+            let config = init::init()?;
+            println!("{}", config.0.to_yaml()?);
+            println!("\n\n{:?}", config.1);
         }
 
         JettyCommand::Fetch {

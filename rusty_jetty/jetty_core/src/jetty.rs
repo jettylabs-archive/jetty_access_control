@@ -5,15 +5,15 @@ use std::fs;
 
 use anyhow::{anyhow, Result};
 use dirs::home_dir;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use yaml_peg::serde as yaml;
 
 /// The user-defined namespace corresponding to the connector.
-#[derive(Deserialize, Debug, Hash, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Debug, Hash, PartialEq, Eq)]
 pub struct ConnectorNamespace(pub String);
 /// Struct representing the jetty_config.yaml file.
 #[allow(dead_code)]
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Default)]
 pub struct JettyConfig {
     version: String,
     name: String,
@@ -22,10 +22,9 @@ pub struct JettyConfig {
 }
 
 impl JettyConfig {
-    pub(crate) fn new() -> Self {
-        Self {
-            ..Default::default()
-        }
+    /// New === default for this simple constructor.
+    pub fn new() -> Self {
+        Default::default()
     }
 
     /// Use the default filepath to ingest the Jetty config.
@@ -35,11 +34,21 @@ impl JettyConfig {
 
         config.pop().ok_or_else(|| anyhow!["failed"])
     }
+
+    /// Set the project name.
+    pub fn set_name(&mut self, name: String) {
+        self.name = name;
+    }
+
+    /// Convert this config to a yaml string.
+    pub fn to_yaml(&self) -> Result<String> {
+        yaml::to_string(self).map_err(anyhow::Error::from)
+    }
 }
 
 /// Config for all connectors in this project.
 #[allow(dead_code)]
-#[derive(Deserialize, Default, Debug)]
+#[derive(Deserialize, Serialize, Default, Debug)]
 pub struct ConnectorConfig {
     #[serde(rename = "type")]
     connector_type: String,

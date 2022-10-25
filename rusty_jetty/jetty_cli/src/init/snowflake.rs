@@ -1,13 +1,14 @@
 use core::time;
-use std::thread;
+use std::{collections::HashMap, thread};
 
 use anyhow::Result;
 use colored::Colorize;
 use inquire::{Confirm, Text};
+use jetty_core::jetty::CredentialsMap;
 
 use super::validation::filled_validator;
 
-pub(crate) fn snowflake_connector_setup() -> Result<()> {
+pub(crate) fn snowflake_connector_setup() -> Result<CredentialsMap> {
     let snowflake_account_id = Text::new("Snowflake Account Identifier:")
         .with_validator(filled_validator)
         .with_placeholder("org-account_name")
@@ -44,5 +45,10 @@ pub(crate) fn snowflake_connector_setup() -> Result<()> {
     let confirmed = Confirm::new("Enter (y) once the ALTER USER is complete").prompt()?;
 
     // TODO: Check connection
-    Ok(())
+    Ok(HashMap::from([
+        ("account".to_owned(), snowflake_account_id),
+        ("user".to_owned(), admin_username),
+        ("public_key_fp".to_owned(), "fp".to_owned()),
+        ("private_key".to_owned(), "pk".to_owned()),
+    ]))
 }

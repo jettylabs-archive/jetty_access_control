@@ -33,7 +33,7 @@ pub(crate) fn init() -> Result<(JettyConfig, HashMap<String, CredentialsMap>)> {
     let render_config = RenderConfig::default();
     set_global_render_config(render_config);
 
-    jetty_config.name = project_name()?;
+    jetty_config.set_name(project_name()?);
     let connector_types = connector_select()?;
 
     for connector in connector_types {
@@ -43,12 +43,13 @@ pub(crate) fn init() -> Result<(JettyConfig, HashMap<String, CredentialsMap>)> {
         );
         let connector_namespace = connector_namespace(connector)?;
 
-        match connector {
+        let credentials_map = match connector {
             "dbt" => dbt_connector_setup()?,
             "snowflake" => snowflake_connector_setup()?,
             "tableau" => tableau_connector_setup()?,
             &_ => panic!("Unrecognized input"),
         };
+        credentials.insert(connector.to_owned(), credentials_map);
     }
 
     execute!(stdout(), LeaveAlternateScreen).map_err(anyhow::Error::from)?;
