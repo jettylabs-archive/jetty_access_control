@@ -1,6 +1,6 @@
 import { exportFile } from 'quasar';
 
-const getBadgeColor = (stringInput) => {
+const getBadgeColor = (stringInput: string) => {
   if (stringInput.toLocaleLowerCase() == 'jetty') {
     return '#f47124';
   }
@@ -12,7 +12,7 @@ const getBadgeColor = (stringInput) => {
   return `hsl(${stringUniqueHash % 360}, 95%, 35%)`;
 };
 
-const getNodeIcon = (stringInput) => {
+const getNodeIcon = (stringInput: string) => {
   let icon = 'person';
   switch (stringInput) {
     case 'user':
@@ -58,7 +58,7 @@ function downloadCSV(filename, columns, rows) {
   }
 }
 
-function fetchJson(path) {
+function fetchJson(path: string) {
   const requestOptions: RequestInit = {
     method: 'GET',
     redirect: 'follow',
