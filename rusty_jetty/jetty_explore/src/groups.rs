@@ -38,7 +38,7 @@ pub(super) fn router() -> Router {
 async fn direct_groups_handler(
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
-) -> Json<Vec<access_graph::GroupAttributes>> {
+) -> Json<Vec<NodeSummary>> {
     // Group names in the url will be written as origin::group_name, so
     // we need to parse that out
     // Eventually, we could switch this to a hash
@@ -63,8 +63,9 @@ async fn direct_groups_handler(
     let group_attributes = group_nodes
         .into_iter()
         .filter_map(|i| {
-            if let JettyNode::Group(g) = &ag.graph()[i] {
-                Some(g.to_owned())
+            let jetty_node = &ag.graph()[i];
+            if let JettyNode::Group(_) = jetty_node {
+                Some(NodeSummary::from(jetty_node.to_owned()))
             } else {
                 None
             }
@@ -130,7 +131,7 @@ async fn inherited_groups_handler(
 async fn direct_members_groups_handler(
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
-) -> Json<Vec<access_graph::GroupAttributes>> {
+) -> Json<Vec<NodeSummary>> {
     // Group names in the url will be written as origin::group_name, so
     // we need to parse that out
     // Eventually, we could switch this to a hash
@@ -155,8 +156,9 @@ async fn direct_members_groups_handler(
     let group_attributes = group_nodes
         .into_iter()
         .filter_map(|i| {
-            if let JettyNode::Group(g) = &ag.graph()[i] {
-                Some(g.to_owned())
+            let jetty_node = &ag.graph()[i];
+            if let JettyNode::Group(g) = jetty_node {
+                Some(NodeSummary::from(jetty_node.to_owned()))
             } else {
                 panic!("found wrong node type - expected group")
             }

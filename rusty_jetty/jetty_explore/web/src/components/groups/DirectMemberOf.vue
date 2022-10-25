@@ -1,32 +1,19 @@
 <template>
-  <JettyTable
-    title="Direct Group Membership"
-    :rows-per-page="10"
-    :filter-method="filterMethod"
-    :columns="columns"
-    :csv-config="csvConfig"
-    :fetchPath="
+  <JettyTable title="Direct Group Membership" :rows-per-page="10" :filter-method="filterMethod" :columns="columns"
+    :csv-config="csvConfig" :fetchPath="
       '/api/group/' + encodeURIComponent(props.node.name) + '/direct_groups'
-    "
-    v-slot="slotProps"
-    :tip="`The groups that ${props.node.name} is a direct member of`"
-  >
+    " v-slot="{ props: { row } }: { props: { row: GroupSummary } }"
+    :tip="`The groups that ${props.node.name} is a direct member of`">
     <q-tr>
       <q-td key="name">
         <q-item class="q-px-none">
           <q-item-section>
-            <router-link
-              :to="'/group/' + encodeURIComponent(slotProps.props.row.name.origin + '::' + slotProps.props.row.name.name)"
-              style="text-decoration: none; color: inherit"
-            >
-              <q-item-label> {{ slotProps.props.row.name }}</q-item-label>
+            <router-link :to="'/group/' + encodeURIComponent(groupNameAsString(row.Group.name))"
+              style="text-decoration: none; color: inherit">
+              <q-item-label> {{ groupNameAsString(row.Group.name) }}</q-item-label>
             </router-link>
             <q-item-label caption>
-              <JettyBadge
-                v-for="platform in slotProps.props.row.connectors"
-                :key="platform"
-                :name="platform"
-              />
+              <JettyBadge v-for="connector in row.Group.connectors" :key="connector" :name="connector" />
             </q-item-label>
           </q-item-section>
         </q-item>
@@ -38,6 +25,8 @@
 <script lang="ts" setup>
 import JettyTable from '../JettyTable.vue';
 import JettyBadge from '../JettyBadge.vue';
+import { GroupSummary } from '../models';
+import { groupNameAsString } from 'src/util'
 
 const props = defineProps(['node']);
 
