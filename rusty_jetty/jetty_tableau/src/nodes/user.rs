@@ -55,15 +55,15 @@ impl User {
     }
 }
 
-impl From<User> for jetty_nodes::User {
+impl From<User> for jetty_nodes::RawUser {
     fn from(val: User) -> Self {
-        jetty_nodes::User::new(
-            val.email.to_owned(),
+        jetty_nodes::RawUser::new(
+            val.id,
             HashSet::from([
                 UserIdentifier::Email(val.email),
                 UserIdentifier::FullName(val.full_name),
+                UserIdentifier::Other(val.external_auth_user_id),
             ]),
-            HashSet::from([val.external_auth_user_id, format!("{:?}", val.site_role)]),
             HashMap::new(),
             // Handled in groups.
             HashSet::new(),
@@ -91,7 +91,6 @@ pub(crate) async fn get_basic_users(tc: &rest::TableauRestClient) -> Result<Hash
 #[cfg(test)]
 mod tests {
     use super::*;
-    
 
     #[test]
     #[allow(unused_must_use)]
@@ -104,7 +103,7 @@ mod tests {
             "full_name".to_owned(),
             Default::default(),
         );
-        jetty_nodes::User::from(u);
+        jetty_nodes::RawUser::from(u);
     }
 
     #[test]
@@ -118,6 +117,6 @@ mod tests {
             "full_name".to_owned(),
             Default::default(),
         );
-        Into::<jetty_nodes::User>::into(u);
+        Into::<jetty_nodes::RawUser>::into(u);
     }
 }

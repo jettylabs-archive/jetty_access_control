@@ -37,7 +37,7 @@ impl<'x> PermissionManager<'x> {
     >(
         &self,
         assets: &HashMap<String, T>,
-    ) -> SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> {
+    ) -> SparseMatrix<String, Cual, HashSet<EffectivePermission>> {
         let mut all_perms = self.get_explicit_effective_permissions_for_asset(assets);
         all_perms
             .merge(self.get_implicit_effective_permissions_for_asset(assets))
@@ -112,9 +112,8 @@ impl<'x> PermissionManager<'x> {
     >(
         &self,
         assets: &HashMap<String, T>,
-    ) -> SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> {
-        let mut ep: SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> =
-            HashMap::new();
+    ) -> SparseMatrix<String, Cual, HashSet<EffectivePermission>> {
+        let mut ep: SparseMatrix<String, Cual, HashSet<EffectivePermission>> = HashMap::new();
 
         let capability_restrictions_map = AssetCapabilityMap::new();
 
@@ -136,7 +135,7 @@ impl<'x> PermissionManager<'x> {
                     })
                     .collect();
                 ep.insert_or_merge(
-                    UserIdentifier::Email(su.email.to_owned()),
+                    su.id.to_owned(),
                     HashMap::from([(cual.clone(), effective_permissions)]),
                 );
             }
@@ -166,7 +165,7 @@ impl<'x> PermissionManager<'x> {
                     })
                     .collect();
                 ep.insert_or_merge(
-                    UserIdentifier::Email(user.email.to_owned()),
+                    user.id.to_owned(),
                     HashMap::from([(cual.clone(), effective_permissions)]),
                 );
             }
@@ -181,9 +180,8 @@ impl<'x> PermissionManager<'x> {
     >(
         &self,
         assets: &HashMap<String, T>,
-    ) -> SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> {
-        let mut ep: SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> =
-            HashMap::new();
+    ) -> SparseMatrix<String, Cual, HashSet<EffectivePermission>> {
+        let mut ep: SparseMatrix<String, Cual, HashSet<EffectivePermission>> = HashMap::new();
         // for each asset
         assets.values().for_each(|asset| {
             // get all perms as user -> [permission] mapping
@@ -213,7 +211,7 @@ impl<'x> PermissionManager<'x> {
                     .collect();
                 // Add permissions to ep[user][asset]
                 ep.insert(
-                    UserIdentifier::Email(user.email.to_owned()),
+                    user.id.to_owned(),
                     HashMap::from([(
                         asset.cual(&self.coordinator.env),
                         explicit_effective_permissions,
@@ -266,9 +264,8 @@ impl<'x> PermissionManager<'x> {
     >(
         &self,
         assets: &HashMap<String, T>,
-    ) -> SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> {
-        let mut ep: SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> =
-            HashMap::new();
+    ) -> SparseMatrix<String, Cual, HashSet<EffectivePermission>> {
+        let mut ep: SparseMatrix<String, Cual, HashSet<EffectivePermission>> = HashMap::new();
         assets.iter().for_each(|(_, asset)| {
             let asset_capabilities = super::get_capabilities_for_asset_type(asset.get_asset_type());
             // Content owners
@@ -285,7 +282,7 @@ impl<'x> PermissionManager<'x> {
                     })
                     .collect();
                 ep.insert_or_merge(
-                    UserIdentifier::Email(owner.email.to_owned()),
+                    owner.id.to_owned(),
                     HashMap::from([(asset.cual(&self.coordinator.env), perms)]),
                 );
 
@@ -307,9 +304,9 @@ impl<'x> PermissionManager<'x> {
                                     )
                                 })
                                 .collect();
-                        for grantee_email in perm.grantee_user_emails() {
+                        for grantee_id in perm.grantee_user_ids() {
                             ep.insert_or_merge(
-                                UserIdentifier::Email(grantee_email),
+                                grantee_id,
                                 HashMap::from([(
                                     asset.cual(&self.coordinator.env),
                                     leader_effective_permissions.clone(),
@@ -421,7 +418,7 @@ mod tests {
         ];
 
         expected.sort();
-        let mut result = ep[&UserIdentifier::Email("".to_owned())]
+        let mut result = ep[&"".to_owned()]
             [&Cual::new("tableau://dummy-server@dummy-site//?type=flow")]
             .clone()
             .into_iter()

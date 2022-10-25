@@ -19,7 +19,7 @@ use cual::set_cual_account_name;
 use jetty_core::{
     connectors::{
         self,
-        nodes::{Asset as JettyAsset, ConnectorData},
+        nodes::{ConnectorData, RawAsset as JettyAsset},
     },
     jetty::{ConnectorConfig, CredentialsBlob},
     Connector,
@@ -114,7 +114,7 @@ mod tests {
 
     use super::*;
     use jetty_core::{
-        connectors::{nodes::Asset, AssetType, ConnectorClient},
+        connectors::{nodes::RawAsset, AssetType, ConnectorClient},
         cual::Cual,
     };
     use manifest::{node::DbtNode, MockDbtProjectManifest};
@@ -198,7 +198,7 @@ mod tests {
         assert_eq!(
             data,
             ConnectorData {
-                assets: vec![Asset {
+                assets: vec![RawAsset {
                     cual: Cual::new("snowflake://account.snowflakecomputing.com/DB/SCHEMA/MODEL"),
                     name: "".to_owned(),
                     asset_type: AssetType(VIEW.to_owned()),
@@ -264,7 +264,7 @@ mod tests {
         assert_eq!(
             assets.sort(),
             vec![
-                Asset {
+                RawAsset {
                     cual: Cual::new("snowflake:////"),
                     name: "".to_owned(),
                     asset_type: AssetType(VIEW.to_owned()),
@@ -276,7 +276,7 @@ mod tests {
                     derived_to: HashSet::from(["".to_owned()]),
                     tagged_as: HashSet::new()
                 },
-                Asset {
+                RawAsset {
                     cual: Cual::new("snowflake:////test"),
                     name: "test".to_owned(),
                     asset_type: AssetType(VIEW.to_owned()),
@@ -288,7 +288,7 @@ mod tests {
                     derived_to: HashSet::from(["".to_owned()]),
                     tagged_as: HashSet::new()
                 },
-                Asset {
+                RawAsset {
                     cual: Cual::new("snowflake://test2db/test2schema/test2"),
                     name: "test2".to_owned(),
                     asset_type: AssetType(VIEW.to_owned()),

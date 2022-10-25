@@ -70,14 +70,14 @@ impl TableauConnector {
     fn env_to_jetty_all(
         &self,
     ) -> (
-        Vec<jetty_nodes::Group>,
-        Vec<jetty_nodes::User>,
-        Vec<jetty_nodes::Asset>,
-        Vec<jetty_nodes::Tag>,
-        Vec<jetty_nodes::Policy>,
+        Vec<jetty_nodes::RawGroup>,
+        Vec<jetty_nodes::RawUser>,
+        Vec<jetty_nodes::RawAsset>,
+        Vec<jetty_nodes::RawTag>,
+        Vec<jetty_nodes::RawPolicy>,
     ) {
         // Transform assets
-        let flows: Vec<jetty_nodes::Asset> =
+        let flows: Vec<jetty_nodes::RawAsset> =
             self.object_to_jetty(&self.coordinator.env.flows, &self.coordinator.env);
         let projects = self.object_to_jetty(&self.coordinator.env.projects, &self.coordinator.env);
         let lenses = self.object_to_jetty(&self.coordinator.env.lenses, &self.coordinator.env);
@@ -112,9 +112,9 @@ impl TableauConnector {
 
     fn get_effective_permissions(
         &self,
-    ) -> SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> {
+    ) -> SparseMatrix<String, Cual, HashSet<EffectivePermission>> {
         let permission_manager = PermissionManager::new(&self.coordinator);
-        let mut final_eps: SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>> =
+        let mut final_eps: SparseMatrix<String, Cual, HashSet<EffectivePermission>> =
             HashMap::new();
         let flow_eps =
             permission_manager.get_effective_permissions_for_asset(&self.coordinator.env.flows);

@@ -94,7 +94,7 @@ impl View {
     }
 }
 
-impl FromTableau<View> for jetty_nodes::Asset {
+impl FromTableau<View> for jetty_nodes::RawAsset {
     fn from(val: View, env: &Environment) -> Self {
         let cual = get_tableau_cual(
             TableauAssetType::View,
@@ -117,7 +117,7 @@ impl FromTableau<View> for jetty_nodes::Asset {
         )
         .expect("getting parent cual")
         .uri();
-        jetty_nodes::Asset::new(
+        jetty_nodes::RawAsset::new(
             cual,
             val.name,
             AssetType(VIEW.to_owned()),

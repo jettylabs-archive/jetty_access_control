@@ -1,5 +1,6 @@
-//! Types and functions for the processed nodes. These are used after the translation layer, and all
-//! references to other nodes are NodeNames
+//! Types and functions for processed nodes. Processed nodes are used after the translation layer - all
+//! references to other nodes have been converted to NodeNames
+
 use std::{
     cmp::Ordering,
     collections::{HashMap, HashSet},
@@ -12,18 +13,15 @@ use crate::{
     access_graph::{
         graph::typed_indices::{AssetIndex, UserIndex},
         helpers::{insert_edge_pair, NodeHelper},
-        AssetAttributes, EdgeType, GroupAttributes, GroupName, JettyEdge, JettyNode, NodeName,
-        PolicyAttributes, PolicyName, TagAttributes, UserAttributes, UserName,
+        AssetAttributes, EdgeType, GroupAttributes, JettyEdge, JettyNode, NodeName,
+        PolicyAttributes, TagAttributes, UserAttributes,
     },
     cual::Cual,
     jetty::ConnectorNamespace,
     Connector,
 };
 
-use super::{
-    nodes::{EffectivePermission, SparseMatrix},
-    UserIdentifier,
-};
+use super::nodes::{EffectivePermission, SparseMatrix};
 
 /// Container for all node data for a given connector
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -44,7 +42,7 @@ pub struct ProcessedConnectorData {
     /// `effective_permissions["user_identifier"]["asset://cual"]` would contain the effective
     /// permissions for that user,asset combination, with one EffectivePermission
     /// per privilege containing possible explanations.
-    pub effective_permissions: SparseMatrix<UserIndex, AssetIndex, HashSet<EffectivePermission>>,
+    pub effective_permissions: SparseMatrix<NodeName, NodeName, HashSet<EffectivePermission>>,
 }
 
 #[derive(Default, Debug, PartialEq, Eq)]

@@ -123,7 +123,7 @@ impl HasSources for Workbook {
     }
 }
 
-impl FromTableau<Workbook> for jetty_nodes::Asset {
+impl FromTableau<Workbook> for jetty_nodes::RawAsset {
     fn from(val: Workbook, env: &Environment) -> Self {
         let cual = get_tableau_cual(
             TableauAssetType::Workbook,
@@ -137,7 +137,7 @@ impl FromTableau<Workbook> for jetty_nodes::Asset {
             .get_parent_project_cual(env)
             .expect("getting parent cual")
             .uri();
-        jetty_nodes::Asset::new(
+        jetty_nodes::RawAsset::new(
             cual,
             val.name,
             AssetType(WORKBOOK.to_owned()),

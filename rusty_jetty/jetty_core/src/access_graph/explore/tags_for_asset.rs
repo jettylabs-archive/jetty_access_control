@@ -7,8 +7,7 @@ use petgraph::stable_graph::NodeIndex;
 use serde::Serialize;
 
 use crate::access_graph::{
-    graph::typed_indices::{AssetIndex, ToNodeIndex},
-    AccessGraph, EdgeType, JettyNode, TagAttributes,
+    graph::typed_indices::AssetIndex, AccessGraph, EdgeType, JettyNode, TagAttributes,
 };
 
 use super::NodePath;
@@ -26,7 +25,7 @@ pub struct AssetTags {
 
 impl AccessGraph {
     /// Return tags for an asset, grouped by the tag source.
-    pub fn tags_for_asset_by_source<T: ToNodeIndex>(&self, asset: T) -> AssetTags {
+    pub fn tags_for_asset_by_source<T: Into<NodeIndex> + Copy>(&self, asset: T) -> AssetTags {
         // get paths of tags applied through hierarchy
         let hierarchy_paths = self.get_paths_to_tags_via_inheritance(
             asset,
@@ -114,7 +113,7 @@ impl AccessGraph {
         return_tags
     }
 
-    fn get_paths_to_tags_via_inheritance<T: ToNodeIndex>(
+    fn get_paths_to_tags_via_inheritance<T: Into<NodeIndex>>(
         &self,
         from: T,
         edge_matcher: fn(&EdgeType) -> bool,
