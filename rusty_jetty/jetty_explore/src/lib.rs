@@ -45,6 +45,12 @@ pub(crate) struct NodeSummaryWithPrivileges {
     privileges: HashSet<EffectivePermission>,
 }
 
+#[derive(Serialize)]
+pub(crate) struct NodeSummaryWithListOfNodeSummaries {
+    node: NodeSummary,
+    list: Vec<NodeSummary>,
+}
+
 /// Struct used to return asset access information
 #[derive(Serialize, Deserialize)]
 pub(crate) struct UserAssetsResponse {

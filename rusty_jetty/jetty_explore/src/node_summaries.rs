@@ -10,7 +10,7 @@ use jetty_core::{
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub(crate) enum NodeSummary {
     Asset {
         name: NodeName,

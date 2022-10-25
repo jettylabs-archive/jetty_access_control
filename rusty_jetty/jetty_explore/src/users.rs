@@ -5,8 +5,8 @@ use axum::{extract::Path, routing::get, Extension, Json, Router};
 use serde::Serialize;
 
 use crate::{
-    node_summaries::NodeSummary, NodeSummaryWithPaths, NodeSummaryWithPrivileges,
-    PrivilegeResponse, UserAssetsResponse,
+    node_summaries::NodeSummary, NodeSummaryWithListOfNodeSummaries, NodeSummaryWithPaths,
+    NodeSummaryWithPrivileges, PrivilegeResponse, UserAssetsResponse,
 };
 
 use super::ObjectWithPathResponse;
@@ -53,12 +53,6 @@ async fn assets_handler(
             })
             .collect(),
     )
-}
-
-#[derive(Serialize)]
-pub(crate) struct NodeSummaryWithListOfNodeSummaries {
-    node: NodeSummary,
-    list: Vec<NodeSummary>,
 }
 
 /// Return information about a users access to tagged assets, grouped by tag
