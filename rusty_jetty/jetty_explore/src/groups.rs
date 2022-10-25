@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 
 use anyhow::Context;
 use axum::{extract::Path, routing::get, Extension, Json, Router};
@@ -6,8 +6,17 @@ use jetty_core::{
     access_graph::{self, EdgeType, JettyNode, NodeName},
     jetty::ConnectorNamespace,
 };
+use serde::{Deserialize, Serialize};
+
+use crate::node_summaries::NodeSummary;
 
 use super::ObjectWithPathResponse;
+
+#[derive(Serialize, Deserialize)]
+struct GroupSummaryWithPaths {
+    group: NodeSummary,
+    paths: Vec<Vec<NodeSummary>>,
+}
 
 /// Return a router to handle all group-related requests
 pub(super) fn router() -> Router {
@@ -69,7 +78,7 @@ async fn direct_groups_handler(
 async fn inherited_groups_handler(
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
-) -> Json<Vec<ObjectWithPathResponse>> {
+) -> Json<Vec<GroupSummaryWithPaths>> {
     // Group names in the url will be written as origin::group_name, so
     // we need to parse that out
     // Eventually, we could switch this to a hash
@@ -95,11 +104,19 @@ async fn inherited_groups_handler(
     let group_attributes = res
         .into_iter()
         .filter_map(|(i, p)| {
-            if let JettyNode::Group(g) = &ag.graph()[i] {
-                Some(ObjectWithPathResponse {
-                    name: g.name.to_string(),
-                    connectors: g.connectors.iter().map(|n| n.to_string()).collect(),
-                    membership_paths: p.iter().map(|p| ag.path_as_string(p)).collect(),
+            let jetty_node = &ag.graph()[i];
+            if let JettyNode::Group(_) = jetty_node {
+                Some(GroupSummaryWithPaths {
+                    group: jetty_node.to_owned().into(),
+                    paths: p
+                        .iter()
+                        .map(|q| {
+                            ag.path_as_jetty_nodes(q)
+                                .iter()
+                                .map(|v| NodeSummary::from((*v).to_owned()))
+                                .collect()
+                        })
+                        .collect(),
                 })
             } else {
                 None
