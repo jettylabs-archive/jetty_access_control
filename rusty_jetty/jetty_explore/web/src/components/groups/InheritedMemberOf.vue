@@ -2,26 +2,25 @@
   <JettyTable title="Inherited Group Membership" :rows-per-page="10" :filter-method="filterMethod" :columns="columns"
     :csv-config="csvConfig" :fetchPath="
       '/api/group/' + encodeURIComponent(props.node.name) + '/inherited_groups'
-    " v-slot="slotProps"
+    " v-slot="{ props: { row } }"
     :tip="`The groups that ${props.node.name} is an inherited member of through child relationships`">
     <q-tr>
       <q-td key="name">
         <q-item class="q-px-none">
           <q-item-section>
-            <router-link :to="'/group/' + encodeURIComponent(slotProps.props.row.name)"
-              style="text-decoration: none; color: inherit">
-              <q-item-label> {{ slotProps.props.row.name }}</q-item-label>
+            <router-link :to="'/group/' + encodeURIComponent(row.name)" style="text-decoration: none; color: inherit">
+              <q-item-label> {{ row.name }}</q-item-label>
             </router-link>
             <q-item-label caption>
-              <JettyBadge v-for="platform in slotProps.props.row.connectors" :key="platform" :name="platform" />
+              <JettyBadge v-for="platform in row.connectors" :key="platform" :name="platform" />
             </q-item-label>
           </q-item-section>
         </q-item>
-        {{ slotProps.props.row }}
+        {{ row }}
       </q-td>
       <q-td key="membership_paths" class="q-px-none">
         <div>
-          <GroupPath :paths="slotProps.props.row.paths" />
+          <GroupPath :paths="row.paths" />
         </div>
       </q-td>
     </q-tr>
