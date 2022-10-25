@@ -69,3 +69,8 @@ export interface TagSummary {
     connectors: string[];
   };
 }
+
+export interface GroupWithPaths {
+  node: GroupSummary;
+  paths: NodePath[];
+}

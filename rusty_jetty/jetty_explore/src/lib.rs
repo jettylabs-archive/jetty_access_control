@@ -40,7 +40,7 @@ struct NodeSummaryWithPaths {
 }
 
 #[derive(Serialize, Deserialize)]
-pub(crate) struct NodeWithPrivileges {
+pub(crate) struct NodeSummaryWithPrivileges {
     node: NodeSummary,
     privileges: HashSet<EffectivePermission>,
 }
