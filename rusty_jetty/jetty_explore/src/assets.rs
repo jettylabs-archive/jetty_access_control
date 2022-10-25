@@ -17,8 +17,8 @@ use jetty_core::{
 use serde::Serialize;
 
 use crate::{
-    node_summaries::NodeSummary, NodeSummaryWithListOfNodeSummaries, NodeSummaryWithPaths,
-    NodeSummaryWithPrivileges, PrivilegeResponse, UserAssetsResponse,
+    node_summaries::NodeSummary, NodeSummaryWithPaths, NodeSummaryWithPrivileges,
+    PrivilegeResponse, SummaryWithAssociatedSummaries, UserAssetsResponse,
 };
 
 /// Return a router to handle all asset-related requests
@@ -154,7 +154,7 @@ async fn users_incl_downstream_handler(
     // node_id is the cual for an asset
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
-) -> Json<Vec<NodeSummaryWithListOfNodeSummaries>> {
+) -> Json<Vec<SummaryWithAssociatedSummaries>> {
     // get all assets that that reference the given asset
     let asset_index = ag
         .get_asset_index_from_name(&NodeName::Asset(Cual::new(node_id.as_str())))
@@ -203,9 +203,9 @@ async fn users_incl_downstream_handler(
     Json(
         user_asset_map
             .into_iter()
-            .map(|(u, assets)| NodeSummaryWithListOfNodeSummaries {
+            .map(|(u, assets)| SummaryWithAssociatedSummaries {
                 node: ag[u].to_owned().into(),
-                list: assets
+                associations: assets
                     .iter()
                     .map(|a| NodeSummary::from(ag[*a].to_owned()))
                     .collect(),

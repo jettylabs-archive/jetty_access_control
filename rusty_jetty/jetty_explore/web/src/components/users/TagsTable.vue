@@ -25,7 +25,7 @@
       <q-td key="assets" style="padding-right: 0px">
         <q-list dense>
           <q-item
-            v-for="asset in row.list"
+            v-for="asset in row.associations"
             :key="asset.Asset.name.Asset.uri"
             class="q-px-none"
           >
@@ -54,7 +54,7 @@ import { nodeNameAsString } from 'src/util';
 
 interface TagWithAssets {
   node: TagSummary;
-  list: AssetSummary[];
+  associations: AssetSummary[];
 }
 
 const props = defineProps(['node']);
@@ -103,7 +103,7 @@ const csvConfig = {
   // accepts a row and returns the proper mapping
   mappingFn: (filteredSortedRows: TagWithAssets[]) =>
     filteredSortedRows.flatMap((r) =>
-      r.list.map((a) => [
+      r.associations.map((a) => [
         nodeNameAsString(r.node),
         nodeNameAsString(a),
         a.Asset.connectors.join(', '),

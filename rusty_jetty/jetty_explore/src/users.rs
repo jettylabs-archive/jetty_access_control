@@ -5,8 +5,8 @@ use axum::{extract::Path, routing::get, Extension, Json, Router};
 use serde::Serialize;
 
 use crate::{
-    node_summaries::NodeSummary, NodeSummaryWithListOfNodeSummaries, NodeSummaryWithPaths,
-    NodeSummaryWithPrivileges, PrivilegeResponse, UserAssetsResponse,
+    node_summaries::NodeSummary, NodeSummaryWithPaths, NodeSummaryWithPrivileges,
+    PrivilegeResponse, SummaryWithAssociatedSummaries, UserAssetsResponse,
 };
 
 use super::ObjectWithPathResponse;
@@ -59,7 +59,7 @@ async fn assets_handler(
 async fn tags_handler(
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
-) -> Json<Vec<NodeSummaryWithListOfNodeSummaries>> {
+) -> Json<Vec<SummaryWithAssociatedSummaries>> {
     let from = ag
         .get_user_index_from_name(&NodeName::User(node_id))
         .context("fetching user node")
@@ -71,9 +71,9 @@ async fn tags_handler(
     let response = tag_asset_map
         .into_iter()
         .map(|(t, v)| (&ag[t], v))
-        .map(|(t, v)| NodeSummaryWithListOfNodeSummaries {
+        .map(|(t, v)| SummaryWithAssociatedSummaries {
             node: t.to_owned().into(),
-            list: v
+            associations: v
                 .into_iter()
                 .map(|a| NodeSummary::from(ag[a].to_owned()))
                 .collect(),
