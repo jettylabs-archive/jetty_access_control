@@ -31,7 +31,7 @@
       </q-td>
       <q-td key="paths" class="q-px-none">
         <div>
-          <ul class="q-my-none q-pl-sm" style="list-style-type: '❯ '">
+          <ul class="q-my-none q-pl-sm">
             <li
               v-for="path in slotProps.props.row.paths"
               :key="path"

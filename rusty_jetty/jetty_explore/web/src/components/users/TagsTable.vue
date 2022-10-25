@@ -23,11 +23,11 @@
         </q-item>
       </q-td>
       <q-td key="assets" style="padding-right: 0px">
-        <q-list dense>
-          <q-item
+        <ul class="q-my-none">
+          <li
             v-for="asset in row.associations"
             :key="asset.Asset.name.Asset.uri"
-            class="q-px-none"
+            style="padding-top: 2px; padding-bottom: 2px"
           >
             <div class="q-pr-sm">
               {{ nodeNameAsString(asset) }}
@@ -39,8 +39,8 @@
                 :name="connector"
               />
             </div>
-          </q-item>
-        </q-list>
+          </li>
+        </ul>
       </q-td>
     </q-tr>
   </JettyTable>
