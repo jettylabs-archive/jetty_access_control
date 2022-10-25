@@ -35,3 +35,23 @@ export interface UserSummary {
     connectors: string[];
   };
 }
+
+export interface AssetName {
+  Asset: {
+    uri: string;
+  };
+}
+
+export interface AssetSummary {
+  Asset: {
+    name: AssetName;
+    asset_type: string;
+    connectors: string[];
+  };
+}
+
+export interface EffectivePermission {
+  privilege: string;
+  mode: 'Allow' | 'Deny';
+  reasons: string[];
+}

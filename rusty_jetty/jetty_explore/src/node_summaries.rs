@@ -4,13 +4,19 @@ use std::collections::HashSet;
 
 use jetty_core::{
     access_graph::{JettyNode, NodeName},
+    connectors::AssetType,
     jetty::ConnectorNamespace,
+    Connector,
 };
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Eq, PartialEq)]
 pub(crate) enum NodeSummary {
-    Asset,
+    Asset {
+        name: NodeName,
+        asset_type: AssetType,
+        connectors: HashSet<ConnectorNamespace>,
+    },
     User {
         name: NodeName,
         connectors: HashSet<ConnectorNamespace>,
@@ -34,7 +40,11 @@ impl From<JettyNode> for NodeSummary {
                 name: n.name,
                 connectors: n.connectors,
             },
-            JettyNode::Asset(_) => todo!(),
+            JettyNode::Asset(n) => NodeSummary::Asset {
+                name: n.name,
+                asset_type: n.asset_type,
+                connectors: n.connectors,
+            },
             JettyNode::Tag(_) => todo!(),
             JettyNode::Policy(_) => todo!(),
         }

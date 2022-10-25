@@ -1,5 +1,6 @@
 import { exportFile } from 'quasar';
 import {
+  AssetSummary,
   GroupName,
   GroupSummary,
   NodePath,
@@ -76,11 +77,27 @@ export function fetchJson(path: string) {
     .catch((error) => console.log('error fetching data:', error));
 }
 
-export function nodeNameAsString(node: GroupSummary | UserSummary) {
+export function nodeNameAsString(
+  node: GroupSummary | UserSummary | AssetSummary
+) {
   if ('Group' in node) {
     return node.Group.name.Group.origin + '::' + node.Group.name.Group.name;
-  } else {
+  } else if ('User' in node) {
     return node.User.name.User;
+  } else if ('Asset' in node) {
+    return node.Asset.name.Asset.uri;
+  }
+}
+
+export function nodeConnectors(
+  node: GroupSummary | UserSummary | AssetSummary
+) {
+  if ('Group' in node) {
+    return node.Group.connectors;
+  } else if ('User' in node) {
+    return node.User.connectors;
+  } else if ('Asset' in node) {
+    return node.Asset.connectors;
   }
 }
 

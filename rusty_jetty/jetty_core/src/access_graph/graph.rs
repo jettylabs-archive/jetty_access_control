@@ -185,7 +185,6 @@ impl Graph {
         });
 
         let from = self.get_untyped_node_index(&edge.from).or_else(|| {
-            dbg!(&self.nodes);
             warn![
                 "Unable to find \"from\" node: {:?} for \"to\" {:?}",
                 &edge.from, &edge.to

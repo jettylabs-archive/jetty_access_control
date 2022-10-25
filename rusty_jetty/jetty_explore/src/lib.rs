@@ -21,6 +21,7 @@ use tower_http::trace::TraceLayer;
 
 use jetty_core::{
     access_graph,
+    connectors::nodes::EffectivePermission,
     logging::{debug, error, info},
 };
 
@@ -36,6 +37,12 @@ pub(crate) struct ObjectWithPathResponse {
 struct NodeSummaryWithPaths {
     node: NodeSummary,
     paths: Vec<Vec<NodeSummary>>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub(crate) struct NodeWithPrivileges {
+    node: NodeSummary,
+    privileges: HashSet<EffectivePermission>,
 }
 
 /// Struct used to return asset access information
