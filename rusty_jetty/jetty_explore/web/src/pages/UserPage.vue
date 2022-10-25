@@ -50,13 +50,13 @@
   </q-page>
 </template>
 
-<script setup>
-import { ref, computed } from "vue";
-import JettyHeader from "src/components/JettyHeader.vue";
-import { useJettyStore } from "stores/jetty";
-import { useRoute, useRouter } from "vue-router";
+<script setup lang="ts">
+import { ref, computed } from 'vue';
+import JettyHeader from 'src/components/JettyHeader.vue';
+import { useJettyStore } from 'stores/jetty';
+import { useRoute, useRouter } from 'vue-router';
 
-const props = defineProps(["user_id"]);
+const props = defineProps(['user_id']);
 const route = useRoute();
 const router = useRouter();
 
@@ -64,23 +64,23 @@ const store = useJettyStore();
 const nodeList = computed(() => store.nodes);
 const currentNode = computed(() => {
   let returnNode = {
-    type: "",
-    name: "",
+    type: '',
+    name: '',
     platforms: [],
   };
   if (nodeList.value != null) {
     returnNode = nodeList.value.find(
-      (node) => node.name == props.user_id && node.type == "user"
+      (node) => node.name == props.user_id && node.type == 'user'
     );
   }
   return returnNode;
 });
 
 if (!currentNode.value) {
-  router.push("/notfound");
+  router.push('/notfound');
 }
 
-const tab = ref("assets");
+const tab = ref('assets');
 </script>
 
 <style lang="scss">

@@ -2,6 +2,7 @@
 //!
 
 pub mod nodes;
+pub mod processed_nodes;
 
 use anyhow::Result;
 use async_trait::async_trait;
@@ -50,22 +51,11 @@ pub enum UserIdentifier {
     FullName(String),
     /// User's email address
     Email(String),
+    /// Other identifiers that can be used for matching
+    Other(String),
     /// Shouldn't be used other than as a default.
     #[default]
     Unknown,
-}
-
-impl UserIdentifier {
-    /// Helper function to return the inner value of a UserIdentifier.
-    pub fn inner_value(&self) -> Option<&String> {
-        match self {
-            UserIdentifier::FirstName(s) => Some(s),
-            UserIdentifier::LastName(s) => Some(s),
-            UserIdentifier::FullName(s) => Some(s),
-            UserIdentifier::Email(s) => Some(s),
-            UserIdentifier::Unknown => None,
-        }
-    }
 }
 
 /// The kind of asset within a connector

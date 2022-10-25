@@ -1,7 +1,7 @@
 //! Graph stuff
 //!
+pub mod typed_indices;
 
-use anyhow::bail;
 use anyhow::{anyhow, Context, Result};
 use graphviz_rust as graphviz;
 use graphviz_rust::cmd::CommandArg;
@@ -13,6 +13,13 @@ use petgraph::{dot, stable_graph::StableDiGraph};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+use self::typed_indices::AssetIndex;
+use self::typed_indices::GroupIndex;
+use self::typed_indices::PolicyIndex;
+use self::typed_indices::TagIndex;
+use self::typed_indices::ToNodeIndex;
+use self::typed_indices::UserIndex;
+
 use super::{EdgeType, JettyNode, NodeName};
 use crate::logging::warn;
 
@@ -20,8 +27,18 @@ use crate::logging::warn;
 #[derive(Serialize, Deserialize)]
 pub(crate) struct Graph {
     pub(crate) graph: StableDiGraph<JettyNode, EdgeType>,
-    /// A map of node identifiers to indicies
-    pub(crate) nodes: HashMap<NodeName, NodeIndex>,
+    /// A map of node identifiers to indices
+    pub(crate) nodes: NodeMap,
+}
+
+/// The main graph wrapper
+#[derive(Serialize, Deserialize, Default, Debug)]
+pub(crate) struct NodeMap {
+    assets: HashMap<NodeName, typed_indices::AssetIndex>,
+    users: HashMap<NodeName, typed_indices::UserIndex>,
+    groups: HashMap<NodeName, typed_indices::GroupIndex>,
+    tags: HashMap<NodeName, typed_indices::TagIndex>,
+    policies: HashMap<NodeName, typed_indices::PolicyIndex>,
 }
 
 impl Graph {
@@ -43,70 +60,100 @@ impl Graph {
         Ok(draw)
     }
 
-    /// Check whether a given node already exists in the graph
-    #[inline(always)]
-    pub fn get_node(&self, node: &NodeName) -> Option<&NodeIndex> {
-        self.nodes.get(node)
+    /// Check whether a given node already exists in the graph, and, if so, return the NodeIndex
+    pub(crate) fn get_untyped_node_index(&self, node: &NodeName) -> Option<NodeIndex> {
+        // I was hoping to do this with a trait object, but it turns out that
+        // I couldn't easily return Option<&dyn ToNodeIndex> from the match -
+        // apparently because of the Option (it worked fine without)
+        match node {
+            NodeName::User(_) => self.nodes.users.get(node).and_then(|n| Some(n.get_index())),
+            NodeName::Group { .. } => self
+                .nodes
+                .groups
+                .get(node)
+                .and_then(|n| Some(n.get_index())),
+            NodeName::Asset(_) => self
+                .nodes
+                .assets
+                .get(node)
+                .and_then(|n| Some(n.get_index())),
+            NodeName::Policy(_) => self
+                .nodes
+                .policies
+                .get(node)
+                .and_then(|n| Some(n.get_index())),
+            NodeName::Tag(_) => self.nodes.tags.get(node).and_then(|n| Some(n.get_index())),
+        }
+    }
+
+    /// Check whether a given node already exists in the graph, and, if so, return a typed index
+    pub(crate) fn get_asset_node_index(&self, node: &NodeName) -> Option<AssetIndex> {
+        match node {
+            NodeName::Asset(_) => self.nodes.assets.get(node).and_then(|i| Some(i.to_owned())),
+            _ => None,
+        }
+    }
+    /// Check whether a given node already exists in the graph, and, if so, return a typed index
+    pub(crate) fn get_user_node_index(&self, node: &NodeName) -> Option<UserIndex> {
+        match node {
+            NodeName::User(_) => self.nodes.users.get(node).and_then(|i| Some(i.to_owned())),
+            _ => None,
+        }
+    }
+    /// Check whether a given node already exists in the graph, and, if so, return a typed index
+    pub(crate) fn get_group_node_index(&self, node: &NodeName) -> Option<GroupIndex> {
+        match node {
+            NodeName::Group { .. } => self.nodes.groups.get(node).and_then(|i| Some(i.to_owned())),
+            _ => None,
+        }
+    }
+    /// Check whether a given node already exists in the graph, and, if so, return a typed index
+    pub(crate) fn get_tag_node_index(&self, node: &NodeName) -> Option<TagIndex> {
+        match node {
+            NodeName::Tag(_) => self.nodes.tags.get(node).and_then(|i| Some(i.to_owned())),
+            _ => None,
+        }
+    }
+    /// Check whether a given node already exists in the graph, and, if so, return a typed index
+    pub(crate) fn get_policy_node_index(&self, node: &NodeName) -> Option<PolicyIndex> {
+        match node {
+            NodeName::Policy(_) => self
+                .nodes
+                .policies
+                .get(node)
+                .and_then(|i| Some(i.to_owned())),
+            _ => None,
+        }
     }
 
     /// Adds a node to the graph and returns the index.
     pub(crate) fn add_node(&mut self, node: &JettyNode) -> Result<()> {
         let node_name = node.get_node_name();
         // Check for duplicate
-        if let Some(&idx) = self.get_node(&node_name) {
+        if let Some(idx) = self.get_untyped_node_index(&node_name) {
             self.merge_nodes(idx, node)?;
         } else {
             let idx = self.graph.add_node(node.to_owned());
-            self.nodes.insert(node_name, idx);
+            match node {
+                JettyNode::Group(_) => {
+                    self.nodes.groups.insert(node_name, GroupIndex::new(idx));
+                }
+                JettyNode::User(_) => {
+                    self.nodes.users.insert(node_name, UserIndex::new(idx));
+                }
+                JettyNode::Asset(_) => {
+                    self.nodes.assets.insert(node_name, AssetIndex::new(idx));
+                }
+                JettyNode::Tag(_) => {
+                    self.nodes.tags.insert(node_name, TagIndex::new(idx));
+                }
+                JettyNode::Policy(_) => {
+                    self.nodes.policies.insert(node_name, PolicyIndex::new(idx));
+                }
+            };
         };
 
         Ok(())
-    }
-
-    #[allow(dead_code)]
-    fn get_paths(
-        &self,
-        from_node_name: &NodeName,
-        to_node_name: &NodeName,
-    ) -> Result<impl Iterator<Item = Vec<NodeIndex>> + '_> {
-        if let (Some(from), Some(to)) = (self.get_node(from_node_name), self.get_node(to_node_name))
-        {
-            Ok(petgraph::algo::all_simple_paths::<Vec<_>, _>(
-                &self.graph,
-                *from,
-                *to,
-                0,
-                None,
-            ))
-        } else {
-            bail!(
-                "node names {:?} -> {:?} not found.",
-                from_node_name,
-                to_node_name
-            )
-        }
-    }
-
-    /// Get the neighbors for the node with the given name.
-    ///
-    /// Get all neighbors for a node, filtered by thos that yield true when
-    /// `matcher` is applied to them.
-    pub(crate) fn get_neighbors_for_node(
-        &self,
-        node_name: &NodeName,
-        matcher: fn(&JettyNode) -> bool,
-    ) -> Result<impl Iterator<Item = &JettyNode>> {
-        let node = self
-            .get_node(node_name)
-            .ok_or_else(|| anyhow!("node not found"))?;
-        Ok(self.graph.neighbors(*node).filter_map(move |target_node| {
-            let target = &self.graph[target_node];
-            if matcher(target) {
-                Some(target)
-            } else {
-                None
-            }
-        }))
     }
 
     /// Updates a node. Should return the updated node. Returns an
@@ -125,7 +172,7 @@ impl Graph {
 
     /// Add edges from cache. Return false if to/from doesn't exist
     pub(crate) fn add_edge(&mut self, edge: super::JettyEdge) -> bool {
-        let to = self.get_node(&edge.to).or_else(|| {
+        let to = self.get_untyped_node_index(&edge.to).or_else(|| {
             warn![
                 "Unable to find \"to\" node: {:?} for \"from\" {:?}",
                 &edge.to, &edge.from
@@ -133,7 +180,8 @@ impl Graph {
             None
         });
 
-        let from = self.get_node(&edge.from).or_else(|| {
+        let from = self.get_untyped_node_index(&edge.from).or_else(|| {
+            dbg!(&self.nodes);
             warn![
                 "Unable to find \"from\" node: {:?} for \"to\" {:?}",
                 &edge.from, &edge.to
@@ -142,7 +190,7 @@ impl Graph {
         });
 
         if let (Some(to), Some(from)) = (to, from) {
-            self.graph.add_edge(*from, *to, edge.edge_type);
+            self.graph.add_edge(from, to, edge.edge_type);
             true
         } else {
             false
@@ -158,6 +206,7 @@ mod tests {
         access_graph::{test_util::new_graph, AssetAttributes, GroupAttributes, JettyEdge},
         connectors::AssetType,
         cual::Cual,
+        jetty::ConnectorNamespace,
     };
 
     use super::*;
@@ -170,29 +219,41 @@ mod tests {
         let mut g = new_graph();
 
         let original_node = JettyNode::Group(GroupAttributes {
-            name: "Group 1".to_string(),
+            name: NodeName::Group {
+                name: "Group 1".to_string(),
+                origin: Default::default(),
+            },
             metadata: HashMap::new(),
-            connectors: HashSet::from(["test1".to_string()]),
+            connectors: HashSet::from([ConnectorNamespace("test1".to_string())]),
         });
 
         // new_node introduces a new connector value
         let new_node = JettyNode::Group(GroupAttributes {
-            name: "Group 1".to_string(),
+            name: NodeName::Group {
+                name: "Group 1".to_string(),
+                origin: Default::default(),
+            },
             metadata: HashMap::new(),
-            connectors: HashSet::from(["test2".to_string()]),
+            connectors: HashSet::from([ConnectorNamespace("test2".to_string())]),
         });
 
         // desired output
         let combined_node = JettyNode::Group(GroupAttributes {
-            name: "Group 1".to_string(),
+            name: NodeName::Group {
+                name: "Group 1".to_string(),
+                origin: Default::default(),
+            },
             metadata: HashMap::new(),
-            connectors: HashSet::from(["test2".to_string(), "test1".to_string()]),
+            connectors: HashSet::from([
+                ConnectorNamespace("test2".to_string()),
+                ConnectorNamespace("test1".to_string()),
+            ]),
         });
 
         g.add_node(&original_node)?;
 
-        let &idx = g
-            .get_node(&original_node.get_node_name())
+        let idx = g
+            .get_untyped_node_index(&original_node.get_node_name())
             .ok_or(anyhow!["Unable to find \"to\" node: {:?}", &original_node])?;
 
         let merged_node = g
@@ -209,22 +270,28 @@ mod tests {
         let mut g = new_graph();
 
         let original_node = JettyNode::Group(GroupAttributes {
-            name: "Group 1".to_string(),
+            name: NodeName::Group {
+                name: "Group 1".to_string(),
+                origin: Default::default(),
+            },
             metadata: HashMap::new(),
             connectors: HashSet::new(),
         });
 
         // new_node introduces a connector value
         let new_node = JettyNode::Group(GroupAttributes {
-            name: "Group 2".to_string(),
+            name: NodeName::Group {
+                name: "Group 2".to_string(),
+                origin: Default::default(),
+            },
             metadata: HashMap::new(),
             connectors: HashSet::new(),
         });
 
         g.add_node(&original_node)?;
 
-        let &idx = g
-            .get_node(&original_node.get_node_name())
+        let idx = g
+            .get_untyped_node_index(&original_node.get_node_name())
             .ok_or(anyhow!["Unable to find \"to\" node: {:?}", &original_node])?;
 
         let merged_node = g
@@ -241,22 +308,28 @@ mod tests {
         let mut g = new_graph();
 
         let original_node = JettyNode::Group(GroupAttributes {
-            name: "Group 1".to_string(),
+            name: NodeName::Group {
+                name: "Group 1".to_string(),
+                origin: Default::default(),
+            },
             metadata: HashMap::from([("test1".to_string(), "value2".to_string())]),
             connectors: HashSet::new(),
         });
 
         // new_node introduces a conflicting metadata value
         let new_node = JettyNode::Group(GroupAttributes {
-            name: "Group 1".to_string(),
+            name: NodeName::Group {
+                name: "Group 1".to_string(),
+                origin: Default::default(),
+            },
             metadata: HashMap::from([("test1".to_string(), "other_value".to_string())]),
             connectors: HashSet::new(),
         });
 
         g.add_node(&original_node)?;
 
-        let &idx = g
-            .get_node(&original_node.get_node_name())
+        let idx = g
+            .get_untyped_node_index(&original_node.get_node_name())
             .ok_or(anyhow!["Unable to find \"to\" node: {:?}", &original_node])?;
 
         let merged_node = g
@@ -273,21 +346,30 @@ mod tests {
         let mut g = new_graph();
 
         let original_node = JettyNode::Group(GroupAttributes {
-            name: "Group 1".to_string(),
+            name: NodeName::Group {
+                name: "Group 1".to_string(),
+                origin: Default::default(),
+            },
             metadata: HashMap::from([("test1".to_string(), "value2".to_string())]),
             connectors: HashSet::new(),
         });
 
         // new_node introduces a new metadata key
         let new_node = JettyNode::Group(GroupAttributes {
-            name: "Group 1".to_string(),
+            name: NodeName::Group {
+                name: "Group 1".to_string(),
+                origin: Default::default(),
+            },
             metadata: HashMap::from([("test2".to_string(), "value 3".to_string())]),
             connectors: HashSet::new(),
         });
 
         // when merged, the result should be:
         let combined_node = JettyNode::Group(GroupAttributes {
-            name: "Group 1".to_string(),
+            name: NodeName::Group {
+                name: "Group 1".to_string(),
+                origin: Default::default(),
+            },
             metadata: HashMap::from([
                 ("test2".to_string(), "value 3".to_string()),
                 ("test1".to_string(), "value2".to_string()),
@@ -297,8 +379,8 @@ mod tests {
 
         g.add_node(&original_node)?;
 
-        let &idx = g
-            .get_node(&original_node.get_node_name())
+        let idx = g
+            .get_untyped_node_index(&original_node.get_node_name())
             .ok_or(anyhow!["Unable to find \"to\" node: {:?}", &original_node])?;
 
         let merged_node = g
@@ -307,41 +389,6 @@ mod tests {
 
         assert_eq!(merged_node, combined_node);
 
-        Ok(())
-    }
-
-    #[test]
-    fn get_paths_works() -> Result<()> {
-        let mut g = new_graph();
-        g.add_node(&JettyNode::Asset(AssetAttributes {
-            cual: Cual::new("mycual://a"),
-            asset_type: AssetType::default(),
-            metadata: HashMap::new(),
-            connectors: HashSet::new(),
-        }))?;
-
-        g.add_node(&JettyNode::Asset(AssetAttributes {
-            cual: Cual::new("mysecondcual://a"),
-            asset_type: AssetType::default(),
-            metadata: HashMap::new(),
-            connectors: HashSet::new(),
-        }))?;
-
-        let add_success = g.add_edge(JettyEdge {
-            from: NodeName::Asset("mycual://a".to_owned()),
-            to: NodeName::Asset("mysecondcual://a".to_owned()),
-            edge_type: EdgeType::ParentOf,
-        });
-        assert!(add_success);
-
-        let paths = g.get_paths(
-            &NodeName::Asset("mycual://a".to_owned()),
-            &NodeName::Asset("mysecondcual://a".to_owned()),
-        )?;
-        assert_eq!(
-            paths.collect::<Vec<Vec<NodeIndex>>>(),
-            vec![vec![NodeIndex::new(0), NodeIndex::new(1)]]
-        );
         Ok(())
     }
 }

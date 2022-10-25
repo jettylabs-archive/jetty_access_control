@@ -14,7 +14,7 @@ use clap::{Parser, Subcommand};
 
 use colored::Colorize;
 use jetty_core::{
-    access_graph::AccessGraph,
+    access_graph::{translate::Translator, AccessGraph},
     connectors::ConnectorClient,
     fetch_credentials,
     jetty::ConnectorNamespace,
@@ -134,10 +134,7 @@ async fn fetch(connectors: &Vec<String>, &visualize: &bool) -> Result<()> {
         info!("getting dbt data");
         let now = Instant::now();
         let dbt_data = dbt.get_data().await;
-        let dbt_pcd = jetty_core::access_graph::ProcessedConnectorData {
-            connector: "dbt".to_owned(),
-            data: dbt_data,
-        };
+        let dbt_pcd = (dbt_data, ConnectorNamespace("dbt".to_owned()));
         info!("dbt data took {} seconds", now.elapsed().as_secs_f32());
         data_from_connectors.push(dbt_pcd);
     }
@@ -156,10 +153,7 @@ async fn fetch(connectors: &Vec<String>, &visualize: &bool) -> Result<()> {
         info!("getting snowflake data");
         let now = Instant::now();
         let snow_data = snow.get_data().await;
-        let snow_pcd = jetty_core::access_graph::ProcessedConnectorData {
-            connector: "snowflake".to_owned(),
-            data: snow_data,
-        };
+        let snow_pcd = (snow_data, ConnectorNamespace("snowflake".to_owned()));
         info!(
             "snowflake data took {} seconds",
             now.elapsed().as_secs_f32()
@@ -182,17 +176,19 @@ async fn fetch(connectors: &Vec<String>, &visualize: &bool) -> Result<()> {
         let now = Instant::now();
         tab.setup().await?;
         let tab_data = tab.get_data().await;
-        let tab_pcd = jetty_core::access_graph::ProcessedConnectorData {
-            connector: "tableau".to_owned(),
-            data: tab_data,
-        };
+        let tab_pcd = (tab_data, ConnectorNamespace("tableau".to_owned()));
         info!("tableau data took {} seconds", now.elapsed().as_secs_f32());
         data_from_connectors.push(tab_pcd);
     }
 
     info!("creating access graph");
     let now = Instant::now();
-    let ag = AccessGraph::new(data_from_connectors)?;
+
+    // Build the translator
+    let tr = Translator::new(&data_from_connectors);
+    // Process the connector data
+    let pcd = tr.local_to_processed_connector_data(data_from_connectors);
+    let ag = AccessGraph::new(pcd)?;
     info!(
         "access graph creation took {} seconds",
         now.elapsed().as_secs_f32()

@@ -3,27 +3,31 @@
 //! `access_graph` is a library for modeling data access permissions and metadata as a graph.
 
 pub mod explore;
-pub mod explore2;
 pub mod graph;
-mod helpers;
+pub mod helpers;
 #[cfg(test)]
 pub mod test_util;
+pub mod translate;
 
 use crate::connectors::nodes::{ConnectorData, EffectivePermission, SparseMatrix};
+use crate::connectors::processed_nodes::ProcessedConnectorData;
 use crate::connectors::UserIdentifier;
+use crate::jetty::ConnectorNamespace;
 use crate::logging::debug;
 use crate::tag_parser::{parse_tags, tags_to_jetty_node_helpers};
 use crate::{connectors::AssetType, cual::Cual};
 
+use self::graph::typed_indices::{
+    AssetIndex, GroupIndex, PolicyIndex, TagIndex, ToNodeIndex, UserIndex,
+};
 use self::helpers::NodeHelper;
-pub use self::helpers::ProcessedConnectorData;
 
 use super::connectors;
 use core::hash::Hash;
 
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use std::fs::File;
 use std::io::BufWriter;
 use std::ops::{Index, IndexMut};
@@ -31,7 +35,6 @@ use std::ops::{Index, IndexMut};
 use anyhow::{anyhow, bail, Context, Result};
 // reexporting for use in other packages
 pub use petgraph::stable_graph::NodeIndex;
-
 use serde::Deserialize;
 use serde::Serialize;
 use time::OffsetDateTime;
@@ -44,15 +47,23 @@ const SAVED_GRAPH_PATH: &str = "jetty_graph";
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UserAttributes {
     /// User name
-    pub name: String,
+    pub name: NodeName,
     /// Specific user identifiers
     pub identifiers: HashSet<connectors::UserIdentifier>,
     /// Misc user identifiers
-    pub other_identifiers: HashSet<String>,
-    /// K-V pairs of user-specific metadata
     pub metadata: HashMap<String, String>,
     /// Connectors the user is present in
-    pub connectors: HashSet<String>,
+    pub connectors: HashSet<ConnectorNamespace>,
+}
+/// The name for a user node
+#[derive(Eq, Hash, PartialEq, Debug, Default)]
+pub struct UserName(String);
+
+impl UserName {
+    /// create a new UserName from a string
+    pub fn new(name: String) -> Self {
+        UserName(name)
+    }
 }
 
 impl UserAttributes {
@@ -60,15 +71,12 @@ impl UserAttributes {
         let name = merge_matched_field(&self.name, &new_attributes.name)
             .context("field: UserAttributes.name")?;
         let identifiers = merge_set(&self.identifiers, &new_attributes.identifiers);
-        let other_identifiers =
-            merge_set(&self.other_identifiers, &new_attributes.other_identifiers);
         let metadata = merge_map(&self.metadata, &new_attributes.metadata)
             .context("field: UserAttributes.metadata")?;
         let connectors = merge_set(&self.connectors, &new_attributes.connectors);
         Ok(UserAttributes {
             name,
             identifiers,
-            other_identifiers,
             metadata,
             connectors,
         })
@@ -78,9 +86,8 @@ impl UserAttributes {
     #[cfg(test)]
     fn new(name: String) -> Self {
         Self {
-            name,
+            name: NodeName::User(name),
             identifiers: Default::default(),
-            other_identifiers: Default::default(),
             metadata: Default::default(),
             connectors: Default::default(),
         }
@@ -100,15 +107,27 @@ impl TryFrom<JettyNode> for UserAttributes {
 }
 
 /// Attributes associated with a Group node
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct GroupAttributes {
     /// Name of group
-    pub name: String,
+    pub name: NodeName,
     /// k-v pairs of group metadata
     pub metadata: HashMap<String, String>,
     /// All the connectors the group is present in
-    pub connectors: HashSet<String>,
+    pub connectors: HashSet<ConnectorNamespace>,
+}
+
+/// The name for a Group node
+#[derive(Eq, Hash, PartialEq, Debug, Default)]
+pub struct GroupName {
+    name: String,
+    origin: ConnectorNamespace,
+}
+
+impl GroupName {
+    pub(crate) fn new(name: String, origin: ConnectorNamespace) -> Self {
+        Self { name, origin }
+    }
 }
 
 impl GroupAttributes {
@@ -128,7 +147,10 @@ impl GroupAttributes {
     #[cfg(test)]
     fn new(name: String) -> Self {
         Self {
-            name,
+            name: NodeName::Group {
+                name,
+                origin: ConnectorNamespace("".to_owned()),
+            },
             ..Default::default()
         }
     }
@@ -149,31 +171,31 @@ impl TryFrom<JettyNode> for GroupAttributes {
 /// A struct defining the attributes of an asset
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AssetAttributes {
-    cual: Cual,
-    asset_type: AssetType,
-    metadata: HashMap<String, String>,
-    connectors: HashSet<String>,
+    pub(crate) name: NodeName,
+    pub(crate) asset_type: AssetType,
+    pub(crate) metadata: HashMap<String, String>,
+    pub(crate) connectors: HashSet<ConnectorNamespace>,
 }
 
 impl AssetAttributes {
     fn merge_attributes(&self, new_attributes: &AssetAttributes) -> Result<AssetAttributes> {
-        let cual = merge_matched_field(&self.cual, &new_attributes.cual)
-            .context("field: GroupAttributes.cual")?;
+        let name = merge_matched_field(&self.name, &new_attributes.name)
+            .context("field: GroupAttributes.name")?;
         let asset_type = merge_matched_field(&self.asset_type, &self.asset_type)
             .context("field: AssetAttributes.asset_type")?;
         let metadata = merge_map(&self.metadata, &new_attributes.metadata)
             .context("field: AssetAttributes.metadata")?;
         let connectors = merge_set(&self.connectors, &new_attributes.connectors);
         Ok(AssetAttributes {
-            cual,
+            name,
             asset_type,
             metadata,
             connectors,
         })
     }
 
-    pub(crate) fn cual(&self) -> &Cual {
-        &self.cual
+    pub(crate) fn name(&self) -> &NodeName {
+        &self.name
     }
 
     pub(crate) fn asset_type(&self) -> &AssetType {
@@ -184,7 +206,7 @@ impl AssetAttributes {
     #[cfg(test)]
     pub(crate) fn new(cual: Cual) -> Self {
         Self {
-            cual,
+            name: NodeName::Asset(cual),
             asset_type: AssetType::default(),
             metadata: Default::default(),
             connectors: Default::default(),
@@ -208,7 +230,7 @@ impl TryFrom<JettyNode> for AssetAttributes {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TagAttributes {
     /// Name of tag
-    pub name: String,
+    pub name: NodeName,
     /// optional discription of the tag
     pub description: Option<String>,
     /// an optional value
@@ -219,7 +241,7 @@ pub struct TagAttributes {
     pub pass_through_lineage: bool,
     /// Connector the tag is from. This is not all the connectors that the tag may be applied to.
     /// We don't yet support specifying that.
-    connectors: HashSet<String>,
+    pub connectors: HashSet<ConnectorNamespace>,
 }
 
 impl TagAttributes {
@@ -256,12 +278,12 @@ impl TagAttributes {
     #[cfg(test)]
     fn new(name: String, pass_through_hierarchy: bool, pass_through_lineage: bool) -> Self {
         Self {
-            name,
+            name: NodeName::Tag(name),
             description: None,
             value: Default::default(),
             pass_through_hierarchy,
             pass_through_lineage,
-            connectors: HashSet::from(["Jetty".to_owned()]),
+            connectors: HashSet::from([ConnectorNamespace("Jetty".to_owned())]),
         }
     }
 }
@@ -281,12 +303,20 @@ impl TryFrom<JettyNode> for TagAttributes {
 /// A struct describing the attributes of a policy
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PolicyAttributes {
-    name: String,
-    privileges: HashSet<String>,
-    pass_through_hierarchy: bool,
-    pass_through_lineage: bool,
-    connectors: HashSet<String>,
+    /// Policy name
+    pub name: NodeName,
+    /// Policy privileges
+    pub privileges: HashSet<String>,
+    /// Whether the policy is passed through hierarchy
+    pub pass_through_hierarchy: bool,
+    /// Whether the policy is passed through lineage
+    pub pass_through_lineage: bool,
+    /// Policy connectors
+    pub connectors: HashSet<ConnectorNamespace>,
 }
+
+#[derive(Default, Debug, PartialEq, Eq, Hash)]
+pub(crate) struct PolicyName(String);
 
 impl PolicyAttributes {
     fn merge_attributes(&self, new_attributes: &PolicyAttributes) -> Result<PolicyAttributes> {
@@ -319,7 +349,7 @@ impl PolicyAttributes {
     #[cfg(test)]
     fn new(name: String) -> Self {
         Self {
-            name,
+            name: NodeName::Policy(name),
             privileges: Default::default(),
             pass_through_hierarchy: Default::default(),
             pass_through_lineage: Default::default(),
@@ -359,16 +389,16 @@ impl JettyNode {
     /// Get the type (as a string) of the node.
     pub fn get_string_name(&self) -> String {
         match &self {
-            JettyNode::Group(g) => g.name.to_owned(),
-            JettyNode::User(u) => u.name.to_owned(),
-            JettyNode::Asset(a) => a.cual.uri(),
-            JettyNode::Tag(t) => t.name.to_owned(),
-            JettyNode::Policy(p) => p.name.to_owned(),
+            JettyNode::Group(g) => g.name.to_string(),
+            JettyNode::User(u) => u.name.to_string(),
+            JettyNode::Asset(a) => a.name.to_string(),
+            JettyNode::Tag(t) => t.name.to_string(),
+            JettyNode::Policy(p) => p.name.to_string(),
         }
     }
 
     /// Get a Vec of the connectors for a node
-    pub fn get_node_connectors(&self) -> HashSet<String> {
+    pub fn get_node_connectors(&self) -> HashSet<ConnectorNamespace> {
         match &self {
             JettyNode::Group(g) => g.connectors.to_owned(),
             JettyNode::User(u) => u.connectors.to_owned(),
@@ -409,11 +439,11 @@ impl JettyNode {
     /// wrapped in the appropriate enum.
     fn get_node_name(&self) -> NodeName {
         match &self {
-            JettyNode::Asset(a) => NodeName::Asset(a.cual.uri()),
-            JettyNode::Group(a) => NodeName::Group(a.name.to_owned()),
-            JettyNode::Policy(a) => NodeName::Policy(a.name.to_owned()),
-            JettyNode::Tag(a) => NodeName::Tag(a.name.to_owned()),
-            JettyNode::User(a) => NodeName::User(a.name.to_owned()),
+            JettyNode::Asset(a) => a.name.to_owned(),
+            JettyNode::Group(a) => a.name.to_owned(),
+            JettyNode::Policy(a) => a.name.to_owned(),
+            JettyNode::Tag(a) => a.name.to_owned(),
+            JettyNode::User(a) => a.name.to_owned(),
         }
     }
 }
@@ -475,18 +505,41 @@ fn get_edge_type_pair(edge_type: &EdgeType) -> EdgeType {
 }
 
 /// Mapping of node identifiers (like asset name) to their id in the graph
-#[derive(PartialEq, Eq, Hash, Clone, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Hash, Clone, Debug, Serialize, Deserialize, PartialOrd, Ord)]
 pub enum NodeName {
     /// User node
     User(String),
     /// Group node
-    Group(String),
+    Group {
+        /// Group name
+        name: String,
+        /// Origin connector
+        origin: ConnectorNamespace,
+    },
     /// Asset node
-    Asset(String),
+    Asset(Cual),
     /// Policy node
     Policy(String),
     /// Tag node
     Tag(String),
+}
+
+impl Default for NodeName {
+    fn default() -> Self {
+        NodeName::User("".to_owned())
+    }
+}
+
+impl Display for NodeName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            NodeName::User(n) => write!(f, "{}", n.to_owned()),
+            NodeName::Group { name, origin } => write!(f, "{}::{}", origin, name),
+            NodeName::Asset(c) => write!(f, "{}", c.to_string()),
+            NodeName::Policy(n) => write!(f, "{}", n.to_owned()),
+            NodeName::Tag(n) => write!(f, "{}", n.to_owned()),
+        }
+    }
 }
 
 #[derive(Hash, Eq, PartialEq, Debug, Clone, Serialize, Deserialize)]
@@ -516,46 +569,82 @@ pub struct AccessGraph {
     /// Unix timestamp of when the graph was built
     last_modified: OffsetDateTime,
     /// The merged effective permissions from all connectors
-    effective_permissions: SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>>,
+    effective_permissions: SparseMatrix<UserIndex, AssetIndex, HashSet<EffectivePermission>>,
 }
 
-impl Index<NodeIndex> for AccessGraph {
+impl<T: graph::typed_indices::ToNodeIndex> Index<T> for AccessGraph {
     type Output = JettyNode;
 
-    fn index(&self, index: NodeIndex) -> &Self::Output {
-        self.graph.graph.index(index)
+    fn index(&self, index: T) -> &Self::Output {
+        let node_index = index.get_index();
+        self.graph.graph.index(node_index)
     }
 }
 
-impl IndexMut<NodeIndex> for AccessGraph {
-    fn index_mut(&mut self, index: NodeIndex) -> &mut Self::Output {
-        self.graph.graph.index_mut(index)
+impl<T: graph::typed_indices::ToNodeIndex> IndexMut<T> for AccessGraph {
+    fn index_mut(&mut self, index: T) -> &mut Self::Output {
+        let node_index = index.get_index();
+        self.graph.graph.index_mut(node_index)
     }
 }
 
 impl AccessGraph {
     /// New graph
-    pub fn new(data: Vec<ProcessedConnectorData>) -> Result<Self> {
+    pub fn new(connector_data: ProcessedConnectorData) -> Result<Self> {
         let mut ag = AccessGraph {
             graph: graph::Graph {
                 graph: petgraph::stable_graph::StableDiGraph::new(),
-                nodes: HashMap::new(),
+                nodes: Default::default(),
             },
             edge_cache: HashSet::new(),
             last_modified: OffsetDateTime::now_utc(),
             effective_permissions: Default::default(),
         };
-        for connector_data in data {
-            // Create all nodes first, then create edges.
-            ag.add_nodes(&connector_data)?;
-            // Merge effective permissions into the access graph
-            ag.effective_permissions
-                .merge(connector_data.data.effective_permissions)
-                .context("merging effective permissions")
-                .unwrap();
-        }
+        // Create all nodes first, then create edges.
+        ag.add_nodes(&connector_data)?;
+        // Merge effective permissions into the access graph
+        ag.effective_permissions
+            .merge(connector_data.effective_permissions)
+            .context("merging effective permissions")
+            .unwrap();
+
         ag.add_edges()?;
         Ok(ag)
+    }
+
+    /// This is a placeholder for the translation layer. The final access graph will need effective permissions with different axes than
+    /// the connectors provide.
+    fn translate_effective_permissions_matrix_to_global(
+        &self,
+        local: SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>>,
+    ) -> SparseMatrix<UserIndex, AssetIndex, HashSet<EffectivePermission>> {
+        todo!()
+    }
+
+    /// Get the untyped node index for a given NodeName
+    pub fn get_untyped_index_from_name(&self, node_name: &NodeName) -> Option<NodeIndex> {
+        self.graph.get_untyped_node_index(node_name)
+    }
+
+    /// Get the typed node index for a given NodeName
+    pub fn get_asset_index_from_name(&self, node_name: &NodeName) -> Option<AssetIndex> {
+        self.graph.get_asset_node_index(node_name)
+    }
+    /// Get the untyped node index for a given NodeName
+    pub fn get_user_index_from_name(&self, node_name: &NodeName) -> Option<UserIndex> {
+        self.graph.get_user_node_index(node_name)
+    }
+    /// Get the untyped node index for a given NodeName
+    pub fn get_tag_index_from_name(&self, node_name: &NodeName) -> Option<TagIndex> {
+        self.graph.get_tag_node_index(node_name)
+    }
+    /// Get the untyped node index for a given NodeName
+    pub fn get_policy_index_from_name(&self, node_name: &NodeName) -> Option<PolicyIndex> {
+        self.graph.get_policy_node_index(node_name)
+    }
+    /// Get the untyped node index for a given NodeName
+    pub fn get_group_index_from_name(&self, node_name: &NodeName) -> Option<GroupIndex> {
+        self.graph.get_group_node_index(node_name)
     }
 
     #[cfg(test)]
@@ -577,18 +666,21 @@ impl AccessGraph {
     }
 
     pub(crate) fn add_nodes(&mut self, data: &ProcessedConnectorData) -> Result<()> {
-        self.register_nodes_and_edges(&data.data.groups, &data.connector, None)?;
-        self.register_nodes_and_edges(&data.data.users, &data.connector, None)?;
+        self.register_nodes_and_edges(&data.groups, None)?;
+        self.register_nodes_and_edges(&data.users, None)?;
         self.register_nodes_and_edges(
-            &data.data.assets,
-            &data.connector,
+            &data.assets,
             Some(|node, connector| {
                 debug!("Filtering non-connector edge");
-                node.cual.scheme() != connector.trim()
+                if let NodeName::Asset(cual) = &node.name {
+                    cual.scheme() != connector.to_string().trim()
+                } else {
+                    panic!("improper node type")
+                }
             }),
         )?;
-        self.register_nodes_and_edges(&data.data.policies, &data.connector, None)?;
-        self.register_nodes_and_edges(&data.data.tags, &data.connector, None)?;
+        self.register_nodes_and_edges(&data.policies, None)?;
+        self.register_nodes_and_edges(&data.tags, None)?;
         Ok(())
     }
 
@@ -606,23 +698,19 @@ impl AccessGraph {
     fn register_nodes_and_edges<T: NodeHelper>(
         &mut self,
         nodes: &Vec<T>,
-        connector: &String,
-        filter: Option<fn(&T, &str) -> bool>,
+        filter: Option<fn(&T, &ConnectorNamespace) -> bool>,
     ) -> Result<()> {
         for n in nodes {
             // Edges get added regardless of connector.
             let edges = n.get_edges();
             self.edge_cache.extend(edges);
             if let Some(should_filter) = filter {
-                if should_filter(n, connector) {
-                    debug!(
-                        "Filtering node {:?}",
-                        n.get_node(connector.to_owned()).get_string_name()
-                    );
+                if should_filter(n, &n.get_connector()) {
+                    debug!("Filtering node {:?}", n.get_node().get_string_name());
                     continue;
                 }
             }
-            let node = n.get_node(connector.to_owned());
+            let node = n.get_node();
             self.graph.add_node(&node)?;
         }
         Ok(())
@@ -657,11 +745,8 @@ impl AccessGraph {
         let parsed_tags = parse_tags(config)?;
         let tags = tags_to_jetty_node_helpers(parsed_tags, self, config)?;
         self.add_nodes(&ProcessedConnectorData {
-            connector: "Jetty".to_owned(),
-            data: ConnectorData {
-                tags,
-                ..Default::default()
-            },
+            tags,
+            ..Default::default()
         })?;
 
         // add edges from the cache
@@ -729,89 +814,143 @@ mod tests {
 
     use anyhow::Result;
 
-    use crate::connectors::nodes::{self, ConnectorData};
+    use crate::connectors::{
+        nodes::{self, ConnectorData},
+        processed_nodes::ProcessedGroup,
+    };
 
     use super::*;
 
     #[test]
     fn edges_generated_from_group() -> Result<()> {
-        let input_group = vec![nodes::Group {
-            name: "Group 1".to_string(),
-            member_of: HashSet::from(["Group a".to_string(), "Group b".to_string()]),
-            includes_users: HashSet::from(["User a".to_string()]),
-            includes_groups: HashSet::from(["Group c".to_string()]),
-            granted_by: HashSet::from(["Policy 1".to_string()]),
+        let input_group = vec![ProcessedGroup {
+            name: NodeName::Group {
+                name: "Group 1".to_string(),
+                origin: Default::default(),
+            },
+            member_of: HashSet::from([
+                NodeName::Group {
+                    name: "Group a".to_string(),
+                    origin: Default::default(),
+                },
+                NodeName::Group {
+                    name: "Group b".to_string(),
+                    origin: Default::default(),
+                },
+            ]),
+            includes_users: HashSet::from([NodeName::User("User a".to_string())]),
+            includes_groups: HashSet::from([NodeName::Group {
+                name: "Group c".to_string(),
+                origin: Default::default(),
+            }]),
+            granted_by: HashSet::from([NodeName::Policy("Policy 1".to_string())]),
             ..Default::default()
         }];
 
-        let data = ProcessedConnectorData {
-            connector: "test".to_string(),
-            data: ConnectorData {
-                groups: vec![],
-                users: vec![],
-                assets: vec![],
-                policies: vec![],
-                tags: vec![],
-                effective_permissions: HashMap::new(),
-            },
-        };
-
-        let mut ag = AccessGraph::new(vec![data])?;
+        let mut ag = AccessGraph::new(Default::default())?;
 
         let output_edges = HashSet::from([
             JettyEdge {
-                from: NodeName::Group("Group 1".to_string()),
-                to: NodeName::Group("Group a".to_string()),
+                from: NodeName::Group {
+                    name: "Group 1".to_string(),
+                    origin: Default::default(),
+                },
+                to: NodeName::Group {
+                    name: "Group a".to_string(),
+                    origin: Default::default(),
+                },
                 edge_type: EdgeType::MemberOf,
             },
             JettyEdge {
-                to: NodeName::Group("Group 1".to_string()),
-                from: NodeName::Group("Group a".to_string()),
+                to: NodeName::Group {
+                    name: "Group 1".to_string(),
+                    origin: Default::default(),
+                },
+                from: NodeName::Group {
+                    name: "Group a".to_string(),
+                    origin: Default::default(),
+                },
                 edge_type: EdgeType::Includes,
             },
             JettyEdge {
-                to: NodeName::Group("Group b".to_string()),
-                from: NodeName::Group("Group 1".to_string()),
+                to: NodeName::Group {
+                    name: "Group b".to_string(),
+                    origin: Default::default(),
+                },
+                from: NodeName::Group {
+                    name: "Group 1".to_string(),
+                    origin: Default::default(),
+                },
                 edge_type: EdgeType::MemberOf,
             },
             JettyEdge {
-                from: NodeName::Group("Group b".to_string()),
-                to: NodeName::Group("Group 1".to_string()),
+                from: NodeName::Group {
+                    name: "Group b".to_string(),
+                    origin: Default::default(),
+                },
+                to: NodeName::Group {
+                    name: "Group 1".to_string(),
+                    origin: Default::default(),
+                },
                 edge_type: EdgeType::Includes,
             },
             JettyEdge {
-                from: NodeName::Group("Group 1".to_string()),
+                from: NodeName::Group {
+                    name: "Group 1".to_string(),
+                    origin: Default::default(),
+                },
                 to: NodeName::User("User a".to_string()),
                 edge_type: EdgeType::Includes,
             },
             JettyEdge {
                 from: NodeName::User("User a".to_string()),
-                to: NodeName::Group("Group 1".to_string()),
+                to: NodeName::Group {
+                    name: "Group 1".to_string(),
+                    origin: Default::default(),
+                },
                 edge_type: EdgeType::MemberOf,
             },
             JettyEdge {
-                from: NodeName::Group("Group 1".to_string()),
-                to: NodeName::Group("Group c".to_string()),
+                from: NodeName::Group {
+                    name: "Group 1".to_string(),
+                    origin: Default::default(),
+                },
+                to: NodeName::Group {
+                    name: "Group c".to_string(),
+                    origin: Default::default(),
+                },
                 edge_type: EdgeType::Includes,
             },
             JettyEdge {
-                from: NodeName::Group("Group c".to_string()),
-                to: NodeName::Group("Group 1".to_string()),
+                from: NodeName::Group {
+                    name: "Group c".to_string(),
+                    origin: Default::default(),
+                },
+                to: NodeName::Group {
+                    name: "Group 1".to_string(),
+                    origin: Default::default(),
+                },
                 edge_type: EdgeType::MemberOf,
             },
             JettyEdge {
-                from: NodeName::Group("Group 1".to_string()),
+                from: NodeName::Group {
+                    name: "Group 1".to_string(),
+                    origin: Default::default(),
+                },
                 to: NodeName::Policy("Policy 1".to_string()),
                 edge_type: EdgeType::GrantedBy,
             },
             JettyEdge {
                 from: NodeName::Policy("Policy 1".to_string()),
-                to: NodeName::Group("Group 1".to_string()),
+                to: NodeName::Group {
+                    name: "Group 1".to_string(),
+                    origin: Default::default(),
+                },
                 edge_type: EdgeType::GrantedTo,
             },
         ]);
 
-        ag.register_nodes_and_edges(&input_group, &("test".to_string()), None)?;
+        ag.register_nodes_and_edges(&input_group, None)?;
         assert_eq!(ag.edge_cache, output_edges);
         Ok(())
     }

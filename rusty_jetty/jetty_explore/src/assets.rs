@@ -3,6 +3,7 @@ use std::{
     sync::Arc,
 };
 
+use anyhow::Context;
 use axum::{extract::Path, routing::get, Extension, Json, Router};
 use jetty_core::{
     access_graph::{self, EdgeType, JettyNode, NodeName},
@@ -104,7 +105,12 @@ async fn tags_handler(
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<AssetTagNames> {
-    let tags = ag.tags_for_asset_by_source(&NodeName::Asset(node_id));
+    // convert the node_id to an AssetIndex
+    let asset_index = ag
+        .get_asset_index_from_name(&NodeName::Asset(Cual::new(node_id.as_str())))
+        .unwrap();
+
+    let tags = ag.tags_for_asset_by_source(asset_index);
 
     Json(AssetTagNames {
         direct: tags
@@ -131,16 +137,18 @@ async fn direct_users_handler(
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<UserAssetsResponse>> {
-    let users = ag.get_users_with_access_to_asset(Cual::new(&node_id));
+    // convert the node_id to an AssetIndex
+    let asset_index = ag
+        .get_asset_index_from_name(&NodeName::Asset(Cual::new(node_id.as_str())))
+        .unwrap();
+
+    let users = ag.get_users_with_access_to_asset(asset_index);
 
     Json(
         users
             .iter()
             .map(|(u, ps)| {
-                let user_name = u
-                    .inner_value()
-                    .map(|s| s.to_owned())
-                    .unwrap_or_else(|| "".to_owned());
+                let user_name = ag[*u].get_string_name();
                 UserAssetsResponse {
                     name: user_name.to_owned(),
                     privileges: ps
@@ -153,7 +161,10 @@ async fn direct_users_handler(
                     connectors: ag
                         .get_node(&NodeName::User(user_name))
                         .unwrap()
-                        .get_node_connectors(),
+                        .get_node_connectors()
+                        .iter()
+                        .map(|n| n.to_string())
+                        .collect(),
                 }
             })
             .collect(),
@@ -176,17 +187,17 @@ async fn users_incl_downstream_handler(
 
     let user_asset_map = downstream_assets
         .into_iter()
-        .flat_map(|a| {
-            ag.get_users_with_access_to_asset(Cual::new(&a))
-                .keys()
-                .map(|u| {
-                    (
-                        u.inner_value().map(|s| s.to_owned()).unwrap_or_default(),
-                        a.to_owned(),
-                    )
-                })
-                .collect::<Vec<_>>()
+        .map(|a| {
+            ag.get_users_with_access_to_asset(
+                ag.get_asset_index_from_name(&NodeName::Asset(Cual::new(&a)))
+                    .context("finding asset")
+                    .unwrap(),
+            )
+            .iter()
+            .map(|(u, _)| (ag[*u].get_string_name(), a.to_owned()))
+            .collect::<Vec<_>>()
         })
+        .flatten()
         .fold(
             HashMap::<String, HashSet<String>>::new(),
             |mut acc, (user, asset)| {
@@ -207,7 +218,10 @@ async fn users_incl_downstream_handler(
                 connectors: ag
                     .get_node(&NodeName::User(u))
                     .unwrap()
-                    .get_node_connectors(),
+                    .get_node_connectors()
+                    .iter()
+                    .map(|n| n.to_string())
+                    .collect(),
                 assets,
             })
             .collect::<Vec<_>>(),
@@ -221,8 +235,13 @@ fn asset_genealogy_with_path(
     ag: Arc<access_graph::AccessGraph>,
     edge_matcher: fn(&EdgeType) -> bool,
 ) -> Vec<AssetWithPaths> {
+    let asset_index = ag
+        .get_asset_index_from_name(&NodeName::Asset(Cual::new(node_id.as_str())))
+        .context("getting asset node index")
+        .unwrap();
+
     let paths = ag.all_matching_simple_paths_to_children(
-        &NodeName::Asset(node_id),
+        asset_index,
         edge_matcher,
         |n| matches!(n, JettyNode::Asset(_)),
         |n| matches!(n, JettyNode::Asset(_)),
@@ -241,7 +260,7 @@ fn asset_genealogy_with_path(
                     .iter()
                     // Asset should only have one connector. To be cleaned up in a future version.
                     .next()
-                    .map(|s| s.to_owned())
+                    .map(|s| s.to_string())
                     .unwrap_or_else(|| "unknown".to_owned()),
                 paths: v.iter().map(|p| ag.path_as_string(p)).collect::<Vec<_>>(),
             }

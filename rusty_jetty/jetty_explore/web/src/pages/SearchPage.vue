@@ -46,14 +46,14 @@
   </q-layout>
 </template>
 
-<script setup>
-import SearchInput from "src/components/SearchInput.vue";
-import { computed } from "vue";
-import { useJettyStore } from "stores/jetty";
+<script setup lang="ts">
+import SearchInput from 'src/components/SearchInput.vue';
+import { computed } from 'vue';
+import { useJettyStore } from 'stores/jetty';
 
 const store = useJettyStore();
 const last_fetch = computed(() =>
-  store.last_fetch.toLocaleString(undefined, { timeZoneName: "short" })
+  store.last_fetch.toLocaleString(undefined, { timeZoneName: 'short' })
 );
 </script>
 

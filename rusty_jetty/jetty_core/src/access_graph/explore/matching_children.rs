@@ -5,7 +5,9 @@ use std::collections::HashSet;
 
 use petgraph::{stable_graph::NodeIndex, Direction};
 
-use super::{AccessGraph, EdgeType, JettyNode, NodeName};
+use crate::access_graph::graph::typed_indices::ToNodeIndex;
+
+use super::{AccessGraph, EdgeType, JettyNode};
 
 impl AccessGraph {
     /// Get all the children nodes up to a particular depth by following non-repeating paths given certain
@@ -18,16 +20,16 @@ impl AccessGraph {
     /// - `min_depth` is the minimum depth at which a target may be found
     /// - `max_depth` is how deep to search for children. If None, will continue until it runs out of children to visit.
 
-    pub fn get_matching_children(
+    pub fn get_matching_children<T: ToNodeIndex>(
         &self,
-        from: &NodeName,
+        from: T,
         edge_matcher: fn(&EdgeType) -> bool,
         passthrough_matcher: fn(&JettyNode) -> bool,
         target_matcher: fn(&JettyNode) -> bool,
         min_depth: Option<usize>,
         max_depth: Option<usize>,
     ) -> Vec<NodeIndex> {
-        let idx = self.graph.nodes.get(from).unwrap();
+        let idx = from.get_index();
 
         let max_depth = if let Some(l) = max_depth {
             l
@@ -42,7 +44,7 @@ impl AccessGraph {
         let mut results = vec![];
 
         self.get_matching_children_recursive(
-            *idx,
+            idx,
             edge_matcher,
             passthrough_matcher,
             target_matcher,
@@ -123,7 +125,8 @@ impl AccessGraph {
 mod tests {
 
     use crate::{
-        access_graph::{GroupAttributes, UserAttributes},
+        access_graph::{GroupAttributes, NodeName, UserAttributes},
+        jetty::ConnectorNamespace,
         logging::debug,
     };
 
@@ -144,37 +147,73 @@ mod tests {
             &[
                 (
                     NodeName::User("user".to_owned()),
-                    NodeName::Group("group1".to_owned()),
+                    NodeName::Group {
+                        name: "group1".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
                 (
                     NodeName::User("user".to_owned()),
-                    NodeName::Group("group2".to_owned()),
+                    NodeName::Group {
+                        name: "group2".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
                 (
-                    NodeName::Group("group2".to_owned()),
-                    NodeName::Group("group1".to_owned()),
+                    NodeName::Group {
+                        name: "group2".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
+                    NodeName::Group {
+                        name: "group1".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
                 (
-                    NodeName::Group("group2".to_owned()),
-                    NodeName::Group("group3".to_owned()),
+                    NodeName::Group {
+                        name: "group2".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
+                    NodeName::Group {
+                        name: "group3".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
                 (
-                    NodeName::Group("group2".to_owned()),
-                    NodeName::Group("group4".to_owned()),
+                    NodeName::Group {
+                        name: "group2".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
+                    NodeName::Group {
+                        name: "group4".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
                 (
-                    NodeName::Group("group3".to_owned()),
-                    NodeName::Group("group4".to_owned()),
+                    NodeName::Group {
+                        name: "group3".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
+                    NodeName::Group {
+                        name: "group4".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
                 (
-                    NodeName::Group("group4".to_owned()),
-                    NodeName::Group("group1".to_owned()),
+                    NodeName::Group {
+                        name: "group4".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
+                    NodeName::Group {
+                        name: "group1".to_owned(),
+                        origin: ConnectorNamespace::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
             ],
@@ -182,8 +221,13 @@ mod tests {
 
         // Test path generation
         let a = ag.all_matching_simple_paths(
-            &NodeName::User("user".to_owned()),
-            &NodeName::Group("group1".to_owned()),
+            ag.get_untyped_index_from_name(&NodeName::User("user".to_owned()))
+                .unwrap(),
+            ag.get_untyped_index_from_name(&NodeName::Group {
+                name: "group1".to_owned(),
+                origin: ConnectorNamespace::default(),
+            })
+            .unwrap(),
             |_| true,
             |_| true,
             None,
@@ -193,8 +237,13 @@ mod tests {
 
         // Test depth limits
         let a = ag.all_matching_simple_paths(
-            &NodeName::User("user".to_owned()),
-            &NodeName::Group("group1".to_owned()),
+            ag.get_untyped_index_from_name(&NodeName::User("user".to_owned()))
+                .unwrap(),
+            ag.get_untyped_index_from_name(&NodeName::Group {
+                name: "group1".to_owned(),
+                origin: ConnectorNamespace::default(),
+            })
+            .unwrap(),
             |_| true,
             |_| true,
             Some(2),
@@ -204,8 +253,13 @@ mod tests {
 
         // Test depth limits again
         let a = ag.all_matching_simple_paths(
-            &NodeName::User("user".to_owned()),
-            &NodeName::Group("group1".to_owned()),
+            ag.get_untyped_index_from_name(&NodeName::User("user".to_owned()))
+                .unwrap(),
+            ag.get_untyped_index_from_name(&NodeName::Group {
+                name: "group1".to_owned(),
+                origin: ConnectorNamespace::default(),
+            })
+            .unwrap(),
             |_| true,
             |_| true,
             Some(2),
@@ -215,8 +269,13 @@ mod tests {
 
         // Test edge matching
         let a = ag.all_matching_simple_paths(
-            &NodeName::User("user".to_owned()),
-            &NodeName::Group("group1".to_owned()),
+            ag.get_untyped_index_from_name(&NodeName::User("user".to_owned()))
+                .unwrap(),
+            ag.get_untyped_index_from_name(&NodeName::Group {
+                name: "group1".to_owned(),
+                origin: ConnectorNamespace::default(),
+            })
+            .unwrap(),
             |n| matches!(n, EdgeType::Other),
             |_| true,
             None,
@@ -226,14 +285,21 @@ mod tests {
 
         // Test passthrough matching
         let a = ag.all_matching_simple_paths(
-            &NodeName::User("user".to_owned()),
-            &NodeName::Group("group1".to_owned()),
+            ag.get_untyped_index_from_name(&NodeName::User("user".to_owned()))
+                .unwrap(),
+            ag.get_untyped_index_from_name(&NodeName::Group {
+                name: "group1".to_owned(),
+                origin: ConnectorNamespace::default(),
+            })
+            .unwrap(),
             |_| true,
-            |n| n.get_string_name() == *"group2",
+            |n| n.get_string_name() == *"::group2",
             None,
             None,
         );
-        a.iter().for_each(|p| debug!("{}", ag.path_as_string(p)));
+        a.iter().for_each(|p| {
+            dbg!(ag.path_as_string(p));
+        });
         assert_eq!(a.len(), 2);
 
         Ok(())

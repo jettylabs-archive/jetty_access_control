@@ -1,12 +1,36 @@
 use colored::{Color, Colorize};
 
+const BATS: &str = r#"
+
+
+
+
+
+
+
+
+
+   _   ,_,   _
+  / `'=) (='` \
+ /.-.-.\ /.-.-.\ 
+ `      "      `
+
+
+
+
+
+   _   ,_,   _
+  / `'=) (='` \
+ /.-.-.\ /.-.-.\ 
+ `      "      `
+"#;
 const BANNER: &str = "
             
             
             
             
                                            
-  ▄████████     ███         ███     ▄██   ▄        
+  ▄████████     ███         ███      ▄██   ▄        
   ███    ███ ▀█████████▄ ▀█████████▄ ███   ██▄      
   ███    █▀     ▀███▀▀██    ▀███▀▀██ ███▄▄▄███      
  ▄███▄▄▄         ███   ▀     ███   ▀ ▀▀▀▀▀▀███      
@@ -60,8 +84,10 @@ pub(crate) const JETTY_ORANGE: Color = Color::TrueColor {
 pub(crate) fn print_banner() {
     let ascii = JETTY_J
         .lines()
-        .zip(BANNER.lines())
-        .map(|(j_line, banner_line)| format!("{}  {}", j_line, banner_line,))
+        .zip(BANNER.lines().zip(BATS.lines()))
+        .map(|(j_line, (banner_line, bats_line))| {
+            format!("{}  {} {}", j_line, banner_line, bats_line)
+        })
         .collect::<Vec<_>>()
         .join("\n");
     println!("\n{}\n", ascii.color(JETTY_ORANGE));

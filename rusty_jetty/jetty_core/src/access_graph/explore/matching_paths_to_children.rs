@@ -6,21 +6,23 @@ use std::collections::HashMap;
 use indexmap::IndexSet;
 use petgraph::{stable_graph::NodeIndex, Direction};
 
-use super::{AccessGraph, EdgeType, JettyNode, NodeName, NodePath};
+use crate::access_graph::graph::typed_indices::ToNodeIndex;
+
+use super::{AccessGraph, EdgeType, JettyNode, NodePath};
 
 impl AccessGraph {
     /// Return the descendent node and matching paths from a provided node to all of its matching descendants.
     /// Specify filter functions to match edges and passthrough nodes.
-    pub fn all_matching_simple_paths_to_children(
+    pub fn all_matching_simple_paths_to_children<T: ToNodeIndex>(
         &self,
-        from: &NodeName,
+        from: T,
         edge_matcher: fn(&EdgeType) -> bool,
         passthrough_matcher: fn(&JettyNode) -> bool,
         target_matcher: fn(&JettyNode) -> bool,
         min_depth: Option<usize>,
         max_depth: Option<usize>,
     ) -> HashMap<NodeIndex, Vec<NodePath>> {
-        let from_idx = self.graph.nodes.get(from).unwrap();
+        let from_idx = from.get_index();
 
         let max_depth = if let Some(l) = max_depth {
             l
@@ -35,7 +37,7 @@ impl AccessGraph {
         let mut results = HashMap::new();
 
         self.all_matching_simple_paths_to_children_recursive(
-            *from_idx,
+            from_idx,
             edge_matcher,
             passthrough_matcher,
             target_matcher,
@@ -125,9 +127,11 @@ impl AccessGraph {
 #[cfg(test)]
 mod tests {
 
-    use crate::access_graph::{GroupAttributes, UserAttributes};
+    use crate::access_graph::{
+        graph::typed_indices::UserIndex, GroupAttributes, NodeName, UserAttributes,
+    };
 
-    use anyhow::Result;
+    use anyhow::{anyhow, Result};
 
     use super::*;
 
@@ -143,37 +147,73 @@ mod tests {
             &[
                 (
                     NodeName::User("user".to_owned()),
-                    NodeName::Group("group1".to_owned()),
+                    NodeName::Group {
+                        name: "group1".to_owned(),
+                        origin: Default::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
                 (
                     NodeName::User("user".to_owned()),
-                    NodeName::Group("group2".to_owned()),
+                    NodeName::Group {
+                        name: "group2".to_owned(),
+                        origin: Default::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
                 (
-                    NodeName::Group("group2".to_owned()),
-                    NodeName::Group("group1".to_owned()),
+                    NodeName::Group {
+                        name: "group2".to_owned(),
+                        origin: Default::default(),
+                    },
+                    NodeName::Group {
+                        name: "group1".to_owned(),
+                        origin: Default::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
                 (
-                    NodeName::Group("group2".to_owned()),
-                    NodeName::Group("group3".to_owned()),
+                    NodeName::Group {
+                        name: "group2".to_owned(),
+                        origin: Default::default(),
+                    },
+                    NodeName::Group {
+                        name: "group3".to_owned(),
+                        origin: Default::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
                 (
-                    NodeName::Group("group2".to_owned()),
-                    NodeName::Group("group4".to_owned()),
+                    NodeName::Group {
+                        name: "group2".to_owned(),
+                        origin: Default::default(),
+                    },
+                    NodeName::Group {
+                        name: "group4".to_owned(),
+                        origin: Default::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
                 (
-                    NodeName::Group("group3".to_owned()),
-                    NodeName::Group("group4".to_owned()),
+                    NodeName::Group {
+                        name: "group3".to_owned(),
+                        origin: Default::default(),
+                    },
+                    NodeName::Group {
+                        name: "group4".to_owned(),
+                        origin: Default::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
                 (
-                    NodeName::Group("group4".to_owned()),
-                    NodeName::Group("group1".to_owned()),
+                    NodeName::Group {
+                        name: "group4".to_owned(),
+                        origin: Default::default(),
+                    },
+                    NodeName::Group {
+                        name: "group1".to_owned(),
+                        origin: Default::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
             ],
@@ -183,13 +223,16 @@ mod tests {
     #[test]
     fn multiple_paths_to_same_node_works() -> Result<()> {
         let ag = get_test_graph();
+        let from_index = ag
+            .get_untyped_index_from_name(&NodeName::User("user".to_owned()))
+            .ok_or(anyhow!("unable to find matching node"))?;
 
         // Test getting multiple paths to the same node
         let a = ag.all_matching_simple_paths_to_children(
-            &NodeName::User("user".to_owned()),
+            from_index,
             |_| true,
             |_| true,
-            |n| n.get_string_name() == *"group4",
+            |n| n.get_string_name() == *"::group4",
             None,
             None,
         );
@@ -206,10 +249,13 @@ mod tests {
     #[test]
     fn gets_all_children() -> Result<()> {
         let ag = get_test_graph();
+        let from_index = ag
+            .get_untyped_index_from_name(&NodeName::User("user".to_owned()))
+            .ok_or(anyhow!("unable to find matching node"))?;
 
         // Test getting multiple paths to the same node
         let a = ag.all_matching_simple_paths_to_children(
-            &NodeName::User("user".to_owned()),
+            from_index,
             |_| true,
             |_| true,
             |_| true,

@@ -1,7 +1,7 @@
 //! Jetty Module
 //!
-use std::collections::HashMap;
 use std::fs;
+use std::{collections::HashMap, fmt::Display};
 
 use anyhow::{anyhow, Result};
 use dirs::home_dir;
@@ -9,8 +9,14 @@ use serde::{Deserialize, Serialize};
 use yaml_peg::serde as yaml;
 
 /// The user-defined namespace corresponding to the connector.
-#[derive(Deserialize, Serialize, Debug, Hash, PartialEq, Eq)]
+#[derive(Deserialize, Debug, Hash, PartialEq, Eq, Clone, Default, PartialOrd, Ord, Serialize)]
 pub struct ConnectorNamespace(pub String);
+
+impl Display for ConnectorNamespace {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 /// Struct representing the jetty_config.yaml file.
 #[allow(dead_code)]
 #[derive(Deserialize, Serialize, Debug, Default)]

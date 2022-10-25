@@ -31,14 +31,14 @@
   </q-select>
 </template>
 
-<script setup>
-import { ref, computed } from "vue";
-import AutocompleteItem from "./AutocompleteItem.vue";
-import { useJettyStore } from "stores/jetty";
-import { useRouter } from "vue-router";
+<script lang="ts" setup>
+import { ref, computed } from 'vue';
+import AutocompleteItem from './AutocompleteItem.vue';
+import { useJettyStore } from 'stores/jetty';
+import { useRouter } from 'vue-router';
 
 const props = defineProps({
-  autofocus: {},
+  autofocus: { type: Boolean },
 });
 
 const router = useRouter();
@@ -56,18 +56,20 @@ const limitedOptions = computed(() => {
 });
 
 function filterFn(val, update, abort) {
-  update(() => {
-    const needle = val.toLocaleLowerCase();
-    options.value = nodeOptions.value.filter(
-      (v) => v.name.toLocaleLowerCase().indexOf(needle) > -1
-    );
-  },
-  ref => {
-    if (val !== '' && ref.options.length > 0) {
-      ref.setOptionIndex(-1) // reset optionIndex in case there is something selected
-      ref.moveOptionSelection(1, true) // focus the first selectable option and do not update the input-value
+  update(
+    () => {
+      const needle = val.toLocaleLowerCase();
+      options.value = nodeOptions.value.filter(
+        (v) => v.name.toLocaleLowerCase().indexOf(needle) > -1
+      );
+    },
+    (ref) => {
+      if (val !== '' && ref.options.length > 0) {
+        ref.setOptionIndex(-1); // reset optionIndex in case there is something selected
+        ref.moveOptionSelection(1, true); // focus the first selectable option and do not update the input-value
+      }
     }
-  });
+  );
 }
 
 function setModel(val) {
@@ -76,7 +78,7 @@ function setModel(val) {
 
 function navigate(val) {
   model.value = null;
-  let new_path = "/" + val.type + "/" + encodeURIComponent(val.name);
+  let new_path = '/' + val.type + '/' + encodeURIComponent(val.name);
   if (searchField.value) {
     searchField.value.blur();
   }

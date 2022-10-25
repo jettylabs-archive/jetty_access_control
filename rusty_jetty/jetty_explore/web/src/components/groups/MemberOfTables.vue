@@ -5,9 +5,9 @@
   </div>
 </template>
 
-<script setup>
-import DirectMemberOf from "./DirectMemberOf.vue";
-import InheritedMemberOf from "./InheritedMemberOf.vue";
+<script lang="ts" setup>
+import DirectMemberOf from './DirectMemberOf.vue';
+import InheritedMemberOf from './InheritedMemberOf.vue';
 
-const props = defineProps(["node"]);
+const props = defineProps(['node']);
 </script>

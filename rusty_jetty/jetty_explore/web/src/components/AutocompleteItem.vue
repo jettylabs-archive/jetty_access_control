@@ -19,12 +19,11 @@
   </q-item>
 </template>
 
-<script setup>
-import { reactive } from "vue";
-import { getNodeIcon } from "../util";
-import JettyBadge from "./JettyBadge.vue";
+<script lang="ts" setup>
+import { getNodeIcon } from '../util';
+import JettyBadge from './JettyBadge.vue';
 
-const props = defineProps(["scope"]);
+const props = defineProps(['scope']);
 </script>
 
 <style lang="scss"></style>

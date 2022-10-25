@@ -4,22 +4,24 @@
 use indexmap::IndexSet;
 use petgraph::{stable_graph::NodeIndex, Direction};
 
-use super::{AccessGraph, EdgeType, JettyNode, NodeName, NodePath};
+use crate::access_graph::graph::typed_indices::ToNodeIndex;
+
+use super::{AccessGraph, EdgeType, JettyNode, NodePath};
 
 impl AccessGraph {
     /// Return all the matching paths from one node to another. Specify filter functions
     /// to match edges and passthrough nodes
-    pub fn all_matching_simple_paths(
+    pub fn all_matching_simple_paths<T: ToNodeIndex>(
         &self,
-        from: &NodeName,
-        to: &NodeName,
+        from: T,
+        to: T,
         edge_matcher: fn(&EdgeType) -> bool,
         passthrough_matcher: fn(&JettyNode) -> bool,
         min_depth: Option<usize>,
         max_depth: Option<usize>,
     ) -> Vec<NodePath> {
-        let from_idx = self.graph.nodes.get(from).unwrap();
-        let to_idx = self.graph.nodes.get(to).unwrap();
+        let from_idx = from.get_index();
+        let to_idx = to.get_index();
 
         let max_depth = if let Some(l) = max_depth {
             l
@@ -34,8 +36,8 @@ impl AccessGraph {
         let mut results = vec![];
 
         self.all_matching_simple_paths_recursive(
-            *from_idx,
-            *to_idx,
+            from_idx,
+            to_idx,
             edge_matcher,
             passthrough_matcher,
             min_depth,
@@ -119,7 +121,7 @@ impl AccessGraph {
 #[cfg(test)]
 mod tests {
 
-    use crate::access_graph::{GroupAttributes, UserAttributes};
+    use crate::access_graph::{GroupAttributes, NodeName, UserAttributes};
 
     use anyhow::Result;
 
@@ -138,37 +140,73 @@ mod tests {
             &[
                 (
                     NodeName::User("user".to_owned()),
-                    NodeName::Group("group1".to_owned()),
+                    NodeName::Group {
+                        name: "group1".to_owned(),
+                        origin: Default::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
                 (
                     NodeName::User("user".to_owned()),
-                    NodeName::Group("group2".to_owned()),
+                    NodeName::Group {
+                        name: "group2".to_owned(),
+                        origin: Default::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
                 (
-                    NodeName::Group("group2".to_owned()),
-                    NodeName::Group("group1".to_owned()),
+                    NodeName::Group {
+                        name: "group2".to_owned(),
+                        origin: Default::default(),
+                    },
+                    NodeName::Group {
+                        name: "group1".to_owned(),
+                        origin: Default::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
                 (
-                    NodeName::Group("group2".to_owned()),
-                    NodeName::Group("group3".to_owned()),
+                    NodeName::Group {
+                        name: "group2".to_owned(),
+                        origin: Default::default(),
+                    },
+                    NodeName::Group {
+                        name: "group3".to_owned(),
+                        origin: Default::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
                 (
-                    NodeName::Group("group2".to_owned()),
-                    NodeName::Group("group4".to_owned()),
+                    NodeName::Group {
+                        name: "group2".to_owned(),
+                        origin: Default::default(),
+                    },
+                    NodeName::Group {
+                        name: "group4".to_owned(),
+                        origin: Default::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
                 (
-                    NodeName::Group("group3".to_owned()),
-                    NodeName::Group("group4".to_owned()),
+                    NodeName::Group {
+                        name: "group3".to_owned(),
+                        origin: Default::default(),
+                    },
+                    NodeName::Group {
+                        name: "group4".to_owned(),
+                        origin: Default::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
                 (
-                    NodeName::Group("group4".to_owned()),
-                    NodeName::Group("group1".to_owned()),
+                    NodeName::Group {
+                        name: "group4".to_owned(),
+                        origin: Default::default(),
+                    },
+                    NodeName::Group {
+                        name: "group1".to_owned(),
+                        origin: Default::default(),
+                    },
                     EdgeType::MemberOf,
                 ),
             ],
@@ -176,8 +214,13 @@ mod tests {
 
         // Test path generation
         let a = ag.all_matching_simple_paths(
-            &NodeName::User("user".to_owned()),
-            &NodeName::Group("group1".to_owned()),
+            ag.get_untyped_index_from_name(&NodeName::User("user".to_owned()))
+                .unwrap(),
+            ag.get_untyped_index_from_name(&NodeName::Group {
+                name: "group1".to_owned(),
+                origin: Default::default(),
+            })
+            .unwrap(),
             |_| true,
             |_| true,
             None,
@@ -187,8 +230,13 @@ mod tests {
 
         // Test depth limits
         let a = ag.all_matching_simple_paths(
-            &NodeName::User("user".to_owned()),
-            &NodeName::Group("group1".to_owned()),
+            ag.get_untyped_index_from_name(&NodeName::User("user".to_owned()))
+                .unwrap(),
+            ag.get_untyped_index_from_name(&NodeName::Group {
+                name: "group1".to_owned(),
+                origin: Default::default(),
+            })
+            .unwrap(),
             |_| true,
             |_| true,
             Some(2),
@@ -198,8 +246,13 @@ mod tests {
 
         // Test depth limits again
         let a = ag.all_matching_simple_paths(
-            &NodeName::User("user".to_owned()),
-            &NodeName::Group("group1".to_owned()),
+            ag.get_untyped_index_from_name(&NodeName::User("user".to_owned()))
+                .unwrap(),
+            ag.get_untyped_index_from_name(&NodeName::Group {
+                name: "group1".to_owned(),
+                origin: Default::default(),
+            })
+            .unwrap(),
             |_| true,
             |_| true,
             Some(2),
@@ -209,8 +262,13 @@ mod tests {
 
         // Test edge matching
         let a = ag.all_matching_simple_paths(
-            &NodeName::User("user".to_owned()),
-            &NodeName::Group("group1".to_owned()),
+            ag.get_untyped_index_from_name(&NodeName::User("user".to_owned()))
+                .unwrap(),
+            ag.get_untyped_index_from_name(&NodeName::Group {
+                name: "group1".to_owned(),
+                origin: Default::default(),
+            })
+            .unwrap(),
             |n| matches!(n, EdgeType::Other),
             |_| true,
             None,
@@ -220,10 +278,15 @@ mod tests {
 
         // Test passthrough matching
         let a = ag.all_matching_simple_paths(
-            &NodeName::User("user".to_owned()),
-            &NodeName::Group("group1".to_owned()),
+            ag.get_untyped_index_from_name(&NodeName::User("user".to_owned()))
+                .unwrap(),
+            ag.get_untyped_index_from_name(&NodeName::Group {
+                name: "group1".to_owned(),
+                origin: Default::default(),
+            })
+            .unwrap(),
             |_| true,
-            |n| n.get_string_name() == *"group2",
+            |n| n.get_string_name() == *"::group2",
             None,
             None,
         );

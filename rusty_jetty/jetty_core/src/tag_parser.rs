@@ -8,8 +8,10 @@ use std::fmt::Display;
 
 use yaml_peg::{parse, repr::RcRepr, NodeRc};
 
-use crate::access_graph::{AccessGraph, AssetAttributes, JettyNode};
+use crate::access_graph::{AccessGraph, AssetAttributes, JettyNode, NodeName};
 use crate::connectors::nodes;
+use crate::connectors::processed_nodes::ProcessedTag;
+use crate::jetty::ConnectorNamespace;
 
 /// The configuration of a tag
 #[derive(Debug)]
@@ -76,7 +78,7 @@ pub(crate) struct TargetAsset {
 impl From<AssetAttributes> for TargetAsset {
     fn from(a: AssetAttributes) -> Self {
         TargetAsset {
-            name: a.cual().to_string(),
+            name: a.name().to_string(),
             asset_type: Some(a.asset_type().to_string()),
             pos: 0,
         }
@@ -337,7 +339,7 @@ fn get_matching_assets<'a>(
     asset_list
         .iter()
         .filter(|(_, n)| {
-            n.cual().to_string().contains(target.name.as_str())
+            n.name().to_string().contains(target.name.as_str())
                 && if let Some(val) = &target.asset_type {
                     n.asset_type().to_string() == *val
                 } else {
@@ -353,7 +355,7 @@ fn get_matching_assets<'a>(
 fn get_asset_list_from_target_list(
     target_list: &Vec<TargetAsset>,
     asset_list: &Vec<(NodeIndex, &AssetAttributes)>,
-) -> (Vec<AssetMatchError>, HashSet<String>) {
+) -> (Vec<AssetMatchError>, HashSet<NodeName>) {
     let mut errors = vec![];
     let mut results = HashSet::new();
 
@@ -402,7 +404,7 @@ fn get_asset_list_from_target_list(
         }
         // otherwise there was just one match, and we should use it
         else {
-            results.insert(matching_assets[0].1.cual().to_string());
+            results.insert(matching_assets[0].1.name().to_owned());
         }
     }
     (errors, results)
@@ -412,15 +414,15 @@ pub(crate) fn tags_to_jetty_node_helpers(
     tags: HashMap<String, TagConfig>,
     ag: &AccessGraph,
     config: &String,
-) -> Result<Vec<nodes::Tag>> {
+) -> Result<Vec<ProcessedTag>> {
     let mut error_vec = vec![];
     let mut result_vec = vec![];
 
     let asset_list: Vec<(NodeIndex, &AssetAttributes)> = get_asset_nodes(ag);
 
     for (tag_name, tag_config) in tags {
-        let mut result_tag = nodes::Tag {
-            name: tag_name,
+        let mut result_tag = ProcessedTag {
+            name: NodeName::Tag(tag_name),
             value: tag_config.value,
             description: tag_config.description,
             pass_through_hierarchy: tag_config.pass_through_hierarchy,
@@ -428,6 +430,7 @@ pub(crate) fn tags_to_jetty_node_helpers(
             applied_to: Default::default(),
             removed_from: Default::default(),
             governed_by: Default::default(),
+            connector: ConnectorNamespace("Jetty".to_owned()),
         };
 
         if let Some(target_list) = tag_config.apply_to {
@@ -553,18 +556,20 @@ pii2:
         .to_owned();
 
         let mut goal = vec![
-            Tag {
-                name: "pii".to_owned(),
+            ProcessedTag {
+                name: NodeName::Tag("pii".to_owned()),
                 description: Some("This data contains pii from ppis".to_owned()),
                 value: Some("I don't know if we want values, but Snowflake has them".to_owned()),
-                applied_to: HashSet::from(["asset1://a".to_owned()]),
-                removed_from: HashSet::from(["asset2://a".to_owned()]),
+                applied_to: HashSet::from([NodeName::Asset(Cual::new("asset1://a"))]),
+                removed_from: HashSet::from([NodeName::Asset(Cual::new("asset2://a"))]),
+                connector: ConnectorNamespace("Jetty".to_owned()),
                 ..Default::default()
             },
-            Tag {
-                name: "pii2".to_owned(),
+            ProcessedTag {
+                name: NodeName::Tag("pii2".to_owned()),
                 pass_through_lineage: true,
-                applied_to: HashSet::from(["asset1://a".to_owned()]),
+                applied_to: HashSet::from([NodeName::Asset(Cual::new("asset1://a"))]),
+                connector: ConnectorNamespace("Jetty".to_owned()),
                 ..Default::default()
             },
         ];

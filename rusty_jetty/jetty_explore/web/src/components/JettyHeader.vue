@@ -17,14 +17,12 @@
   </div>
 </template>
 
-<script setup>
-import { ref } from "vue";
-import { getNodeIcon } from "src/util";
-import JettyBadge from "src/components/JettyBadge.vue";
+<script lang="ts" setup>
+import { getNodeIcon } from 'src/util';
+import JettyBadge from 'src/components/JettyBadge.vue';
 
-const props = defineProps(["node"]);
+const props = defineProps(['node']);
 
-const tab = ref("assets");
 </script>
 
 <style lang="scss">
