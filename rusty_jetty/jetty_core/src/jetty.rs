@@ -22,8 +22,14 @@ pub struct JettyConfig {
 }
 
 impl JettyConfig {
+    pub(crate) fn new() -> Self {
+        Self {
+            ..Default::default()
+        }
+    }
+
     /// Use the default filepath to ingest the Jetty config.
-    pub fn new() -> Result<JettyConfig> {
+    pub fn read_from_file() -> Result<JettyConfig> {
         let config_raw = fs::read_to_string("./jetty_config.yaml")?;
         let mut config = yaml::from_str::<JettyConfig>(&config_raw)?;
 
@@ -43,16 +49,16 @@ pub struct ConnectorConfig {
 }
 
 /// Alias for HashMap to hold credentials information.
-pub type CredentialsBlob = HashMap<String, String>;
+pub type CredentialsMap = HashMap<String, String>;
 
 /// Fetch the credentials from the Jetty connectors config.
-pub fn fetch_credentials() -> Result<HashMap<String, CredentialsBlob>> {
+pub fn fetch_credentials() -> Result<HashMap<String, CredentialsMap>> {
     let mut default_path = home_dir().unwrap();
 
     default_path.push(".jetty/connectors.yaml");
 
     let credentials_raw = fs::read_to_string(default_path)?;
-    let mut config = yaml::from_str::<HashMap<String, CredentialsBlob>>(&credentials_raw)?;
+    let mut config = yaml::from_str::<HashMap<String, CredentialsMap>>(&credentials_raw)?;
 
     config
         .pop()
@@ -73,7 +79,7 @@ impl Jetty {
         // load a saved access graph or create an empty one
 
         Ok(Jetty {
-            config: JettyConfig::new()?,
+            config: JettyConfig::read_from_file()?,
         })
     }
 }

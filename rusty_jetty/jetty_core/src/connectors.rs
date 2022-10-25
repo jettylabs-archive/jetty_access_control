@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     connectors::nodes::ConnectorData,
-    jetty::{ConnectorConfig, CredentialsBlob},
+    jetty::{ConnectorConfig, CredentialsMap},
 };
 
 /// Client using the connector
@@ -29,7 +29,7 @@ pub trait Connector {
     /// Instantiate a Connector from configuration.
     async fn new(
         config: &ConnectorConfig,
-        credentials: &CredentialsBlob,
+        credentials: &CredentialsMap,
         client: Option<ConnectorClient>,
     ) -> Result<Box<Self>>;
     /// Check if the Connector is properly set up and return the connection

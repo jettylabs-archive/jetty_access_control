@@ -51,7 +51,7 @@ const JETTY_J: &str = "
       █████████████████       
             ";
 
-const JETTY_ORANGE: Color = Color::TrueColor {
+pub(crate) const JETTY_ORANGE: Color = Color::TrueColor {
     r: 244,
     g: 113,
     b: 36,

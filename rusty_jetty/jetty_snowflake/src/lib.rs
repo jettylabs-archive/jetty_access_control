@@ -37,7 +37,7 @@ use std::sync::{Arc, Mutex};
 use jetty_core::{
     connectors,
     connectors::{nodes, Connector},
-    jetty::{ConnectorConfig, CredentialsBlob},
+    jetty::{ConnectorConfig, CredentialsMap},
 };
 
 use anyhow::{anyhow, Context, Result};
@@ -92,7 +92,7 @@ impl Connector for SnowflakeConnector {
     /// connecting.
     async fn new(
         _config: &ConnectorConfig,
-        credentials: &CredentialsBlob,
+        credentials: &CredentialsMap,
         connector_client: Option<connectors::ConnectorClient>,
     ) -> Result<Box<Self>> {
         let mut conn = creds::SnowflakeCredentials::default();

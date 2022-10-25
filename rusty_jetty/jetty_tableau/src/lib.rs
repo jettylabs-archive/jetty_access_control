@@ -25,7 +25,7 @@ use jetty_core::{
         ConnectorClient, UserIdentifier,
     },
     cual::Cual,
-    jetty::{ConnectorConfig, CredentialsBlob},
+    jetty::{ConnectorConfig, CredentialsMap},
     permissions::matrix::Merge,
     Connector,
 };
@@ -170,7 +170,7 @@ impl Connector for TableauConnector {
     /// connecting.
     async fn new(
         config: &ConnectorConfig,
-        credentials: &CredentialsBlob,
+        credentials: &CredentialsMap,
         _client: Option<ConnectorClient>,
     ) -> Result<Box<Self>> {
         let mut creds = TableauCredentials::default();
