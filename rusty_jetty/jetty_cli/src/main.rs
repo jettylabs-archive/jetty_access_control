@@ -5,12 +5,14 @@
 
 pub(crate) mod ascii;
 mod init;
+mod tui;
 
 use std::{path::Path, sync::Arc, time::Instant};
 
 use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
 
+use colored::Colorize;
 use jetty_core::{
     access_graph::AccessGraph,
     connectors::ConnectorClient,
@@ -58,9 +60,7 @@ async fn main() -> Result<()> {
     match &args.command {
         JettyCommand::Init => {
             println!("Welcome to Jetty! We are so glad you're here.");
-            let config = init::init()?;
-            println!("{}", config.0.to_yaml()?);
-            println!("\n\n{:?}", config.1);
+            let config = init::init().await?;
         }
 
         JettyCommand::Fetch {

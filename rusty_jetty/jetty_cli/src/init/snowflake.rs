@@ -8,7 +8,7 @@ use jetty_core::jetty::CredentialsMap;
 
 use super::validation::filled_validator;
 
-pub(crate) fn snowflake_connector_setup() -> Result<CredentialsMap> {
+pub(crate) fn ask_snowflake_connector_setup() -> Result<CredentialsMap> {
     let snowflake_account_id = Text::new("Snowflake Account Identifier:")
         .with_validator(filled_validator)
         .with_placeholder("org-account_name")

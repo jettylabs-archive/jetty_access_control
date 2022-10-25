@@ -24,7 +24,10 @@ pub struct JettyConfig {
 impl JettyConfig {
     /// New === default for this simple constructor.
     pub fn new() -> Self {
-        Default::default()
+        Self {
+            version: "0.0.1".to_owned(),
+            ..Default::default()
+        }
     }
 
     /// Use the default filepath to ingest the Jetty config.
@@ -55,6 +58,16 @@ pub struct ConnectorConfig {
     /// Additional configuration, specific to the connector
     #[serde(flatten)]
     pub config: HashMap<String, String>,
+}
+
+impl ConnectorConfig {
+    /// Basic constructor
+    pub fn new(connector_type: String, config: HashMap<String, String>) -> Self {
+        Self {
+            connector_type,
+            config,
+        }
+    }
 }
 
 /// Alias for HashMap to hold credentials information.
