@@ -9,7 +9,7 @@
 //   totalCount: number;
 // }
 
-export type GroupPath = GroupSummary[];
+export type NodePath = (GroupSummary | UserSummary)[];
 
 export interface GroupName {
   Group: {
@@ -21,6 +21,17 @@ export interface GroupName {
 export interface GroupSummary {
   Group: {
     name: GroupName;
+    connectors: string[];
+  };
+}
+
+export interface UserName {
+  User: string;
+}
+
+export interface UserSummary {
+  User: {
+    name: UserName;
     connectors: string[];
   };
 }

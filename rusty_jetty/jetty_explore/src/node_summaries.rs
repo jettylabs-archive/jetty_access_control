@@ -11,7 +11,10 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Eq, PartialEq)]
 pub(crate) enum NodeSummary {
     Asset,
-    User,
+    User {
+        name: NodeName,
+        connectors: HashSet<ConnectorNamespace>,
+    },
     Group {
         name: NodeName,
         connectors: HashSet<ConnectorNamespace>,
@@ -27,7 +30,10 @@ impl From<JettyNode> for NodeSummary {
                 name: n.name,
                 connectors: n.connectors,
             },
-            JettyNode::User(_) => todo!(),
+            JettyNode::User(n) => NodeSummary::User {
+                name: n.name,
+                connectors: n.connectors,
+            },
             JettyNode::Asset(_) => todo!(),
             JettyNode::Tag(_) => todo!(),
             JettyNode::Policy(_) => todo!(),

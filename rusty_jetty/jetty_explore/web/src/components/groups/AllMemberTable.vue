@@ -8,7 +8,7 @@
     :fetchPath="
       '/api/group/' + encodeURIComponent(props.node.name) + '/all_members'
     "
-    v-slot="slotProps"
+    v-slot="{ props: { row } }: { props: { row: UserWithPaths } }"
     :tip="`All the members of ${props.node.name}, including the members
     inherited from child groups, when applicable`"
   >
@@ -17,34 +17,24 @@
         <q-item class="q-px-none">
           <q-item-section>
             <router-link
-              :to="'/user/' + encodeURIComponent(slotProps.props.row.name)"
+              :to="'/user/' + encodeURIComponent(nodeNameAsString(row.node))"
               style="text-decoration: none; color: inherit"
             >
-              <q-item-label> {{ slotProps.props.row.name }}</q-item-label>
+              <q-item-label> {{ nodeNameAsString(row.node) }}</q-item-label>
             </router-link>
 
             <q-item-label caption>
               <JettyBadge
-                v-for="platform in slotProps.props.row.platforms"
-                :key="platform"
-                :name="platform"
+                v-for="connector in row.node.User.connectors"
+                :key="connector"
+                :name="connector"
               />
             </q-item-label>
           </q-item-section>
         </q-item>
       </q-td>
       <q-td key="membership_paths" class="q-px-none">
-        <div>
-          <ul class="q-my-none q-pl-sm" style="list-style-type: '❯ '">
-            <li
-              v-for="path in slotProps.props.row.membership_paths"
-              :key="path"
-              style="padding-top: 2px; padding-bottom: 2px"
-            >
-              {{ path }}
-            </li>
-          </ul>
-        </div>
+        <GroupPath :paths="row.paths" />
       </q-td>
     </q-tr>
   </JettyTable>
@@ -53,8 +43,16 @@
 <script lang="ts" setup>
 import JettyTable from '../JettyTable.vue';
 import JettyBadge from '../JettyBadge.vue';
+import { NodePath as GroupPathType, UserSummary } from '../models';
+import { nodeNameAsString } from 'src/util';
+import GroupPath from '../GroupPath.vue';
 
 const props = defineProps(['node']);
+
+interface UserWithPaths {
+  node: UserSummary;
+  paths: GroupPathType[];
+}
 
 const columns = [
   {

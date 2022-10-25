@@ -1,5 +1,10 @@
 import { exportFile } from 'quasar';
-import { GroupName } from './components/models';
+import {
+  GroupName,
+  GroupSummary,
+  UserName,
+  UserSummary,
+} from './components/models';
 
 export const getBadgeColor = (stringInput: string) => {
   if (stringInput.toLocaleLowerCase() == 'jetty') {
@@ -70,6 +75,10 @@ export function fetchJson(path: string) {
     .catch((error) => console.log('error fetching data:', error));
 }
 
-export function groupNameAsString(name: GroupName) {
-  return name.Group.origin + '::' + name.Group.name;
+export function nodeNameAsString(node: GroupSummary | UserSummary) {
+  if ('Group' in node) {
+    return node.Group.name.Group.origin + '::' + node.Group.name.Group.name;
+  } else {
+    return node.User.name.User;
+  }
 }

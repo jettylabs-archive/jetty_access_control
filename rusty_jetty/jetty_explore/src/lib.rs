@@ -14,6 +14,7 @@ mod users;
 use std::{collections::HashSet, net::SocketAddr, sync::Arc};
 
 use axum::{extract::Extension, routing::get, Json, Router};
+use node_summaries::NodeSummary;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tower_http::trace::TraceLayer;
@@ -29,6 +30,12 @@ pub(crate) struct ObjectWithPathResponse {
     name: String,
     connectors: HashSet<String>,
     membership_paths: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct NodeSummaryWithPaths {
+    node: NodeSummary,
+    paths: Vec<Vec<NodeSummary>>,
 }
 
 /// Struct used to return asset access information

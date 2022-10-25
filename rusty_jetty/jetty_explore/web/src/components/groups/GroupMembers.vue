@@ -18,15 +18,10 @@
         <q-item class="q-px-none">
           <q-item-section>
             <router-link
-              :to="
-                '/group/' +
-                encodeURIComponent(groupNameAsString(row.Group.name))
-              "
+              :to="'/group/' + encodeURIComponent(nodeNameAsString(row))"
               style="text-decoration: none; color: inherit"
             >
-              <q-item-label>
-                {{ groupNameAsString(row.Group.name) }}</q-item-label
-              >
+              <q-item-label> {{ nodeNameAsString(row) }}</q-item-label>
             </router-link>
             <q-item-label caption>
               <JettyBadge
@@ -46,7 +41,7 @@
 import JettyTable from '../JettyTable.vue';
 import JettyBadge from '../JettyBadge.vue';
 import { GroupSummary } from '../models';
-import { groupNameAsString } from 'src/util';
+import { nodeNameAsString } from 'src/util';
 
 const props = defineProps(['node']);
 

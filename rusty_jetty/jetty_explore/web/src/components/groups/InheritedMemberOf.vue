@@ -1,18 +1,32 @@
 <template>
-  <JettyTable title="Inherited Group Membership" :rows-per-page="10" :filter-method="filterMethod" :columns="columns"
-    :csv-config="csvConfig" :fetchPath="'/api/group/' + encodeURIComponent(props.node.name) + '/inherited_groups'"
+  <JettyTable
+    title="Inherited Group Membership"
+    :rows-per-page="10"
+    :filter-method="filterMethod"
+    :columns="columns"
+    :csv-config="csvConfig"
+    :fetchPath="
+      '/api/group/' + encodeURIComponent(props.node.name) + '/inherited_groups'
+    "
     v-slot="{ props: { row } }: { props: { row: GroupWithPaths } }"
-    :tip="`The groups that ${props.node.name} is an inherited member of through child relationships`">
+    :tip="`The groups that ${props.node.name} is an inherited member of through child relationships`"
+  >
     <q-tr>
       <q-td key="name">
         <q-item class="q-px-none">
           <q-item-section>
-            <router-link :to="'/group/' + groupNameAsString(row.group.Group.name)"
-              style="text-decoration: none; color: inherit">
-              <q-item-label> {{ groupNameAsString(row.group.Group.name) }}</q-item-label>
+            <router-link
+              :to="'/group/' + nodeNameAsString(row.node)"
+              style="text-decoration: none; color: inherit"
+            >
+              <q-item-label> {{ nodeNameAsString(row.node) }}</q-item-label>
             </router-link>
             <q-item-label caption>
-              <JettyBadge v-for="connector in row.group.Group.connectors" :key="connector" :name="connector" />
+              <JettyBadge
+                v-for="connector in row.node.Group.connectors"
+                :key="connector"
+                :name="connector"
+              />
             </q-item-label>
           </q-item-section>
         </q-item>
@@ -30,12 +44,12 @@
 import JettyTable from '../JettyTable.vue';
 import JettyBadge from '../JettyBadge.vue';
 import GroupPath from '../GroupPath.vue';
-import { GroupPath as GroupPathType, GroupSummary } from '../models';
-import { groupNameAsString } from 'src/util'
+import { NodePath as GroupPathType, GroupSummary } from '../models';
+import { nodeNameAsString } from 'src/util';
 
 interface GroupWithPaths {
-  group: GroupSummary,
-  paths: GroupPathType[]
+  node: GroupSummary;
+  paths: GroupPathType[];
 }
 
 const props = defineProps(['node']);
