@@ -138,6 +138,8 @@ async fn inherited_groups_handler(
         |n| matches!(n, EdgeType::MemberOf),
         |n| matches!(n, JettyNode::Group(_)),
         |n| matches!(n, JettyNode::Group(_)),
+        // looking for inherited groups, so skip the first level of connection, which would be the
+        // directly assigned (rather than inherited groups)
         Some(2),
         None,
     );
