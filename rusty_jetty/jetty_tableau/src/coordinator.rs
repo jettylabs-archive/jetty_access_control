@@ -109,7 +109,7 @@ impl Coordinator {
     pub(crate) async fn new(creds: TableauCredentials) -> Self {
         Coordinator {
             env: read_environment_assets().unwrap_or_default(),
-            rest_client: rest::TableauRestClient::new(creds).await,
+            rest_client: rest::TableauRestClient::new(creds).await.unwrap(),
         }
     }
 
