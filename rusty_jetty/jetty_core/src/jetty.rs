@@ -1,10 +1,12 @@
 //! Jetty Module
 //!
 use std::fs;
+use std::path::Path;
 use std::{collections::HashMap, fmt::Display};
 
 use anyhow::{anyhow, Result};
 use dirs::home_dir;
+use log::debug;
 use serde::{Deserialize, Serialize};
 use yaml_peg::serde as yaml;
 
@@ -37,8 +39,8 @@ impl JettyConfig {
     }
 
     /// Use the default filepath to ingest the Jetty config.
-    pub fn read_from_file() -> Result<JettyConfig> {
-        let config_raw = fs::read_to_string("./jetty_config.yaml")?;
+    pub fn read_from_file<P: AsRef<Path>>(path: P) -> Result<JettyConfig> {
+        let config_raw = fs::read_to_string(path)?;
         let mut config = yaml::from_str::<JettyConfig>(&config_raw)?;
 
         config.pop().ok_or_else(|| anyhow!["failed"])
@@ -85,6 +87,7 @@ pub fn fetch_credentials() -> Result<HashMap<String, CredentialsMap>> {
 
     default_path.push(".jetty/connectors.yaml");
 
+    debug!("Trying to read credentials from {:?}", default_path);
     let credentials_raw = fs::read_to_string(default_path)?;
     let mut config = yaml::from_str::<HashMap<String, CredentialsMap>>(&credentials_raw)?;
 
@@ -107,7 +110,7 @@ impl Jetty {
         // load a saved access graph or create an empty one
 
         Ok(Jetty {
-            config: JettyConfig::read_from_file()?,
+            config: JettyConfig::read_from_file("./jetty_config.yaml")?,
         })
     }
 }

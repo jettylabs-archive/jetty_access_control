@@ -7,14 +7,17 @@ pub(crate) mod ascii;
 mod init;
 mod tui;
 
-use std::{path::Path, sync::Arc, time::Instant};
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+    time::Instant,
+};
 
 use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
 
-use colored::Colorize;
 use jetty_core::{
-    access_graph::{translate::Translator, AccessGraph},
+    access_graph::AccessGraph,
     connectors::ConnectorClient,
     fetch_credentials,
     jetty::ConnectorNamespace,
@@ -37,7 +40,11 @@ struct Args {
 #[derive(Subcommand, Debug)]
 enum JettyCommand {
     /// Initialize a Jetty project.
-    Init,
+    Init {
+        /// Initialize from an existing config (as a shortcut).
+        #[clap(short, long)]
+        from: Option<PathBuf>,
+    },
     Fetch {
         /// Visualize the graph in an SVG file.
         #[clap(short, long, value_parser, default_value = "false")]
@@ -58,9 +65,9 @@ async fn main() -> Result<()> {
     logging::setup(args.log_level);
 
     match &args.command {
-        JettyCommand::Init => {
+        JettyCommand::Init { from } => {
             println!("Welcome to Jetty! We are so glad you're here.");
-            let config = init::init().await?;
+            let config = init::init(from).await?;
         }
 
         JettyCommand::Fetch {
