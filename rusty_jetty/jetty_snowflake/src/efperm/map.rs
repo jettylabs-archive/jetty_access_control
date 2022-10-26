@@ -102,7 +102,7 @@ impl<'a> EffectivePermissionMap<'a> {
         //
         // So the user should have USAGE on the schema and ANY permission on the
         // database in order to use this object.
-        let has_any_db_grant = !db_grants.next().is_some();
+        let has_any_db_grant = db_grants.next().is_some();
         let has_schema_usage = schema_grants.iter().any(|g| g.privilege == "USAGE");
 
         if !has_any_db_grant || !has_schema_usage {

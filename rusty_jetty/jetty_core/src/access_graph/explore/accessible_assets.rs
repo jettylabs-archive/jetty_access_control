@@ -49,10 +49,12 @@ impl AccessGraph {
         perms
             .iter()
             .filter_map(|(k, v)| {
+                // make sure that the user has an allow mode on at least one privilege
                 if v.iter().any(|p| p.mode == PermissionMode::Allow) {
                     Some((
                         k.to_owned(),
                         v.iter()
+                            // only show allow privileges
                             .filter(|p| p.mode == PermissionMode::Allow)
                             .collect(),
                     ))

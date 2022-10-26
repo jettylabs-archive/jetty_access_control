@@ -45,6 +45,14 @@ pub(crate) struct NodeSummaryWithPrivileges {
     privileges: HashSet<EffectivePermission>,
 }
 
+/// Represents a node with a list of associated nodes. This could be, for example,
+/// a user node, with a list of all the assets that they have access to.
+#[derive(Serialize)]
+pub(crate) struct SummaryWithAssociatedSummaries {
+    node: NodeSummary,
+    associations: Vec<NodeSummary>,
+}
+
 /// Struct used to return asset access information
 #[derive(Serialize, Deserialize)]
 pub(crate) struct UserAssetsResponse {
