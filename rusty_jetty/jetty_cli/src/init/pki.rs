@@ -14,13 +14,6 @@ pub(crate) struct KeyPair {
 }
 
 impl KeyPair {
-    #[allow(dead_code)]
-    pub(crate) fn save_to_files(&self, filepath: &Path) -> Result<()> {
-        save_to_file(&self.private, &filepath.join("jetty_rsa.p8"))?;
-        save_to_file(&self.public, &filepath.join("jetty_rsa.pub"))?;
-        Ok(())
-    }
-
     /// Get the public key minus header/footer information. Just the key.
     pub(crate) fn public_inner(&self) -> String {
         let lines = self.public.lines().collect::<Vec<_>>();
@@ -35,13 +28,6 @@ impl KeyPair {
     pub(crate) fn private_key(&self) -> String {
         self.private.to_owned()
     }
-}
-
-/// Synchronous file write.
-fn save_to_file(contents: &str, filepath: &Path) -> Result<()> {
-    let mut file = File::create(filepath)?;
-    file.write_all(contents.as_bytes())?;
-    Ok(())
 }
 
 /// Create a local keypair with a corresponding public key fingerprint.
