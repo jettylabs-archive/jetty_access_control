@@ -115,7 +115,7 @@ impl Translator {
     /// This takes the name of a policy and creates a NodeName::Policy from it
     fn resolve_policies(&mut self, data: &Vec<(ConnectorData, ConnectorNamespace)>) {
         let policy_data: Vec<_> = data.iter().map(|(c, n)| (&c.policies, n)).collect();
-        // for each connector, look over all the users.
+        // for each connector, look over all the policies.
         for (policies, namespace) in policy_data {
             for policy in policies {
                 self.local_to_global.policies.double_insert(
