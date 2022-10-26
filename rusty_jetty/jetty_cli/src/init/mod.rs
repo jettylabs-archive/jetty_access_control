@@ -52,17 +52,8 @@ async fn inquire_init() -> Result<(JettyConfig, HashMap<String, CredentialsMap>)
     // Print the Jetty Labs banner.
     print_banner();
 
-    // Set up render configuration for the questions.
-    let stylesheet = StyleSheet::new().with_fg(JETTY_ORANGE_DARK);
-    let accent_stylesheet = StyleSheet::new().with_fg(JETTY_ACCENT);
-    let mut render_config = RenderConfig::default()
-        .with_prompt_prefix(Styled::new(">").with_style_sheet(accent_stylesheet))
-        .with_answer(stylesheet)
-        .with_selected_checkbox(Styled::new("[x]").with_style_sheet(accent_stylesheet))
-        .with_help_message(accent_stylesheet);
-    render_config.answered_prompt_prefix = Styled::new("👍");
-    render_config.highlighted_option_prefix = Styled::new("➡");
-    set_global_render_config(render_config);
+    // Set up render configuration for inquire questions.
+    setup_render_config();
 
     let mut jetty_config = JettyConfig::new();
     let mut credentials = HashMap::new();
@@ -94,6 +85,19 @@ async fn inquire_init() -> Result<(JettyConfig, HashMap<String, CredentialsMap>)
     // Leave the alternate screen.
     alt_screen_context.end();
     Ok((jetty_config, credentials))
+}
+
+fn setup_render_config() {
+    let stylesheet = StyleSheet::new().with_fg(JETTY_ORANGE_DARK);
+    let accent_stylesheet = StyleSheet::new().with_fg(JETTY_ACCENT);
+    let mut render_config = RenderConfig::default()
+        .with_prompt_prefix(Styled::new(">").with_style_sheet(accent_stylesheet))
+        .with_answer(stylesheet)
+        .with_selected_checkbox(Styled::new("[x]").with_style_sheet(accent_stylesheet))
+        .with_help_message(accent_stylesheet);
+    render_config.answered_prompt_prefix = Styled::new("👍");
+    render_config.highlighted_option_prefix = Styled::new("➡");
+    set_global_render_config(render_config);
 }
 
 fn ask_project_name() -> Result<String> {

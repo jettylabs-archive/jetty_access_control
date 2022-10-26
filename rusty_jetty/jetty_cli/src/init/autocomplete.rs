@@ -37,6 +37,7 @@ impl FilepathCompleter {
             fallback_parent.clone()
         };
 
+        // Don't try to list the dir if it doesn't exist.
         let entries = if scan_dir.is_dir() {
             match std::fs::read_dir(scan_dir) {
                 Ok(read_dir) => Ok(read_dir),
