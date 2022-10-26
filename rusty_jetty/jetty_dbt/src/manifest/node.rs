@@ -2,7 +2,7 @@ use serde::Deserialize;
 
 use jetty_core::connectors::AssetType;
 use jetty_core::cual::Cual;
-use jetty_core::{connectors::nodes::Asset as JettyAsset, cual::Cualable};
+use jetty_core::{connectors::nodes::RawAsset as JettyAsset, cual::Cualable};
 
 use std::collections::{HashMap, HashSet};
 

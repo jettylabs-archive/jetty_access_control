@@ -9,7 +9,6 @@ use std::fmt::Display;
 use yaml_peg::{parse, repr::RcRepr, NodeRc};
 
 use crate::access_graph::{AccessGraph, AssetAttributes, JettyNode, NodeName};
-use crate::connectors::nodes;
 use crate::connectors::processed_nodes::ProcessedTag;
 use crate::jetty::ConnectorNamespace;
 
@@ -470,7 +469,7 @@ pub(crate) fn tags_to_jetty_node_helpers(
 #[cfg(test)]
 mod test {
 
-    use crate::connectors::nodes::Tag;
+    use crate::connectors::nodes::RawTag;
     use crate::cual::Cual;
 
     use super::*;

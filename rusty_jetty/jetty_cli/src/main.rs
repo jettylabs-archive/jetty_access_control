@@ -70,39 +70,41 @@ async fn main() -> Result<()> {
             fetch(connectors, visualize).await?;
         }
 
-        JettyCommand::Explore { fetch_first } => match AccessGraph::deserialize_graph() {
-            Ok(mut ag) => {
-                if *fetch_first {
-                    info!("Fetching all data first.");
-                    fetch(
-                        &vec![
-                            "snowflake".to_owned(),
-                            "tableau".to_owned(),
-                            "dbt".to_owned(),
-                        ],
-                        &false,
-                    )
-                    .await?;
-                }
-                if Path::new(TAGS_PATH).exists() {
-                    let tag_config = std::fs::read_to_string(TAGS_PATH);
-                    match tag_config {
-                        Ok(c) => {
-                            ag.add_tags(&c)?;
-                        }
-                        Err(e) => {
-                            bail!("found, but was unable to read {}\nerror: {}", TAGS_PATH, e)
+        JettyCommand::Explore { fetch_first } => {
+            if *fetch_first {
+                info!("Fetching all data first.");
+                fetch(
+                    &vec![
+                        "snowflake".to_owned(),
+                        "tableau".to_owned(),
+                        "dbt".to_owned(),
+                    ],
+                    &false,
+                )
+                .await?;
+            }
+            match AccessGraph::deserialize_graph() {
+                Ok(mut ag) => {
+                    if Path::new(TAGS_PATH).exists() {
+                        let tag_config = std::fs::read_to_string(TAGS_PATH);
+                        match tag_config {
+                            Ok(c) => {
+                                ag.add_tags(&c)?;
+                            }
+                            Err(e) => {
+                                bail!("found, but was unable to read {}\nerror: {}", TAGS_PATH, e)
+                            }
                         }
                     }
-                }
 
-                jetty_explore::explore_web_ui(Arc::new(ag)).await;
+                    jetty_explore::explore_web_ui(Arc::new(ag)).await;
+                }
+                Err(e) => info!(
+                    "Unable to find saved graph. Try running `jetty fetch`\nError: {}",
+                    e
+                ),
             }
-            Err(e) => info!(
-                "Unable to find saved graph. Try running `jetty fetch`\nError: {}",
-                e
-            ),
-        },
+        }
     }
 
     Ok(())
@@ -184,11 +186,8 @@ async fn fetch(connectors: &Vec<String>, &visualize: &bool) -> Result<()> {
     info!("creating access graph");
     let now = Instant::now();
 
-    // Build the translator
-    let tr = Translator::new(&data_from_connectors);
-    // Process the connector data
-    let pcd = tr.local_to_processed_connector_data(data_from_connectors);
-    let ag = AccessGraph::new(pcd)?;
+    let ag = AccessGraph::new_from_connector_data(data_from_connectors)?;
+
     info!(
         "access graph creation took {} seconds",
         now.elapsed().as_secs_f32()

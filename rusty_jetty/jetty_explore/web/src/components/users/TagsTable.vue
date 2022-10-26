@@ -6,7 +6,7 @@
     :columns="columns"
     :csv-config="csvConfig"
     :fetchPath="'/api/user/' + encodeURIComponent(props.node.name) + '/tags'"
-    v-slot="slotProps"
+    v-slot="{ props: { row } }: { props: { row: TagWithAssets } }"
     :tip="`The tags that ${props.node.name} has access to, through any asset privilege`"
   >
     <q-tr>
@@ -14,10 +14,10 @@
         <q-item class="q-px-none">
           <q-item-section>
             <router-link
-              :to="'/tag/' + encodeURIComponent(slotProps.props.row.name)"
+              :to="'/tag/' + encodeURIComponent(nodeNameAsString(row.node))"
               style="text-decoration: none; color: inherit"
             >
-              <q-item-label> {{ slotProps.props.row.name }}</q-item-label>
+              <q-item-label> {{ nodeNameAsString(row.node) }}</q-item-label>
             </router-link>
           </q-item-section>
         </q-item>
@@ -25,18 +25,18 @@
       <q-td key="assets" style="padding-right: 0px">
         <q-list dense>
           <q-item
-            v-for="asset in slotProps.props.row.assets"
-            :key="asset"
+            v-for="asset in row.list"
+            :key="asset.Asset.name.Asset.uri"
             class="q-px-none"
           >
             <div class="q-pr-sm">
-              {{ asset.name }}
+              {{ nodeNameAsString(asset) }}
             </div>
             <div>
               <JettyBadge
-                v-for="platform in slotProps.props.row.platforms"
-                :key="platform"
-                :name="platform"
+                v-for="connector in asset.Asset.connectors"
+                :key="connector"
+                :name="connector"
               />
             </div>
           </q-item>
@@ -49,6 +49,13 @@
 <script lang="ts" setup>
 import JettyTable from '../JettyTable.vue';
 import JettyBadge from '../JettyBadge.vue';
+import { AssetSummary, TagSummary } from '../models';
+import { nodeNameAsString } from 'src/util';
+
+interface TagWithAssets {
+  node: TagSummary;
+  list: AssetSummary[];
+}
 
 const props = defineProps(['node']);
 
@@ -94,9 +101,13 @@ const csvConfig = {
   filename: props.node.name + '_tags.csv',
   columnNames: ['Tag Name', 'Accessible Asset', 'Asset Platform'],
   // accepts a row and returns the proper mapping
-  mappingFn: (filteredSortedRows) =>
+  mappingFn: (filteredSortedRows: TagWithAssets[]) =>
     filteredSortedRows.flatMap((r) =>
-      r.assets.map((a) => [r.name, a.name, a.platform])
+      r.list.map((a) => [
+        nodeNameAsString(r.node),
+        nodeNameAsString(a),
+        a.Asset.connectors.join(', '),
+      ])
     ),
 };
 </script>

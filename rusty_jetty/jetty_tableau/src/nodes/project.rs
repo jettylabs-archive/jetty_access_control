@@ -160,7 +160,7 @@ impl Permissionable for Project {
     }
 }
 
-impl FromTableau<Project> for jetty_nodes::Asset {
+impl FromTableau<Project> for jetty_nodes::RawAsset {
     fn from(val: Project, env: &Environment) -> Self {
         let cual = get_tableau_cual(
             TableauAssetType::Project,
@@ -173,7 +173,7 @@ impl FromTableau<Project> for jetty_nodes::Asset {
         let parent_cuals = val
             .get_parent_project_cual(env)
             .map_or_else(HashSet::new, |c| HashSet::from([c.uri()]));
-        jetty_nodes::Asset::new(
+        jetty_nodes::RawAsset::new(
             cual,
             val.name,
             AssetType(PROJECT.to_owned()),

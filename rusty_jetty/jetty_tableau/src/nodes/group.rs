@@ -58,14 +58,14 @@ impl Group {
     }
 }
 
-impl From<Group> for jetty_nodes::Group {
+impl From<Group> for jetty_nodes::RawGroup {
     fn from(val: Group) -> Self {
-        jetty_nodes::Group::new(
+        jetty_nodes::RawGroup::new(
             val.id.to_owned(),
             HashMap::from([("tableau::id".to_owned(), val.id)]),
             // No nested groups in tableau
             HashSet::new(),
-            val.includes.iter().map(|u| u.email.to_owned()).collect(),
+            val.includes.iter().map(|u| u.id.to_owned()).collect(),
             // No nested groups in tableau?
             HashSet::new(),
             // Handled in permissions/policies.
@@ -123,7 +123,7 @@ mod tests {
                 Default::default(),
             )],
         );
-        jetty_nodes::Group::from(g);
+        jetty_nodes::RawGroup::from(g);
     }
 
     #[test]
@@ -141,25 +141,25 @@ mod tests {
                 Default::default(),
             )],
         );
-        Into::<jetty_nodes::Group>::into(g);
+        Into::<jetty_nodes::RawGroup>::into(g);
     }
 
     #[test]
-    fn test_group_with_users_into_jetty_group_gets_email() {
-        let email = "email@email.email";
+    fn test_group_with_users_into_jetty_group_gets_id() {
+        let id = "pizza-pizza";
         let g = Group::new(
             "id".to_owned(),
             "name".to_owned(),
             vec![tableau_nodes::User::new(
-                "id".to_owned(),
+                id.to_owned(),
                 "name".to_owned(),
-                email.to_owned(),
+                "email".to_owned(),
                 "eauid".to_owned(),
                 "full name".to_owned(),
                 Default::default(),
             )],
         );
-        let a: jetty_nodes::Group = g.into();
-        assert_eq!(a.includes_users, HashSet::from([email.to_owned()]));
+        let a: jetty_nodes::RawGroup = g.into();
+        assert_eq!(a.includes_users, HashSet::from([id.to_owned()]));
     }
 }

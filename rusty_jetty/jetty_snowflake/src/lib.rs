@@ -325,7 +325,7 @@ impl SnowflakeConnector {
             .collect())
     }
 
-    fn grants_to_policies(&self, grants: &[GrantType]) -> Vec<nodes::Policy> {
+    fn grants_to_policies(&self, grants: &[GrantType]) -> Vec<nodes::RawPolicy> {
         grants
             .iter()
             .filter(|g| consts::ASSET_TYPES.contains(&g.granted_on()))

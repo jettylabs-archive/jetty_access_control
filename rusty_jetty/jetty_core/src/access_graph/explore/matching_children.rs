@@ -5,8 +5,6 @@ use std::collections::HashSet;
 
 use petgraph::{stable_graph::NodeIndex, Direction};
 
-use crate::access_graph::graph::typed_indices::ToNodeIndex;
-
 use super::{AccessGraph, EdgeType, JettyNode};
 
 impl AccessGraph {
@@ -20,7 +18,7 @@ impl AccessGraph {
     /// - `min_depth` is the minimum depth at which a target may be found
     /// - `max_depth` is how deep to search for children. If None, will continue until it runs out of children to visit.
 
-    pub fn get_matching_children<T: ToNodeIndex>(
+    pub fn get_matching_children<T: Into<NodeIndex>>(
         &self,
         from: T,
         edge_matcher: fn(&EdgeType) -> bool,
@@ -29,7 +27,7 @@ impl AccessGraph {
         min_depth: Option<usize>,
         max_depth: Option<usize>,
     ) -> Vec<NodeIndex> {
-        let idx = from.get_index();
+        let idx: NodeIndex = from.into();
 
         let max_depth = if let Some(l) = max_depth {
             l

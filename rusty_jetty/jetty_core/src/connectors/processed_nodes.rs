@@ -1,5 +1,6 @@
-//! Types and functions for the processed nodes. These are used after the translation layer, and all
-//! references to other nodes are NodeNames
+//! Types and functions for processed nodes. Processed nodes are used after the translation layer - all
+//! references to other nodes have been converted to NodeNames
+
 use std::{
     cmp::Ordering,
     collections::{HashMap, HashSet},
@@ -12,21 +13,18 @@ use crate::{
     access_graph::{
         graph::typed_indices::{AssetIndex, UserIndex},
         helpers::{insert_edge_pair, NodeHelper},
-        AssetAttributes, EdgeType, GroupAttributes, GroupName, JettyEdge, JettyNode, NodeName,
-        PolicyAttributes, PolicyName, TagAttributes, UserAttributes, UserName,
+        AssetAttributes, EdgeType, GroupAttributes, JettyEdge, JettyNode, NodeName,
+        PolicyAttributes, TagAttributes, UserAttributes,
     },
     cual::Cual,
     jetty::ConnectorNamespace,
     Connector,
 };
 
-use super::{
-    nodes::{EffectivePermission, SparseMatrix},
-    UserIdentifier,
-};
+use super::nodes::{EffectivePermission, SparseMatrix};
 
 /// Container for all node data for a given connector
-#[derive(Debug, Default, PartialEq, Eq)]
+#[derive(Debug, Default, PartialEq, Eq, Clone)]
 pub struct ProcessedConnectorData {
     /// All groups in the connector
     pub groups: Vec<ProcessedGroup>,
@@ -44,10 +42,10 @@ pub struct ProcessedConnectorData {
     /// `effective_permissions["user_identifier"]["asset://cual"]` would contain the effective
     /// permissions for that user,asset combination, with one EffectivePermission
     /// per privilege containing possible explanations.
-    pub effective_permissions: SparseMatrix<UserIndex, AssetIndex, HashSet<EffectivePermission>>,
+    pub effective_permissions: SparseMatrix<NodeName, NodeName, HashSet<EffectivePermission>>,
 }
 
-#[derive(Default, Debug, PartialEq, Eq)]
+#[derive(Default, Debug, PartialEq, Eq, Clone)]
 /// Group data provided by connectors
 pub struct ProcessedGroup {
     /// Group name
@@ -68,7 +66,7 @@ pub struct ProcessedGroup {
 }
 
 /// User data provided by connectors
-#[derive(Default, Debug, PartialEq, Eq)]
+#[derive(Default, Debug, PartialEq, Eq, Clone)]
 pub struct ProcessedUser {
     /// The name of the user. When coming from a connector, this
     /// should be the name the connector uses to refer to a person.
@@ -90,7 +88,7 @@ pub struct ProcessedUser {
 }
 
 /// Struct used to populate asset nodes and edges in the graph
-#[derive(Default, PartialEq, Eq, Debug)]
+#[derive(Default, PartialEq, Eq, Debug, Clone)]
 pub struct ProcessedAsset {
     /// Connector Universal Asset Locator
     pub name: NodeName,
@@ -129,7 +127,7 @@ impl PartialOrd for ProcessedAsset {
 }
 
 /// Struct used to populate tag nodes and edges in the graph
-#[derive(Debug, PartialEq, Eq, Default)]
+#[derive(Debug, PartialEq, Eq, Default, Clone)]
 pub struct ProcessedTag {
     /// context
     pub name: NodeName,

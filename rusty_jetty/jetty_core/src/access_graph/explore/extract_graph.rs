@@ -6,12 +6,12 @@ use std::collections::HashMap;
 use petgraph::{stable_graph::NodeIndex, visit::EdgeRef};
 
 use super::SubGraph;
-use crate::access_graph::{graph::typed_indices::ToNodeIndex, AccessGraph, EdgeType, JettyNode};
+use crate::access_graph::{AccessGraph, EdgeType, JettyNode};
 
 impl AccessGraph {
     /// Extract the graph surrounding a node to max_depth
-    pub fn extract_graph<T: ToNodeIndex>(&self, from: T, max_depth: usize) -> SubGraph {
-        let idx = from.get_index();
+    pub fn extract_graph<T: Into<NodeIndex> + Copy>(&self, from: T, max_depth: usize) -> SubGraph {
+        let idx: NodeIndex = from.into();
         let mut final_graph: petgraph::graph::DiGraph<JettyNode, EdgeType> = petgraph::Graph::new();
 
         let new_idx = final_graph.add_node(self[idx].to_owned());

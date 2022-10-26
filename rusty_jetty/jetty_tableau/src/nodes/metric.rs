@@ -102,7 +102,7 @@ impl Permissionable for Metric {
     }
 }
 
-impl FromTableau<Metric> for jetty_nodes::Asset {
+impl FromTableau<Metric> for jetty_nodes::RawAsset {
     fn from(val: Metric, env: &Environment) -> Self {
         let cual = get_tableau_cual(
             TableauAssetType::Metric,
@@ -125,7 +125,7 @@ impl FromTableau<Metric> for jetty_nodes::Asset {
         )
         .expect("getting parent cual")
         .uri();
-        jetty_nodes::Asset::new(
+        jetty_nodes::RawAsset::new(
             cual,
             val.name,
             AssetType(METRIC.to_owned()),

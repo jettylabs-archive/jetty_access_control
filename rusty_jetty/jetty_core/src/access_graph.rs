@@ -17,10 +17,9 @@ use crate::logging::debug;
 use crate::tag_parser::{parse_tags, tags_to_jetty_node_helpers};
 use crate::{connectors::AssetType, cual::Cual};
 
-use self::graph::typed_indices::{
-    AssetIndex, GroupIndex, PolicyIndex, TagIndex, ToNodeIndex, UserIndex,
-};
+use self::graph::typed_indices::{AssetIndex, GroupIndex, PolicyIndex, TagIndex, UserIndex};
 use self::helpers::NodeHelper;
+use self::translate::Translator;
 
 use super::connectors;
 use core::hash::Hash;
@@ -39,7 +38,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use time::OffsetDateTime;
 
-use crate::permissions::matrix::Merge;
+use crate::permissions::matrix::{InsertOrMerge, Merge};
 
 const SAVED_GRAPH_PATH: &str = "jetty_graph";
 
@@ -54,16 +53,6 @@ pub struct UserAttributes {
     pub metadata: HashMap<String, String>,
     /// Connectors the user is present in
     pub connectors: HashSet<ConnectorNamespace>,
-}
-/// The name for a user node
-#[derive(Eq, Hash, PartialEq, Debug, Default)]
-pub struct UserName(String);
-
-impl UserName {
-    /// create a new UserName from a string
-    pub fn new(name: String) -> Self {
-        UserName(name)
-    }
 }
 
 impl UserAttributes {
@@ -117,19 +106,6 @@ pub struct GroupAttributes {
     pub connectors: HashSet<ConnectorNamespace>,
 }
 
-/// The name for a Group node
-#[derive(Eq, Hash, PartialEq, Debug, Default)]
-pub struct GroupName {
-    name: String,
-    origin: ConnectorNamespace,
-}
-
-impl GroupName {
-    pub(crate) fn new(name: String, origin: ConnectorNamespace) -> Self {
-        Self { name, origin }
-    }
-}
-
 impl GroupAttributes {
     fn merge_attributes(&self, new_attributes: &GroupAttributes) -> Result<GroupAttributes> {
         let name = merge_matched_field(&self.name, &new_attributes.name)
@@ -171,10 +147,14 @@ impl TryFrom<JettyNode> for GroupAttributes {
 /// A struct defining the attributes of an asset
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AssetAttributes {
-    pub(crate) name: NodeName,
-    pub(crate) asset_type: AssetType,
-    pub(crate) metadata: HashMap<String, String>,
-    pub(crate) connectors: HashSet<ConnectorNamespace>,
+    /// Name of Asset
+    pub name: NodeName,
+    /// Asset type
+    pub asset_type: AssetType,
+    /// Asset metadata
+    pub metadata: HashMap<String, String>,
+    /// Asset connectors
+    pub connectors: HashSet<ConnectorNamespace>,
 }
 
 impl AssetAttributes {
@@ -315,9 +295,6 @@ pub struct PolicyAttributes {
     pub connectors: HashSet<ConnectorNamespace>,
 }
 
-#[derive(Default, Debug, PartialEq, Eq, Hash)]
-pub(crate) struct PolicyName(String);
-
 impl PolicyAttributes {
     fn merge_attributes(&self, new_attributes: &PolicyAttributes) -> Result<PolicyAttributes> {
         let name = merge_matched_field(&self.name, &new_attributes.name)
@@ -349,7 +326,10 @@ impl PolicyAttributes {
     #[cfg(test)]
     fn new(name: String) -> Self {
         Self {
-            name: NodeName::Policy(name),
+            name: NodeName::Policy {
+                name,
+                origin: Default::default(),
+            },
             privileges: Default::default(),
             pass_through_hierarchy: Default::default(),
             pass_through_lineage: Default::default(),
@@ -519,7 +499,12 @@ pub enum NodeName {
     /// Asset node
     Asset(Cual),
     /// Policy node
-    Policy(String),
+    Policy {
+        /// Policy name
+        name: String,
+        /// Origin connector
+        origin: ConnectorNamespace,
+    },
     /// Tag node
     Tag(String),
 }
@@ -536,7 +521,7 @@ impl Display for NodeName {
             NodeName::User(n) => write!(f, "{}", n.to_owned()),
             NodeName::Group { name, origin } => write!(f, "{}::{}", origin, name),
             NodeName::Asset(c) => write!(f, "{}", c.to_string()),
-            NodeName::Policy(n) => write!(f, "{}", n.to_owned()),
+            NodeName::Policy { name, origin } => write!(f, "{}::{}", origin, name),
             NodeName::Tag(n) => write!(f, "{}", n.to_owned()),
         }
     }
@@ -572,18 +557,18 @@ pub struct AccessGraph {
     effective_permissions: SparseMatrix<UserIndex, AssetIndex, HashSet<EffectivePermission>>,
 }
 
-impl<T: graph::typed_indices::ToNodeIndex> Index<T> for AccessGraph {
+impl<T: Into<NodeIndex>> Index<T> for AccessGraph {
     type Output = JettyNode;
 
     fn index(&self, index: T) -> &Self::Output {
-        let node_index = index.get_index();
+        let node_index: NodeIndex = index.into();
         self.graph.graph.index(node_index)
     }
 }
 
-impl<T: graph::typed_indices::ToNodeIndex> IndexMut<T> for AccessGraph {
+impl<T: Into<NodeIndex>> IndexMut<T> for AccessGraph {
     fn index_mut(&mut self, index: T) -> &mut Self::Output {
-        let node_index = index.get_index();
+        let node_index: NodeIndex = index.into();
         self.graph.graph.index_mut(node_index)
     }
 }
@@ -602,23 +587,51 @@ impl AccessGraph {
         };
         // Create all nodes first, then create edges.
         ag.add_nodes(&connector_data)?;
-        // Merge effective permissions into the access graph
-        ag.effective_permissions
-            .merge(connector_data.effective_permissions)
-            .context("merging effective permissions")
-            .unwrap();
-
         ag.add_edges()?;
+
+        // Merge effective permissions into the access graph
+        ag.effective_permissions = ag.translate_effective_permissions_to_global_indices(
+            connector_data.effective_permissions,
+        );
+
         Ok(ag)
     }
 
-    /// This is a placeholder for the translation layer. The final access graph will need effective permissions with different axes than
-    /// the connectors provide.
-    fn translate_effective_permissions_matrix_to_global(
+    /// Create a new Access Graph from a Vec<(ConnectorData, ConnectorNamespace)>.
+    /// This handles the translation from connectors local state to a global state
+    pub fn new_from_connector_data(
+        connector_data: Vec<(ConnectorData, ConnectorNamespace)>,
+    ) -> Result<Self> {
+        // Build the translator
+        let tr = Translator::new(&connector_data);
+        // Process the connector data
+        let pcd = tr.local_to_processed_connector_data(connector_data);
+        let ag_res = AccessGraph::new(pcd.to_owned());
+        ag_res.map(|mut ag| {
+            ag.effective_permissions =
+                ag.translate_effective_permissions_to_global_indices(pcd.effective_permissions);
+            ag
+        })
+    }
+
+    /// This translate effective permissions from using node names for indices to using
+    /// node indices
+    fn translate_effective_permissions_to_global_indices(
         &self,
-        local: SparseMatrix<UserIdentifier, Cual, HashSet<EffectivePermission>>,
+        // This should match SparseMatrix<NodeName::User(), NodeName::Asset(), HashSet<_>>
+        node_name_permissions: SparseMatrix<NodeName, NodeName, HashSet<EffectivePermission>>,
     ) -> SparseMatrix<UserIndex, AssetIndex, HashSet<EffectivePermission>> {
-        todo!()
+        let mut result = SparseMatrix::new();
+
+        for (k1, v1) in &node_name_permissions {
+            for (k2, v2) in v1 {
+                result.insert_or_merge(
+                    self.get_user_index_from_name(k1).unwrap(),
+                    HashMap::from([(self.get_asset_index_from_name(k2).unwrap(), v2.to_owned())]),
+                );
+            }
+        }
+        result
     }
 
     /// Get the untyped node index for a given NodeName
@@ -843,7 +856,10 @@ mod tests {
                 name: "Group c".to_string(),
                 origin: Default::default(),
             }]),
-            granted_by: HashSet::from([NodeName::Policy("Policy 1".to_string())]),
+            granted_by: HashSet::from([NodeName::Policy {
+                name: "Policy 1".to_string(),
+                origin: Default::default(),
+            }]),
             ..Default::default()
         }];
 
@@ -937,11 +953,17 @@ mod tests {
                     name: "Group 1".to_string(),
                     origin: Default::default(),
                 },
-                to: NodeName::Policy("Policy 1".to_string()),
+                to: NodeName::Policy {
+                    name: "Policy 1".to_string(),
+                    origin: Default::default(),
+                },
                 edge_type: EdgeType::GrantedBy,
             },
             JettyEdge {
-                from: NodeName::Policy("Policy 1".to_string()),
+                from: NodeName::Policy {
+                    name: "Policy 1".to_string(),
+                    origin: Default::default(),
+                },
                 to: NodeName::Group {
                     name: "Group 1".to_string(),
                     origin: Default::default(),

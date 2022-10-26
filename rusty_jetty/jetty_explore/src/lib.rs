@@ -5,6 +5,7 @@
 
 mod assets;
 mod groups;
+mod node_summaries;
 mod nodes;
 mod static_server;
 mod tags;
@@ -13,12 +14,14 @@ mod users;
 use std::{collections::HashSet, net::SocketAddr, sync::Arc};
 
 use axum::{extract::Extension, routing::get, Json, Router};
+use node_summaries::NodeSummary;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tower_http::trace::TraceLayer;
 
 use jetty_core::{
     access_graph,
+    connectors::nodes::EffectivePermission,
     logging::{debug, error, info},
 };
 
@@ -28,6 +31,18 @@ pub(crate) struct ObjectWithPathResponse {
     name: String,
     connectors: HashSet<String>,
     membership_paths: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct NodeSummaryWithPaths {
+    node: NodeSummary,
+    paths: Vec<Vec<NodeSummary>>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub(crate) struct NodeSummaryWithPrivileges {
+    node: NodeSummary,
+    privileges: HashSet<EffectivePermission>,
 }
 
 /// Struct used to return asset access information
