@@ -46,7 +46,7 @@
               {{ privilege.privilege }}
             </div>
             <div>
-              <ul class="q-my-none" style="list-style-type: '❯ '">
+              <ul class="q-my-none">
                 <li
                   v-for="reason in privilege.reasons"
                   :key="reason"

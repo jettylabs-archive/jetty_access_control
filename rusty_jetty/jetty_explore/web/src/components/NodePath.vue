@@ -1,7 +1,7 @@
 <template>
   <span>
     <div>
-      <ul class="q-my-none q-pl-sm" style="list-style-type: '❯ '">
+      <ul class="q-my-none q-pl-sm">
         <li
           v-for="(item, idx) in props.paths"
           :key="idx"

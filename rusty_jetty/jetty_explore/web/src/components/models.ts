@@ -74,3 +74,8 @@ export interface GroupWithPaths {
   node: GroupSummary;
   paths: NodePath[];
 }
+
+export interface AssetWithPaths {
+  node: AssetSummary;
+  paths: NodePath[];
+}

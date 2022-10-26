@@ -36,7 +36,7 @@ impl AssetIndex {
         }
     }
     /// Create a new AssetIndex from a NodeIndex
-    pub(crate) fn new(idx: NodeIndex) -> Self {
+    pub fn new(idx: NodeIndex) -> Self {
         AssetIndex { idx }
     }
 }

@@ -8,7 +8,11 @@
             Direct Tags
           </div>
           <div class="flex justify-center">
-            <JettyBadge v-for="tag in allTags.direct" :key="tag" :name="tag" />
+            <JettyBadge
+              v-for="tag in allTags.direct"
+              :key="nodeNameAsString(tag)"
+              :name="nodeNameAsString(tag)"
+            />
           </div>
         </q-card-section>
       </q-card>
@@ -21,8 +25,8 @@
           <div class="flex justify-center">
             <JettyBadge
               v-for="tag in allTags.via_hierarchy"
-              :key="tag"
-              :name="tag"
+              :key="nodeNameAsString(tag)"
+              :name="nodeNameAsString(tag)"
             />
           </div>
         </q-card-section>
@@ -36,8 +40,8 @@
           <div class="flex justify-center">
             <JettyBadge
               v-for="tag in allTags.via_lineage"
-              :key="tag"
-              :name="tag"
+              :key="nodeNameAsString(tag)"
+              :name="nodeNameAsString(tag)"
             />
           </div>
         </q-card-section>
@@ -111,7 +115,8 @@ import JettyHeader from 'src/components/JettyHeader.vue';
 import { useJettyStore } from 'stores/jetty';
 import { useRouter, useRoute } from 'vue-router';
 import JettyBadge from 'src/components/JettyBadge.vue';
-import { fetchJson } from 'src/util';
+import { fetchJson, nodeNameAsString } from 'src/util';
+import { TagSummary } from 'src/components/models';
 
 const props = defineProps(['node_id']);
 const router = useRouter();
@@ -135,10 +140,23 @@ if (!currentNode.value) {
 
 const tab = ref('users');
 
-const allTags = ref({ direct: [], via_lineage: [], via_hierarchy: [] });
+interface TagResponse {
+  direct: TagSummary[];
+  via_lineage: TagSummary[];
+  via_hierarchy: TagSummary[];
+}
+
+const allTags = ref<TagResponse>({
+  direct: [],
+  via_lineage: [],
+  via_hierarchy: [],
+});
 
 fetchJson('/api/asset/' + encodeURIComponent(props.node_id) + '/tags')
-  .then((r) => (allTags.value = r))
+  .then((r: TagResponse) => {
+    console.log(r);
+    allTags.value = r;
+  })
   .catch((error) => console.log('unable to fetch: ', error));
 </script>
 

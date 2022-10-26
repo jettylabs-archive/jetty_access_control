@@ -6,12 +6,20 @@ use std::{
 use anyhow::Context;
 use axum::{extract::Path, routing::get, Extension, Json, Router};
 use jetty_core::{
-    access_graph::{self, EdgeType, JettyNode, NodeName},
+    access_graph::{
+        self,
+        graph::typed_indices::{AssetIndex, UserIndex},
+        EdgeType, JettyNode, NodeName,
+    },
+    connectors::nodes::PermissionMode,
     cual::Cual,
 };
 use serde::Serialize;
 
-use crate::{PrivilegeResponse, UserAssetsResponse};
+use crate::{
+    node_summaries::NodeSummary, NodeSummaryWithPaths, NodeSummaryWithPrivileges,
+    PrivilegeResponse, SummaryWithAssociatedSummaries, UserAssetsResponse,
+};
 
 /// Return a router to handle all asset-related requests
 pub(super) fn router() -> Router {
@@ -34,25 +42,11 @@ pub(super) fn router() -> Router {
         .route("/:node_id/tags", get(tags_handler))
 }
 
-#[derive(Serialize, Debug)]
-struct AssetWithPaths {
-    name: String,
-    connector: String,
-    paths: Vec<String>,
-}
-
-#[derive(Serialize, Debug)]
-struct UserWithDownstreamAccess {
-    name: String,
-    connectors: HashSet<String>,
-    assets: HashSet<String>,
-}
-
-#[derive(Serialize, Debug)]
-struct AssetTagNames {
-    direct: Vec<String>,
-    via_lineage: Vec<String>,
-    via_hierarchy: Vec<String>,
+#[derive(Serialize)]
+struct AssetTagSummaries {
+    direct: Vec<NodeSummary>,
+    via_lineage: Vec<NodeSummary>,
+    via_hierarchy: Vec<NodeSummary>,
 }
 
 /// Return information about upstream assets, by hierarchy. Includes path to the current asset
@@ -60,7 +54,7 @@ async fn hierarchy_upstream_handler(
     // node_id is the cual for an asset
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
-) -> Json<Vec<AssetWithPaths>> {
+) -> Json<Vec<NodeSummaryWithPaths>> {
     Json(asset_genealogy_with_path(node_id, ag, |e| {
         matches!(e, EdgeType::ChildOf)
     }))
@@ -71,7 +65,7 @@ async fn hierarchy_downstream_handler(
     // node_id is the cual for an asset
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
-) -> Json<Vec<AssetWithPaths>> {
+) -> Json<Vec<NodeSummaryWithPaths>> {
     Json(asset_genealogy_with_path(node_id, ag, |e| {
         matches!(e, EdgeType::ParentOf)
     }))
@@ -82,7 +76,7 @@ async fn lineage_upstream_handler(
     // node_id is the cual for an asset
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
-) -> Json<Vec<AssetWithPaths>> {
+) -> Json<Vec<NodeSummaryWithPaths>> {
     Json(asset_genealogy_with_path(node_id, ag, |e| {
         matches!(e, EdgeType::DerivedFrom)
     }))
@@ -93,7 +87,7 @@ async fn lineage_downstream_handler(
     // node_id is the cual for an asset
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
-) -> Json<Vec<AssetWithPaths>> {
+) -> Json<Vec<NodeSummaryWithPaths>> {
     Json(asset_genealogy_with_path(node_id, ag, |e| {
         matches!(e, EdgeType::DerivedTo)
     }))
@@ -104,7 +98,7 @@ async fn tags_handler(
     // node_id is the cual for an asset
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
-) -> Json<AssetTagNames> {
+) -> Json<AssetTagSummaries> {
     // convert the node_id to an AssetIndex
     let asset_index = ag
         .get_asset_index_from_name(&NodeName::Asset(Cual::new(node_id.as_str())))
@@ -112,21 +106,21 @@ async fn tags_handler(
 
     let tags = ag.tags_for_asset_by_source(asset_index);
 
-    Json(AssetTagNames {
+    Json(AssetTagSummaries {
         direct: tags
             .direct
             .into_iter()
-            .map(|t| ag[t].get_string_name())
+            .map(|t| ag[t].to_owned().into())
             .collect(),
         via_lineage: tags
             .via_lineage
             .into_iter()
-            .map(|t| ag[t].get_string_name())
+            .map(|t| ag[t].to_owned().into())
             .collect(),
         via_hierarchy: tags
             .via_hierarchy
             .into_iter()
-            .map(|t| ag[t].get_string_name())
+            .map(|t| ag[t].to_owned().into())
             .collect(),
     })
 }
@@ -136,7 +130,7 @@ async fn direct_users_handler(
     // node_id is the cual for an asset
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
-) -> Json<Vec<UserAssetsResponse>> {
+) -> Json<Vec<NodeSummaryWithPrivileges>> {
     // convert the node_id to an AssetIndex
     let asset_index = ag
         .get_asset_index_from_name(&NodeName::Asset(Cual::new(node_id.as_str())))
@@ -147,25 +141,9 @@ async fn direct_users_handler(
     Json(
         users
             .iter()
-            .map(|(u, ps)| {
-                let user_name = ag[*u].get_string_name();
-                UserAssetsResponse {
-                    name: user_name.to_owned(),
-                    privileges: ps
-                        .iter()
-                        .map(|p| PrivilegeResponse {
-                            name: p.privilege.to_owned(),
-                            explanations: p.reasons.to_owned(),
-                        })
-                        .collect(),
-                    connectors: ag
-                        .get_node(&NodeName::User(user_name))
-                        .unwrap()
-                        .get_node_connectors()
-                        .iter()
-                        .map(|n| n.to_string())
-                        .collect(),
-                }
+            .map(|(u, ps)| NodeSummaryWithPrivileges {
+                node: ag[*u].to_owned().into(),
+                privileges: ps.iter().map(|p| (*p).to_owned()).collect(),
             })
             .collect(),
     )
@@ -176,30 +154,42 @@ async fn users_incl_downstream_handler(
     // node_id is the cual for an asset
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
-) -> Json<Vec<UserWithDownstreamAccess>> {
-    let mut downstream_assets = asset_genealogy_with_path(node_id.to_owned(), ag.clone(), |e| {
-        matches!(e, EdgeType::DerivedTo)
-    })
-    .iter()
-    .map(|a| a.name.to_owned())
-    .collect::<Vec<_>>();
-    downstream_assets.push(node_id);
+) -> Json<Vec<SummaryWithAssociatedSummaries>> {
+    // get all assets that that reference the given asset
+    let asset_index = ag
+        .get_asset_index_from_name(&NodeName::Asset(Cual::new(node_id.as_str())))
+        .context("getting asset node index")
+        .unwrap();
 
-    let user_asset_map = downstream_assets
+    let mut asset_list = ag.get_matching_children(
+        asset_index,
+        |e| matches!(e, EdgeType::DerivedTo),
+        |n| matches!(n, JettyNode::Asset(_)),
+        |n| matches!(n, JettyNode::Asset(_)),
+        None,
+        None,
+    );
+
+    asset_list.push(asset_index.into());
+
+    let user_asset_map = asset_list
         .into_iter()
         .map(|a| {
-            ag.get_users_with_access_to_asset(
-                ag.get_asset_index_from_name(&NodeName::Asset(Cual::new(&a)))
-                    .context("finding asset")
-                    .unwrap(),
-            )
-            .iter()
-            .map(|(u, _)| (ag[*u].get_string_name(), a.to_owned()))
-            .collect::<Vec<_>>()
+            ag.get_users_with_access_to_asset(AssetIndex::new(a))
+                .iter()
+                // If they don't have an allow privilege, it shouldn't count as access
+                .filter_map(|(u, ep)| {
+                    if ep.iter().any(|ep| ep.mode == PermissionMode::Allow) {
+                        Some((u.to_owned(), AssetIndex::new(a)))
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>()
         })
         .flatten()
         .fold(
-            HashMap::<String, HashSet<String>>::new(),
+            HashMap::<UserIndex, HashSet<AssetIndex>>::new(),
             |mut acc, (user, asset)| {
                 acc.entry(user)
                     .and_modify(|a| {
@@ -213,16 +203,12 @@ async fn users_incl_downstream_handler(
     Json(
         user_asset_map
             .into_iter()
-            .map(|(u, assets)| UserWithDownstreamAccess {
-                name: u.to_owned(),
-                connectors: ag
-                    .get_node(&NodeName::User(u))
-                    .unwrap()
-                    .get_node_connectors()
+            .map(|(u, assets)| SummaryWithAssociatedSummaries {
+                node: ag[u].to_owned().into(),
+                associations: assets
                     .iter()
-                    .map(|n| n.to_string())
+                    .map(|a| NodeSummary::from(ag[*a].to_owned()))
                     .collect(),
-                assets,
             })
             .collect::<Vec<_>>(),
     )
@@ -234,7 +220,7 @@ fn asset_genealogy_with_path(
     node_id: String,
     ag: Arc<access_graph::AccessGraph>,
     edge_matcher: fn(&EdgeType) -> bool,
-) -> Vec<AssetWithPaths> {
+) -> Vec<NodeSummaryWithPaths> {
     let asset_index = ag
         .get_asset_index_from_name(&NodeName::Asset(Cual::new(node_id.as_str())))
         .context("getting asset node index")
@@ -253,16 +239,17 @@ fn asset_genealogy_with_path(
         .into_iter()
         .map(|(k, v)| {
             let node = &ag[k];
-            AssetWithPaths {
-                name: node.get_string_name(),
-                connector: node
-                    .get_node_connectors()
+            NodeSummaryWithPaths {
+                node: node.to_owned().into(),
+                paths: v
                     .iter()
-                    // Asset should only have one connector. To be cleaned up in a future version.
-                    .next()
-                    .map(|s| s.to_string())
-                    .unwrap_or_else(|| "unknown".to_owned()),
-                paths: v.iter().map(|p| ag.path_as_string(p)).collect::<Vec<_>>(),
+                    .map(|q| {
+                        ag.path_as_jetty_nodes(q)
+                            .iter()
+                            .map(|v| NodeSummary::from((*v).to_owned()))
+                            .collect()
+                    })
+                    .collect(),
             }
         })
         .collect::<Vec<_>>()
