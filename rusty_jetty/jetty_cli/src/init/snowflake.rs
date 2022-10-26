@@ -1,29 +1,26 @@
-use std::{collections::HashMap, path::Path};
+use std::collections::HashMap;
 
 use anyhow::Result;
 use colored::Colorize;
-use inquire::{Confirm, Password, PasswordDisplayMode, Text};
+use inquire::{Confirm, Text};
 use jetty_core::{
     jetty::{ConnectorConfig, CredentialsMap},
     Connector,
 };
 use jetty_snowflake::SnowflakeConnector;
 
-use crate::init::{
-    autocomplete::FilepathCompleter,
-    pki::create_keypair,
-    validation::{FilepathValidator, PathType},
-};
+use crate::init::pki::create_keypair;
 
 use super::validation::filled_validator;
 
 pub(crate) async fn ask_snowflake_connector_setup() -> Result<CredentialsMap> {
+    // Loop until a successful connection.
     loop {
         let snowflake_account_id = Text::new("Snowflake Account Identifier:")
-        .with_validator(filled_validator)
-        .with_placeholder("org-account_name")
-        .with_help_message("You can find your account ID on the bottom left of the Snowflake UI. This can be the account locator (like 'cea29483') or org account name, dash-separated (like 'MRLDK-ESA98348') See https://tinyurl.com/snow-account-id for more.")
-        .prompt()?;
+            .with_validator(filled_validator)
+            .with_placeholder("org-account_name")
+            .with_help_message("You can find your account ID on the bottom left of the Snowflake UI. This can be the account locator (like 'cea29483') or org account name, dash-separated (like 'MRLDK-ESA98348') See https://tinyurl.com/snow-account-id for more.")
+            .prompt()?;
 
         let admin_username = Text::new("Jetty admin username:")
             .with_default("jetty")

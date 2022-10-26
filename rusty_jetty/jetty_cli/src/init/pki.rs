@@ -1,9 +1,12 @@
 use std::{fs::File, io::Write, path::Path};
 
 use anyhow::Result;
-use openssl::{pkey::PKey, rsa::Rsa, symm::Cipher};
+use openssl::{pkey::PKey, rsa::Rsa};
 use sha2::{Digest, Sha256};
 
+/// Simple representation of a public/private key pair and
+/// the public SHA256 fingerprint in the Snowflake format.
+/// See https://jettylabs.tiny.us/snow-keypair-auth for more.
 pub(crate) struct KeyPair {
     public: String,
     private: String,
@@ -11,6 +14,7 @@ pub(crate) struct KeyPair {
 }
 
 impl KeyPair {
+    #[allow(dead_code)]
     pub(crate) fn save_to_files(&self, filepath: &Path) -> Result<()> {
         save_to_file(&self.private, &filepath.join("jetty_rsa.p8"))?;
         save_to_file(&self.public, &filepath.join("jetty_rsa.pub"))?;
@@ -33,12 +37,14 @@ impl KeyPair {
     }
 }
 
+/// Synchronous file write.
 fn save_to_file(contents: &str, filepath: &Path) -> Result<()> {
     let mut file = File::create(filepath)?;
     file.write_all(contents.as_bytes())?;
     Ok(())
 }
 
+/// Create a local keypair with a corresponding public key fingerprint.
 pub(crate) fn create_keypair() -> Result<KeyPair> {
     let rsa = PKey::from_rsa(Rsa::generate(2048)?)?;
     // Snowflake (and JWT creation) only accept PKCS8.
@@ -66,8 +72,8 @@ mod tests {
             public,
             fingerprint: fp,
         } = create_keypair()?;
-        assert!(private.starts_with("-----BEGIN RSA PRIVATE KEY-----"));
-        assert!(public.starts_with("-----BEGIN RSA PUBLIC KEY-----"));
+        assert!(private.starts_with("-----BEGIN PRIVATE KEY-----"));
+        assert!(public.starts_with("-----BEGIN PUBLIC KEY-----"));
         assert!(fp.starts_with("SHA256:"));
         Ok(())
     }
