@@ -1,16 +1,29 @@
 <template>
   <q-page class="flex column container-md">
-    <JettyTable title="All Groups" :rows-per-page="30" :filter-method="filterMethod" :columns="columns"
-      :csv-config="csvConfig" fetchPath="/api/groups" v-slot="slotProps">
+    <JettyTable
+      title="All Groups"
+      :rows-per-page="30"
+      :filter-method="filterMethod"
+      :columns="columns"
+      :csv-config="csvConfig"
+      fetchPath="/api/groups"
+      v-slot="slotProps"
+    >
       <q-tr>
         <q-td key="name">
-          <router-link :to="'/group/' + encodeURIComponent(slotProps.props.row.name)"
-            style="text-decoration: none; color: inherit">
+          <router-link
+            :to="'/group/' + encodeURIComponent(slotProps.props.row.name)"
+            style="text-decoration: none; color: inherit"
+          >
             <q-item class="q-px-none">
               <q-item-section>
                 <q-item-label> {{ slotProps.props.row.name }}</q-item-label>
                 <q-item-label caption>
-                  <JettyBadge v-for="platform in slotProps.props.row.platforms" :key="platform" :name="platform" />
+                  <JettyBadge
+                    v-for="platform in slotProps.props.row.platforms"
+                    :key="platform"
+                    :name="platform"
+                  />
                 </q-item-label>
               </q-item-section>
             </q-item>
