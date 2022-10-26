@@ -4,7 +4,8 @@
       :csv-config="csvConfig" fetchPath="/api/users" v-slot="slotProps">
       <q-tr>
         <q-td key="name">
-          <router-link :to="'/user/' + encodeURIComponent(slotProps.props.row.name)" style="color: inherit">
+          <router-link :to="'/user/' + encodeURIComponent(slotProps.props.row.name)"
+            style="text-decoration: none; color: inherit">
             <q-item class="q-px-none">
               <q-item-section>
                 <q-item-label> {{ slotProps.props.row.name }}</q-item-label>
