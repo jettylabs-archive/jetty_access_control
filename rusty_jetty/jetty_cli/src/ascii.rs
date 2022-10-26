@@ -1,4 +1,5 @@
 use colored::{Color, Colorize};
+use inquire::ui::Color as InquireColor;
 
 const BATS: &str = r#"
 
@@ -76,6 +77,13 @@ const JETTY_J: &str = "
             ";
 
 pub(crate) const JETTY_ORANGE: Color = Color::TrueColor {
+    r: 244,
+    g: 113,
+    b: 36,
+};
+
+/// Inquire version
+pub(crate) const JETTY_ORANGE_I: InquireColor = InquireColor::Rgb {
     r: 244,
     g: 113,
     b: 36,

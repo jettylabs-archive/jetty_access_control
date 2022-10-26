@@ -7,7 +7,7 @@ mod validation;
 
 use self::validation::filled_validator;
 use crate::{
-    ascii::{print_banner, JETTY_ORANGE},
+    ascii::{print_banner, JETTY_ORANGE, JETTY_ORANGE_I},
     init::{
         dbt::ask_dbt_connector_setup, snowflake::ask_snowflake_connector_setup,
         tableau::ask_tableau_connector_setup,
@@ -20,7 +20,10 @@ use std::collections::HashMap;
 use anyhow::Result;
 use colored::Colorize;
 use inquire::{
-    list_option::ListOption, set_global_render_config, ui::RenderConfig, validator::Validation,
+    list_option::ListOption,
+    set_global_render_config,
+    ui::{RenderConfig, StyleSheet, Styled},
+    validator::Validation,
     MultiSelect, Text,
 };
 
@@ -50,7 +53,9 @@ async fn inquire_init() -> Result<(JettyConfig, HashMap<String, CredentialsMap>)
     print_banner();
 
     // Set up render configuration for the questions.
-    let render_config = RenderConfig::default();
+    let stylesheet = StyleSheet::new().with_fg(JETTY_ORANGE_I);
+    let render_config =
+        RenderConfig::default().with_prompt_prefix(Styled::new("->").with_style_sheet(stylesheet));
     set_global_render_config(render_config);
 
     let mut jetty_config = JettyConfig::new();
