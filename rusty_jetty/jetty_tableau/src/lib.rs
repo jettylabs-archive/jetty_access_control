@@ -14,7 +14,7 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 
 use coordinator::Environment;
-use rest::TableauRestClient;
+pub use rest::TableauRestClient;
 use serde::Deserialize;
 use serde_json::json;
 
@@ -25,7 +25,7 @@ use jetty_core::{
         ConnectorClient, UserIdentifier,
     },
     cual::Cual,
-    jetty::{ConnectorConfig, CredentialsBlob},
+    jetty::{ConnectorConfig, CredentialsMap},
     permissions::matrix::Merge,
     Connector,
 };
@@ -43,12 +43,24 @@ pub type TableauConfig = HashMap<String, String>;
 /// The user sets these up by following Jetty documentation
 /// and pasting their connection info into their connector config.
 #[derive(Deserialize, Debug, Default)]
-struct TableauCredentials {
+pub struct TableauCredentials {
     username: String,
     password: String,
     /// Tableau server name like 10ay.online.tableau.com *without* the `https://`
     server_name: String,
     site_name: String,
+}
+
+impl TableauCredentials {
+    /// Basic constructor.
+    pub fn new(username: String, password: String, server_name: String, site_name: String) -> Self {
+        Self {
+            username,
+            password,
+            server_name,
+            site_name,
+        }
+    }
 }
 
 /// Top-level connector struct.
@@ -170,7 +182,7 @@ impl Connector for TableauConnector {
     /// connecting.
     async fn new(
         config: &ConnectorConfig,
-        credentials: &CredentialsBlob,
+        credentials: &CredentialsMap,
         _client: Option<ConnectorClient>,
     ) -> Result<Box<Self>> {
         let mut creds = TableauCredentials::default();

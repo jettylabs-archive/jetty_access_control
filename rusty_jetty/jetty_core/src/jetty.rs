@@ -19,7 +19,7 @@ impl Display for ConnectorNamespace {
 }
 /// Struct representing the jetty_config.yaml file.
 #[allow(dead_code)]
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Default)]
 pub struct JettyConfig {
     version: String,
     name: String,
@@ -28,18 +28,36 @@ pub struct JettyConfig {
 }
 
 impl JettyConfig {
+    /// New === default for this simple constructor.
+    pub fn new() -> Self {
+        Self {
+            version: "0.0.1".to_owned(),
+            ..Default::default()
+        }
+    }
+
     /// Use the default filepath to ingest the Jetty config.
-    pub fn new() -> Result<JettyConfig> {
+    pub fn read_from_file() -> Result<JettyConfig> {
         let config_raw = fs::read_to_string("./jetty_config.yaml")?;
         let mut config = yaml::from_str::<JettyConfig>(&config_raw)?;
 
         config.pop().ok_or_else(|| anyhow!["failed"])
     }
+
+    /// Set the project name.
+    pub fn set_name(&mut self, name: String) {
+        self.name = name;
+    }
+
+    /// Convert this config to a yaml string.
+    pub fn to_yaml(&self) -> Result<String> {
+        yaml::to_string(self).map_err(anyhow::Error::from)
+    }
 }
 
 /// Config for all connectors in this project.
 #[allow(dead_code)]
-#[derive(Deserialize, Default, Debug)]
+#[derive(Deserialize, Serialize, Default, Debug)]
 pub struct ConnectorConfig {
     #[serde(rename = "type")]
     connector_type: String,
@@ -48,17 +66,27 @@ pub struct ConnectorConfig {
     pub config: HashMap<String, String>,
 }
 
+impl ConnectorConfig {
+    /// Basic constructor
+    pub fn new(connector_type: String, config: HashMap<String, String>) -> Self {
+        Self {
+            connector_type,
+            config,
+        }
+    }
+}
+
 /// Alias for HashMap to hold credentials information.
-pub type CredentialsBlob = HashMap<String, String>;
+pub type CredentialsMap = HashMap<String, String>;
 
 /// Fetch the credentials from the Jetty connectors config.
-pub fn fetch_credentials() -> Result<HashMap<String, CredentialsBlob>> {
+pub fn fetch_credentials() -> Result<HashMap<String, CredentialsMap>> {
     let mut default_path = home_dir().unwrap();
 
     default_path.push(".jetty/connectors.yaml");
 
     let credentials_raw = fs::read_to_string(default_path)?;
-    let mut config = yaml::from_str::<HashMap<String, CredentialsBlob>>(&credentials_raw)?;
+    let mut config = yaml::from_str::<HashMap<String, CredentialsMap>>(&credentials_raw)?;
 
     config
         .pop()
@@ -79,7 +107,7 @@ impl Jetty {
         // load a saved access graph or create an empty one
 
         Ok(Jetty {
-            config: JettyConfig::new()?,
+            config: JettyConfig::read_from_file()?,
         })
     }
 }

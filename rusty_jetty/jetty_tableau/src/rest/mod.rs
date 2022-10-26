@@ -28,7 +28,7 @@ pub(crate) trait Downloadable {
 }
 /// Wrapper struct for http functionality
 #[derive(Default)]
-pub(crate) struct TableauRestClient {
+pub struct TableauRestClient {
     /// The credentials used to authenticate into Snowflake.
     credentials: TableauCredentials,
     http_client: reqwest::Client,
@@ -39,7 +39,7 @@ pub(crate) struct TableauRestClient {
 
 impl TableauRestClient {
     /// Initialize a new TableauRestClient
-    pub async fn new(credentials: TableauCredentials) -> Self {
+    pub async fn new(credentials: TableauCredentials) -> Result<Self> {
         // Set the global CUAL prefix for tableau
         set_cual_prefix(&credentials.server_name, &credentials.site_name);
         let mut tc = TableauRestClient {
@@ -49,8 +49,8 @@ impl TableauRestClient {
             site_id: None,
             api_version: "3.16".to_owned(),
         };
-        tc.fetch_token_and_site_id().await.unwrap();
-        tc
+        tc.fetch_token_and_site_id().await?;
+        Ok(tc)
     }
 
     /// Download a Tableau asset. Most Workbooks and Datasources can have a query parameter to exclude
