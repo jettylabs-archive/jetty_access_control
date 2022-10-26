@@ -88,6 +88,16 @@ pub(crate) const JETTY_ORANGE_I: InquireColor = InquireColor::Rgb {
     g: 113,
     b: 36,
 };
+pub(crate) const JETTY_ORANGE_DARK: InquireColor = InquireColor::Rgb {
+    r: 218,
+    g: 88,
+    b: 11,
+};
+pub(crate) const JETTY_ACCENT: InquireColor = InquireColor::Rgb {
+    r: 183,
+    g: 255,
+    b: 255,
+};
 
 pub(crate) fn print_banner() {
     let ascii = JETTY_J

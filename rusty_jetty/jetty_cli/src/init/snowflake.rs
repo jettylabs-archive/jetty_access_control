@@ -19,7 +19,7 @@ pub(crate) async fn ask_snowflake_connector_setup() -> Result<CredentialsMap> {
         let snowflake_account_id = Text::new("Snowflake Account Identifier:")
             .with_validator(filled_validator)
             .with_placeholder("org-account_name")
-            .with_help_message("You can find your account ID on the bottom left of the Snowflake UI. This can be the account locator (like 'cea29483') or org account name, dash-separated (like 'MRLDK-ESA98348') See https://tinyurl.com/snow-account-id for more.")
+            .with_help_message("This is easiest to get in SQL with 'SELECT current_account();'. This field can be the account locator (like 'cea29483') or org account name, dash-separated (like 'MRLDK-ESA98348') See https://tinyurl.com/snow-account-id for more.")
             .prompt()?;
 
         let admin_username = Text::new("Jetty admin username:")
