@@ -50,6 +50,11 @@ impl AccessGraph {
                 .join(" ⇨ ")
         )
     }
+
+    /// Get a node path as a vector of JettyNodes
+    pub fn path_as_jetty_nodes(&self, path: &NodePath) -> Vec<&JettyNode> {
+        path.0.iter().map(|idx| &self[*idx]).collect::<Vec<_>>()
+    }
 }
 
 #[cfg(test)]

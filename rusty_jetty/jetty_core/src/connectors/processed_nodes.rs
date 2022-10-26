@@ -24,7 +24,7 @@ use crate::{
 use super::nodes::{EffectivePermission, SparseMatrix};
 
 /// Container for all node data for a given connector
-#[derive(Debug, Default, PartialEq, Eq)]
+#[derive(Debug, Default, PartialEq, Eq, Clone)]
 pub struct ProcessedConnectorData {
     /// All groups in the connector
     pub groups: Vec<ProcessedGroup>,
@@ -45,7 +45,7 @@ pub struct ProcessedConnectorData {
     pub effective_permissions: SparseMatrix<NodeName, NodeName, HashSet<EffectivePermission>>,
 }
 
-#[derive(Default, Debug, PartialEq, Eq)]
+#[derive(Default, Debug, PartialEq, Eq, Clone)]
 /// Group data provided by connectors
 pub struct ProcessedGroup {
     /// Group name
@@ -66,7 +66,7 @@ pub struct ProcessedGroup {
 }
 
 /// User data provided by connectors
-#[derive(Default, Debug, PartialEq, Eq)]
+#[derive(Default, Debug, PartialEq, Eq, Clone)]
 pub struct ProcessedUser {
     /// The name of the user. When coming from a connector, this
     /// should be the name the connector uses to refer to a person.
@@ -88,7 +88,7 @@ pub struct ProcessedUser {
 }
 
 /// Struct used to populate asset nodes and edges in the graph
-#[derive(Default, PartialEq, Eq, Debug)]
+#[derive(Default, PartialEq, Eq, Debug, Clone)]
 pub struct ProcessedAsset {
     /// Connector Universal Asset Locator
     pub name: NodeName,
@@ -127,7 +127,7 @@ impl PartialOrd for ProcessedAsset {
 }
 
 /// Struct used to populate tag nodes and edges in the graph
-#[derive(Debug, PartialEq, Eq, Default)]
+#[derive(Debug, PartialEq, Eq, Default, Clone)]
 pub struct ProcessedTag {
     /// context
     pub name: NodeName,

@@ -6,7 +6,11 @@
     :columns="columns"
     :csv-config="csvConfig"
     :fetchPath="'/api/user/' + encodeURIComponent(props.node.name) + '/assets'"
-    v-slot="slotProps"
+    v-slot="{
+      props: { row },
+    }: {
+      props: { row: AssetWithEffectivePermissions },
+    }"
     :tip="`All the assets ${props.node.name} has access too, including the privilege levels and
     sources of those privileges`"
   >
@@ -15,17 +19,17 @@
         <q-item class="q-px-none">
           <q-item-section>
             <router-link
-              :to="'/asset/' + encodeURIComponent(slotProps.props.row.name)"
+              :to="'/asset/' + encodeURIComponent(nodeNameAsString(row.node))"
               style="text-decoration: none; color: inherit"
             >
-              <q-item-label> {{ slotProps.props.row.name }}</q-item-label>
+              <q-item-label> {{ nodeNameAsString(row.node) }}</q-item-label>
             </router-link>
 
             <q-item-label caption>
               <JettyBadge
-                v-for="platform in slotProps.props.row.connectors"
-                :key="platform"
-                :name="platform"
+                v-for="connector in row.node.Asset.connectors"
+                :key="connector"
+                :name="connector"
               />
             </q-item-label>
           </q-item-section>
@@ -34,21 +38,21 @@
       <q-td key="privileges" style="padding-right: 0px">
         <q-list separator>
           <q-item
-            v-for="privilege in slotProps.props.row.privileges"
-            :key="privilege"
+            v-for="privilege in row.privileges"
+            :key="privilege.privilege"
             class="q-px-none"
           >
             <div class="q-pr-lg flex flex-center">
-              {{ privilege.name }}
+              {{ privilege.privilege }}
             </div>
             <div>
               <ul class="q-my-none" style="list-style-type: '❯ '">
                 <li
-                  v-for="explanation in privilege.explanations"
-                  :key="explanation"
+                  v-for="reason in privilege.reasons"
+                  :key="reason"
                   style="padding-top: 2px; padding-bottom: 2px"
                 >
-                  {{ explanation }}
+                  {{ reason }}
                 </li>
               </ul>
             </div>
@@ -62,6 +66,13 @@
 <script lang="ts" setup>
 import JettyTable from '../JettyTable.vue';
 import JettyBadge from '../JettyBadge.vue';
+import { AssetSummary, EffectivePermission } from '../models';
+import { nodeNameAsString } from 'src/util';
+
+interface AssetWithEffectivePermissions {
+  node: AssetSummary;
+  privileges: EffectivePermission[];
+}
 
 const props = defineProps(['node']);
 
@@ -103,10 +114,15 @@ const csvConfig = {
   filename: props.node.name + '_assets.csv',
   columnNames: ['Asset Name', 'Asset Platform', 'Privilege', 'Explanation'],
   // accepts a row and returns the proper mapping
-  mappingFn: (filteredSortedRows) =>
+  mappingFn: (filteredSortedRows: AssetWithEffectivePermissions[]) =>
     filteredSortedRows.flatMap((r) =>
       r.privileges.flatMap((p) =>
-        p.explanations.map((e) => [r.name, r.connectors.join(', '), p.name, e])
+        p.reasons.map((e) => [
+          nodeNameAsString(r.node),
+          r.node.Asset.connectors.join(', '),
+          p.privilege,
+          e,
+        ])
       )
     ),
 };

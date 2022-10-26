@@ -359,14 +359,13 @@ impl Translator {
         &self,
         data: &Vec<(ConnectorData, ConnectorNamespace)>,
     ) -> SparseMatrix<NodeName, NodeName, HashSet<EffectivePermission>> {
-        let result: SparseMatrix<NodeName, NodeName, HashSet<EffectivePermission>> =
+        let mut result: SparseMatrix<NodeName, NodeName, HashSet<EffectivePermission>> =
             SparseMatrix::new();
 
         for (c_data, namespace) in data {
-            let mut new_permissions = SparseMatrix::new();
             for (k1, v1) in &c_data.effective_permissions {
                 for (k2, v2) in v1 {
-                    new_permissions.insert_or_merge(
+                    result.insert_or_merge(
                         self.local_to_global.users[&namespace][k1].to_owned(),
                         HashMap::from([(NodeName::Asset(k2.to_owned()), v2.to_owned())]),
                     );

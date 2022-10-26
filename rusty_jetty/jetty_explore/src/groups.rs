@@ -1,10 +1,16 @@
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 
 use anyhow::Context;
 use axum::{extract::Path, routing::get, Extension, Json, Router};
-use jetty_core::access_graph::{self, EdgeType, JettyNode, NodeName};
+use jetty_core::{
+    access_graph::{self, EdgeType, JettyNode, NodeName},
+    jetty::ConnectorNamespace,
+};
+use serde::{Deserialize, Serialize};
 
-use super::ObjectWithPathResponse;
+use crate::node_summaries::NodeSummary;
+
+use super::NodeSummaryWithPaths;
 
 /// Return a router to handle all group-related requests
 pub(super) fn router() -> Router {
@@ -26,10 +32,13 @@ pub(super) fn router() -> Router {
 async fn direct_groups_handler(
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
-) -> Json<Vec<access_graph::GroupAttributes>> {
+) -> Json<Vec<NodeSummary>> {
+    // Group names in the url will be written as origin::group_name, so
+    // we need to parse that out
+    // Eventually, we could switch this to a hash
     let from = ag
-        .get_group_index_from_name(&NodeName::User(node_id))
-        .context("fetching user node")
+        .get_group_index_from_name(&group_name_from_url_param(node_id))
+        .context("fetching group node")
         .unwrap();
 
     let group_nodes = ag.get_matching_children(
@@ -44,8 +53,9 @@ async fn direct_groups_handler(
     let group_attributes = group_nodes
         .into_iter()
         .filter_map(|i| {
-            if let JettyNode::Group(g) = &ag.graph()[i] {
-                Some(g.to_owned())
+            let jetty_node = &ag.graph()[i];
+            if let JettyNode::Group(_) = jetty_node {
+                Some(NodeSummary::from(jetty_node.to_owned()))
             } else {
                 None
             }
@@ -59,29 +69,41 @@ async fn direct_groups_handler(
 async fn inherited_groups_handler(
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
-) -> Json<Vec<ObjectWithPathResponse>> {
+) -> Json<Vec<NodeSummaryWithPaths>> {
+    // Group names in the url will be written as origin::group_name, so
+    // we need to parse that out
+    // Eventually, we could switch this to a hash
     let from = ag
-        .get_group_index_from_name(&NodeName::User(node_id))
-        .context("fetching user node")
+        .get_group_index_from_name(&group_name_from_url_param(node_id))
+        .context("fetching group node")
         .unwrap();
 
+    // return simple paths to all group children
     let res = ag.all_matching_simple_paths_to_children(
         from,
         |n| matches!(n, EdgeType::MemberOf),
         |n| matches!(n, JettyNode::Group(_)),
         |n| matches!(n, JettyNode::Group(_)),
-        None,
+        Some(2),
         None,
     );
 
     let group_attributes = res
         .into_iter()
         .filter_map(|(i, p)| {
-            if let JettyNode::Group(g) = &ag.graph()[i] {
-                Some(ObjectWithPathResponse {
-                    name: g.name.to_string(),
-                    connectors: g.connectors.iter().map(|n| n.to_string()).collect(),
-                    membership_paths: p.iter().map(|p| ag.path_as_string(p)).collect(),
+            let jetty_node = &ag.graph()[i];
+            if let JettyNode::Group(_) = jetty_node {
+                Some(NodeSummaryWithPaths {
+                    node: jetty_node.to_owned().into(),
+                    paths: p
+                        .iter()
+                        .map(|q| {
+                            ag.path_as_jetty_nodes(q)
+                                .iter()
+                                .map(|v| NodeSummary::from((*v).to_owned()))
+                                .collect()
+                        })
+                        .collect(),
                 })
             } else {
                 None
@@ -95,10 +117,13 @@ async fn inherited_groups_handler(
 async fn direct_members_groups_handler(
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
-) -> Json<Vec<access_graph::GroupAttributes>> {
+) -> Json<Vec<NodeSummary>> {
+    // Group names in the url will be written as origin::group_name, so
+    // we need to parse that out
+    // Eventually, we could switch this to a hash
     let from = ag
-        .get_group_index_from_name(&NodeName::User(node_id))
-        .context("fetching user node")
+        .get_group_index_from_name(&group_name_from_url_param(node_id))
+        .context("fetching group node")
         .unwrap();
 
     let group_nodes = ag.get_matching_children(
@@ -113,8 +138,9 @@ async fn direct_members_groups_handler(
     let group_attributes = group_nodes
         .into_iter()
         .filter_map(|i| {
-            if let JettyNode::Group(g) = &ag.graph()[i] {
-                Some(g.to_owned())
+            let jetty_node = &ag.graph()[i];
+            if let JettyNode::Group(_) = jetty_node {
+                Some(NodeSummary::from(jetty_node.to_owned()))
             } else {
                 panic!("found wrong node type - expected group")
             }
@@ -128,12 +154,14 @@ async fn direct_members_groups_handler(
 async fn direct_members_users_handler(
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
-) -> Json<Vec<access_graph::UserAttributes>> {
+) -> Json<Vec<NodeSummary>> {
+    // Group names in the url will be written as origin::group_name, so
+    // we need to parse that out
+    // Eventually, we could switch this to a hash
     let from = ag
-        .get_group_index_from_name(&NodeName::User(node_id))
-        .context("fetching user node")
+        .get_group_index_from_name(&group_name_from_url_param(node_id))
+        .context("fetching group node")
         .unwrap();
-
     let group_nodes = ag.get_matching_children(
         from,
         |n| matches!(n, EdgeType::Includes),
@@ -146,8 +174,9 @@ async fn direct_members_users_handler(
     let user_attributes = group_nodes
         .into_iter()
         .filter_map(|i| {
-            if let JettyNode::User(u) = &ag.graph()[i] {
-                Some(u.to_owned())
+            let jetty_node = &ag.graph()[i];
+            if let JettyNode::User(_) = jetty_node {
+                Some(NodeSummary::from(jetty_node.to_owned()))
             } else {
                 None
             }
@@ -160,10 +189,13 @@ async fn direct_members_users_handler(
 async fn all_members_handler(
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
-) -> Json<Vec<ObjectWithPathResponse>> {
+) -> Json<Vec<NodeSummaryWithPaths>> {
+    // Group names in the url will be written as origin::group_name, so
+    // we need to parse that out
+    // Eventually, we could switch this to a hash
     let from = ag
-        .get_group_index_from_name(&NodeName::User(node_id))
-        .context("fetching user node")
+        .get_group_index_from_name(&group_name_from_url_param(node_id))
+        .context("fetching group node")
         .unwrap();
 
     let res = ag.all_matching_simple_paths_to_children(
@@ -178,11 +210,19 @@ async fn all_members_handler(
     let group_attributes = res
         .into_iter()
         .filter_map(|(i, p)| {
-            if let JettyNode::User(u) = &ag.graph()[i] {
-                Some(ObjectWithPathResponse {
-                    name: u.name.to_string(),
-                    connectors: u.connectors.iter().map(|n| n.to_string()).collect(),
-                    membership_paths: p.iter().map(|p| ag.path_as_string(p)).collect(),
+            let jetty_node = &ag.graph()[i];
+            if let JettyNode::User(u) = jetty_node {
+                Some(NodeSummaryWithPaths {
+                    node: NodeSummary::from(jetty_node.to_owned()),
+                    paths: p
+                        .iter()
+                        .map(|q| {
+                            ag.path_as_jetty_nodes(q)
+                                .iter()
+                                .map(|v| NodeSummary::from((*v).to_owned()))
+                                .collect()
+                        })
+                        .collect(),
                 })
             } else {
                 None
@@ -190,4 +230,13 @@ async fn all_members_handler(
         })
         .collect::<Vec<_>>();
     Json(group_attributes)
+}
+
+/// Construct a NodeName::Group form the node_id url parameter
+fn group_name_from_url_param(node_id: String) -> NodeName {
+    let (origin, name) = node_id.split_once("::").unwrap();
+    NodeName::Group {
+        name: name.to_owned(),
+        origin: ConnectorNamespace(origin.to_owned()),
+    }
 }

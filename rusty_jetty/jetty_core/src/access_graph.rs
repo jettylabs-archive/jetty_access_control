@@ -147,10 +147,14 @@ impl TryFrom<JettyNode> for GroupAttributes {
 /// A struct defining the attributes of an asset
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AssetAttributes {
-    pub(crate) name: NodeName,
-    pub(crate) asset_type: AssetType,
-    pub(crate) metadata: HashMap<String, String>,
-    pub(crate) connectors: HashSet<ConnectorNamespace>,
+    /// Name of Asset
+    pub name: NodeName,
+    /// Asset type
+    pub asset_type: AssetType,
+    /// Asset metadata
+    pub metadata: HashMap<String, String>,
+    /// Asset connectors
+    pub connectors: HashSet<ConnectorNamespace>,
 }
 
 impl AssetAttributes {
@@ -602,7 +606,13 @@ impl AccessGraph {
         let tr = Translator::new(&connector_data);
         // Process the connector data
         let pcd = tr.local_to_processed_connector_data(connector_data);
-        AccessGraph::new(pcd)
+        let ag_res = AccessGraph::new(pcd.to_owned());
+        ag_res.map(|mut ag| {
+            ag.effective_permissions =
+                ag.translate_effective_permissions_to_global_indices(pcd.effective_permissions);
+            dbg!(&ag.effective_permissions.keys());
+            ag
+        })
     }
 
     /// This translate effective permissions from using node names for indices to using
@@ -612,15 +622,13 @@ impl AccessGraph {
         // This should match SparseMatrix<NodeName::User(), NodeName::Asset(), HashSet<_>>
         node_name_permissions: SparseMatrix<NodeName, NodeName, HashSet<EffectivePermission>>,
     ) -> SparseMatrix<UserIndex, AssetIndex, HashSet<EffectivePermission>> {
-        let result: SparseMatrix<UserIndex, AssetIndex, HashSet<EffectivePermission>> =
-            SparseMatrix::new();
+        let mut result = SparseMatrix::new();
 
-        let mut new_permissions = SparseMatrix::new();
         for (k1, v1) in &node_name_permissions {
             for (k2, v2) in v1 {
-                new_permissions.insert_or_merge(
-                    self.get_user_index_from_name(k1),
-                    HashMap::from([(self.get_asset_index_from_name(k2), v2.to_owned())]),
+                result.insert_or_merge(
+                    self.get_user_index_from_name(k1).unwrap(),
+                    HashMap::from([(self.get_asset_index_from_name(k2).unwrap(), v2.to_owned())]),
                 );
             }
         }

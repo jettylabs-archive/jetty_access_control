@@ -21,6 +21,7 @@ impl AccessGraph {
         &'a self,
         user: UserIndex,
     ) -> HashMap<AssetIndex, HashSet<&'a EffectivePermission>> {
+        dbg!(&user, &self.effective_permissions.keys());
         let perms = &self.effective_permissions[&user];
         perms
             .iter()

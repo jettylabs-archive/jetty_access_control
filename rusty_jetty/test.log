@@ -1,0 +1,246 @@
+   Compiling jetty_core v0.1.0 (/Users/isaac/workspace/jetty/experiments/rusty_jetty/jetty_core)
+warning: unused import: `super::UserIdentifier`
+  --> jetty_core/src/connectors/nodes.rs:12:5
+   |
+12 | use super::UserIdentifier;
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `derivative::Derivative`
+ --> jetty_core/src/connectors/processed_nodes.rs:9:5
+  |
+9 | use derivative::Derivative;
+  |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `Deserialize`, `Serialize`
+  --> jetty_core/src/connectors/processed_nodes.rs:10:13
+   |
+10 | use serde::{Deserialize, Serialize};
+   |             ^^^^^^^^^^^  ^^^^^^^^^
+
+warning: unused imports: `AssetIndex`, `UserIndex`, `cual::Cual`
+  --> jetty_core/src/connectors/processed_nodes.rs:14:32
+   |
+14 |         graph::typed_indices::{AssetIndex, UserIndex},
+   |                                ^^^^^^^^^^  ^^^^^^^^^
+...
+19 |     cual::Cual,
+   |     ^^^^^^^^^^
+
+warning: unused imports: `NodeName`, `UserIdentifier`, `cual::Cual`
+  --> jetty_core/src/access_graph/explore/accessible_assets.rs:9:22
+   |
+9  |         AccessGraph, NodeName,
+   |                      ^^^^^^^^
+...
+13 |         UserIdentifier,
+   |         ^^^^^^^^^^^^^^
+14 |     },
+15 |     cual::Cual,
+   |     ^^^^^^^^^^
+
+warning: unused import: `anyhow::Context`
+ --> jetty_core/src/access_graph/explore/user_accessible_tags.rs:3:5
+  |
+3 | use anyhow::Context;
+  |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `connectors::UserIdentifier`
+ --> jetty_core/src/access_graph/explore/user_accessible_tags.rs:8:5
+  |
+8 |     connectors::UserIdentifier,
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `cual::Cual`
+ --> jetty_core/src/access_graph/helpers.rs:5:13
+  |
+5 | use crate::{cual::Cual, jetty::ConnectorNamespace};
+  |             ^^^^^^^^^^
+
+warning: unused imports: `AssetAttributes`, `GroupAttributes`, `PolicyAttributes`, `TagAttributes`, `UserAttributes`, `connectors::nodes`
+ --> jetty_core/src/access_graph/helpers.rs:8:5
+  |
+8 |     connectors::nodes, AssetAttributes, EdgeType, GroupAttributes, JettyEdge, JettyNode, NodeName,
+  |     ^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^            ^^^^^^^^^^^^^^^
+9 |     PolicyAttributes, TagAttributes, UserAttributes,
+  |     ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^  ^^^^^^^^^^^^^^
+
+warning: unused import: `crate::connectors::UserIdentifier`
+  --> jetty_core/src/access_graph.rs:14:5
+   |
+14 | use crate::connectors::UserIdentifier;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `Merge`
+  --> jetty_core/src/access_graph.rs:41:49
+   |
+41 | use crate::permissions::matrix::{InsertOrMerge, Merge};
+   |                                                 ^^^^^
+
+warning: unused imports: `AssetIndex`, `UserIdentifier`, `UserIndex`, `cual::Cual`
+  --> jetty_core/src/permissions/matrix.rs:10:42
+   |
+10 |     access_graph::graph::typed_indices::{AssetIndex, UserIndex},
+   |                                          ^^^^^^^^^^  ^^^^^^^^^
+...
+13 |         UserIdentifier,
+   |         ^^^^^^^^^^^^^^
+14 |     },
+15 |     cual::Cual,
+   |     ^^^^^^^^^^
+
+warning: unused import: `Connector`
+  --> jetty_core/src/connectors/processed_nodes.rs:21:5
+   |
+21 |     Connector,
+   |     ^^^^^^^^^
+
+warning: field `pos` is never read
+  --> jetty_core/src/tag_parser.rs:24:5
+   |
+17 | pub(crate) struct TagConfig {
+   |                   --------- field in this struct
+...
+24 |     pos: u64,
+   |     ^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+   = note: `TagConfig` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+   Compiling jetty_sql v0.1.0 (/Users/isaac/workspace/jetty/experiments/rusty_jetty/jetty_sql)
+   Compiling jetty_snowflake v0.1.0 (/Users/isaac/workspace/jetty/experiments/rusty_jetty/jetty_snowflake)
+   Compiling jetty_explore v0.1.0 (/Users/isaac/workspace/jetty/experiments/rusty_jetty/jetty_explore)
+   Compiling jetty_dbt v0.1.0 (/Users/isaac/workspace/jetty/experiments/rusty_jetty/jetty_dbt)
+   Compiling jetty_tableau v0.1.0 (/Users/isaac/workspace/jetty/experiments/rusty_jetty/jetty_tableau)
+warning: unused import: `collections::HashSet`
+ --> jetty_explore/src/groups.rs:1:11
+  |
+1 | use std::{collections::HashSet, sync::Arc};
+  |           ^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused imports: `Deserialize`, `Serialize`
+ --> jetty_explore/src/groups.rs:9:13
+  |
+9 | use serde::{Deserialize, Serialize};
+  |             ^^^^^^^^^^^  ^^^^^^^^^
+
+warning: unused imports: `PrivilegeResponse`, `UserAssetsResponse`
+ --> jetty_explore/src/users.rs:7:33
+  |
+7 | use crate::{NodeWithPrivileges, PrivilegeResponse, UserAssetsResponse};
+  |                                 ^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `connectors::UserIdentifier`
+  --> jetty_explore/src/users.rs:12:5
+   |
+12 |     connectors::UserIdentifier,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused variable: `u`
+   --> jetty_explore/src/groups.rs:214:36
+    |
+214 |             if let JettyNode::User(u) = jetty_node {
+    |                                    ^ help: if this is intentional, prefix it with an underscore: `_u`
+    |
+    = note: `#[warn(unused_variables)]` on by default
+
+warning: unused import: `UserIdentifier`
+ --> jetty_tableau/src/permissions/manager.rs:6:9
+  |
+6 |         UserIdentifier,
+  |         ^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `UserIdentifier`
+  --> jetty_tableau/src/lib.rs:25:26
+   |
+25 |         ConnectorClient, UserIdentifier,
+   |                          ^^^^^^^^^^^^^^
+
+warning: `jetty_core` (lib) generated 14 warnings
+warning: `jetty_explore` (lib) generated 5 warnings
+warning: `jetty_tableau` (lib) generated 2 warnings
+   Compiling jetty_cli v0.1.0 (/Users/isaac/workspace/jetty/experiments/rusty_jetty/jetty_cli)
+warning: unused import: `colored::Colorize`
+  --> jetty_cli/src/main.rs:12:5
+   |
+12 | use colored::Colorize;
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `translate::Translator`
+  --> jetty_cli/src/main.rs:15:20
+   |
+15 |     access_graph::{translate::Translator, AccessGraph},
+   |                    ^^^^^^^^^^^^^^^^^^^^^
+
+warning: `jetty_cli` (bin "jetty_cli") generated 2 warnings
+    Finished dev [unoptimized + debuginfo] target(s) in 6.30s
+     Running `target/debug/jetty_cli fetch`
+[2m2022-10-25T19:14:30.609929Z[0m [32m INFO[0m [2mjetty_cli[0m[2m:[0m initializing dbt
+[2m2022-10-25T19:14:30.610186Z[0m [32m INFO[0m [2mjetty_cli[0m[2m:[0m dbt took 0.000192875 seconds
+[2m2022-10-25T19:14:30.610205Z[0m [32m INFO[0m [2mjetty_cli[0m[2m:[0m getting dbt data
+[2m2022-10-25T19:14:30.632681Z[0m [32m INFO[0m [2mjetty_cli[0m[2m:[0m dbt data took 0.022463584 seconds
+[2m2022-10-25T19:14:30.632806Z[0m [32m INFO[0m [2mjetty_cli[0m[2m:[0m intializing snowflake
+[2m2022-10-25T19:14:30.634925Z[0m [32m INFO[0m [2mjetty_cli[0m[2m:[0m snowflake took 0.002096833 seconds
+[2m2022-10-25T19:14:30.634944Z[0m [32m INFO[0m [2mjetty_cli[0m[2m:[0m getting snowflake data
+[2m2022-10-25T19:14:41.540949Z[0m [32m INFO[0m [2mjetty_cli[0m[2m:[0m snowflake data took 10.906106 seconds
+[2m2022-10-25T19:14:41.541142Z[0m [32m INFO[0m [2mjetty_cli[0m[2m:[0m initializing tableau
+[2m2022-10-25T19:14:42.110252Z[0m [32m INFO[0m [2mjetty_cli[0m[2m:[0m tableau took 0.5690764 seconds
+[2m2022-10-25T19:14:42.110419Z[0m [32m INFO[0m [2mjetty_cli[0m[2m:[0m getting tableau data
+[2m2022-10-25T19:14:43.144832Z[0m [32m INFO[0m [2mjetty_cli[0m[2m:[0m tableau data took 1.0343736 seconds
+[2m2022-10-25T19:14:43.145256Z[0m [32m INFO[0m [2mjetty_cli[0m[2m:[0m creating access graph
+[jetty_core/src/access_graph.rs:609] &ag.effective_permissions.keys() = [
+    UserIndex {
+        idx: NodeIndex(64),
+    },
+    UserIndex {
+        idx: NodeIndex(70),
+    },
+    UserIndex {
+        idx: NodeIndex(66),
+    },
+    UserIndex {
+        idx: NodeIndex(56),
+    },
+    UserIndex {
+        idx: NodeIndex(58),
+    },
+    UserIndex {
+        idx: NodeIndex(61),
+    },
+    UserIndex {
+        idx: NodeIndex(69),
+    },
+    UserIndex {
+        idx: NodeIndex(67),
+    },
+    UserIndex {
+        idx: NodeIndex(68),
+    },
+    UserIndex {
+        idx: NodeIndex(59),
+    },
+    UserIndex {
+        idx: NodeIndex(62),
+    },
+    UserIndex {
+        idx: NodeIndex(57),
+    },
+    UserIndex {
+        idx: NodeIndex(60),
+    },
+    UserIndex {
+        idx: NodeIndex(65),
+    },
+    UserIndex {
+        idx: NodeIndex(63),
+    },
+]
+[2m2022-10-25T19:14:43.440284Z[0m [32m INFO[0m [2mjetty_cli[0m[2m:[0m access graph creation took 0.29500064 seconds
+[2m2022-10-25T19:14:43.460007Z[0m [32m INFO[0m [2mjetty_cli[0m[2m:[0m Skipping visualization.

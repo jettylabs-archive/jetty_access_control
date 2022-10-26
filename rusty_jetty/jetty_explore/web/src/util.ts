@@ -1,6 +1,14 @@
 import { exportFile } from 'quasar';
+import {
+  AssetSummary,
+  GroupName,
+  GroupSummary,
+  NodePath,
+  UserName,
+  UserSummary,
+} from './components/models';
 
-const getBadgeColor = (stringInput) => {
+export const getBadgeColor = (stringInput: string) => {
   if (stringInput.toLocaleLowerCase() == 'jetty') {
     return '#f47124';
   }
@@ -12,7 +20,7 @@ const getBadgeColor = (stringInput) => {
   return `hsl(${stringUniqueHash % 360}, 95%, 35%)`;
 };
 
-const getNodeIcon = (stringInput) => {
+export const getNodeIcon = (stringInput: string) => {
   let icon = 'person';
   switch (stringInput) {
     case 'user':
@@ -31,7 +39,7 @@ const getNodeIcon = (stringInput) => {
   return icon;
 };
 
-function wrapCsvValue(val) {
+export function wrapCsvValue(val) {
   let formatted = val === void 0 || val === null ? '' : String(val);
 
   formatted = formatted.split('"').join('""');
@@ -45,7 +53,7 @@ function wrapCsvValue(val) {
   return `"${formatted}"`;
 }
 
-function downloadCSV(filename, columns, rows) {
+export function downloadCSV(filename, columns, rows) {
   // naive encoding to csv format
   const content = [columns.map((c) => wrapCsvValue(c))]
     .concat(rows.map((row) => row.map((val) => wrapCsvValue(val)).join(',')))
@@ -58,7 +66,7 @@ function downloadCSV(filename, columns, rows) {
   }
 }
 
-function fetchJson(path) {
+export function fetchJson(path: string) {
   const requestOptions: RequestInit = {
     method: 'GET',
     redirect: 'follow',
@@ -69,4 +77,30 @@ function fetchJson(path) {
     .catch((error) => console.log('error fetching data:', error));
 }
 
-export { getBadgeColor, downloadCSV, fetchJson, getNodeIcon };
+export function nodeNameAsString(
+  node: GroupSummary | UserSummary | AssetSummary
+) {
+  if ('Group' in node) {
+    return node.Group.name.Group.origin + '::' + node.Group.name.Group.name;
+  } else if ('User' in node) {
+    return node.User.name.User;
+  } else if ('Asset' in node) {
+    return node.Asset.name.Asset.uri;
+  }
+}
+
+export function nodeConnectors(
+  node: GroupSummary | UserSummary | AssetSummary
+) {
+  if ('Group' in node) {
+    return node.Group.connectors;
+  } else if ('User' in node) {
+    return node.User.connectors;
+  } else if ('Asset' in node) {
+    return node.Asset.connectors;
+  }
+}
+
+export const getPathAsString = (path: NodePath) => {
+  return path.map((g) => nodeNameAsString(g)).join(' ⇨ ');
+};

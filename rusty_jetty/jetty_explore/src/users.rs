@@ -4,7 +4,7 @@ use anyhow::Context;
 use axum::{extract::Path, routing::get, Extension, Json, Router};
 use serde::Serialize;
 
-use crate::{PrivilegeResponse, UserAssetsResponse};
+use crate::{NodeWithPrivileges, PrivilegeResponse, UserAssetsResponse};
 
 use super::ObjectWithPathResponse;
 use jetty_core::{
@@ -28,7 +28,7 @@ pub(super) fn router() -> Router {
 async fn assets_handler(
     Path(node_id): Path<String>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
-) -> Json<Vec<UserAssetsResponse>> {
+) -> Json<Vec<NodeWithPrivileges>> {
     let from = ag
         .get_user_index_from_name(&NodeName::User(node_id))
         .context("fetching user node")
@@ -44,20 +44,9 @@ async fn assets_handler(
             .map(|(k, v)| (&ag[*k], v))
             // adding second map for clarity
             // build Vec of UserAssetResponse structs
-            .map(|(k, v)| UserAssetsResponse {
-                name: k.get_string_name(),
-                privileges: v
-                    .iter()
-                    .map(|p| PrivilegeResponse {
-                        name: p.privilege.to_owned(),
-                        explanations: p.reasons.to_owned(),
-                    })
-                    .collect(),
-                connectors: k
-                    .get_node_connectors()
-                    .iter()
-                    .map(|n| n.to_string())
-                    .collect(),
+            .map(|(k, v)| NodeWithPrivileges {
+                node: k.to_owned().into(),
+                privileges: v.to_owned().into_iter().map(|p| p.to_owned()).collect(),
             })
             .collect(),
     )
