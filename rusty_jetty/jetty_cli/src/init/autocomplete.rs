@@ -37,12 +37,17 @@ impl FilepathCompleter {
             fallback_parent.clone()
         };
 
-        let entries = match std::fs::read_dir(scan_dir) {
-            Ok(read_dir) => Ok(read_dir),
-            Err(err) if err.kind() == ErrorKind::NotFound => std::fs::read_dir(fallback_parent),
-            Err(err) => Err(err),
-        }?
-        .collect::<Result<Vec<_>, _>>()?;
+        // Don't try to list the dir if it doesn't exist.
+        let entries = if scan_dir.is_dir() {
+            match std::fs::read_dir(scan_dir) {
+                Ok(read_dir) => Ok(read_dir),
+                Err(err) if err.kind() == ErrorKind::NotFound => std::fs::read_dir(fallback_parent),
+                Err(err) => Err(err),
+            }?
+            .collect::<Result<Vec<_>, _>>()?
+        } else {
+            vec![]
+        };
 
         let mut idx = 0;
         let limit = 15;

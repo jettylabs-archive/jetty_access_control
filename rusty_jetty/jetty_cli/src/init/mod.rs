@@ -7,7 +7,7 @@ mod validation;
 
 use self::validation::filled_validator;
 use crate::{
-    ascii::{print_banner, JETTY_ORANGE},
+    ascii::{print_banner, JETTY_ACCENT, JETTY_ORANGE, JETTY_ORANGE_DARK, JETTY_ORANGE_I},
     init::{
         dbt::ask_dbt_connector_setup, snowflake::ask_snowflake_connector_setup,
         tableau::ask_tableau_connector_setup,
@@ -20,7 +20,10 @@ use std::collections::HashMap;
 use anyhow::Result;
 use colored::Colorize;
 use inquire::{
-    list_option::ListOption, set_global_render_config, ui::RenderConfig, validator::Validation,
+    list_option::ListOption,
+    set_global_render_config,
+    ui::{Color, RenderConfig, StyleSheet, Styled},
+    validator::Validation,
     MultiSelect, Text,
 };
 
@@ -49,9 +52,8 @@ async fn inquire_init() -> Result<(JettyConfig, HashMap<String, CredentialsMap>)
     // Print the Jetty Labs banner.
     print_banner();
 
-    // Set up render configuration for the questions.
-    let render_config = RenderConfig::default();
-    set_global_render_config(render_config);
+    // Set up render configuration for inquire questions.
+    setup_render_config();
 
     let mut jetty_config = JettyConfig::new();
     let mut credentials = HashMap::new();
@@ -83,6 +85,19 @@ async fn inquire_init() -> Result<(JettyConfig, HashMap<String, CredentialsMap>)
     // Leave the alternate screen.
     alt_screen_context.end();
     Ok((jetty_config, credentials))
+}
+
+fn setup_render_config() {
+    let stylesheet = StyleSheet::new().with_fg(JETTY_ORANGE_DARK);
+    let accent_stylesheet = StyleSheet::new().with_fg(JETTY_ACCENT);
+    let mut render_config = RenderConfig::default()
+        .with_prompt_prefix(Styled::new(">").with_style_sheet(accent_stylesheet))
+        .with_answer(stylesheet)
+        .with_selected_checkbox(Styled::new("[x]").with_style_sheet(accent_stylesheet))
+        .with_help_message(accent_stylesheet);
+    render_config.answered_prompt_prefix = Styled::new("👍");
+    render_config.highlighted_option_prefix = Styled::new("➡");
+    set_global_render_config(render_config);
 }
 
 fn ask_project_name() -> Result<String> {
@@ -122,7 +137,7 @@ fn ask_select_connectors() -> Result<Vec<&'static str>> {
 
 fn ask_connector_namespace(name: &str) -> Result<String> {
     // TODO: update default for multiple instances
-    let connector_namespace = Text::new(&format!("Connector Name for {}", name))
+    let connector_namespace = Text::new(&format!("Connector Name for {name}"))
         .with_validator(filled_validator)
         .with_default(name)
         .with_help_message("The name Jetty will use to refer to this specific connection. We recommend a single descriptive word.")
