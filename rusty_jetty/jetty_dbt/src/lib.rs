@@ -21,7 +21,7 @@ use jetty_core::{
         self,
         nodes::{ConnectorData, RawAsset as JettyAsset},
     },
-    jetty::{ConnectorConfig, CredentialsBlob},
+    jetty::{ConnectorConfig, CredentialsMap},
     Connector,
 };
 
@@ -51,7 +51,7 @@ impl DbtConnector {
 impl Connector for DbtConnector {
     async fn new(
         _config: &ConnectorConfig,
-        credentials: &CredentialsBlob,
+        credentials: &CredentialsMap,
         _client: Option<connectors::ConnectorClient>,
     ) -> Result<Box<Self>> {
         if !credentials.contains_key("project_dir") {
@@ -133,7 +133,7 @@ mod tests {
     async fn missing_config_fails() {
         DbtConnector::new(
             &ConnectorConfig::default(),
-            &CredentialsBlob::new(),
+            &CredentialsMap::new(),
             Some(connectors::ConnectorClient::Test),
         )
         .await

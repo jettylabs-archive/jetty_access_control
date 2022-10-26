@@ -3,14 +3,16 @@
 
 #![deny(missing_docs)]
 
-mod ascii;
+pub(crate) mod ascii;
+mod init;
+mod tui;
 
 use std::{path::Path, sync::Arc, time::Instant};
 
 use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
-use colored::Colorize;
 
+use colored::Colorize;
 use jetty_core::{
     access_graph::{translate::Translator, AccessGraph},
     connectors::ConnectorClient,
@@ -19,8 +21,6 @@ use jetty_core::{
     logging::{self, info, warn, LevelFilter},
     Connector, Jetty,
 };
-
-use ascii::print_banner;
 
 const TAGS_PATH: &str = "tags.yaml";
 
@@ -59,9 +59,8 @@ async fn main() -> Result<()> {
 
     match &args.command {
         JettyCommand::Init => {
-            print_banner();
-
-            println!("Welcome to Jetty! We are so glad you're here.")
+            println!("Welcome to Jetty! We are so glad you're here.");
+            let config = init::init().await?;
         }
 
         JettyCommand::Fetch {
