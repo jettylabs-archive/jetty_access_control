@@ -125,7 +125,7 @@ impl SnowflakeRestClient {
     fn get_body<'a>(&'a self, sql: &'a str) -> HashMap<&str, &'a str> {
         let mut body = HashMap::new();
         body.insert("statement", sql);
-        body.insert("warehouse", "main");
+        body.insert("warehouse", &self.credentials.warehouse);
         body.insert("role", &self.credentials.role);
         body
     }
