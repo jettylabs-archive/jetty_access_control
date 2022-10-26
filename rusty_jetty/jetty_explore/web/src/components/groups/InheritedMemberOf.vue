@@ -44,13 +44,8 @@
 import JettyTable from '../JettyTable.vue';
 import JettyBadge from '../JettyBadge.vue';
 import NodePath from '../NodePath.vue';
-import { NodePath as GroupPathType, GroupSummary } from '../models';
+import { GroupWithPaths } from '../models';
 import { getPathAsString, nodeNameAsString } from 'src/util';
-
-interface GroupWithPaths {
-  node: GroupSummary;
-  paths: GroupPathType[];
-}
 
 const props = defineProps(['node']);
 

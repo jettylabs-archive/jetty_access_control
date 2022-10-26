@@ -4,7 +4,10 @@ use anyhow::Context;
 use petgraph::stable_graph::NodeIndex;
 
 use crate::{
-    access_graph::{graph::typed_indices::UserIndex, AccessGraph, JettyNode},
+    access_graph::{
+        graph::typed_indices::{AssetIndex, TagIndex, UserIndex},
+        AccessGraph, JettyNode,
+    },
     connectors::UserIdentifier,
 };
 
@@ -13,7 +16,7 @@ impl AccessGraph {
     pub fn get_user_accessible_tags<'a>(
         &'a self,
         user: UserIndex,
-    ) -> HashMap<NodeIndex, Vec<&'a JettyNode>> {
+    ) -> HashMap<TagIndex, Vec<AssetIndex>> {
         // get all the user_accessable assets
         let accessable_assets = self.get_user_accessible_assets(user);
         let tag_asset_map = accessable_assets
@@ -22,13 +25,13 @@ impl AccessGraph {
             .map(|(c, i)| i.iter().map(|n| (n.clone(), c)).collect::<Vec<_>>())
             .flatten()
             .fold(
-                HashMap::<NodeIndex, Vec<&JettyNode>>::new(),
+                HashMap::<TagIndex, Vec<AssetIndex>>::new(),
                 |mut acc, (tag_node, asset_index)| {
-                    acc.entry(tag_node)
+                    acc.entry(TagIndex::new(tag_node))
                         .and_modify(|e| {
-                            e.push(&self[*asset_index]);
+                            e.push(asset_index.to_owned());
                         })
-                        .or_insert(vec![&self[*asset_index]]);
+                        .or_insert(vec![asset_index.to_owned()]);
                     acc
                 },
             );

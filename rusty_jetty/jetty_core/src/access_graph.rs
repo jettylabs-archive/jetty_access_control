@@ -610,7 +610,6 @@ impl AccessGraph {
         ag_res.map(|mut ag| {
             ag.effective_permissions =
                 ag.translate_effective_permissions_to_global_indices(pcd.effective_permissions);
-            dbg!(&ag.effective_permissions.keys());
             ag
         })
     }
