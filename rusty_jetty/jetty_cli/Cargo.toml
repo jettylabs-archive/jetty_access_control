@@ -18,3 +18,6 @@ colored = "2"
 inquire = "0.4.0"
 crossterm = "0.25.0"
 yaml-peg = { version = "1.0.4", features = ["serde"] }
+openssl = "0.10.42"
+sha2 = "0.10.6"
+base64 = "0.13.1"

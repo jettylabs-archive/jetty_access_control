@@ -59,12 +59,11 @@ pub(crate) async fn ask_tableau_connector_setup() -> Result<CredentialsMap> {
                 );
                 tries_left -= 1;
             } else {
-                println!(
+                panic!(
                     "{}",
                     "Could not connect to Tableau. Please reach out to us at support@get-jetty.com"
                         .red()
                 );
-                break;
             }
         }
     }
