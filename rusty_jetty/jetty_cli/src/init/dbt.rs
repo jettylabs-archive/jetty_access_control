@@ -19,12 +19,14 @@ pub(crate) fn ask_dbt_connector_setup() -> Result<CredentialsMap> {
         .with_validator(filled_validator)
         // Validate that this is a project.
         .with_validator(FilepathValidator::new(
-            "dbt_project.yml".to_owned(),
+            Some("dbt_project.yml".to_owned()),
+            crate::init::validation::PathType::File,
             "Please enter a valid dbt project path (with dbt_project.yml)".to_owned(),
         ))
         // Validate that the manifest has been compiled.
         .with_validator(FilepathValidator::new(
-            "target/manifest.json".to_owned(),
+            Some("target/manifest.json".to_owned()),
+            crate::init::validation::PathType::File,
             format!(
                 "target/manifest.json not found. Please run 'dbt docs generate' in the directory to generate it and then try again.",
             )

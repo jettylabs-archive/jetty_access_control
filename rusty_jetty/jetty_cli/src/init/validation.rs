@@ -15,20 +15,42 @@ pub(crate) fn filled_validator(input: &str) -> Result<Validation, CustomUserErro
 }
 
 #[derive(Clone)]
+pub(crate) enum PathType {
+    File,
+    Dir,
+}
+
+#[derive(Clone)]
 pub(crate) struct FilepathValidator {
-    filename: String,
+    filename: Option<String>,
     msg: String,
+    path_type: PathType,
 }
 
 impl FilepathValidator {
-    pub(crate) fn new(filename: String, msg: String) -> Self {
-        Self { filename, msg }
+    pub(crate) fn new(filename: Option<String>, path_type: PathType, msg: String) -> Self {
+        Self {
+            filename,
+            msg,
+            path_type,
+        }
     }
 }
 
 impl StringValidator for FilepathValidator {
     fn validate(&self, input: &str) -> Result<Validation, CustomUserError> {
-        if !Path::new(input).join(self.filename.clone()).is_file() {
+        let path = if let Some(filename) = self.filename.clone() {
+            Path::new(input).join(filename)
+        } else {
+            Path::new(input).to_path_buf()
+        };
+
+        let condition = match self.path_type {
+            PathType::File => path.is_file(),
+            PathType::Dir => path.is_dir(),
+        };
+
+        if !condition {
             Ok(Validation::Invalid(self.msg.clone().into()))
         } else {
             Ok(Validation::Valid)

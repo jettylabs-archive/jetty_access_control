@@ -4,11 +4,11 @@
 //!
 //! ```
 //! use jetty_core::connectors::{Connector, ConnectorClient};
-//! use jetty_core::jetty::{ConnectorConfig, CredentialsBlob};
+//! use jetty_core::jetty::{ConnectorConfig, CredentialsMap};
 //! use jetty_snowflake::SnowflakeConnector;
 //!
 //! let config = ConnectorConfig::default();
-//! let credentials = CredentialsBlob::default();
+//! let credentials = CredentialsMap::default();
 //! let connector_client = ConnectorClient::Core;
 //! let snow = SnowflakeConnector::new(&config, &credentials, Some(connector_client));
 //! ```

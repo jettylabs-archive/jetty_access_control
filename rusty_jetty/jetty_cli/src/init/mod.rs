@@ -1,5 +1,6 @@
 mod autocomplete;
 mod dbt;
+mod pki;
 mod snowflake;
 mod tableau;
 mod validation;
@@ -71,7 +72,7 @@ async fn inquire_init() -> Result<(JettyConfig, HashMap<String, CredentialsMap>)
 
         let mut credentials_map = match connector {
             "dbt" => ask_dbt_connector_setup()?,
-            "snowflake" => ask_snowflake_connector_setup()?,
+            "snowflake" => ask_snowflake_connector_setup().await?,
             "tableau" => ask_tableau_connector_setup().await?,
             &_ => panic!("Unrecognized input"),
         };
