@@ -21,5 +21,4 @@ yaml-peg = { version = "1.0.4", features = ["serde"] }
 openssl = "0.10.42"
 sha2 = "0.10.6"
 base64 = "0.13.1"
-futures = "0.3.23"
 dirs = "4.0.0"
