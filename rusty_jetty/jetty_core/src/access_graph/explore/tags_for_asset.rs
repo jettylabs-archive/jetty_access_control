@@ -119,7 +119,7 @@ impl AccessGraph {
         edge_matcher: fn(&EdgeType) -> bool,
         target_matcher: fn(&JettyNode) -> bool,
         min_depth: usize,
-    ) -> HashMap<NodeIndex, Vec<super::NodePath>> {
+    ) -> HashMap<NodeIndex, HashSet<super::NodePath>> {
         // go through inheritance to find all tags
         self.all_matching_simple_paths_to_children(
             from,
@@ -133,7 +133,7 @@ impl AccessGraph {
 }
 
 fn remove_poisoned_paths<'a>(
-    all_paths: HashMap<NodeIndex, Vec<super::NodePath>>,
+    all_paths: HashMap<NodeIndex, HashSet<super::NodePath>>,
     poison_nodes: &HashMap<NodeIndex, HashSet<NodeIndex>>,
 ) -> HashSet<NodeIndex> {
     all_paths
@@ -150,7 +150,7 @@ fn remove_poisoned_paths<'a>(
                             .is_none(),
                         None => true,
                     })
-                    .collect::<Vec<_>>(),
+                    .collect::<HashSet<_>>(),
             )
         })
         // now only keep the assets that still have a path;

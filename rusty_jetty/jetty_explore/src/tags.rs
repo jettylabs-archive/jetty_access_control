@@ -1,5 +1,13 @@
-use axum::{routing::get, Json, Router};
+use std::{collections::HashSet, sync::Arc};
+
+use axum::{extract::Path, routing::get, Extension, Json, Router};
+use jetty_core::{
+    access_graph::{self, explore::NodePath, graph::typed_indices::AssetIndex, NodeName},
+    permissions::matrix::{InsertOrMerge, Merge},
+};
 use serde_json::{json, Value};
+
+use crate::{node_summaries::NodeSummary, NodeSummaryWithPaths};
 
 /// Return a router to handle all tag-related requests
 pub(super) fn router() -> Router {
@@ -10,53 +18,81 @@ pub(super) fn router() -> Router {
 }
 
 /// Return all assets tagged with a tag (directly or through inheritance)
-async fn all_assets_handler() -> Json<Value> {
-    Json(json! {
-    [
-        {
-          "name": "Frozen Yogurt",
-          "platform": "snowflake",
-          "tag_paths": ["asset 1 > asset 2 > asset name",
-          ]
-        },
-        {
-          "name": "Ice cream sandwich",
-          "platform": "Tableau",
-          "tag_paths": ["asset 1 > asset 2 > asset name",
-          "asset 3 > asset 4 > asset name"]
-        },
-      ]
-        })
+async fn all_assets_handler(
+    Path(node_id): Path<String>,
+    Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
+) -> Json<Vec<NodeSummaryWithPaths>> {
+    let from = ag.get_tag_index_from_name(&NodeName::Tag(node_id)).unwrap();
+
+    let asset_paths = ag.asset_paths_for_tag(from);
+    let mut combined_asset_paths = asset_paths.directly_tagged;
+    combined_asset_paths
+        .merge(asset_paths.via_hierarchy)
+        .unwrap();
+    combined_asset_paths.merge(asset_paths.via_lineage).unwrap();
+
+    Json(
+        combined_asset_paths
+            .iter()
+            .map(|(&k, v)| NodeSummaryWithPaths {
+                node: ag[k].to_owned().into(),
+                paths: v
+                    .into_iter()
+                    .map(|p| {
+                        ag.path_as_jetty_nodes(p)
+                            .iter()
+                            .map(|&n| n.to_owned().into())
+                            .collect()
+                    })
+                    .collect(),
+            })
+            .collect(),
+    )
 }
 
 /// Return all assets directly tagged with a tag
-async fn direct_assets_handler() -> Json<Value> {
-    Json(json! {
-    [
-        {
-          "name": "Frozen Yogurt",
-          "platform": "snowflake",
-        },
-        {
-          "name": "Ice cream sandwich",
-          "platform": "Tableau",
-        },
-      ]
-        })
+async fn direct_assets_handler(
+    Path(node_id): Path<String>,
+    Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
+) -> Json<Vec<NodeSummary>> {
+    let from = ag.get_tag_index_from_name(&NodeName::Tag(node_id)).unwrap();
+
+    let asset_paths = ag.asset_paths_for_tag(from);
+
+    Json(
+        asset_paths
+            .directly_tagged
+            .iter()
+            .map(|(&k, _)| ag[k].to_owned().into())
+            .collect(),
+    )
 }
 
 /// Return all users with access to assets tagged with a tag
-async fn users_handler() -> Json<Value> {
-    Json(json! {
-    [
-        {
-          "name": "Isaac",
-          "platforms": ["snowflake", "tableau"],
-        },
-        {
-          "name": "Ice cream sandwich yum",
-          "platforms": ["snowflake", "tableau"],
-        },
-      ]
-        })
+async fn users_handler(
+    Path(node_id): Path<String>,
+    Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
+) -> Json<Vec<NodeSummary>> {
+    let from = ag.get_tag_index_from_name(&NodeName::Tag(node_id)).unwrap();
+
+    let asset_paths = ag.asset_paths_for_tag(from);
+
+    // get all the tagged assets
+    let mut combined_assets: HashSet<&access_graph::NodeIndex> =
+        HashSet::from_iter(asset_paths.directly_tagged.keys());
+    combined_assets.extend(asset_paths.via_hierarchy.keys());
+    combined_assets.extend(asset_paths.via_lineage.keys());
+
+    // now return all the users that can access those assets
+    Json(
+        combined_assets
+            .into_iter()
+            .flat_map(|&a| {
+                ag.get_users_with_access_to_asset(AssetIndex::new(a))
+                    .keys()
+                    .map(|&k| ag[k].to_owned().into())
+                    .collect::<Vec<NodeSummary>>()
+            })
+            .collect(),
+    )
 }
