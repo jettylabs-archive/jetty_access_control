@@ -22,7 +22,7 @@ pub(crate) async fn ask_snowflake_connector_setup() -> Result<CredentialsMap> {
         let snowflake_account_id = Text::new("Snowflake Account Identifier:")
         .with_validator(filled_validator)
         .with_placeholder("org-account_name")
-        .with_help_message("You can find your account ID on the bottom left of the Snowflake UI. See https://tinyurl.com/snow-account-id for more.")
+        .with_help_message("You can find your account ID on the bottom left of the Snowflake UI. This can be the account locator (like 'cea29483') or org account name, dash-separated (like 'MRLDK-ESA98348') See https://tinyurl.com/snow-account-id for more.")
         .prompt()?;
 
         let admin_username = Text::new("Jetty admin username:")
@@ -34,23 +34,8 @@ pub(crate) async fn ask_snowflake_connector_setup() -> Result<CredentialsMap> {
             .with_help_message("We will use this warehouse for any warehouse-required queries to manage permissions.")
             .prompt()?;
 
-        let keypair_dir = Text::new("Keypair directory:")
-            .with_validator(FilepathValidator::new(
-                None,
-                PathType::Dir,
-                "Please enter a valid directory.".to_owned(),
-            ))
-            .with_autocomplete(FilepathCompleter::default())
-            .with_default("~/.ssh")
-            .with_help_message(
-                "We will put your public and private keys in this local directory for safekeeping.",
-            )
-            .prompt()?;
-        let keypair_dir_path = Path::new(&keypair_dir);
-
         println!("Generating keypair...");
         let keypair = create_keypair()?;
-        keypair.save_to_files(keypair_dir_path)?;
         println!("Keypair generated!");
 
         println!("Authorize Jetty access to your account by copying the following SQL statement into Snowflake.");
