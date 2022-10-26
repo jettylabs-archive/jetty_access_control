@@ -10,7 +10,7 @@
       encodeURIComponent(props.node.name) +
       '/hierarchy_downstream'
     "
-    v-slot="slotProps"
+    v-slot="{ props: { row } }: { props: { row: AssetWithPaths } }"
     :tip="`Assets downstream from ${props.node.name}, based on object hierarchy`"
   >
     <q-tr>
@@ -18,29 +18,23 @@
         <q-item class="q-px-none">
           <q-item-section>
             <router-link
-              :to="'/asset/' + encodeURIComponent(slotProps.props.row.name)"
+              :to="'/asset/' + encodeURIComponent(nodeNameAsString(row.node))"
               style="text-decoration: none; color: inherit"
             >
-              <q-item-label> {{ slotProps.props.row.name }}</q-item-label>
+              <q-item-label> {{ nodeNameAsString(row.node) }}</q-item-label>
             </router-link>
             <q-item-label caption>
-              <JettyBadge :name="slotProps.props.row.connector" />
+              <JettyBadge
+                v-for="connector in row.node.Asset.connectors"
+                :key="connector"
+                :name="connector"
+              />
             </q-item-label>
           </q-item-section>
         </q-item>
       </q-td>
       <q-td key="paths" class="q-px-none">
-        <div>
-          <ul class="q-my-none q-pl-sm">
-            <li
-              v-for="path in slotProps.props.row.paths"
-              :key="path"
-              style="padding-top: 2px; padding-bottom: 2px"
-            >
-              {{ path }}
-            </li>
-          </ul>
-        </div>
+        <NodePath :paths="row.paths" />
       </q-td>
     </q-tr>
   </JettyTable>
@@ -49,6 +43,9 @@
 <script lang="ts" setup>
 import JettyTable from '../JettyTable.vue';
 import JettyBadge from '../JettyBadge.vue';
+import { AssetWithPaths } from 'src/components/models';
+import { getPathAsString, nodeNameAsString } from 'src/util';
+import NodePath from '../NodePath.vue';
 
 const props = defineProps(['node']);
 
@@ -85,9 +82,13 @@ const csvConfig = {
   filename: props.node.name + '_downstream_assets_by_hierarchy.csv',
   columnNames: ['Asset Name', 'Asset Platform', 'Path'],
   // accepts a row and returns the proper mapping
-  mappingFn: (filteredSortedRows) =>
+  mappingFn: (filteredSortedRows: AssetWithPaths[]) =>
     filteredSortedRows.flatMap((r) =>
-      r.paths.map((p) => [r.name, r.connector, p])
+      r.paths.map((p) => [
+        nodeNameAsString(r.node),
+        r.node.Asset.connectors,
+        getPathAsString(p),
+      ])
     ),
 };
 </script>
