@@ -323,7 +323,7 @@ impl From<Permission> for jetty_nodes::RawPolicy {
         let mut granted_to_users = HashSet::new();
 
         match val.grantee {
-            Grantee::Group(tableau_nodes::Group { id, .. }) => granted_to_groups.insert(id),
+            Grantee::Group(tableau_nodes::Group { name, .. }) => granted_to_groups.insert(name),
             Grantee::User(tableau_nodes::User { id, .. }) => granted_to_users.insert(id),
         };
 
