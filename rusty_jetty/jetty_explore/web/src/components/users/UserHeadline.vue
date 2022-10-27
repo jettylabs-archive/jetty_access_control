@@ -1,6 +1,6 @@
 <template>
   <router-link
-    :to="'/user/' + encodeURIComponent(nodeNameAsString(user))"
+    :to="'/user/' + userpath"
     style="text-decoration: none; color: inherit"
   >
     <q-item class="q-px-none">
@@ -25,4 +25,5 @@ import { UserSummary } from '../models';
 import JettyBadge from '../JettyBadge.vue';
 
 const props = defineProps<{ user: UserSummary }>();
+const userpath = encodeURIComponent(nodeNameAsString(props.user));
 </script>

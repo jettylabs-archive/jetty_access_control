@@ -13,23 +13,7 @@
   >
     <q-tr>
       <q-td key="name">
-        <q-item class="q-px-none">
-          <q-item-section>
-            <router-link
-              :to="'/group/' + encodeURIComponent(nodeNameAsString(row))"
-              style="text-decoration: none; color: inherit"
-            >
-              <q-item-label> {{ nodeNameAsString(row) }}</q-item-label>
-            </router-link>
-            <q-item-label caption>
-              <JettyBadge
-                v-for="connector in row.Asset.connectors"
-                :key="connector"
-                :name="connector"
-              />
-            </q-item-label>
-          </q-item-section>
-        </q-item>
+        <AssetHeadline :asset="row" />
       </q-td>
     </q-tr>
   </JettyTable>
@@ -40,6 +24,7 @@ import JettyTable from '../JettyTable.vue';
 import JettyBadge from '../JettyBadge.vue';
 import { AssetSummary } from '../models';
 import { nodeNameAsString } from 'src/util';
+import AssetHeadline from '../assets/AssetHeadline.vue';
 
 const props = defineProps(['node']);
 

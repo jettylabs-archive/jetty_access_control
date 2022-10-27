@@ -1,19 +1,14 @@
-use std::{collections::HashSet, sync::Arc};
+use std::sync::Arc;
 
 use anyhow::Context;
 use axum::{extract::Path, routing::get, Extension, Json, Router};
-use serde::Serialize;
 
 use crate::{
     node_summaries::NodeSummary, NodeSummaryWithPaths, NodeSummaryWithPrivileges,
-    PrivilegeResponse, SummaryWithAssociatedSummaries, UserAssetsResponse,
+    SummaryWithAssociatedSummaries,
 };
 
-use super::ObjectWithPathResponse;
-use jetty_core::{
-    access_graph::{self, EdgeType, JettyNode, NodeName},
-    connectors::UserIdentifier,
-};
+use jetty_core::access_graph::{self, EdgeType, JettyNode, NodeName};
 
 /// Return a router to handle all user-related requests
 pub(super) fn router() -> Router {

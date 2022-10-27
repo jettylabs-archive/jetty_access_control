@@ -116,7 +116,6 @@ const columns = [
   },
 ];
 
-console.log(props);
 const csvConfig = {
   filename: nodeNameAsString(props.node) + '_assets.csv',
   columnNames: ['Asset Name', 'Asset Platform', 'Privilege', 'Explanation'],

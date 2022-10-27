@@ -40,6 +40,23 @@ export const getNodeIcon = (stringInput: string) => {
   return icon;
 };
 
+export const nodeIconFromNode = (
+  node: GroupSummary | UserSummary | AssetSummary | TagSummary
+) => {
+  let icon = 'person';
+
+  if ('Group' in node) {
+    icon = 'group';
+  } else if ('User' in node) {
+    icon = 'person';
+  } else if ('Asset' in node) {
+    icon = 'table_chart';
+  } else if ('Tag' in node) {
+    icon = 'sell';
+  }
+  return icon;
+};
+
 export function wrapCsvValue(val) {
   let formatted = val === void 0 || val === null ? '' : String(val);
 

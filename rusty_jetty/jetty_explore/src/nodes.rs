@@ -21,7 +21,7 @@ async fn get_nodes(Extension(ag): Extension<Arc<AccessGraph>>) -> Json<Vec<NodeS
     // Exclude the policy nodes
     let mut nodes: Vec<_> = nodes
         .into_iter()
-        .filter(|n| matches!(n, NodeSummary::Policy { .. }))
+        .filter(|n| !matches!(n, NodeSummary::Policy { .. }))
         .collect();
     // sort on the server
     nodes.sort_by(|a, b| a.get_name().cmp(&b.get_name()));
@@ -32,7 +32,7 @@ async fn get_nodes(Extension(ag): Extension<Arc<AccessGraph>>) -> Json<Vec<NodeS
 /// Return all user nodes
 async fn get_users(Extension(ag): Extension<Arc<AccessGraph>>) -> Json<Vec<NodeSummary>> {
     let nodes = get_all_nodes(ag);
-    // Exclude the policy nodes
+    // Limit to user nodes
     let mut nodes: Vec<_> = nodes
         .into_iter()
         .filter(|n| matches!(n, NodeSummary::User { .. }))
@@ -46,7 +46,7 @@ async fn get_users(Extension(ag): Extension<Arc<AccessGraph>>) -> Json<Vec<NodeS
 /// Return all asset nodes
 async fn get_assets(Extension(ag): Extension<Arc<AccessGraph>>) -> Json<Vec<NodeSummary>> {
     let nodes = get_all_nodes(ag);
-    // Exclude the policy nodes
+    // Limit to asset nodes
     let mut nodes: Vec<_> = nodes
         .into_iter()
         .filter(|n| matches!(n, NodeSummary::Asset { .. }))
@@ -60,7 +60,7 @@ async fn get_assets(Extension(ag): Extension<Arc<AccessGraph>>) -> Json<Vec<Node
 /// Return all group nodes
 async fn get_groups(Extension(ag): Extension<Arc<AccessGraph>>) -> Json<Vec<NodeSummary>> {
     let nodes = get_all_nodes(ag);
-    // Exclude the policy nodes
+    // Limit to group nodes
     let mut nodes: Vec<_> = nodes
         .into_iter()
         .filter(|n| matches!(n, NodeSummary::Group { .. }))
@@ -74,7 +74,7 @@ async fn get_groups(Extension(ag): Extension<Arc<AccessGraph>>) -> Json<Vec<Node
 /// Return all tag nodes
 async fn get_tags(Extension(ag): Extension<Arc<AccessGraph>>) -> Json<Vec<NodeSummary>> {
     let nodes = get_all_nodes(ag);
-    // Exclude the policy nodes
+    // Limit to tag nodes
     let mut nodes: Vec<_> = nodes
         .into_iter()
         .filter(|n| matches!(n, NodeSummary::Tag { .. }))

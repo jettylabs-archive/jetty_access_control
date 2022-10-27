@@ -1,17 +1,16 @@
 <template>
   <div class="header flex column">
     <div class="title-and-icon flex q-pl-md">
-      {{ props.node }}
-      <!-- <q-icon :name="getNodeIcon(props.node.type)" color="primary" size="5em" /> -->
+      <q-icon :name="nodeIconFromNode(node)" color="primary" size="5em" />
       <div class="q-pl-md flex column">
-        <!-- <text class="name">{{ props.node.name }}</text> -->
+        <text class="name">{{ nodeNameAsString(node) }}</text>
         <div class="header-badges">
-          <!-- <JettyBadge
-            v-for="platform in props.node.connectors"
+          <JettyBadge
+            v-for="platform in nodeConnectors(node)"
             :key="platform"
             :name="platform"
             big
-          /> -->
+          />
         </div>
       </div>
     </div>
@@ -19,8 +18,8 @@
 </template>
 
 <script lang="ts" setup>
-import { getNodeIcon } from 'src/util';
 import JettyBadge from 'src/components/JettyBadge.vue';
+import { nodeConnectors, nodeIconFromNode, nodeNameAsString } from 'src/util';
 
 const props = defineProps(['node']);
 </script>
