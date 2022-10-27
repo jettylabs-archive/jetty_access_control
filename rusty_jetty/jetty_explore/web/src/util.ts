@@ -169,7 +169,7 @@ export const jettySearch = <T>(
   } else {
     result = items.filter((i) => {
       const targetString = itemMapper(i);
-      terms.every((t) => targetString.includes(t));
+      return terms.every((t) => targetString.includes(t));
     });
   }
 

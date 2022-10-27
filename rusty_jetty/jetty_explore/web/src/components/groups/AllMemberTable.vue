@@ -2,7 +2,7 @@
   <JettyTable
     title="All Group Members"
     :rows-per-page="20"
-    :filter-method="filterMethod"
+    :row-transformer="rowTransformer"
     :columns="columns"
     :csv-config="csvConfig"
     :fetchPath="
@@ -46,7 +46,6 @@ import JettyBadge from '../JettyBadge.vue';
 import { NodePath as NodePathType, UserSummary } from '../models';
 import { getPathAsString, nodeNameAsString } from 'src/util';
 import NodePath from '../NodePath.vue';
-import Fuse from 'fuse.js';
 
 const props = defineProps(['node']);
 
@@ -73,24 +72,8 @@ const columns = [
 ];
 
 // Filters by name or platform
-const filterMethod = (rows: UserWithPaths[], terms) => {
-  const fuse = new Fuse(rows, {
-    keys: ['node.User.name.User', 'node.User.connectors'],
-  });
-
-  return fuse.search(terms).map((r) => r.item);
-
-  const needles = terms.toLocaleLowerCase().split(' ');
-  return rows.filter((r) =>
-    needles.every(
-      (needle) =>
-        r.node.User.name.User.toLocaleLowerCase().indexOf(needle) > -1 ||
-        // because we don't care which platform it matches, just concatenate them
-        // into a single string
-        r.node.User.connectors.join(' ').toLocaleLowerCase().indexOf(needle) >
-          -1
-    )
-  );
+const rowTransformer = (row: UserWithPaths): string => {
+  return [nodeNameAsString(row.node), ...row.node.User.connectors].join(' ');
 };
 
 const csvConfig = {

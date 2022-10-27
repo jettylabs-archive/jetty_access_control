@@ -55,10 +55,6 @@ const searchField = ref(null);
 // we'll use this to keep the search feeling responsive
 const debounceTime = ref(10);
 
-const limitedOptions = computed(() => {
-  return options.value.slice(0, 5);
-});
-
 function filterFn(val, update) {
   update(
     () => {

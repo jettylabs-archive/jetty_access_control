@@ -154,7 +154,6 @@ const allTags = ref<TagResponse>({
 
 fetchJson('/api/asset/' + encodeURIComponent(props.node_id) + '/tags')
   .then((r: TagResponse) => {
-    console.log(r);
     allTags.value = r;
   })
   .catch((error) => console.log('unable to fetch: ', error));
