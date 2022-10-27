@@ -2,7 +2,7 @@
   <JettyTable
     title="User Access"
     :rows-per-page="20"
-    :filter-method="filterMethod"
+    :row-transformer="rowTransformer"
     :columns="columns"
     :csv-config="csvConfig"
     :fetchPath="'/api/tag/' + encodeURIComponent(props.node.name) + '/users'"
@@ -38,6 +38,7 @@ import JettyTable from '../JettyTable.vue';
 import JettyBadge from '../JettyBadge.vue';
 import { UserSummary } from '../models';
 import { nodeNameAsString } from 'src/util';
+import { mapNodeSummaryforSearch } from 'src/util/search';
 
 const props = defineProps(['node']);
 
@@ -51,17 +52,8 @@ const columns = [
   },
 ];
 
-// Filters by name or platform
-const filterMethod = (rows, terms) => {
-  const needles = terms.toLocaleLowerCase().split(' ');
-  return rows.filter((r) =>
-    needles.every(
-      (needle) =>
-        r.name.toLocaleLowerCase().indexOf(needle) > -1 ||
-        r.platforms.join(' ').toLocaleLowerCase().indexOf(needle) > -1
-    )
-  );
-};
+const rowTransformer = (row: UserSummary): string =>
+  mapNodeSummaryforSearch(row);
 
 const csvConfig = {
   filename: props.node.name + '_user_access.csv',
