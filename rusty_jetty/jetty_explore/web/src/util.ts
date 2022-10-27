@@ -11,6 +11,12 @@ import {
   UserSummary,
 } from './components/models';
 
+export type NodeSummary =
+  | AssetSummary
+  | GroupSummary
+  | UserSummary
+  | TagSummary;
+
 export const getBadgeColor = (stringInput: string) => {
   if (stringInput.toLocaleLowerCase() == 'jetty') {
     return '#f47124';
@@ -110,68 +116,4 @@ export function nodeConnectors(
 
 export const getPathAsString = (path: NodePath): string => {
   return path.map((g) => nodeNameAsString(g)).join(' ⇨ ');
-};
-
-// By default, search will be case insensitive and return all results
-const defaultSearchOptions: SearchOptions = {
-  caseSensitive: false,
-  numResults: undefined,
-};
-
-// jettySearch takes an array of items of type T, a mapper that maps T -> string, a search term,
-// and, optionally, a SearchOptions object.
-//
-// The term is split on spaces (unless double-quoted), and then each item is checked to see if it includes
-// all of the term components.
-//
-// If a value is provided for numResults, the search will exit early once that number has been found.
-// This works well because there is no scoring going on.
-//
-//The results are returned in the order the items were provided.
-export const jettySearch = <T>(
-  items: T[],
-  itemMapper: (item: T) => string,
-  term: string,
-  options: SearchOptions = {}
-): T[] => {
-  options = { ...defaultSearchOptions, ...options };
-
-  const terms =
-    term.match(/(".*?"|[^"\s]+)(?=\s*|\s*$)/g) ??
-    []
-      // if a term is surrounded by quotes, strip them
-      .map((t) => {
-        if (
-          t.length > 1 &&
-          t.charAt(0) == '"' &&
-          t.charAt(t.length - 1) == '"'
-        ) {
-          return t.replaceAll('"', '');
-        } else {
-          return t;
-        }
-      });
-
-  let result: T[] = [];
-
-  if (options.numResults !== undefined) {
-    items.find((i) => {
-      const targetString = itemMapper(i);
-      if (terms.every((t) => targetString.includes(t))) {
-        result.push(i);
-        if (result.length == options.numResults) {
-          return true;
-        } else {
-          return false;
-        }
-      }
-    });
-  } else {
-    result = items.filter((i) => {
-      const targetString = itemMapper(i);
-      return terms.every((t) => targetString.includes(t));
-    });
-  }
-
-  return result;
 };
