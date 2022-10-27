@@ -47,7 +47,13 @@ export const jettySearch = <T>(
   if (options.numResults !== undefined) {
     items.find((i) => {
       const targetString = itemMapper(i);
-      if (terms.every((t) => targetString.includes(t))) {
+      if (
+        (options.caseSensitive &&
+          terms.every((t) => targetString.includes(t))) ||
+        terms.every((t) =>
+          targetString.toLocaleLowerCase().includes(t.toLocaleLowerCase())
+        )
+      ) {
         result.push(i);
         if (result.length == options.numResults) {
           return true;
@@ -59,7 +65,13 @@ export const jettySearch = <T>(
   } else {
     result = items.filter((i) => {
       const targetString = itemMapper(i);
-      return terms.every((t) => targetString.includes(t));
+      return (
+        (options.caseSensitive &&
+          terms.every((t) => targetString.includes(t))) ||
+        terms.every((t) =>
+          targetString.toLocaleLowerCase().includes(t.toLocaleLowerCase())
+        )
+      );
     });
   }
 
