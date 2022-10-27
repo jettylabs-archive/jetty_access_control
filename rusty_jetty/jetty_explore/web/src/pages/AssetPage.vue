@@ -9,7 +9,7 @@
           </div>
           <div class="flex justify-center">
             <JettyBadge
-              v-for="tag in allTags.direct"
+              v-for="tag in allTags.tags.direct"
               :key="nodeNameAsString(tag)"
               :name="nodeNameAsString(tag)"
             />
@@ -24,7 +24,7 @@
           </div>
           <div class="flex justify-center">
             <JettyBadge
-              v-for="tag in allTags.via_hierarchy"
+              v-for="tag in allTags.tags.via_hierarchy"
               :key="nodeNameAsString(tag)"
               :name="nodeNameAsString(tag)"
             />
@@ -39,7 +39,7 @@
           </div>
           <div class="flex justify-center">
             <JettyBadge
-              v-for="tag in allTags.via_lineage"
+              v-for="tag in allTags.tags.via_lineage"
               :key="nodeNameAsString(tag)"
               :name="nodeNameAsString(tag)"
             />
@@ -109,8 +109,18 @@
   </q-page>
 </template>
 
+<script lang="ts">
+export default defineComponent({
+  async beforeRouteUpdate(to, from) {
+    if (to.path.split('/')[2] !== from.path.split('/')[2]) {
+      this.updateTags(to.params.node_id);
+    }
+  },
+});
+</script>
+
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, reactive, defineComponent } from 'vue';
 import JettyHeader from 'src/components/JettyHeader.vue';
 import { useJettyStore } from 'stores/jetty';
 import { useRouter, useRoute } from 'vue-router';
@@ -146,17 +156,21 @@ interface TagResponse {
   via_hierarchy: TagSummary[];
 }
 
-const allTags = ref<TagResponse>({
-  direct: [],
-  via_lineage: [],
-  via_hierarchy: [],
+const allTags: { tags: TagResponse } = reactive({
+  tags: { direct: [], via_hierarchy: [], via_lineage: [] },
 });
 
-fetchJson('/api/asset/' + encodeURIComponent(props.node_id) + '/tags')
-  .then((r: TagResponse) => {
-    allTags.value = r;
-  })
-  .catch((error) => console.log('unable to fetch: ', error));
+function updateTags(node_id: string) {
+  fetchJson('/api/asset/' + encodeURIComponent(node_id) + '/tags')
+    .then((r: TagResponse) => {
+      allTags.tags = r;
+    })
+    .catch((error) => console.log('unable to fetch: ', error));
+}
+
+updateTags(props.node_id);
+
+defineExpose({ updateTags });
 </script>
 
 <style lang="scss">

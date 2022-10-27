@@ -8,7 +8,7 @@
     :fetchPath="
       '/api/tag/' + encodeURIComponent(props.node.name) + '/all_assets'
     "
-    v-slot="slotProps"
+    v-slot="{ props: { row } }: { props: { row: AssetWithPaths } }"
     :tip="`Assets with the ${props.node.name} tag, either applied directly or through inheritance`"
   >
     <q-tr>
@@ -16,29 +16,23 @@
         <q-item class="q-px-none">
           <q-item-section>
             <router-link
-              :to="'/asset/' + encodeURIComponent(slotProps.props.row.name)"
+              :to="'/asset/' + encodeURIComponent(nodeNameAsString(row.node))"
               style="text-decoration: none; color: inherit"
             >
-              <q-item-label> {{ slotProps.props.row.name }}</q-item-label>
+              <q-item-label> {{ nodeNameAsString(row.node) }}</q-item-label>
             </router-link>
             <q-item-label caption>
-              <JettyBadge :name="slotProps.props.row.platform" />
+              <JettyBadge
+                v-for="connector in row.node.Asset.connectors"
+                :key="connector"
+                :name="connector"
+              />
             </q-item-label>
           </q-item-section>
         </q-item>
       </q-td>
-      <q-td key="tag_paths" class="q-px-none">
-        <div>
-          <ul class="q-my-none q-pl-sm">
-            <li
-              v-for="path in slotProps.props.row.tag_paths"
-              :key="path"
-              style="padding-top: 2px; padding-bottom: 2px"
-            >
-              {{ path }}
-            </li>
-          </ul>
-        </div>
+      <q-td key="paths" class="q-px-none">
+        <NodePath :paths="row.paths" />
       </q-td>
     </q-tr>
   </JettyTable>
@@ -47,6 +41,9 @@
 <script lang="ts" setup>
 import JettyTable from '../JettyTable.vue';
 import JettyBadge from '../JettyBadge.vue';
+import { AssetWithPaths } from '../models';
+import { nodeNameAsString, getPathAsString } from 'src/util';
+import NodePath from '../NodePath.vue';
 
 const props = defineProps(['node']);
 
@@ -83,9 +80,13 @@ const csvConfig = {
   filename: props.node.name + '_all_assets.csv',
   columnNames: ['Asset Name', 'Asset Platform', 'Tag Path'],
   // accepts filtered sorted rows and returns the proper mapping
-  mappingFn: (filteredSortedRows) =>
+  mappingFn: (filteredSortedRows: AssetWithPaths[]) =>
     filteredSortedRows.flatMap((r) =>
-      r.tag_paths.map((p) => [r.name, r.platform, p])
+      r.paths.map((p) => [
+        nodeNameAsString(r.node),
+        r.node.Asset.connectors.join(', '),
+        getPathAsString(p),
+      ])
     ),
 };
 </script>

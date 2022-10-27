@@ -8,7 +8,7 @@
     :fetchPath="
       '/api/tag/' + encodeURIComponent(props.node.name) + '/direct_assets'
     "
-    v-slot="slotProps"
+    v-slot="{ props: { row } }: { props: { row: AssetSummary } }"
     :tip="`Assets directly tagged with ${props.node.name}`"
   >
     <q-tr>
@@ -16,13 +16,17 @@
         <q-item class="q-px-none">
           <q-item-section>
             <router-link
-              :to="'/group/' + encodeURIComponent(slotProps.props.row.name)"
+              :to="'/group/' + encodeURIComponent(nodeNameAsString(row))"
               style="text-decoration: none; color: inherit"
             >
-              <q-item-label> {{ slotProps.props.row.name }}</q-item-label>
+              <q-item-label> {{ nodeNameAsString(row) }}</q-item-label>
             </router-link>
             <q-item-label caption>
-              <JettyBadge :name="slotProps.props.row.platform" />
+              <JettyBadge
+                v-for="connector in row.Asset.connectors"
+                :key="connector"
+                :name="connector"
+              />
             </q-item-label>
           </q-item-section>
         </q-item>
@@ -34,6 +38,8 @@
 <script lang="ts" setup>
 import JettyTable from '../JettyTable.vue';
 import JettyBadge from '../JettyBadge.vue';
+import { AssetSummary } from '../models';
+import { nodeNameAsString } from 'src/util';
 
 const props = defineProps(['node']);
 
@@ -63,7 +69,10 @@ const csvConfig = {
   filename: props.node.name + '_direct_assets.csv',
   columnNames: ['Asset Name', 'Asset Platform'],
   // accepts filtered sorted rows and returns the proper mapping
-  mappingFn: (filteredSortedRows) =>
-    filteredSortedRows.flatMap((r) => [r.name, r.platform]),
+  mappingFn: (filteredSortedRows: AssetSummary[]) =>
+    filteredSortedRows.map((r) => [
+      nodeNameAsString(r),
+      r.Asset.connectors.join(', '),
+    ]),
 };
 </script>

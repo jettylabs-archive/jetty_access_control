@@ -13,11 +13,11 @@ use super::NodePath;
 /// The assets that are tagged by a tag, including those directly tagged, those with inherited tags, and those untagged
 pub struct TaggedAssets {
     /// assets directly tagged with the tag
-    pub directly_tagged: HashMap<NodeIndex, Vec<NodePath>>,
+    pub directly_tagged: HashMap<NodeIndex, HashSet<NodePath>>,
     /// assets that inherit the tag via hierarchy
-    pub via_hierarchy: HashMap<NodeIndex, Vec<NodePath>>,
+    pub via_hierarchy: HashMap<NodeIndex, HashSet<NodePath>>,
     /// assets that inherit the tag via lineage
-    pub via_lineage: HashMap<NodeIndex, Vec<NodePath>>,
+    pub via_lineage: HashMap<NodeIndex, HashSet<NodePath>>,
     /// assets that are explicitly untagged
     pub untagged: HashSet<NodeIndex>,
 }
@@ -53,7 +53,7 @@ impl AccessGraph {
                 Some(2),
                 None,
             );
-            remove_poisoned_paths(hierarchy_inheritors, &poison_nodes)
+            remove_poisoned_paths_from_collection(hierarchy_inheritors, &poison_nodes)
         } else {
             Default::default()
         };
@@ -68,7 +68,7 @@ impl AccessGraph {
                 Some(2),
                 None,
             );
-            remove_poisoned_paths(lineage_inheritors, &poison_nodes)
+            remove_poisoned_paths_from_collection(lineage_inheritors, &poison_nodes)
         } else {
             Default::default()
         };
@@ -82,7 +82,8 @@ impl AccessGraph {
             None,
             Some(1),
         );
-        let node_paths_direct = remove_poisoned_paths(directly_assigned, &poison_nodes);
+        let node_paths_direct =
+            remove_poisoned_paths_from_collection(directly_assigned, &poison_nodes);
 
         TaggedAssets {
             directly_tagged: node_paths_direct,
@@ -93,10 +94,10 @@ impl AccessGraph {
     }
 }
 
-fn remove_poisoned_paths<'a>(
-    all_paths: HashMap<NodeIndex, Vec<super::NodePath>>,
+fn remove_poisoned_paths_from_collection<'a>(
+    all_paths: HashMap<NodeIndex, HashSet<super::NodePath>>,
     poison_nodes: &HashSet<NodeIndex>,
-) -> HashMap<NodeIndex, Vec<super::NodePath>> {
+) -> HashMap<NodeIndex, HashSet<super::NodePath>> {
     all_paths
         .iter()
         .map(|(n, p)| {
@@ -110,17 +111,12 @@ fn remove_poisoned_paths<'a>(
                             .next()
                             .is_none()
                     })
-                    .collect::<Vec<_>>(),
+                    .collect::<HashSet<_>>(),
             )
         })
         // now only keep the assets that still have a path;
         .filter(|(_, p)| !p.is_empty())
-        .map(|(n, p)| {
-            (
-                n.to_owned(),
-                p.into_iter().map(|z| z.to_owned()).collect::<Vec<_>>(),
-            )
-        })
+        .map(|(n, p)| (n.to_owned(), p.into_iter().map(|z| z.to_owned()).collect()))
         .collect()
 }
 
