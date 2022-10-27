@@ -12,11 +12,9 @@ use super::{
 /// All helper types implement NodeHelpers.
 pub(crate) trait NodeHelper {
     /// Return a JettyNode from the helper
-    fn get_node(&self) -> JettyNode;
+    fn get_node(&self) -> Option<JettyNode>;
     /// Return a set of JettyEdges from the helper
     fn get_edges(&self) -> HashSet<JettyEdge>;
-    /// Get the node connector
-    fn get_connector(&self) -> &ConnectorNamespace;
 }
 
 pub(crate) fn insert_edge_pair(

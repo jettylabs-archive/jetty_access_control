@@ -679,21 +679,12 @@ impl AccessGraph {
     }
 
     pub(crate) fn add_nodes(&mut self, data: &ProcessedConnectorData) -> Result<()> {
-        self.register_nodes_and_edges(&data.groups, None)?;
-        self.register_nodes_and_edges(&data.users, None)?;
-        self.register_nodes_and_edges(
-            &data.assets,
-            Some(|node, connector| {
-                debug!("Filtering non-connector edge");
-                if let NodeName::Asset(cual) = &node.name {
-                    cual.scheme() != connector.to_string().trim()
-                } else {
-                    panic!("improper node type")
-                }
-            }),
-        )?;
-        self.register_nodes_and_edges(&data.policies, None)?;
-        self.register_nodes_and_edges(&data.tags, None)?;
+        self.register_nodes_and_edges(&data.groups)?;
+        self.register_nodes_and_edges(&data.users)?;
+        self.register_nodes_and_edges(&data.assets)?;
+        self.register_nodes_and_edges(&data.policies)?;
+        self.register_nodes_and_edges(&data.tags)?;
+        self.register_nodes_and_edges(&data.asset_references)?;
         Ok(())
     }
 
@@ -708,23 +699,15 @@ impl AccessGraph {
     }
 
     /// Add nodes to the graph and add edges to the edge cache
-    fn register_nodes_and_edges<T: NodeHelper>(
-        &mut self,
-        nodes: &Vec<T>,
-        filter: Option<fn(&T, &ConnectorNamespace) -> bool>,
-    ) -> Result<()> {
+    fn register_nodes_and_edges<T: NodeHelper>(&mut self, nodes: &Vec<T>) -> Result<()> {
         for n in nodes {
             // Edges get added regardless of connector.
             let edges = n.get_edges();
             self.edge_cache.extend(edges);
-            if let Some(should_filter) = filter {
-                if should_filter(n, &n.get_connector()) {
-                    debug!("Filtering node {:?}", n.get_node().get_string_name());
-                    continue;
-                }
+
+            if let Some(node) = n.get_node() {
+                self.graph.add_node(&node)?;
             }
-            let node = n.get_node();
-            self.graph.add_node(&node)?;
         }
         Ok(())
     }
@@ -972,7 +955,7 @@ mod tests {
             },
         ]);
 
-        ag.register_nodes_and_edges(&input_group, None)?;
+        ag.register_nodes_and_edges(&input_group)?;
         assert_eq!(ag.edge_cache, output_edges);
         Ok(())
     }
