@@ -136,16 +136,21 @@ export const jettySearch = <T>(
 ): T[] => {
   options = { ...defaultSearchOptions, ...options };
 
-  const terms = term
-    .match(/(".*?"|[^"\s]+)(?=\s*|\s*$)/g)
-    // if a term is surrounded by quotes, strip them
-    .map((t) => {
-      if (t.length > 1 && t.charAt(0) == '"' && t.charAt(t.length - 1) == '"') {
-        return t.replaceAll('"', '');
-      } else {
-        return t;
-      }
-    });
+  const terms =
+    term.match(/(".*?"|[^"\s]+)(?=\s*|\s*$)/g) ??
+    []
+      // if a term is surrounded by quotes, strip them
+      .map((t) => {
+        if (
+          t.length > 1 &&
+          t.charAt(0) == '"' &&
+          t.charAt(t.length - 1) == '"'
+        ) {
+          return t.replaceAll('"', '');
+        } else {
+          return t;
+        }
+      });
 
   let result: T[] = [];
 

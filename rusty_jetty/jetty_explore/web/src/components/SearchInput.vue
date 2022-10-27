@@ -36,6 +36,7 @@ import { ref, computed } from 'vue';
 import AutocompleteItem from './AutocompleteItem.vue';
 import { useJettyStore } from 'stores/jetty';
 import { useRouter } from 'vue-router';
+import { jettySearch } from 'src/util';
 
 const props = defineProps({
   autofocus: { type: Boolean },
@@ -44,7 +45,8 @@ const props = defineProps({
 const router = useRouter();
 const store = useJettyStore();
 
-const nodeOptions = computed(() => store.nodes);
+const nodeOptions = computed(() => Array(5000).fill(store.nodes).flat());
+console.log(nodeOptions.value.length);
 
 const model = ref(null);
 const options = ref([]);
@@ -58,10 +60,16 @@ const limitedOptions = computed(() => {
 function filterFn(val, update, abort) {
   update(
     () => {
-      const needle = val.toLocaleLowerCase();
-      options.value = nodeOptions.value.filter(
-        (v) => v.name.toLocaleLowerCase().indexOf(needle) > -1
-      );
+      if (val == '') {
+        return;
+      }
+      options.value = jettySearch(nodeOptions.value, (i) => i.name, val, {
+        numResults: 15,
+      });
+      // const needle = val.toLocaleLowerCase();
+      // options.value = nodeOptions.value.filter(
+      //   (v) => v.name.toLocaleLowerCase().indexOf(needle) > -1
+      // );
     },
     (ref) => {
       if (val !== '' && ref.options.length > 0) {
