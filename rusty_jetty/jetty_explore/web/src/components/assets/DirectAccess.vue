@@ -15,24 +15,7 @@
   >
     <q-tr>
       <q-td key="name">
-        <q-item class="q-px-none">
-          <q-item-section>
-            <router-link
-              :to="'/user/' + encodeURIComponent(nodeNameAsString(row.node))"
-              style="text-decoration: none; color: inherit"
-            >
-              <q-item-label> {{ nodeNameAsString(row.node) }}</q-item-label>
-            </router-link>
-
-            <q-item-label caption>
-              <JettyBadge
-                v-for="connector in row.node.User.connectors"
-                :key="connector"
-                :name="connector"
-              />
-            </q-item-label>
-          </q-item-section>
-        </q-item>
+        <UserHeadline :user="row.node" />
       </q-td>
       <q-td key="privileges" style="padding-right: 0px">
         <q-list separator>
@@ -64,6 +47,7 @@
 
 <script lang="ts" setup>
 import JettyTable from '../JettyTable.vue';
+import UserHeadline from '../users/UserHeadline.vue';
 import JettyBadge from '../JettyBadge.vue';
 import { EffectivePermission, UserSummary } from '../models';
 import { nodeNameAsString } from 'src/util';

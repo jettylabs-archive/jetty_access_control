@@ -5,13 +5,19 @@
     :filter-method="filterMethod"
     :columns="columns"
     :csv-config="csvConfig"
-    :fetchPath="'/api/user/' + encodeURIComponent(props.node.name) + '/assets'"
+    :fetchPath="
+      '/api/user/' +
+      encodeURIComponent(nodeNameAsString(props.node)) +
+      '/assets'
+    "
     v-slot="{
       props: { row },
     }: {
       props: { row: AssetWithEffectivePermissions },
     }"
-    :tip="`All the assets ${props.node.name} has access too, including the privilege levels and
+    :tip="`All the assets ${nodeNameAsString(
+      props.node
+    )} has access too, including the privilege levels and
     sources of those privileges`"
   >
     <q-tr>
@@ -110,8 +116,9 @@ const columns = [
   },
 ];
 
+console.log(props);
 const csvConfig = {
-  filename: props.node.name + '_assets.csv',
+  filename: nodeNameAsString(props.node) + '_assets.csv',
   columnNames: ['Asset Name', 'Asset Platform', 'Privilege', 'Explanation'],
   // accepts a row and returns the proper mapping
   mappingFn: (filteredSortedRows: AssetWithEffectivePermissions[]) =>

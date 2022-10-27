@@ -1,0 +1,27 @@
+<template>
+  <router-link
+    :to="'/group/' + encodeURIComponent(nodeNameAsString(group))"
+    style="text-decoration: none; color: inherit"
+  >
+    <q-item class="q-px-none">
+      <q-item-section>
+        <q-item-label> {{ nodeNameAsString(group) }}</q-item-label>
+        <q-item-label caption>
+          <JettyBadge
+            v-for="platform in group.Group.connectors"
+            :key="platform"
+            :name="platform"
+          />
+        </q-item-label>
+      </q-item-section>
+    </q-item>
+  </router-link>
+</template>
+
+<script lang="ts" setup>
+import { nodeNameAsString } from 'src/util';
+import { GroupSummary } from '../models';
+import JettyBadge from '../JettyBadge.vue';
+
+const props = defineProps<{ group: GroupSummary }>();
+</script>
