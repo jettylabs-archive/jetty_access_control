@@ -5,13 +5,10 @@
 
 pub(crate) mod ascii;
 mod init;
+mod project;
 mod tui;
 
-use std::{
-    path::{Path, PathBuf},
-    sync::Arc,
-    time::Instant,
-};
+use std::{path::PathBuf, sync::Arc, time::Instant};
 
 use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
@@ -24,8 +21,6 @@ use jetty_core::{
     logging::{self, info, warn, LevelFilter},
     Connector, Jetty,
 };
-
-const TAGS_PATH: &str = "tags.yaml";
 
 /// Jetty CLI: Open-source data access control for modern teams
 #[derive(Parser, Debug)]
@@ -92,14 +87,19 @@ async fn main() -> Result<()> {
             }
             match AccessGraph::deserialize_graph() {
                 Ok(mut ag) => {
-                    if Path::new(TAGS_PATH).exists() {
-                        let tag_config = std::fs::read_to_string(TAGS_PATH);
+                    let tags_path = project::tags_cfg_path();
+                    if tags_path.exists() {
+                        let tag_config = std::fs::read_to_string(&tags_path);
                         match tag_config {
                             Ok(c) => {
                                 ag.add_tags(&c)?;
                             }
                             Err(e) => {
-                                bail!("found, but was unable to read {}\nerror: {}", TAGS_PATH, e)
+                                bail!(
+                                    "found, but was unable to read {:?}\nerror: {}",
+                                    tags_path,
+                                    e
+                                )
                             }
                         }
                     }
@@ -118,8 +118,8 @@ async fn main() -> Result<()> {
 }
 
 async fn fetch(connectors: &Vec<String>, &visualize: &bool) -> Result<()> {
-    let jetty = Jetty::new()?;
-    let creds = fetch_credentials()?;
+    let jetty = Jetty::new(project::jetty_cfg_path())?;
+    let creds = fetch_credentials(project::connector_cfg_path())?;
 
     if connectors.is_empty() {
         warn!("No connectors, huh?");

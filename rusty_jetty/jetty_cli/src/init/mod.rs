@@ -9,7 +9,10 @@ use anyhow::Result;
 use jetty_core::{fetch_credentials, jetty::JettyConfig};
 use tokio::io::AsyncWriteExt;
 
-use crate::init::fs::{create_dir_ignore_failure, create_file};
+use crate::{
+    init::fs::{create_dir_ignore_failure, create_file},
+    project,
+};
 
 use self::inquiry::inquire_init;
 
@@ -34,7 +37,7 @@ pub(crate) async fn init(from: &Option<PathBuf>) -> Result<()> {
     let (jetty_config, credentials) = if let Some(from_config) = from {
         // This is a shortcut for debugging and reinitialization with an existing config.
         let jt = JettyConfig::read_from_file(from_config)?;
-        let credentials = fetch_credentials()?;
+        let credentials = fetch_credentials(project::connector_cfg_path())?;
         (jt, credentials)
     } else {
         inquire_init().await?
@@ -63,12 +66,12 @@ async fn initialize_project_structure(
 ) -> Result<()> {
     // The configs don't exist yet. Create them and then the project.
     println!("Creating project files...");
-    let jetty_config = create_file("./jetty_config.yaml").await;
+    let jetty_config = create_file(project::jetty_cfg_path()).await;
     let home_dir = dirs::home_dir().expect("Couldn't find your home directory.");
     let jetty_config_dir = home_dir.join("./.jetty");
     create_dir_ignore_failure(jetty_config_dir).await;
 
-    let connectors_config = create_file("~/.jetty/connectors.yaml").await;
+    let connectors_config = create_file(project::connector_cfg_path()).await;
 
     if let Ok(mut cfg) = jetty_config {
         cfg.write_all(jt_config.to_yaml()?.as_bytes()).await?;
@@ -79,7 +82,7 @@ async fn initialize_project_structure(
         cfg.write_all(connectors_yaml.as_bytes()).await?;
     }
     create_dir_ignore_failure("./src/").await;
-    let mut tags_config = create_file("./src/tags.yaml").await?;
+    let mut tags_config = create_file(project::tags_cfg_path()).await?;
 
     tags_config
         .write_all(
