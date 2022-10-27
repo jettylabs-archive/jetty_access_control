@@ -36,7 +36,7 @@ import { ref, computed } from 'vue';
 import AutocompleteItem from './AutocompleteItem.vue';
 import { useJettyStore } from 'stores/jetty';
 import { useRouter } from 'vue-router';
-import { jettySearch } from 'src/util';
+import { jettySearch } from 'src/util/search';
 
 const props = defineProps({
   autofocus: { type: Boolean },

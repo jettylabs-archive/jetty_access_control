@@ -58,7 +58,8 @@
 
 <script lang="ts" setup>
 import { ref } from 'vue';
-import { downloadCSV, fetchJson, jettySearch } from 'src/util';
+import { downloadCSV, fetchJson } from 'src/util';
+import { jettySearch } from 'src/util/search';
 
 const props = defineProps([
   'title',

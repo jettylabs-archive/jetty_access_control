@@ -46,6 +46,7 @@ import JettyBadge from '../JettyBadge.vue';
 import { NodePath as NodePathType, UserSummary } from '../models';
 import { getPathAsString, nodeNameAsString } from 'src/util';
 import NodePath from '../NodePath.vue';
+import { mapNodeSummaryforSearch } from 'src/util/search';
 
 const props = defineProps(['node']);
 
@@ -71,10 +72,8 @@ const columns = [
   },
 ];
 
-// Filters by name or platform
-const rowTransformer = (row: UserWithPaths): string => {
-  return [nodeNameAsString(row.node), ...row.node.User.connectors].join(' ');
-};
+const rowTransformer = (row: UserWithPaths): string =>
+  mapNodeSummaryforSearch(row.node);
 
 const csvConfig = {
   filename: props.node.name + '_all_members.csv',
