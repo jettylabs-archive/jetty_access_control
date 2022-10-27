@@ -7,8 +7,8 @@
     use-input
     hide-selected
     fill-input
-    input-debounce="0"
-    :options="limitedOptions"
+    :input-debounce="debounceTime"
+    :options="options"
     @filter="filterFn"
     @input-value="setModel"
     option-label="name"
@@ -45,31 +45,34 @@ const props = defineProps({
 const router = useRouter();
 const store = useJettyStore();
 
-const nodeOptions = computed(() => Array(5000).fill(store.nodes).flat());
-console.log(nodeOptions.value.length);
+const nodeOptions = computed(() => store.nodes);
 
 const model = ref(null);
 const options = ref([]);
 
 const searchField = ref(null);
 
+// we'll use this to keep the search feeling responsive
+const debounceTime = ref(10);
+
 const limitedOptions = computed(() => {
   return options.value.slice(0, 5);
 });
 
-function filterFn(val, update, abort) {
+function filterFn(val, update) {
   update(
     () => {
       if (val == '') {
-        return;
+        options.value = [];
+      } else {
+        var startTime = performance.now();
+        options.value = jettySearch(nodeOptions.value, (i) => i.name, val, {
+          numResults: 15,
+        });
+        debounceTime.value = Math.ceil(
+          Math.max(debounceTime.value * 0.75, performance.now() - startTime)
+        );
       }
-      options.value = jettySearch(nodeOptions.value, (i) => i.name, val, {
-        numResults: 15,
-      });
-      // const needle = val.toLocaleLowerCase();
-      // options.value = nodeOptions.value.filter(
-      //   (v) => v.name.toLocaleLowerCase().indexOf(needle) > -1
-      // );
     },
     (ref) => {
       if (val !== '' && ref.options.length > 0) {
