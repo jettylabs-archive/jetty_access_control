@@ -157,6 +157,7 @@ impl<'a> Coordinator<'a> {
             tags: self.get_jetty_tags(),
             policies: self.get_jetty_policies(),
             effective_permissions: self.get_effective_permissions(),
+            asset_references: Default::default(),
         }
     }
 

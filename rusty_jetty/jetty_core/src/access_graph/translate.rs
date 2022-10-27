@@ -7,12 +7,12 @@ use super::NodeName;
 use crate::{
     connectors::{
         nodes::{
-            ConnectorData, EffectivePermission, RawAsset, RawGroup, RawPolicy, RawTag, RawUser,
-            SparseMatrix,
+            ConnectorData, EffectivePermission, RawAsset, RawAssetReference, RawGroup, RawPolicy,
+            RawTag, RawUser, SparseMatrix,
         },
         processed_nodes::{
-            ProcessedAsset, ProcessedConnectorData, ProcessedGroup, ProcessedPolicy, ProcessedTag,
-            ProcessedUser,
+            ProcessedAsset, ProcessedAssetReference, ProcessedConnectorData, ProcessedGroup,
+            ProcessedPolicy, ProcessedTag, ProcessedUser,
         },
         UserIdentifier,
     },
@@ -184,6 +184,13 @@ impl Translator {
                     .map(|p| self.translate_policy_to_global(p, namespace.to_owned()))
                     .collect::<Vec<ProcessedPolicy>>(),
             );
+            // convert the assets
+            result.asset_references.extend(
+                cd.asset_references
+                    .into_iter()
+                    .map(|a| self.translate_asset_reference_to_global(a, namespace.to_owned()))
+                    .collect::<Vec<ProcessedAssetReference>>(),
+            );
         }
 
         result
@@ -287,6 +294,48 @@ impl Translator {
                 .map(|t| NodeName::Tag(t))
                 .collect(),
             connector,
+        }
+    }
+
+    /// Convert node from connector into ProcessedNode by converting all references to global NodeNames
+    fn translate_asset_reference_to_global(
+        &self,
+        asset: RawAssetReference,
+        connector: ConnectorNamespace,
+    ) -> ProcessedAssetReference {
+        ProcessedAssetReference {
+            name: NodeName::Asset(asset.cual),
+            metadata: asset.metadata,
+            governed_by: asset
+                .governed_by
+                .iter()
+                .map(|g| self.local_to_global.policies[&connector][g].to_owned())
+                .collect(),
+            child_of: asset
+                .child_of
+                .into_iter()
+                .map(|g| NodeName::Asset(Cual::new(g.as_str())))
+                .collect(),
+            parent_of: asset
+                .parent_of
+                .into_iter()
+                .map(|g| NodeName::Asset(Cual::new(g.as_str())))
+                .collect(),
+            derived_from: asset
+                .derived_from
+                .into_iter()
+                .map(|g| NodeName::Asset(Cual::new(g.as_str())))
+                .collect(),
+            derived_to: asset
+                .derived_to
+                .into_iter()
+                .map(|g| NodeName::Asset(Cual::new(g.as_str())))
+                .collect(),
+            tagged_as: asset
+                .tagged_as
+                .into_iter()
+                .map(|t| NodeName::Tag(t))
+                .collect(),
         }
     }
 
