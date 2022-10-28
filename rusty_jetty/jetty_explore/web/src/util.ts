@@ -1,13 +1,21 @@
+import { Result } from 'postcss';
 import { exportFile } from 'quasar';
 import {
   AssetSummary,
   GroupName,
   GroupSummary,
   NodePath,
+  SearchOptions,
   TagSummary,
   UserName,
   UserSummary,
 } from './components/models';
+
+export type NodeSummary =
+  | AssetSummary
+  | GroupSummary
+  | UserSummary
+  | TagSummary;
 
 export const getBadgeColor = (stringInput: string) => {
   if (stringInput.toLocaleLowerCase() == 'jetty') {

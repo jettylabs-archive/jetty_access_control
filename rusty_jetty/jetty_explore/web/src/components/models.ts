@@ -79,3 +79,9 @@ export interface AssetWithPaths {
   node: AssetSummary;
   paths: NodePath[];
 }
+
+// Defines the options for jettySearch.
+export interface SearchOptions {
+  caseSensitive?: boolean;
+  numResults?: number;
+}

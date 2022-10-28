@@ -2,7 +2,7 @@
   <JettyTable
     title="All Tagged Assets"
     :rows-per-page="20"
-    :filter-method="filterMethod"
+    :row-transformer="rowTransformer"
     :columns="columns"
     :csv-config="csvConfig"
     :fetchPath="
@@ -44,6 +44,7 @@ import JettyBadge from '../JettyBadge.vue';
 import { AssetWithPaths } from '../models';
 import { nodeNameAsString, getPathAsString } from 'src/util';
 import NodePath from '../NodePath.vue';
+import { mapNodeSummaryforSearch } from 'src/util/search';
 
 const props = defineProps(['node']);
 
@@ -64,17 +65,8 @@ const columns = [
   },
 ];
 
-// Filters by name or platform
-const filterMethod = (rows, terms) => {
-  const needles = terms.toLocaleLowerCase().split(' ');
-  return rows.filter((r) =>
-    needles.every(
-      (needle) =>
-        r.name.toLocaleLowerCase().indexOf(needle) > -1 ||
-        r.platform.toLocaleLowerCase().indexOf(needle) > -1
-    )
-  );
-};
+const rowTransformer = (row: AssetWithPaths): string =>
+  mapNodeSummaryforSearch(row.node);
 
 const csvConfig = {
   filename: props.node.name + '_all_assets.csv',

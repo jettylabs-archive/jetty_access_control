@@ -161,11 +161,9 @@ const allTags: { tags: TagResponse } = reactive({
 });
 
 function updateTags(node_id: string) {
-  console.log('updateTags');
   fetchJson('/api/asset/' + encodeURIComponent(node_id) + '/tags')
     .then((r: TagResponse) => {
       allTags.tags = r;
-      console.log(r);
     })
     .catch((error) => console.log('unable to fetch: ', error));
 }

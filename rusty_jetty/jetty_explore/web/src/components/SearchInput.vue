@@ -7,8 +7,8 @@
     use-input
     hide-selected
     fill-input
-    input-debounce="0"
-    :options="limitedOptions"
+    :input-debounce="debounceTime"
+    :options="options"
     @filter="filterFn"
     @input-value="setModel"
     option-label="name"
@@ -36,6 +36,7 @@ import { ref, computed } from 'vue';
 import AutocompleteItem from './AutocompleteItem.vue';
 import { useJettyStore } from 'stores/jetty';
 import { useRouter } from 'vue-router';
+import { jettySearch } from 'src/util/search';
 
 const props = defineProps({
   autofocus: { type: Boolean },
@@ -51,17 +52,23 @@ const options = ref([]);
 
 const searchField = ref(null);
 
-const limitedOptions = computed(() => {
-  return options.value.slice(0, 5);
-});
+// we'll use this to keep the search feeling responsive
+const debounceTime = ref(10);
 
-function filterFn(val, update, abort) {
+function filterFn(val, update) {
   update(
     () => {
-      const needle = val.toLocaleLowerCase();
-      options.value = nodeOptions.value.filter(
-        (v) => v.name.toLocaleLowerCase().indexOf(needle) > -1
-      );
+      if (val == '') {
+        options.value = [];
+      } else {
+        var startTime = performance.now();
+        options.value = jettySearch(nodeOptions.value, (i) => i.name, val, {
+          numResults: 15,
+        });
+        debounceTime.value = Math.ceil(
+          Math.max(debounceTime.value * 0.75, performance.now() - startTime)
+        );
+      }
     },
     (ref) => {
       if (val !== '' && ref.options.length > 0) {

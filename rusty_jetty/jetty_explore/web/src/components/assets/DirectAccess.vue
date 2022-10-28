@@ -2,7 +2,7 @@
   <JettyTable
     title="Users with Direct Access"
     :rows-per-page="20"
-    :filter-method="filterMethod"
+    :row-transformer="rowTransformer"
     :columns="columns"
     :csv-config="csvConfig"
     :fetchPath="'/api/asset/' + encodeURIComponent(props.node.name) + '/users'"
@@ -67,6 +67,7 @@ import JettyTable from '../JettyTable.vue';
 import JettyBadge from '../JettyBadge.vue';
 import { EffectivePermission, UserSummary } from '../models';
 import { nodeNameAsString } from 'src/util';
+import { mapNodeSummaryforSearch } from 'src/util/search';
 
 interface UserWithEffectivePermissions {
   node: UserSummary;
@@ -75,22 +76,11 @@ interface UserWithEffectivePermissions {
 
 const props = defineProps(['node']);
 
-// Filters by name, privileges, or platform
-const filterMethod = (rows, terms) => {
-  const needles = terms.toLocaleLowerCase().split(' ');
-  return rows.filter((r) =>
-    needles.every(
-      (needle) =>
-        r.name.toLocaleLowerCase().indexOf(needle) > -1 ||
-        r.platforms.join(' ').toLocaleLowerCase().indexOf(needle) > -1 ||
-        r.privileges
-          .map((a) => a.name)
-          .join(' ')
-          .toLocaleLowerCase()
-          .indexOf(needle) > -1
-    )
-  );
-};
+const rowTransformer = (row: UserWithEffectivePermissions): string =>
+  [
+    mapNodeSummaryforSearch(row.node),
+    ...row.privileges.map((p) => p.privilege),
+  ].join(' ');
 
 const columns = [
   {

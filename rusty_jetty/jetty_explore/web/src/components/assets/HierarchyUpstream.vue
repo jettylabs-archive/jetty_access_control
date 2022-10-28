@@ -2,7 +2,7 @@
   <JettyTable
     title="Upstream Hierarchy"
     :rows-per-page="10"
-    :filter-method="filterMethod"
+    :row-transformer="rowTransformer"
     :columns="columns"
     :csv-config="csvConfig"
     :fetchPath="
@@ -46,20 +46,13 @@ import JettyBadge from '../JettyBadge.vue';
 import { AssetWithPaths } from 'src/components/models';
 import { getPathAsString, nodeNameAsString } from 'src/util';
 import NodePath from '../NodePath.vue';
+import { mapNodeSummaryforSearch } from 'src/util/search';
 
 const props = defineProps(['node']);
 
-// Filters by name, privileges, or connector
-const filterMethod = (rows, terms) => {
-  const needles = terms.toLocaleLowerCase().split(' ');
-  return rows.filter((r) =>
-    needles.every(
-      (needle) =>
-        r.name.toLocaleLowerCase().indexOf(needle) > -1 ||
-        r.connector.toLocaleLowerCase().indexOf(needle) > -1
-    )
-  );
-};
+// Filters by name or platform
+const rowTransformer = (row: AssetWithPaths): string =>
+  mapNodeSummaryforSearch(row.node);
 
 const columns = [
   {
