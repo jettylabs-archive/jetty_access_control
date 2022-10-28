@@ -5,13 +5,17 @@
     :filter-method="filterMethod"
     :columns="columns"
     :csv-config="csvConfig"
-    :fetchPath="'/api/asset/' + encodeURIComponent(props.node.name) + '/users'"
+    :fetchPath="
+      '/api/asset/' +
+      encodeURIComponent(nodeNameAsString(props.node)) +
+      '/users'
+    "
     v-slot="{
       props: { row },
     }: {
       props: { row: UserWithEffectivePermissions },
     }"
-    :tip="`Users with access to ${props.node.name}`"
+    :tip="`Users with access to ${nodeNameAsString(props.node)}`"
   >
     <q-tr>
       <q-td key="name">
@@ -48,7 +52,6 @@
 <script lang="ts" setup>
 import JettyTable from '../JettyTable.vue';
 import UserHeadline from '../users/UserHeadline.vue';
-import JettyBadge from '../JettyBadge.vue';
 import { EffectivePermission, UserSummary } from '../models';
 import { nodeNameAsString } from 'src/util';
 
