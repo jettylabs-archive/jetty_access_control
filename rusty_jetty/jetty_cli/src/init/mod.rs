@@ -93,7 +93,7 @@ async fn initialize_project_structure(
 #    pii:
 #    description: This data contains pii from ppis
 #    apply_to:
-#        - snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB2/RAW/IRIS
+#        - snowflake://abc12345.snowflakecomputing.com/ANALYTICS_DB/RAW/USERS
     "
             .as_bytes(),
         )
