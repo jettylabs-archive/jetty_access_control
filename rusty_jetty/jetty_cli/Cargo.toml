@@ -11,7 +11,7 @@ jetty_snowflake = { path = "../jetty_snowflake" }
 jetty_dbt = { path = "../jetty_dbt" }
 jetty_tableau = { path = "../jetty_tableau" }
 jetty_explore = { path = "../jetty_explore" }
-tokio = { version = "1.20.1", features = ["rt", "macros"] }
+tokio = { version = "1.20.1", features = ["fs", "rt", "macros"] }
 anyhow = "^1"
 clap = { version = "3.2.22", features = ["derive"] }
 colored = "2"
@@ -21,3 +21,4 @@ yaml-peg = { version = "1.0.4", features = ["serde"] }
 openssl = "0.10.42"
 sha2 = "0.10.6"
 base64 = "0.13.1"
+dirs = "4.0.0"
