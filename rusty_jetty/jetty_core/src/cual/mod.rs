@@ -7,6 +7,8 @@ use anyhow::Context;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
+use crate::{access_graph::AssetPath, connectors::AssetType};
+
 /// Just a CUAL
 ///
 /// CUAL structs should be constructed with `Cual::new()`, not raw.
@@ -49,6 +51,46 @@ impl Cual {
     /// The scheme for `tableau`://path/to/asset?type=project would be `tableau`
     pub fn scheme(&self) -> &str {
         self.uri.scheme()
+    }
+
+    /// Get an iterator over path segments for this CUAL
+    pub fn path_segments(&self) -> std::str::Split<char> {
+        // this is safe to unwrap - it will only panic in the case of a malformed CUAL.
+        // see https://docs.rs/url/latest/url/struct.Url.html#method.cannot_be_a_base for
+        // a description of the panic case
+        self.uri.path_segments().unwrap()
+    }
+
+    /// Get the connector identifier from a CUAL.
+    ///
+    /// For `tableau://server-name:port@site-name/to/asset?type=project` this would return `tableau://server-name:port@site-name`
+    pub fn connector_prefix(&self) -> String {
+        self.uri.to_string().split('/').collect::<Vec<_>>()[..3].join("/")
+    }
+
+    /// If there is a type value associated with the CUAL, return that as an AssetType
+    ///
+    /// For `tableau://server-name:port@site-name/to/asset?type=project` this would return `AssetType("project")`
+    pub fn asset_type(&self) -> Option<AssetType> {
+        for q in self.uri.query_pairs() {
+            if q.0 == "type" {
+                return Some(AssetType(q.1.to_string()));
+            }
+        }
+        return None;
+    }
+
+    /// Derive an asset-path from a Cual.
+    ///
+    /// This will panic if if the path segments cannot be url decoded
+    // This is implemented in this way rather than by implementing From<Cual> because
+    // we should very careful consuming a cual to generate a path as that is a lossy conversion.
+    pub fn asset_path(&self) -> AssetPath {
+        AssetPath::new(
+            self.path_segments()
+                .map(|s| urlencoding::decode(s).unwrap().to_string())
+                .collect(),
+        )
     }
 }
 

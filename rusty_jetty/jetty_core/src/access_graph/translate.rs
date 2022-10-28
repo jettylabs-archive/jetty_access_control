@@ -21,12 +21,16 @@ use crate::{
     permissions::matrix::{DoubleInsert, InsertOrMerge},
 };
 
+use anyhow::Context;
+use bimap;
+
 /// Struct to translate local data to global data and back again
 /// Eventually, this will need to be persisted with the graph to enable the write path
 #[derive(Default)]
 pub struct Translator {
     global_to_local: GlobalToLocalIdentifiers,
     local_to_global: LocalToGlobalIdentifiers,
+    cual_prefix_to_namespace: bimap::BiHashMap<String, ConnectorNamespace>,
 }
 
 #[derive(Default)]
@@ -48,12 +52,22 @@ impl Translator {
     pub fn new(data: &Vec<(ConnectorData, ConnectorNamespace)>) -> Self {
         let mut t = Translator::default();
 
+        // build the namespace mapping
+        t.build_cual_namespace_map(data);
+
         // Start by pulling out all the user nodes and resolving them to single identities
         t.resolve_users(data);
         t.resolve_groups(data);
         t.resolve_policies(data);
 
         t
+    }
+
+    fn build_cual_namespace_map(&mut self, data: &Vec<(ConnectorData, ConnectorNamespace)>) {
+        for (ConnectorData { cual_prefix, .. }, namespace) in data {
+            self.cual_prefix_to_namespace
+                .insert(cual_prefix.to_owned(), namespace.to_owned());
+        }
     }
 
     /// This is entity resolution for users. Right now it is very simple, but it can be built out as needed
@@ -260,7 +274,7 @@ impl Translator {
         connector: ConnectorNamespace,
     ) -> ProcessedAsset {
         ProcessedAsset {
-            name: NodeName::Asset(asset.cual),
+            name: self.cual_to_asset_name(asset.cual),
             asset_type: asset.asset_type,
             metadata: asset.metadata,
             governed_by: asset
@@ -271,22 +285,22 @@ impl Translator {
             child_of: asset
                 .child_of
                 .into_iter()
-                .map(|g| NodeName::Asset(Cual::new(g.as_str())))
+                .map(|g| self.cual_to_asset_name(Cual::new(g.as_str())))
                 .collect(),
             parent_of: asset
                 .parent_of
                 .into_iter()
-                .map(|g| NodeName::Asset(Cual::new(g.as_str())))
+                .map(|g| self.cual_to_asset_name(Cual::new(g.as_str())))
                 .collect(),
             derived_from: asset
                 .derived_from
                 .into_iter()
-                .map(|g| NodeName::Asset(Cual::new(g.as_str())))
+                .map(|g| self.cual_to_asset_name(Cual::new(g.as_str())))
                 .collect(),
             derived_to: asset
                 .derived_to
                 .into_iter()
-                .map(|g| NodeName::Asset(Cual::new(g.as_str())))
+                .map(|g| self.cual_to_asset_name(Cual::new(g.as_str())))
                 .collect(),
             tagged_as: asset
                 .tagged_as
@@ -304,7 +318,7 @@ impl Translator {
         connector: ConnectorNamespace,
     ) -> ProcessedAssetReference {
         ProcessedAssetReference {
-            name: NodeName::Asset(asset.cual),
+            name: self.cual_to_asset_name(asset.cual),
             metadata: asset.metadata,
             governed_by: asset
                 .governed_by
@@ -314,22 +328,22 @@ impl Translator {
             child_of: asset
                 .child_of
                 .into_iter()
-                .map(|g| NodeName::Asset(Cual::new(g.as_str())))
+                .map(|g| self.cual_to_asset_name(Cual::new(g.as_str())))
                 .collect(),
             parent_of: asset
                 .parent_of
                 .into_iter()
-                .map(|g| NodeName::Asset(Cual::new(g.as_str())))
+                .map(|g| self.cual_to_asset_name(Cual::new(g.as_str())))
                 .collect(),
             derived_from: asset
                 .derived_from
                 .into_iter()
-                .map(|g| NodeName::Asset(Cual::new(g.as_str())))
+                .map(|g| self.cual_to_asset_name(Cual::new(g.as_str())))
                 .collect(),
             derived_to: asset
                 .derived_to
                 .into_iter()
-                .map(|g| NodeName::Asset(Cual::new(g.as_str())))
+                .map(|g| self.cual_to_asset_name(Cual::new(g.as_str())))
                 .collect(),
             tagged_as: asset
                 .tagged_as
@@ -350,12 +364,12 @@ impl Translator {
             applied_to: tag
                 .applied_to
                 .into_iter()
-                .map(|t| NodeName::Asset(Cual::new(t.as_str())))
+                .map(|t| self.cual_to_asset_name(Cual::new(t.as_str())))
                 .collect(),
             removed_from: tag
                 .removed_from
                 .into_iter()
-                .map(|t| NodeName::Asset(Cual::new(t.as_str())))
+                .map(|t| self.cual_to_asset_name(Cual::new(t.as_str())))
                 .collect(),
             governed_by: tag
                 .governed_by
@@ -378,7 +392,7 @@ impl Translator {
             governs_assets: policy
                 .governs_assets
                 .into_iter()
-                .map(|a| NodeName::Asset(Cual::new(a.as_str())))
+                .map(|a| self.cual_to_asset_name(Cual::new(a.as_str())))
                 .collect(),
             governs_tags: policy
                 .governs_tags
@@ -416,11 +430,28 @@ impl Translator {
                 for (k2, v2) in v1 {
                     result.insert_or_merge(
                         self.local_to_global.users[&namespace][k1].to_owned(),
-                        HashMap::from([(NodeName::Asset(k2.to_owned()), v2.to_owned())]),
+                        HashMap::from([(self.cual_to_asset_name(k2.to_owned()), v2.to_owned())]),
                     );
                 }
             }
         }
         result
+    }
+
+    /// Convert a cual to NodeName::Asset()
+    pub fn cual_to_asset_name(&self, cual: Cual) -> NodeName {
+        let connector_prefix = cual.connector_prefix();
+        let connector = self
+            .cual_prefix_to_namespace
+            .get_by_left(&connector_prefix)
+            .context("unable to match cual prefix")
+            .unwrap()
+            .to_owned();
+
+        NodeName::Asset {
+            connector,
+            asset_type: cual.asset_type(),
+            path: cual.asset_path(),
+        }
     }
 }

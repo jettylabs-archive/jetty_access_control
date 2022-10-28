@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use std::sync::Mutex;
 
+use anyhow::Context;
 use futures::future::join_all;
 use futures::future::BoxFuture;
 use futures::StreamExt;
@@ -18,7 +19,7 @@ use jetty_core::logging::debug;
 use jetty_core::logging::error;
 use jetty_core::permissions::matrix::InsertOrMerge;
 
-use super::cual::{cual, get_cual_account_name, Cual};
+use super::cual::{self, cual, get_cual_account_name, Cual};
 use crate::consts::DATABASE;
 use crate::consts::SCHEMA;
 use crate::consts::TABLE;
@@ -158,6 +159,9 @@ impl<'a> Coordinator<'a> {
             policies: self.get_jetty_policies(),
             effective_permissions: self.get_effective_permissions(),
             asset_references: Default::default(),
+            cual_prefix: cual::get_cual_prefix()
+                .context("cual account not yet set")
+                .unwrap(),
         }
     }
 

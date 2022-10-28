@@ -64,7 +64,8 @@ mod tests {
 
     use crate::{
         access_graph::{
-            AssetAttributes, GroupAttributes, NodeName, PolicyAttributes, UserAttributes,
+            cual_to_asset_name_test, AssetAttributes, GroupAttributes, NodeName, PolicyAttributes,
+            UserAttributes,
         },
         cual::Cual,
         logging::debug,
@@ -78,7 +79,10 @@ mod tests {
     fn get_matching_children_works() -> Result<()> {
         let ag = AccessGraph::new_dummy(
             &[
-                &JettyNode::Asset(AssetAttributes::new(Cual::new("mycual://a"))),
+                &JettyNode::Asset(AssetAttributes::new(
+                    Cual::new("mycual://a"),
+                    Default::default(),
+                )),
                 &JettyNode::Policy(PolicyAttributes::new("policy".to_owned())),
                 &JettyNode::User(UserAttributes::new("user".to_owned())),
             ],
@@ -96,7 +100,7 @@ mod tests {
                         name: "policy".to_owned(),
                         origin: Default::default(),
                     },
-                    NodeName::Asset(Cual::new("mycual://a")),
+                    cual_to_asset_name_test(Cual::new("mycual://a"), Default::default()),
                     EdgeType::Governs,
                 ),
             ],

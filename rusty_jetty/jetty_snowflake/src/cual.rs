@@ -34,6 +34,19 @@ pub(crate) fn get_cual_account_name<'a>() -> Result<&'a str> {
     }
 }
 
+pub(crate) fn get_cual_prefix() -> Result<String> {
+    if INIT_CUAL_ACCOUNT_NAME.is_completed() {
+        // CUAL_PREFIX is set by a Once and is safe to use after initialization.
+        Ok(format!(
+            "{}://{}",
+            "snowflake",
+            get_cual_account_name().expect("couldn't get CUAL account name")
+        ))
+    } else {
+        bail!("cual prefix was not yet set")
+    }
+}
+
 macro_rules! cual {
     ($db:expr) => {
         Cual::new(&format!(

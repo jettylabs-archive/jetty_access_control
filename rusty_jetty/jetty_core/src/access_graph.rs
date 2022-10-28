@@ -37,6 +37,7 @@ pub use petgraph::stable_graph::NodeIndex;
 use serde::Deserialize;
 use serde::Serialize;
 use time::OffsetDateTime;
+use urlencoding;
 
 use crate::permissions::matrix::{InsertOrMerge, Merge};
 
@@ -184,9 +185,13 @@ impl AssetAttributes {
 
     /// Convenience constructor for testing
     #[cfg(test)]
-    pub(crate) fn new(cual: Cual) -> Self {
+    pub(crate) fn new(cual: Cual, connector: ConnectorNamespace) -> Self {
         Self {
-            name: NodeName::Asset(cual),
+            name: NodeName::Asset {
+                connector,
+                asset_type: cual.asset_type(),
+                path: cual.asset_path(),
+            },
             asset_type: AssetType::default(),
             metadata: Default::default(),
             connectors: Default::default(),
@@ -484,6 +489,38 @@ fn get_edge_type_pair(edge_type: &EdgeType) -> EdgeType {
     }
 }
 
+/// A type representing the path of an asset
+///
+#[derive(PartialEq, Eq, Hash, Clone, Debug, Serialize, Deserialize, PartialOrd, Ord)]
+pub struct AssetPath(Vec<String>);
+
+impl Display for AssetPath {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.0)
+    }
+}
+
+impl AssetPath {
+    /// Return a Vec<String> of the different path components
+    pub fn components(&self) -> &Vec<String> {
+        &self.0
+    }
+
+    /// Return the ancestors of a path
+    pub fn ancestors(&self) -> Vec<&[String]> {
+        self.0
+            .iter()
+            .enumerate()
+            .map(|(i, _)| &self.0[..i + 1])
+            .collect()
+    }
+
+    /// Build a new asset path
+    pub(crate) fn new(path: Vec<String>) -> Self {
+        Self(path)
+    }
+}
+
 /// Mapping of node identifiers (like asset name) to their id in the graph
 #[derive(PartialEq, Eq, Hash, Clone, Debug, Serialize, Deserialize, PartialOrd, Ord)]
 pub enum NodeName {
@@ -497,7 +534,14 @@ pub enum NodeName {
         origin: ConnectorNamespace,
     },
     /// Asset node
-    Asset(Cual),
+    Asset {
+        /// The assets connector
+        connector: ConnectorNamespace,
+        /// The AssetType if, and only if, it is included in the cual
+        asset_type: Option<AssetType>,
+        /// The path to the asset
+        path: AssetPath,
+    },
     /// Policy node
     Policy {
         /// Policy name
@@ -520,7 +564,20 @@ impl Display for NodeName {
         match self {
             NodeName::User(n) => write!(f, "{}", n.to_owned()),
             NodeName::Group { name, origin } => write!(f, "{}::{}", origin, name),
-            NodeName::Asset(c) => write!(f, "{}", c.to_string()),
+            NodeName::Asset {
+                connector,
+                asset_type,
+                path,
+            } => write!(
+                f,
+                "{}::{}::{}",
+                connector.to_string(),
+                asset_type
+                    .as_ref()
+                    .unwrap_or(&AssetType("".to_string()))
+                    .to_string(),
+                path.to_string()
+            ),
             NodeName::Policy { name, origin } => write!(f, "{}::{}", origin, name),
             NodeName::Tag(n) => write!(f, "{}", n.to_owned()),
         }
@@ -802,6 +859,15 @@ where
     new_map.extend(new_m2);
 
     Ok(new_map)
+}
+
+#[cfg(test)]
+pub fn cual_to_asset_name_test(cual: Cual, connector: ConnectorNamespace) -> NodeName {
+    NodeName::Asset {
+        connector,
+        asset_type: cual.asset_type(),
+        path: cual.asset_path(),
+    }
 }
 
 #[cfg(test)]

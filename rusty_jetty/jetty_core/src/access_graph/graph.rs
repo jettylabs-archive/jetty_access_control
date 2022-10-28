@@ -76,7 +76,7 @@ impl Graph {
                 .groups
                 .get(node)
                 .map(|n| NodeIndex::from(n.to_owned())),
-            NodeName::Asset(_) => self
+            NodeName::Asset { .. } => self
                 .nodes
                 .assets
                 .get(node)
@@ -97,7 +97,7 @@ impl Graph {
     /// Check whether a given node already exists in the graph, and, if so, return a typed index
     pub(crate) fn get_asset_node_index(&self, node: &NodeName) -> Option<AssetIndex> {
         match node {
-            NodeName::Asset(_) => self.nodes.assets.get(node).map(|i| i.to_owned()),
+            NodeName::Asset { .. } => self.nodes.assets.get(node).map(|i| i.to_owned()),
             _ => None,
         }
     }
