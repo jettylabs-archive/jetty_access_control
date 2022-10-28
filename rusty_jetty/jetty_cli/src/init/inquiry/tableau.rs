@@ -9,10 +9,10 @@ use jetty_tableau::{TableauCredentials, TableauRestClient};
 use super::validation::filled_validator;
 
 pub(crate) async fn ask_tableau_connector_setup() -> Result<CredentialsMap> {
-    let mut tableau_server_name = String::new();
-    let mut tableau_site_name = String::new();
-    let mut tableau_username = String::new();
-    let mut tableau_password = String::new();
+    let mut tableau_server_name;
+    let mut tableau_site_name;
+    let mut tableau_username;
+    let mut tableau_password;
     let mut tries_left = 3;
     loop {
         tableau_server_name = Text::new("Tableau server url:")

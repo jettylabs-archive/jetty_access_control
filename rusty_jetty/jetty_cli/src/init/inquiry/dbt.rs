@@ -5,7 +5,10 @@ use colored::Colorize;
 use inquire::Text;
 use jetty_core::jetty::CredentialsMap;
 
-use crate::init::{autocomplete::FilepathCompleter, validation::FilepathValidator};
+use crate::init::inquiry::{
+    autocomplete::FilepathCompleter,
+    validation::{FilepathValidator, PathType},
+};
 
 use super::validation::filled_validator;
 
@@ -20,13 +23,13 @@ pub(crate) fn ask_dbt_connector_setup() -> Result<CredentialsMap> {
         // Validate that this is a project.
         .with_validator(FilepathValidator::new(
             Some("dbt_project.yml".to_owned()),
-            crate::init::validation::PathType::File,
+            PathType::File,
             "Please enter a valid dbt project path (with dbt_project.yml)".to_owned(),
         ))
         // Validate that the manifest has been compiled.
         .with_validator(FilepathValidator::new(
             Some("target/manifest.json".to_owned()),
-            crate::init::validation::PathType::File,
+            PathType::File,
             format!(
                 "target/manifest.json not found. Please run 'dbt docs generate' in the directory to generate it and then try again.",
             )
