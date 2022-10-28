@@ -6,7 +6,6 @@ use jetty_core::{
     access_graph::{JettyNode, NodeName},
     connectors::AssetType,
     jetty::ConnectorNamespace,
-    Connector,
 };
 use serde::{Deserialize, Serialize};
 
@@ -32,7 +31,23 @@ pub(crate) enum NodeSummary {
         pass_through_lineage: bool,
         connectors: HashSet<ConnectorNamespace>,
     },
-    Policy,
+    Policy {
+        name: NodeName,
+        connectors: HashSet<ConnectorNamespace>,
+    },
+}
+
+impl NodeSummary {
+    pub(crate) fn get_name(&self) -> NodeName {
+        match self {
+            NodeSummary::Asset { name, .. } => name,
+            NodeSummary::User { name, .. } => name,
+            NodeSummary::Group { name, .. } => name,
+            NodeSummary::Tag { name, .. } => name,
+            NodeSummary::Policy { name, .. } => name,
+        }
+        .clone()
+    }
 }
 
 impl From<JettyNode> for NodeSummary {
@@ -58,7 +73,10 @@ impl From<JettyNode> for NodeSummary {
                 pass_through_lineage: n.pass_through_lineage,
                 connectors: n.connectors,
             },
-            JettyNode::Policy(_) => todo!(),
+            JettyNode::Policy(n) => NodeSummary::Policy {
+                name: n.name,
+                connectors: n.connectors,
+            },
         }
     }
 }

@@ -29,21 +29,19 @@ export const getBadgeColor = (stringInput: string) => {
   return `hsl(${stringUniqueHash % 360}, 95%, 35%)`;
 };
 
-export const getNodeIcon = (stringInput: string) => {
+export const nodeIconFromNode = (
+  node: GroupSummary | UserSummary | AssetSummary | TagSummary
+) => {
   let icon = 'person';
-  switch (stringInput) {
-    case 'user':
-      icon = 'person';
-      break;
-    case 'asset':
-      icon = 'table_chart';
-      break;
-    case 'group':
-      icon = 'group';
-      break;
-    case 'tag':
-      icon = 'sell';
-      break;
+
+  if ('Group' in node) {
+    icon = 'group';
+  } else if ('User' in node) {
+    icon = 'person';
+  } else if ('Asset' in node) {
+    icon = 'table_chart';
+  } else if ('Tag' in node) {
+    icon = 'sell';
   }
   return icon;
 };

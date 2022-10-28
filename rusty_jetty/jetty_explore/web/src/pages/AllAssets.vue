@@ -11,23 +11,7 @@
     >
       <q-tr>
         <q-td key="name">
-          <router-link
-            :to="'/asset/' + encodeURIComponent(slotProps.props.row.name)"
-            style="text-decoration: none; color: inherit"
-          >
-            <q-item class="q-px-none">
-              <q-item-section>
-                <q-item-label> {{ slotProps.props.row.name }}</q-item-label>
-                <q-item-label caption>
-                  <JettyBadge
-                    v-for="platform in slotProps.props.row.platforms"
-                    :key="platform"
-                    :name="platform"
-                  />
-                </q-item-label>
-              </q-item-section>
-            </q-item>
-          </router-link>
+          <AssetHeadline :asset="slotProps.props.row" />
         </q-td>
       </q-tr>
     </JettyTable>
@@ -35,6 +19,7 @@
 </template>
 
 <script setup lang="ts">
+import AssetHeadline from 'src/components/assets/AssetHeadline.vue';
 import JettyBadge from 'src/components/JettyBadge.vue';
 import JettyTable from 'src/components/JettyTable.vue';
 

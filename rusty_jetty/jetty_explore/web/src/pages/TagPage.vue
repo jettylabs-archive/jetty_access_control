@@ -55,6 +55,7 @@ import { ref, computed } from 'vue';
 import JettyHeader from 'src/components/JettyHeader.vue';
 import { useJettyStore } from 'stores/jetty';
 import { useRoute, useRouter } from 'vue-router';
+import { nodeNameAsString } from 'src/util';
 
 const route = useRoute();
 const router = useRouter();
@@ -71,7 +72,7 @@ const currentNode = computed(() => {
   };
   if (nodeList.value != null) {
     returnNode = nodeList.value.find(
-      (node) => node.name == props.node_id && node.type == 'tag'
+      (node) => nodeNameAsString(node) == props.node_id && 'Tag' in node
     );
   }
   return returnNode;
