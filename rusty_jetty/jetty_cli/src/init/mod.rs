@@ -91,7 +91,7 @@ async fn initialize_project_structure(
 # See more at docs.get-jetty.com/docs/getting-started/assets#tagging-assets
 #
 #    pii:
-#    description: This data contains pii from ppis
+#    description: Includes user PII
 #    apply_to:
 #        - snowflake://abc12345.snowflakecomputing.com/ANALYTICS_DB/RAW/USERS
     "
