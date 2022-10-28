@@ -134,6 +134,8 @@ pub struct ConnectorData {
     pub tags: Vec<RawTag>,
     /// All policies in the connector
     pub policies: Vec<RawPolicy>,
+    /// References to assets that are owned by another connector
+    pub asset_references: Vec<RawAssetReference>,
     /// Mapping of all users to the assets they have permissions granted
     /// to.
     ///
@@ -151,12 +153,14 @@ impl ConnectorData {
         assets: Vec<RawAsset>,
         tags: Vec<RawTag>,
         policies: Vec<RawPolicy>,
+        asset_references: Vec<RawAssetReference>,
         effective_permissions: SparseMatrix<UserName, Cual, HashSet<EffectivePermission>>,
     ) -> Self {
         Self {
             groups,
             users,
             assets,
+            asset_references,
             tags,
             policies,
             effective_permissions,
@@ -306,6 +310,66 @@ impl Ord for RawAsset {
 }
 
 impl PartialOrd for RawAsset {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+/// Struct used to populate asset nodes and edges in the graph
+#[derive(Default, PartialEq, Eq, Debug)]
+pub struct RawAssetReference {
+    /// Connector Universal Asset Locator
+    pub cual: Cual,
+    /// K-V pairs of asset-specific metadata. When sent to the graph
+    /// the keys should be namespaced (e.g. `snow::key : value`)
+    pub metadata: HashMap<String, String>,
+    /// IDs of policies that govern this asset.
+    /// Jetty will dedup these with Policy.governs_assets.
+    pub governed_by: HashSet<String>,
+    /// IDs of hierarchical children of the asset
+    pub child_of: HashSet<String>,
+    /// IDs of hierarchical parents of the asset
+    pub parent_of: HashSet<String>,
+    /// IDs of assets this asset is derived from
+    pub derived_from: HashSet<String>,
+    /// IDs of assets that are derived from this one
+    pub derived_to: HashSet<String>,
+    /// IDs of tags associated with this asset
+    pub tagged_as: HashSet<String>,
+}
+
+impl RawAssetReference {
+    /// Basic constructor.
+    pub fn new(
+        cual: Cual,
+        metadata: HashMap<String, String>,
+        governed_by: HashSet<String>,
+        child_of: HashSet<String>,
+        parent_of: HashSet<String>,
+        derived_from: HashSet<String>,
+        derived_to: HashSet<String>,
+        tagged_as: HashSet<String>,
+    ) -> Self {
+        Self {
+            cual,
+            metadata,
+            governed_by,
+            child_of,
+            parent_of,
+            derived_from,
+            derived_to,
+            tagged_as,
+        }
+    }
+}
+
+impl Ord for RawAssetReference {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.cual.uri().cmp(&other.cual.uri())
+    }
+}
+
+impl PartialOrd for RawAssetReference {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }

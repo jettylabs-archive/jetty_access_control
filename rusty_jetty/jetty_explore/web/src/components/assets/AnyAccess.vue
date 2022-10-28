@@ -2,7 +2,7 @@
   <JettyTable
     title="Users with Access (Including via Linage)"
     :rows-per-page="20"
-    :filter-method="filterMethod"
+    :row-transformer="rowTransformer"
     :columns="columns"
     :csv-config="csvConfig"
     :fetchPath="
@@ -47,6 +47,7 @@ import JettyBadge from '../JettyBadge.vue';
 import { AssetSummary, UserSummary } from '../models';
 import { nodeNameAsString } from 'src/util';
 import UserHeadline from '../users/UserHeadline.vue';
+import { mapNodeSummaryforSearch } from 'src/util/search';
 
 interface UserWithAssets {
   node: UserSummary;
@@ -72,17 +73,8 @@ const columns = [
   },
 ];
 
-// Filters by name, privileges, or connector
-const filterMethod = (rows, terms) => {
-  const needles = terms.toLocaleLowerCase().split(' ');
-  return rows.filter((r) =>
-    needles.every(
-      (needle) =>
-        r.name.toLocaleLowerCase().indexOf(needle) > -1 ||
-        r.connectors.join(' ').toLocaleLowerCase().indexOf(needle) > -1
-    )
-  );
-};
+const rowTransformer = (row: UserWithAssets): string =>
+  mapNodeSummaryforSearch(row.node);
 
 const csvConfig = {
   filename: props.node.name + '_users_with_any_access.csv',

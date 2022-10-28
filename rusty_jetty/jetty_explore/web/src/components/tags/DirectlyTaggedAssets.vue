@@ -2,7 +2,7 @@
   <JettyTable
     title="Directly Tagged Assets"
     :rows-per-page="20"
-    :filter-method="filterMethod"
+    :row-transformer="rowTransformer"
     :columns="columns"
     :csv-config="csvConfig"
     :fetchPath="
@@ -21,10 +21,10 @@
 
 <script lang="ts" setup>
 import JettyTable from '../JettyTable.vue';
-import JettyBadge from '../JettyBadge.vue';
 import { AssetSummary } from '../models';
 import { nodeNameAsString } from 'src/util';
 import AssetHeadline from '../assets/AssetHeadline.vue';
+import { mapNodeSummaryforSearch } from 'src/util/search';
 
 const props = defineProps(['node']);
 
@@ -38,17 +38,8 @@ const columns = [
   },
 ];
 
-// Filters by name or platform
-const filterMethod = (rows, terms) => {
-  const needles = terms.toLocaleLowerCase().split(' ');
-  return rows.filter((r) =>
-    needles.every(
-      (needle) =>
-        r.name.toLocaleLowerCase().indexOf(needle) > -1 ||
-        r.platform.toLocaleLowerCase().indexOf(needle) > -1
-    )
-  );
-};
+const rowTransformer = (row: AssetSummary): string =>
+  mapNodeSummaryforSearch(row);
 
 const csvConfig = {
   filename: props.node.name + '_direct_assets.csv',

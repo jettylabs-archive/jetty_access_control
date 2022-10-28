@@ -2,7 +2,7 @@
   <JettyTable
     title="Inherited Group Membership"
     :rows-per-page="10"
-    :filter-method="filterMethod"
+    :row-transformer="rowTransformer"
     :columns="columns"
     :csv-config="csvConfig"
     :fetchPath="
@@ -34,6 +34,7 @@ import NodePath from '../NodePath.vue';
 import { GroupWithPaths } from '../models';
 import { getPathAsString, nodeNameAsString } from 'src/util';
 import GroupHeadline from './GroupHeadline.vue';
+import { mapNodeSummaryforSearch } from 'src/util/search';
 
 const props = defineProps(['node']);
 
@@ -54,17 +55,8 @@ const columns = [
   },
 ];
 
-// Filters by name or platform
-const filterMethod = (rows, terms) => {
-  const needles = terms.toLocaleLowerCase().split(' ');
-  return rows.filter((r) =>
-    needles.every(
-      (needle) =>
-        r.name.toLocaleLowerCase().indexOf(needle) > -1 ||
-        r.connectors.join(' ').toLocaleLowerCase().indexOf(needle) > -1
-    )
-  );
-};
+const rowTransformer = (row: GroupWithPaths): string =>
+  mapNodeSummaryforSearch(row.node);
 
 const csvConfig = {
   filename: props.node.name + '_indirect_groups.csv',

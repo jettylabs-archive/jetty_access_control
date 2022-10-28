@@ -2,7 +2,7 @@
   <JettyTable
     title="User-Accessible Tags"
     :rows-per-page="20"
-    :filter-method="filterMethod"
+    :row-transformer="rowTransformer"
     :columns="columns"
     :csv-config="csvConfig"
     :fetchPath="'/api/user/' + encodeURIComponent(props.node.name) + '/tags'"
@@ -51,6 +51,7 @@ import JettyTable from '../JettyTable.vue';
 import JettyBadge from '../JettyBadge.vue';
 import { AssetSummary, TagSummary } from '../models';
 import { nodeNameAsString } from 'src/util';
+import { mapNodeSummaryforSearch } from 'src/util/search';
 
 interface TagWithAssets {
   node: TagSummary;
@@ -76,26 +77,11 @@ const columns = [
   },
 ];
 
-// Filters by name, asset name, or asset platform
-const filterMethod = (rows, terms) => {
-  const needles = terms.toLocaleLowerCase().split(' ');
-  return rows.filter((r) =>
-    needles.every(
-      (needle) =>
-        r.name.toLocaleLowerCase().indexOf(needle) > -1 ||
-        r.assets
-          .map((a) => a.name)
-          .join(' ')
-          .toLocaleLowerCase()
-          .indexOf(needle) > -1 ||
-        r.assets
-          .map((a) => a.platform)
-          .join(' ')
-          .toLocaleLowerCase()
-          .indexOf(needle) > -1
-    )
-  );
-};
+const rowTransformer = (row: TagWithAssets): string =>
+  [
+    mapNodeSummaryforSearch(row.node),
+    ...row.associations.map((a) => mapNodeSummaryforSearch(a)),
+  ].join(' ');
 
 const csvConfig = {
   filename: props.node.name + '_tags.csv',
