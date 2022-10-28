@@ -40,7 +40,7 @@ impl AccessGraph {
             .collect()
     }
 
-    /// Return accessible assets by user
+    /// Return accessible assets by user. To be accessible, the asset must have at least one Allow privilege
     pub fn get_users_with_access_to_asset<'a>(
         &'a self,
         asset: AssetIndex,

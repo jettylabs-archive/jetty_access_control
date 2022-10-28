@@ -32,7 +32,7 @@ where
     T: PartialEq + Hash + Eq,
     U: PartialEq + Hash + Eq,
 
-    V: Merge<V> + Clone + Eq + Hash,
+    V: Merge + Clone + Eq + Hash,
 {
     fn insert_or_merge(&mut self, key: T, new_asset_perms: HashMap<U, HashSet<V>>) {
         if let Some(user_perms) = self.get_mut(&key) {
@@ -52,7 +52,7 @@ where
 impl<U, V> InsertOrMerge<U, HashSet<V>> for HashMap<U, HashSet<V>>
 where
     U: PartialEq + Hash + Eq,
-    V: Merge<V> + Clone + Eq + Hash,
+    V: Merge + Clone + Eq + Hash,
 {
     fn insert_or_merge(&mut self, key: U, value: HashSet<V>) {
         let mut new_perms = value;
@@ -80,24 +80,54 @@ where
 /// Utility trait for merging two copies of the same struct. Like
 /// `std::iter::Extend` except we can use it on types declared
 /// outside this crate.
-pub trait Merge<T> {
+pub trait Merge {
     /// Merge two instances of a struct. Like
     /// `std::iter::Extend` except we can use it on types declared
     /// outside this crate.
-    fn merge(&mut self, other: T) -> Result<()>;
+    ///
+    /// The default implementation simply keeps the value of self, unchanged.
+    fn merge(&mut self, other: Self) -> Result<()>
+    where
+        Self: Clone,
+    {
+        // we don't actually need to do anything with other in the default case
+        let _ = other;
+        Ok(())
+    }
 }
 
 /// Top-level impl for a SparseMatrix. The incoming (`other`) matrix takes precedence
 /// when there are clashes.
-impl<T, U, V> Merge<SparseMatrix<T, U, HashSet<V>>> for SparseMatrix<T, U, HashSet<V>>
+impl<T, U, V> Merge for SparseMatrix<T, U, HashSet<V>>
 where
     T: PartialEq + Hash + Eq,
     U: PartialEq + Hash + Eq,
-    V: Merge<V> + PartialEq + Hash + Eq + Clone,
+    V: Merge + PartialEq + Hash + Eq + Clone,
 {
     fn merge(&mut self, other: SparseMatrix<T, U, HashSet<V>>) -> Result<()> {
         for (uid, asset_map) in other {
             self.insert_or_merge(uid, asset_map);
+        }
+        Ok(())
+    }
+}
+
+/// Merge a HashMap<T, HashSet<U>> by extending HashSet<U> when there is a HashMap
+/// key collision.
+///
+/// Don't even think about using this with U: EffectivePermission 🐉.
+/// EffectivePermission Hash and PartialEq are specialized for that type - this will lead
+/// to unexpected results.
+impl<T, U> Merge for HashMap<T, HashSet<U>>
+where
+    T: PartialEq + Hash + Eq,
+    U: Merge + PartialEq + Hash + Eq + Clone,
+{
+    fn merge(&mut self, other: HashMap<T, HashSet<U>>) -> Result<()> {
+        for (k, v) in other {
+            self.entry(k)
+                .and_modify(|o| o.extend(v.to_owned()))
+                .or_insert(v);
         }
         Ok(())
     }
@@ -123,7 +153,7 @@ where
 
 /// Merge impl for combining two `EffectivePermission`s. The second (`other`) permission
 /// takes precedence when there are clashes.
-impl Merge<EffectivePermission> for EffectivePermission {
+impl Merge for EffectivePermission {
     /// Should only be called for EffectivePermissions with the same privilege.
     fn merge(&mut self, other: EffectivePermission) -> Result<()> {
         if self.privilege != other.privilege {

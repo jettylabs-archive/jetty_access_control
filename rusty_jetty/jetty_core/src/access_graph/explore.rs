@@ -13,15 +13,17 @@ mod user_accessible_tags;
 
 use petgraph::{stable_graph::NodeIndex, visit::IntoNodeReferences};
 
+use crate::permissions::matrix::Merge;
+
 use super::{AccessGraph, EdgeType, JettyNode};
 pub use tags_for_asset::AssetTags;
 
 /// A path from one node to another, including start and end nodes.
 /// Inside, it's a Vec<JettyNode>
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub struct NodePath(Vec<NodeIndex>);
 
-impl NodePath {}
+impl Merge for NodePath {}
 
 /// A DiGraph derived from an AccessGraph
 pub struct SubGraph(petgraph::graph::DiGraph<JettyNode, EdgeType>);
