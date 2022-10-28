@@ -331,14 +331,17 @@ fn get_asset_nodes<'a>(ag: &'a AccessGraph) -> Vec<(NodeIndex, &'a AssetAttribut
         .collect::<Vec<_>>()
 }
 
+/// Return a list of assets that match the asset specified in the configuration.
 fn get_matching_assets<'a>(
     target: &TargetAsset,
     asset_list: &[(NodeIndex, &'a AssetAttributes)],
 ) -> Vec<(NodeIndex, &'a AssetAttributes)> {
-    asset_list
+    // first look for "exact-end" matches. These are assets whose names end with the exact search term
+    // if there 1 or more, return them.
+    let exact_end_match = asset_list
         .iter()
         .filter(|(_, n)| {
-            n.name().to_string().contains(target.name.as_str())
+            n.name().to_string().ends_with(target.name.as_str())
                 && if let Some(val) = &target.asset_type {
                     n.asset_type().to_string() == *val
                 } else {
@@ -346,7 +349,26 @@ fn get_matching_assets<'a>(
                 }
         })
         .map(|(i, n)| (i.to_owned(), *n))
-        .collect::<Vec<_>>()
+        .collect::<Vec<_>>();
+
+    if exact_end_match.len() == 1 {
+        exact_end_match
+    }
+    // if exact_end_match doesn't find any matches, we look for the term anywhere inside the word
+    else {
+        asset_list
+            .iter()
+            .filter(|(_, n)| {
+                n.name().to_string().contains(target.name.as_str())
+                    && if let Some(val) = &target.asset_type {
+                        n.asset_type().to_string() == *val
+                    } else {
+                        true
+                    }
+            })
+            .map(|(i, n)| (i.to_owned(), *n))
+            .collect::<Vec<_>>()
+    }
 }
 
 /// Given a list of target assets and a list of all existing assets, return a tuple of AssetMatchErrors and Strings
@@ -526,6 +548,30 @@ mod test {
                 }
             }
         }
+    }
+
+    #[test]
+    fn end_match_works() -> Result<()> {
+        let ag = AccessGraph::new_dummy(
+            &[
+                &JettyNode::Asset(AssetAttributes::new(Cual::new("asset1://a"))),
+                &JettyNode::Asset(AssetAttributes::new(Cual::new("asset2://b"))),
+            ],
+            &[],
+        );
+
+        let config = r#"
+        pii:
+            description: This data contains pii from ppis
+            value: I don't know if we want values, but Snowflake has them
+            apply_to:
+                - a
+"#
+        .to_owned();
+
+        let tag_map = parse_tags(&config)?;
+        let t = tags_to_jetty_node_helpers(tag_map, &ag, &config)?;
+        Ok(())
     }
 
     #[test]
