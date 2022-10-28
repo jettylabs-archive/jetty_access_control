@@ -5,9 +5,13 @@
     :row-transformer="rowTransformer"
     :columns="columns"
     :csv-config="csvConfig"
-    :fetchPath="'/api/user/' + encodeURIComponent(props.node.name) + '/tags'"
+    :fetchPath="
+      '/api/user/' + encodeURIComponent(nodeNameAsString(props.node)) + '/tags'
+    "
     v-slot="{ props: { row } }: { props: { row: TagWithAssets } }"
-    :tip="`The tags that ${props.node.name} has access to, through any asset privilege`"
+    :tip="`The tags that ${nodeNameAsString(
+      props.node
+    )} has access to, through any asset privilege`"
   >
     <q-tr>
       <q-td key="name">
@@ -84,7 +88,7 @@ const rowTransformer = (row: TagWithAssets): string =>
   ].join(' ');
 
 const csvConfig = {
-  filename: props.node.name + '_tags.csv',
+  filename: nodeNameAsString(props.node) + '_tags.csv',
   columnNames: ['Tag Name', 'Accessible Asset', 'Asset Platform'],
   // accepts a row and returns the proper mapping
   mappingFn: (filteredSortedRows: TagWithAssets[]) =>

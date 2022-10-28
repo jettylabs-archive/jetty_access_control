@@ -87,7 +87,7 @@ const columns = [
 ];
 
 const csvConfig = {
-  filename: props.node.name + '_direct_access.csv',
+  filename: nodeNameAsString(props.node) + '_direct_access.csv',
   columnNames: ['Asset Name', 'Privilege', 'Explanation'],
   // accepts a row and returns the proper mapping
   mappingFn: (filteredSortedRows: UserWithEffectivePermissions[]) =>

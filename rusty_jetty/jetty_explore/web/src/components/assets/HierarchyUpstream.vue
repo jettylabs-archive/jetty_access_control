@@ -59,7 +59,7 @@ const columns = [
 ];
 
 const csvConfig = {
-  filename: props.node.name + '_upstream_assets_by_hierarchy.csv',
+  filename: nodeNameAsString(props.node) + '_upstream_assets_by_hierarchy.csv',
   columnNames: ['Asset Name', 'Asset Platform', 'Path'],
   // accepts a row and returns the proper mapping
   mappingFn: (filteredSortedRows: AssetWithPaths[]) =>

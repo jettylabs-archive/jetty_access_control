@@ -47,7 +47,7 @@ const rowTransformer = (row: GroupSummary): string =>
   mapNodeSummaryforSearch(row);
 
 const csvConfig = {
-  filename: props.node.name + '_direct_groups.csv',
+  filename: nodeNameAsString(props.node) + '_direct_groups.csv',
   columnNames: ['Group Name', 'Platforms'],
   // accepts filtered sorted rows and returns the proper mapping
   mappingFn: (filteredSortedRows: GroupSummary[]) =>

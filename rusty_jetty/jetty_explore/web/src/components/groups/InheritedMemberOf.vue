@@ -59,7 +59,7 @@ const rowTransformer = (row: GroupWithPaths): string =>
   mapNodeSummaryforSearch(row.node);
 
 const csvConfig = {
-  filename: props.node.name + '_indirect_groups.csv',
+  filename: nodeNameAsString(props.node) + '_indirect_groups.csv',
   columnNames: ['Group Name', 'Platform', 'Membership Paths'],
   // accepts filtered sorted rows and returns the proper mapping
   mappingFn: (filteredSortedRows: GroupWithPaths[]) =>

@@ -77,7 +77,7 @@ const rowTransformer = (row: UserWithAssets): string =>
   mapNodeSummaryforSearch(row.node);
 
 const csvConfig = {
-  filename: props.node.name + '_users_with_any_access.csv',
+  filename: nodeNameAsString(props.node) + '_users_with_any_access.csv',
   columnNames: ['User', 'Platforms', 'Accessible Asset'],
   // accepts a row and returns the proper mapping
   mappingFn: (filteredSortedRows: UserWithAssets[]) =>

@@ -18,7 +18,7 @@ use jetty_core::{
     connectors::ConnectorClient,
     fetch_credentials,
     jetty::ConnectorNamespace,
-    logging::{self, info, warn, LevelFilter},
+    logging::{self, debug, info, warn, LevelFilter},
     Connector, Jetty,
 };
 
@@ -89,6 +89,7 @@ async fn main() -> Result<()> {
                 Ok(mut ag) => {
                     let tags_path = project::tags_cfg_path();
                     if tags_path.exists() {
+                        debug!("Getting tags from config.");
                         let tag_config = std::fs::read_to_string(&tags_path);
                         match tag_config {
                             Ok(c) => {
@@ -102,6 +103,8 @@ async fn main() -> Result<()> {
                                 )
                             }
                         }
+                    } else {
+                        debug!("No tags file found. Skipping ingestion.")
                     }
 
                     jetty_explore::explore_web_ui(Arc::new(ag)).await;

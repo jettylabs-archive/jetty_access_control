@@ -6,10 +6,12 @@
     :columns="columns"
     :csv-config="csvConfig"
     :fetchPath="
-      '/api/tag/' + encodeURIComponent(props.node.name) + '/direct_assets'
+      '/api/tag/' +
+      encodeURIComponent(nodeNameAsString(props.node)) +
+      '/direct_assets'
     "
     v-slot="{ props: { row } }: { props: { row: AssetSummary } }"
-    :tip="`Assets directly tagged with ${props.node.name}`"
+    :tip="`Assets directly tagged with ${nodeNameAsString(props.node)}`"
   >
     <q-tr>
       <q-td key="name">
@@ -42,7 +44,7 @@ const rowTransformer = (row: AssetSummary): string =>
   mapNodeSummaryforSearch(row);
 
 const csvConfig = {
-  filename: props.node.name + '_direct_assets.csv',
+  filename: nodeNameAsString(props.node) + '_direct_assets.csv',
   columnNames: ['Asset Name', 'Asset Platform'],
   // accepts filtered sorted rows and returns the proper mapping
   mappingFn: (filteredSortedRows: AssetSummary[]) =>

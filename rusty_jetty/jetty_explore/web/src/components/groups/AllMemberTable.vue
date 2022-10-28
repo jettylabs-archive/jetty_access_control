@@ -11,7 +11,9 @@
       '/all_members'
     "
     v-slot="{ props: { row } }: { props: { row: UserWithPaths } }"
-    :tip="`All the members of ${props.node.name}, including the members
+    :tip="`All the members of ${nodeNameAsString(
+      props.node
+    )}, including the members
     inherited from child groups, when applicable`"
   >
     <q-tr>
@@ -61,7 +63,7 @@ const rowTransformer = (row: UserWithPaths): string =>
   mapNodeSummaryforSearch(row.node);
 
 const csvConfig = {
-  filename: props.node.name + '_all_members.csv',
+  filename: nodeNameAsString(props.node) + '_all_members.csv',
   columnNames: ['User', 'Platforms', 'Membership Path'],
   // accepts filtered sorted rows and returns the proper mapping
   mappingFn: (filteredSortedRows: UserWithPaths[]) =>

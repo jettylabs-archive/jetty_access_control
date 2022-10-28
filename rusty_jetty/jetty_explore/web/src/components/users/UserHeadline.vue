@@ -5,7 +5,9 @@
   >
     <q-item class="q-px-none">
       <q-item-section>
-        <q-item-label> {{ nodeNameAsString(user) }}</q-item-label>
+        <q-item-label class="text-weight-bold">
+          {{ nodeNameAsString(user) }}</q-item-label
+        >
 
         <q-item-label caption>
           <JettyBadge

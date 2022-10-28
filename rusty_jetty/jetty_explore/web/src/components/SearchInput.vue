@@ -7,6 +7,7 @@
     use-input
     hide-selected
     fill-input
+    clearable
     :input-debounce="debounceTime"
     :options="options"
     @filter="filterFn"
@@ -37,6 +38,7 @@ import AutocompleteItem from './AutocompleteItem.vue';
 import { useJettyStore } from 'stores/jetty';
 import { useRouter } from 'vue-router';
 import { jettySearch } from 'src/util/search';
+import { nodeNameAsString } from 'src/util';
 
 const props = defineProps({
   autofocus: { type: Boolean },
@@ -62,9 +64,14 @@ function filterFn(val, update) {
         options.value = [];
       } else {
         var startTime = performance.now();
-        options.value = jettySearch(nodeOptions.value, (i) => i.name, val, {
-          numResults: 15,
-        });
+        options.value = jettySearch(
+          nodeOptions.value,
+          (i) => nodeNameAsString(i),
+          val,
+          {
+            numResults: 15,
+          }
+        );
         debounceTime.value = Math.ceil(
           Math.max(debounceTime.value * 0.75, performance.now() - startTime)
         );

@@ -46,7 +46,7 @@ const rowTransformer = (row: UserSummary): string =>
   mapNodeSummaryforSearch(row);
 
 const csvConfig = {
-  filename: props.node.name + '_direct_members_users.csv',
+  filename: nodeNameAsString(props.node) + '_direct_members_users.csv',
   columnNames: ['User', 'Platforms'],
   // accepts filtered sorted rows and returns the proper mapping
   mappingFn: (filteredSortedRows: UserSummary[]) =>
