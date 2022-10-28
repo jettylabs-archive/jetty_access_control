@@ -77,7 +77,7 @@ pub(crate) struct TargetAsset {
 impl From<AssetAttributes> for TargetAsset {
     fn from(a: AssetAttributes) -> Self {
         TargetAsset {
-            name: a.name().to_string(),
+            name: a.name().name_for_string_matching(),
             asset_type: Some(a.asset_type().to_string()),
             pos: 0,
         }
@@ -341,7 +341,8 @@ fn get_matching_assets<'a>(
     let exact_end_match = asset_list
         .iter()
         .filter(|(_, n)| {
-            n.name().to_string().ends_with(target.name.as_str())
+            n.name().name_for_string_matching().ends_with(target.name.as_str())
+                // if there is a type, it needs to be a match    
                 && if let Some(val) = &target.asset_type {
                     n.asset_type().to_string() == *val
                 } else {
@@ -359,7 +360,9 @@ fn get_matching_assets<'a>(
         asset_list
             .iter()
             .filter(|(_, n)| {
-                n.name().to_string().contains(target.name.as_str())
+                n.name()
+                    .name_for_string_matching()
+                    .contains(target.name.as_str())
                     && if let Some(val) = &target.asset_type {
                         n.asset_type().to_string() == *val
                     } else {

@@ -533,7 +533,7 @@ pub struct AssetPath(Vec<String>);
 
 impl Display for AssetPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self.0)
+        write!(f, "/{}", self.0.join("/"))
     }
 }
 
@@ -617,6 +617,22 @@ impl Display for NodeName {
             ),
             NodeName::Policy { name, origin } => write!(f, "{}::{}", origin, name),
             NodeName::Tag(n) => write!(f, "{}", n.to_owned()),
+        }
+    }
+}
+
+impl NodeName {
+    /// This function generates a string intended to be used for matching in configuration files
+    pub fn name_for_string_matching(&self) -> String {
+        match self {
+            NodeName::Asset {
+                connector, path, ..
+            } => {
+                // for Assets, the matchable portion is the namespace + path.
+                // The type must be matched separately.
+                format!("{}::{}", connector.to_string(), path.to_string())
+            }
+            _ => todo!(),
         }
     }
 }
