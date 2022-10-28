@@ -599,7 +599,7 @@ impl Default for NodeName {
 impl Display for NodeName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            NodeName::User(n) => write!(f, "{}", n.to_owned()),
+            NodeName::User(n) => write!(f, "{}", n),
             NodeName::Group { name, origin } => write!(f, "{}::{}", origin, name),
             NodeName::Asset {
                 connector,
@@ -616,7 +616,7 @@ impl Display for NodeName {
                 path.to_string()
             ),
             NodeName::Policy { name, origin } => write!(f, "{}::{}", origin, name),
-            NodeName::Tag(n) => write!(f, "{}", n.to_owned()),
+            NodeName::Tag(n) => write!(f, "{}", n),
         }
     }
 }

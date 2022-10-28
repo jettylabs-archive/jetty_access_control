@@ -2,6 +2,7 @@
   <div class="q-pa-md">
     <q-table
       :title="props.title"
+      :loading="loading"
       :rows="rows"
       :columns="props.columns"
       row-key="name"
@@ -72,6 +73,7 @@ const props = defineProps([
 ]);
 
 var rows = ref([]);
+var loading = ref(true);
 
 const pagination = ref({
   sortBy: 'name',
@@ -109,5 +111,6 @@ const filterMethod = (rows: any[], terms) => {
 
 fetchJson(props.fetchPath)
   .then((r) => (rows.value = r))
-  .catch((error) => console.log('unable to fetch: ', error));
+  .catch((error) => console.log('unable to fetch: ', error))
+  .finally(() => (loading.value = false));
 </script>

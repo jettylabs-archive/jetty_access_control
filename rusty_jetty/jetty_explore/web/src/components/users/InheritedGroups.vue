@@ -6,30 +6,18 @@
     :columns="columns"
     :csv-config="csvConfig"
     :fetchPath="
-      '/api/user/' + encodeURIComponent(props.node.name) + '/inherited_groups'
+      '/api/user/' +
+      encodeURIComponent(nodeNameAsString(props.node)) +
+      '/inherited_groups'
     "
     v-slot="{ props: { row } }: { props: { row: GroupWithPaths } }"
-    :tip="`The groups that ${props.node.name} is an inherited member of through child relationships`"
+    :tip="`The groups that ${nodeNameAsString(
+      props.node
+    )} is an inherited member of through child relationships`"
   >
     <q-tr>
       <q-td key="name">
-        <q-item class="q-px-none">
-          <q-item-section>
-            <router-link
-              :to="'/group/' + encodeURIComponent(nodeNameAsString(row.node))"
-              style="text-decoration: none; color: inherit"
-            >
-              <q-item-label> {{ nodeNameAsString(row.node) }}</q-item-label>
-            </router-link>
-            <q-item-label caption>
-              <JettyBadge
-                v-for="connector in row.node.Group.connectors"
-                :key="connector"
-                :name="connector"
-              />
-            </q-item-label>
-          </q-item-section>
-        </q-item>
+        <GroupHeadline :group="row.node" />
       </q-td>
       <q-td key="membership_paths" class="q-px-none">
         <NodePath :paths="row.paths" />
@@ -40,10 +28,10 @@
 
 <script lang="ts" setup>
 import JettyTable from '../JettyTable.vue';
-import JettyBadge from '../JettyBadge.vue';
 import { GroupWithPaths } from '../models';
 import { getPathAsString, nodeNameAsString } from 'src/util';
 import NodePath from '../NodePath.vue';
+import GroupHeadline from '../groups/GroupHeadline.vue';
 import { mapNodeSummaryforSearch } from 'src/util/search';
 
 const props = defineProps(['node']);
@@ -69,7 +57,7 @@ const rowTransformer = (row: GroupWithPaths): string =>
   mapNodeSummaryforSearch(row.node);
 
 const csvConfig = {
-  filename: props.node.name + '_inherited_groups.csv',
+  filename: nodeNameAsString(props.node) + '_inherited_groups.csv',
   columnNames: ['Group Name', 'Platforms', 'Membership Path'],
   // accepts filtered sorted rows and returns the proper mapping
   mappingFn: (filteredSortedRows: GroupWithPaths[]) =>

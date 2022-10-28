@@ -5,22 +5,17 @@
     :row-transformer="rowTransformer"
     :columns="columns"
     :csv-config="csvConfig"
-    :fetchPath="'/api/user/' + encodeURIComponent(props.node.name) + '/tags'"
+    :fetchPath="
+      '/api/user/' + encodeURIComponent(nodeNameAsString(props.node)) + '/tags'
+    "
     v-slot="{ props: { row } }: { props: { row: TagWithAssets } }"
-    :tip="`The tags that ${props.node.name} has access to, through any asset privilege`"
+    :tip="`The tags that ${nodeNameAsString(
+      props.node
+    )} has access to, through any asset privilege`"
   >
     <q-tr>
       <q-td key="name">
-        <q-item class="q-px-none">
-          <q-item-section>
-            <router-link
-              :to="'/tag/' + encodeURIComponent(nodeNameAsString(row.node))"
-              style="text-decoration: none; color: inherit"
-            >
-              <q-item-label> {{ nodeNameAsString(row.node) }}</q-item-label>
-            </router-link>
-          </q-item-section>
-        </q-item>
+        <TagHeadline :tag="row.node" />
       </q-td>
       <q-td key="assets" style="padding-right: 0px">
         <ul class="q-my-none">
@@ -52,6 +47,7 @@ import JettyBadge from '../JettyBadge.vue';
 import { AssetSummary, TagSummary } from '../models';
 import { nodeNameAsString } from 'src/util';
 import { mapNodeSummaryforSearch } from 'src/util/search';
+import TagHeadline from '../tags/TagHeadline.vue';
 
 interface TagWithAssets {
   node: TagSummary;
@@ -84,7 +80,7 @@ const rowTransformer = (row: TagWithAssets): string =>
   ].join(' ');
 
 const csvConfig = {
-  filename: props.node.name + '_tags.csv',
+  filename: nodeNameAsString(props.node) + '_tags.csv',
   columnNames: ['Tag Name', 'Accessible Asset', 'Asset Platform'],
   // accepts a row and returns the proper mapping
   mappingFn: (filteredSortedRows: TagWithAssets[]) =>
