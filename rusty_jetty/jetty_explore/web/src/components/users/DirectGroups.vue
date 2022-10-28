@@ -6,30 +6,18 @@
     :columns="columns"
     :csv-config="csvConfig"
     :fetchPath="
-      '/api/user/' + encodeURIComponent(props.node.name) + '/direct_groups'
+      '/api/user/' +
+      encodeURIComponent(nodeNameAsString(props.node)) +
+      '/direct_groups'
     "
     v-slot="{ props: { row } }: { props: { row: GroupSummary } }"
-    :tip="`The groups that ${props.node.name} is a direct member of`"
+    :tip="`The groups that ${nodeNameAsString(
+      props.node
+    )} is a direct member of`"
   >
     <q-tr>
       <q-td key="name">
-        <q-item class="q-px-none">
-          <q-item-section>
-            <router-link
-              :to="'/group/' + encodeURIComponent(nodeNameAsString(row))"
-              style="text-decoration: none; color: inherit"
-            >
-              <q-item-label> {{ nodeNameAsString(row) }}</q-item-label>
-            </router-link>
-            <q-item-label caption>
-              <JettyBadge
-                v-for="connector in row.Group.connectors"
-                :key="connector"
-                :name="connector"
-              />
-            </q-item-label>
-          </q-item-section>
-        </q-item>
+        <GroupHeadline :group="row" />
       </q-td>
     </q-tr>
   </JettyTable>
@@ -40,6 +28,7 @@ import JettyTable from '../JettyTable.vue';
 import JettyBadge from '../JettyBadge.vue';
 import { GroupSummary } from '../models';
 import { nodeNameAsString } from 'src/util';
+import GroupHeadline from '../groups/GroupHeadline.vue';
 
 const props = defineProps(['node']);
 

@@ -8,7 +8,7 @@
         <q-item-label> {{ nodeNameAsString(group) }}</q-item-label>
         <q-item-label caption>
           <JettyBadge
-            v-for="platform in group.Group.connectors"
+            v-for="platform in props.group.Group.connectors"
             :key="platform"
             :name="platform"
           />

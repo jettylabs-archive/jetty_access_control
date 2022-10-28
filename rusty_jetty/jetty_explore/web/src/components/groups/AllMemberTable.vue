@@ -6,7 +6,9 @@
     :columns="columns"
     :csv-config="csvConfig"
     :fetchPath="
-      '/api/group/' + encodeURIComponent(props.node.name) + '/all_members'
+      '/api/group/' +
+      encodeURIComponent(nodeNameAsString(props.node)) +
+      '/all_members'
     "
     v-slot="{ props: { row } }: { props: { row: UserWithPaths } }"
     :tip="`All the members of ${props.node.name}, including the members
@@ -14,24 +16,7 @@
   >
     <q-tr>
       <q-td key="name">
-        <q-item class="q-px-none">
-          <q-item-section>
-            <router-link
-              :to="'/user/' + encodeURIComponent(nodeNameAsString(row.node))"
-              style="text-decoration: none; color: inherit"
-            >
-              <q-item-label> {{ nodeNameAsString(row.node) }}</q-item-label>
-            </router-link>
-
-            <q-item-label caption>
-              <JettyBadge
-                v-for="connector in row.node.User.connectors"
-                :key="connector"
-                :name="connector"
-              />
-            </q-item-label>
-          </q-item-section>
-        </q-item>
+        <UserHeadline :user="row.node" />
       </q-td>
       <q-td key="membership_paths" class="q-px-none">
         <NodePath :paths="row.paths" />
@@ -47,6 +32,7 @@ import { NodePath as NodePathType, UserSummary } from '../models';
 import { getPathAsString, nodeNameAsString } from 'src/util';
 import NodePath from '../NodePath.vue';
 import Fuse from 'fuse.js';
+import UserHeadline from '../users/UserHeadline.vue';
 
 const props = defineProps(['node']);
 
