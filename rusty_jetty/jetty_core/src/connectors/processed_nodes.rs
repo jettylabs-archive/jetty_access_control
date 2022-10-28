@@ -8,6 +8,7 @@ use std::{
 
 use derivative::Derivative;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 use crate::{
     access_graph::{
@@ -215,6 +216,7 @@ impl NodeHelper for ProcessedGroup {
     fn get_node(&self) -> Option<JettyNode> {
         Some(JettyNode::Group(GroupAttributes {
             name: self.name.to_owned(),
+            id: Uuid::new_v5(&Uuid::NAMESPACE_URL, self.name.to_string().as_bytes()),
             metadata: self.metadata.to_owned(),
             connectors: HashSet::from([self.connector.to_owned()]),
         }))
@@ -264,6 +266,7 @@ impl NodeHelper for ProcessedUser {
     fn get_node(&self) -> Option<JettyNode> {
         Some(JettyNode::User(UserAttributes {
             name: self.name.to_owned(),
+            id: Uuid::new_v5(&Uuid::NAMESPACE_URL, self.name.to_string().as_bytes()),
             identifiers: self.identifiers.to_owned(),
             metadata: self.metadata.to_owned(),
             connectors: HashSet::from([self.connector.to_owned()]),
@@ -296,6 +299,7 @@ impl NodeHelper for ProcessedAsset {
     fn get_node(&self) -> Option<JettyNode> {
         Some(JettyNode::Asset(AssetAttributes {
             name: self.name.to_owned(),
+            id: Uuid::new_v5(&Uuid::NAMESPACE_URL, self.name.to_string().as_bytes()),
             asset_type: self.asset_type.to_owned(),
             metadata: self.metadata.to_owned(),
             connectors: HashSet::from([self.connector.to_owned()]),
@@ -419,6 +423,7 @@ impl NodeHelper for ProcessedTag {
     fn get_node(&self) -> Option<JettyNode> {
         Some(JettyNode::Tag(TagAttributes {
             name: self.name.to_owned(),
+            id: Uuid::new_v5(&Uuid::NAMESPACE_URL, self.name.to_string().as_bytes()),
             value: self.value.to_owned(),
             description: self.description.to_owned(),
             pass_through_hierarchy: self.pass_through_hierarchy,
@@ -461,6 +466,7 @@ impl NodeHelper for ProcessedPolicy {
     fn get_node(&self) -> Option<JettyNode> {
         Some(JettyNode::Policy(PolicyAttributes {
             name: self.name.to_owned(),
+            id: Uuid::new_v5(&Uuid::NAMESPACE_URL, self.name.to_string().as_bytes()),
             privileges: self.privileges.to_owned(),
             pass_through_hierarchy: self.pass_through_hierarchy,
             pass_through_lineage: self.pass_through_lineage,
