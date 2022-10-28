@@ -19,7 +19,7 @@ use cual::set_cual_account_name;
 use jetty_core::{
     connectors::{
         self,
-        nodes::{ConnectorData, RawAsset as JettyAsset},
+        nodes::{ConnectorData, RawAssetReference as JettyAssetReference},
     },
     jetty::{ConnectorConfig, CredentialsMap},
     Connector,
@@ -83,7 +83,7 @@ impl Connector for DbtConnector {
 
     async fn get_data(&mut self) -> ConnectorData {
         self.manifest.init(&None).unwrap();
-        let all_nodes_as_assets: Vec<JettyAsset> = self
+        let all_nodes_as_assets: Vec<JettyAssetReference> = self
             .manifest
             .get_nodes()
             .unwrap()
@@ -97,7 +97,8 @@ impl Connector for DbtConnector {
             users: vec![],
             // No policies in dbt.
             policies: vec![],
-            assets: all_nodes_as_assets,
+            assets: vec![],
+            asset_references: all_nodes_as_assets,
             // TODO?
             tags: vec![],
             effective_permissions: HashMap::new(),
@@ -198,10 +199,8 @@ mod tests {
         assert_eq!(
             data,
             ConnectorData {
-                assets: vec![RawAsset {
+                asset_references: vec![JettyAssetReference {
                     cual: Cual::new("snowflake://account.snowflakecomputing.com/DB/SCHEMA/MODEL"),
-                    name: "".to_owned(),
-                    asset_type: AssetType(VIEW.to_owned()),
                     metadata: HashMap::from([("enabled".to_owned(), "false".to_owned())]),
                     governed_by: HashSet::new(),
                     child_of: HashSet::new(),

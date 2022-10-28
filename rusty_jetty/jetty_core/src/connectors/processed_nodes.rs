@@ -36,6 +36,8 @@ pub struct ProcessedConnectorData {
     pub tags: Vec<ProcessedTag>,
     /// All policies in the connector
     pub policies: Vec<ProcessedPolicy>,
+    /// All references to un-owned assets. Only necessary
+    pub asset_references: Vec<ProcessedAssetReference>,
     /// Mapping of all users to the assets they have permissions granted
     /// to.
     ///
@@ -126,6 +128,40 @@ impl PartialOrd for ProcessedAsset {
     }
 }
 
+/// Struct used to populate connections edges to/from asset nodes that are owned by another connector
+#[derive(Default, PartialEq, Eq, Debug, Clone)]
+pub struct ProcessedAssetReference {
+    /// Connector Universal Asset Locator
+    pub name: NodeName,
+    /// Type of asset being modeled
+    pub metadata: HashMap<String, String>,
+    /// IDs of policies that govern this asset.
+    /// Jetty will dedup these with Policy.governs_assets.
+    pub governed_by: HashSet<NodeName>,
+    /// IDs of hierarchical children of the asset
+    pub child_of: HashSet<NodeName>,
+    /// IDs of hierarchical parents of the asset
+    pub parent_of: HashSet<NodeName>,
+    /// IDs of assets this asset is derived from
+    pub derived_from: HashSet<NodeName>,
+    /// IDs of assets that are derived from this one
+    pub derived_to: HashSet<NodeName>,
+    /// IDs of tags associated with this asset
+    pub tagged_as: HashSet<NodeName>,
+}
+
+impl Ord for ProcessedAssetReference {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.name.cmp(&other.name)
+    }
+}
+
+impl PartialOrd for ProcessedAssetReference {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 /// Struct used to populate tag nodes and edges in the graph
 #[derive(Debug, PartialEq, Eq, Default, Clone)]
 pub struct ProcessedTag {
@@ -176,12 +212,12 @@ pub struct ProcessedPolicy {
 }
 
 impl NodeHelper for ProcessedGroup {
-    fn get_node(&self) -> JettyNode {
-        JettyNode::Group(GroupAttributes {
+    fn get_node(&self) -> Option<JettyNode> {
+        Some(JettyNode::Group(GroupAttributes {
             name: self.name.to_owned(),
             metadata: self.metadata.to_owned(),
             connectors: HashSet::from([self.connector.to_owned()]),
-        })
+        }))
     }
 
     fn get_edges(&self) -> HashSet<JettyEdge> {
@@ -220,21 +256,18 @@ impl NodeHelper for ProcessedGroup {
         }
         hs
     }
-    fn get_connector(&self) -> &ConnectorNamespace {
-        &self.connector
-    }
 }
 
 /// Object used to populate user nodes and edges in the graph
 
 impl NodeHelper for ProcessedUser {
-    fn get_node(&self) -> JettyNode {
-        JettyNode::User(UserAttributes {
+    fn get_node(&self) -> Option<JettyNode> {
+        Some(JettyNode::User(UserAttributes {
             name: self.name.to_owned(),
             identifiers: self.identifiers.to_owned(),
             metadata: self.metadata.to_owned(),
             connectors: HashSet::from([self.connector.to_owned()]),
-        })
+        }))
     }
 
     fn get_edges(&self) -> HashSet<JettyEdge> {
@@ -257,19 +290,16 @@ impl NodeHelper for ProcessedUser {
         }
         hs
     }
-    fn get_connector(&self) -> &ConnectorNamespace {
-        &self.connector
-    }
 }
 
 impl NodeHelper for ProcessedAsset {
-    fn get_node(&self) -> JettyNode {
-        JettyNode::Asset(AssetAttributes {
+    fn get_node(&self) -> Option<JettyNode> {
+        Some(JettyNode::Asset(AssetAttributes {
             name: self.name.to_owned(),
             asset_type: self.asset_type.to_owned(),
             metadata: self.metadata.to_owned(),
             connectors: HashSet::from([self.connector.to_owned()]),
-        })
+        }))
     }
 
     fn get_edges(&self) -> HashSet<JettyEdge> {
@@ -324,21 +354,77 @@ impl NodeHelper for ProcessedAsset {
         }
         hs
     }
-    fn get_connector(&self) -> &ConnectorNamespace {
-        &self.connector
+}
+
+impl NodeHelper for ProcessedAssetReference {
+    fn get_node(&self) -> Option<JettyNode> {
+        None
+    }
+
+    fn get_edges(&self) -> HashSet<JettyEdge> {
+        let mut hs = HashSet::<JettyEdge>::new();
+        for v in &self.governed_by {
+            insert_edge_pair(
+                &mut hs,
+                self.name.to_owned(),
+                v.to_owned(),
+                EdgeType::GovernedBy,
+            );
+        }
+        for v in &self.child_of {
+            insert_edge_pair(
+                &mut hs,
+                self.name.to_owned(),
+                v.to_owned(),
+                EdgeType::ChildOf,
+            );
+        }
+        for v in &self.parent_of {
+            insert_edge_pair(
+                &mut hs,
+                self.name.to_owned(),
+                v.to_owned(),
+                EdgeType::ParentOf,
+            );
+        }
+        for v in &self.derived_from {
+            insert_edge_pair(
+                &mut hs,
+                self.name.to_owned(),
+                v.to_owned(),
+                EdgeType::DerivedFrom,
+            );
+        }
+        for v in &self.derived_to {
+            insert_edge_pair(
+                &mut hs,
+                self.name.to_owned(),
+                v.to_owned(),
+                EdgeType::DerivedTo,
+            );
+        }
+        for v in &self.tagged_as {
+            insert_edge_pair(
+                &mut hs,
+                self.name.to_owned(),
+                v.to_owned(),
+                EdgeType::TaggedAs,
+            );
+        }
+        hs
     }
 }
 
 impl NodeHelper for ProcessedTag {
-    fn get_node(&self) -> JettyNode {
-        JettyNode::Tag(TagAttributes {
+    fn get_node(&self) -> Option<JettyNode> {
+        Some(JettyNode::Tag(TagAttributes {
             name: self.name.to_owned(),
             value: self.value.to_owned(),
             description: self.description.to_owned(),
             pass_through_hierarchy: self.pass_through_hierarchy,
             pass_through_lineage: self.pass_through_lineage,
             connectors: HashSet::from([self.connector.to_owned()]),
-        })
+        }))
     }
 
     fn get_edges(&self) -> HashSet<JettyEdge> {
@@ -369,20 +455,17 @@ impl NodeHelper for ProcessedTag {
         }
         hs
     }
-    fn get_connector(&self) -> &ConnectorNamespace {
-        &self.connector
-    }
 }
 
 impl NodeHelper for ProcessedPolicy {
-    fn get_node(&self) -> JettyNode {
-        JettyNode::Policy(PolicyAttributes {
+    fn get_node(&self) -> Option<JettyNode> {
+        Some(JettyNode::Policy(PolicyAttributes {
             name: self.name.to_owned(),
             privileges: self.privileges.to_owned(),
             pass_through_hierarchy: self.pass_through_hierarchy,
             pass_through_lineage: self.pass_through_lineage,
             connectors: HashSet::from([self.connector.to_owned()]),
-        })
+        }))
     }
 
     fn get_edges(&self) -> HashSet<JettyEdge> {
@@ -420,9 +503,5 @@ impl NodeHelper for ProcessedPolicy {
             );
         }
         hs
-    }
-
-    fn get_connector(&self) -> &ConnectorNamespace {
-        &self.connector
     }
 }
