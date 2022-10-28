@@ -93,10 +93,11 @@ async fn initialize_project_structure(
 # identifiable information (PII). 
 # See more at docs.get-jetty.com/docs/getting-started/assets#tagging-assets
 #
-#    pii:
-#    description: Includes user PII
-#    apply_to:
-#        - snowflake://abc12345.snowflakecomputing.com/ANALYTICS_DB/RAW/USERS
+# pii:
+#   description: This data contains pii from ppis
+#   apply_to:
+#       - snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB2/RAW/IRIS
+
     "
             .as_bytes(),
         )
