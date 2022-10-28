@@ -526,12 +526,12 @@ mod test {
         let ag = AccessGraph::new_dummy(
             &[
                 &JettyNode::Asset(AssetAttributes::new(
-                    Cual::new("asset1://a"),
-                    Default::default(),
+                    Cual::new("asset1://a/asset1"),
+                    ConnectorNamespace("cn1".to_owned()),
                 )),
                 &JettyNode::Asset(AssetAttributes::new(
-                    Cual::new("asset2://a"),
-                    Default::default(),
+                    Cual::new("asset2://a/asset1"),
+                    ConnectorNamespace("cn2".to_owned()),
                 )),
             ],
             &[],
@@ -566,11 +566,11 @@ mod test {
         let ag = AccessGraph::new_dummy(
             &[
                 &JettyNode::Asset(AssetAttributes::new(
-                    Cual::new("asset1://a"),
+                    Cual::new("asset1://a/a"),
                     Default::default(),
                 )),
                 &JettyNode::Asset(AssetAttributes::new(
-                    Cual::new("asset2://b"),
+                    Cual::new("asset2://b/b"),
                     Default::default(),
                 )),
             ],
@@ -596,11 +596,11 @@ mod test {
         let ag = AccessGraph::new_dummy(
             &[
                 &JettyNode::Asset(AssetAttributes::new(
-                    Cual::new("asset1://a"),
+                    Cual::new("asset1://a/a1"),
                     Default::default(),
                 )),
                 &JettyNode::Asset(AssetAttributes::new(
-                    Cual::new("asset2://a"),
+                    Cual::new("asset2://a/a2"),
                     Default::default(),
                 )),
             ],
@@ -612,13 +612,13 @@ pii:
     description: This data contains pii from ppis
     value: I don't know if we want values, but Snowflake has them
     apply_to:
-        - asset1
+        - a1
     remove_from:
-        - asset2
+        - a2
 pii2:
     pass_through_lineage: true
     apply_to:
-        - name: asset1
+        - name: a1
           asset_type: ""
 "#
         .to_owned();
@@ -629,11 +629,11 @@ pii2:
                 description: Some("This data contains pii from ppis".to_owned()),
                 value: Some("I don't know if we want values, but Snowflake has them".to_owned()),
                 applied_to: HashSet::from([cual_to_asset_name_test(
-                    Cual::new("asset1://a"),
+                    Cual::new("asset1://a/a1"),
                     Default::default(),
                 )]),
                 removed_from: HashSet::from([cual_to_asset_name_test(
-                    Cual::new("asset2://a"),
+                    Cual::new("asset2://a/a2"),
                     Default::default(),
                 )]),
                 connector: ConnectorNamespace("Jetty".to_owned()),
@@ -643,7 +643,7 @@ pii2:
                 name: NodeName::Tag("pii2".to_owned()),
                 pass_through_lineage: true,
                 applied_to: HashSet::from([cual_to_asset_name_test(
-                    Cual::new("asset1://a"),
+                    Cual::new("asset1://a/a1"),
                     Default::default(),
                 )]),
                 connector: ConnectorNamespace("Jetty".to_owned()),

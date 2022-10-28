@@ -177,102 +177,102 @@ mod tests {
                 &JettyNode::Tag(TagAttributes::new("tag3".to_owned(), true, true)),
                 &JettyNode::Tag(TagAttributes::new("tag4".to_owned(), false, false)),
                 &JettyNode::Asset(AssetAttributes::new(
-                    Cual::new("asset1://a"),
+                    Cual::new("asset1://a/1"),
                     Default::default(),
                 )),
                 &JettyNode::Asset(AssetAttributes::new(
-                    Cual::new("asset3://a"),
+                    Cual::new("asset3://a/3"),
                     Default::default(),
                 )),
                 &JettyNode::Asset(AssetAttributes::new(
-                    Cual::new("asset4://a"),
+                    Cual::new("asset4://a/4"),
                     Default::default(),
                 )),
                 &JettyNode::Asset(AssetAttributes::new(
-                    Cual::new("asset5://a"),
+                    Cual::new("asset5://a/5"),
                     Default::default(),
                 )),
                 &JettyNode::Asset(AssetAttributes::new(
-                    Cual::new("asset6://a"),
+                    Cual::new("asset6://a/6"),
                     Default::default(),
                 )),
                 &JettyNode::Asset(AssetAttributes::new(
-                    Cual::new("asset7://a"),
+                    Cual::new("asset7://a/7"),
                     Default::default(),
                 )),
                 &JettyNode::Asset(AssetAttributes::new(
-                    Cual::new("asset8://a"),
+                    Cual::new("asset8://a/8"),
                     Default::default(),
                 )),
             ],
             &[
                 (
-                    cual_to_asset_name_test(Cual::new("asset1://a"), Default::default()),
+                    cual_to_asset_name_test(Cual::new("asset1://a/1"), Default::default()),
                     NodeName::Tag("tag1".to_owned()),
                     EdgeType::TaggedAs,
                 ),
                 (
-                    cual_to_asset_name_test(Cual::new("asset1://a"), Default::default()),
+                    cual_to_asset_name_test(Cual::new("asset1://a/1"), Default::default()),
                     NodeName::Tag("tag2".to_owned()),
                     EdgeType::TaggedAs,
                 ),
                 (
-                    cual_to_asset_name_test(Cual::new("asset1://a"), Default::default()),
+                    cual_to_asset_name_test(Cual::new("asset1://a/1"), Default::default()),
                     NodeName::Tag("tag3".to_owned()),
                     EdgeType::TaggedAs,
                 ),
                 (
-                    cual_to_asset_name_test(Cual::new("asset1://a"), Default::default()),
+                    cual_to_asset_name_test(Cual::new("asset1://a/1"), Default::default()),
                     NodeName::Tag("tag4".to_owned()),
                     EdgeType::TaggedAs,
                 ),
                 (
-                    cual_to_asset_name_test(Cual::new("asset4://a"), Default::default()),
-                    cual_to_asset_name_test(Cual::new("asset1://a"), Default::default()),
+                    cual_to_asset_name_test(Cual::new("asset4://a/4"), Default::default()),
+                    cual_to_asset_name_test(Cual::new("asset1://a/1"), Default::default()),
                     EdgeType::ChildOf,
                 ),
                 (
-                    cual_to_asset_name_test(Cual::new("asset6://a"), Default::default()),
-                    cual_to_asset_name_test(Cual::new("asset4://a"), Default::default()),
+                    cual_to_asset_name_test(Cual::new("asset6://a/6"), Default::default()),
+                    cual_to_asset_name_test(Cual::new("asset4://a/4"), Default::default()),
                     EdgeType::ChildOf,
                 ),
                 (
-                    cual_to_asset_name_test(Cual::new("asset8://a"), Default::default()),
-                    cual_to_asset_name_test(Cual::new("asset6://a"), Default::default()),
+                    cual_to_asset_name_test(Cual::new("asset8://a/8"), Default::default()),
+                    cual_to_asset_name_test(Cual::new("asset6://a/6"), Default::default()),
                     EdgeType::ChildOf,
                 ),
                 (
-                    cual_to_asset_name_test(Cual::new("asset3://a"), Default::default()),
-                    cual_to_asset_name_test(Cual::new("asset1://a"), Default::default()),
+                    cual_to_asset_name_test(Cual::new("asset3://a/3"), Default::default()),
+                    cual_to_asset_name_test(Cual::new("asset1://a/1"), Default::default()),
                     EdgeType::DerivedFrom,
                 ),
                 (
-                    cual_to_asset_name_test(Cual::new("asset5://a"), Default::default()),
-                    cual_to_asset_name_test(Cual::new("asset3://a"), Default::default()),
+                    cual_to_asset_name_test(Cual::new("asset5://a/5"), Default::default()),
+                    cual_to_asset_name_test(Cual::new("asset3://a/3"), Default::default()),
                     EdgeType::DerivedFrom,
                 ),
                 (
-                    cual_to_asset_name_test(Cual::new("asset7://a"), Default::default()),
-                    cual_to_asset_name_test(Cual::new("asset5://a"), Default::default()),
+                    cual_to_asset_name_test(Cual::new("asset7://a/7"), Default::default()),
+                    cual_to_asset_name_test(Cual::new("asset5://a/5"), Default::default()),
                     EdgeType::DerivedFrom,
                 ),
                 (
-                    cual_to_asset_name_test(Cual::new("asset6://a"), Default::default()),
+                    cual_to_asset_name_test(Cual::new("asset6://a/6"), Default::default()),
                     NodeName::Tag("tag1".to_owned()),
                     EdgeType::UntaggedAs,
                 ),
                 (
-                    cual_to_asset_name_test(Cual::new("asset6://a"), Default::default()),
+                    cual_to_asset_name_test(Cual::new("asset6://a/6"), Default::default()),
                     NodeName::Tag("tag2".to_owned()),
                     EdgeType::UntaggedAs,
                 ),
                 (
-                    cual_to_asset_name_test(Cual::new("asset5://a"), Default::default()),
+                    cual_to_asset_name_test(Cual::new("asset5://a/5"), Default::default()),
                     NodeName::Tag("tag1".to_owned()),
                     EdgeType::UntaggedAs,
                 ),
                 (
-                    cual_to_asset_name_test(Cual::new("asset5://a"), Default::default()),
+                    cual_to_asset_name_test(Cual::new("asset5://a/5"), Default::default()),
                     NodeName::Tag("tag2".to_owned()),
                     EdgeType::UntaggedAs,
                 ),
@@ -285,7 +285,7 @@ mod tests {
         let ag = get_test_graph();
         let a = ag.tags_for_asset(
             ag.get_asset_index_from_name(&cual_to_asset_name_test(
-                Cual::new("asset3://a"),
+                Cual::new("asset3://a/3"),
                 Default::default(),
             ))
             .unwrap(),
@@ -299,7 +299,7 @@ mod tests {
         let ag = get_test_graph();
         let a = ag.tags_for_asset(
             ag.get_asset_index_from_name(&cual_to_asset_name_test(
-                Cual::new("asset4://a"),
+                Cual::new("asset4://a/4"),
                 Default::default(),
             ))
             .unwrap(),
@@ -314,7 +314,7 @@ mod tests {
         let ag = get_test_graph();
         let a = ag.tags_for_asset(
             ag.get_asset_index_from_name(&cual_to_asset_name_test(
-                Cual::new("asset1://a"),
+                Cual::new("asset1://a/1"),
                 Default::default(),
             ))
             .unwrap(),
@@ -331,7 +331,7 @@ mod tests {
 
         let a = ag.tags_for_asset(
             ag.get_asset_index_from_name(&cual_to_asset_name_test(
-                Cual::new("asset6://a"),
+                Cual::new("asset6://a/6"),
                 Default::default(),
             ))
             .unwrap(),
@@ -340,7 +340,7 @@ mod tests {
 
         let a = ag.tags_for_asset(
             ag.get_asset_index_from_name(&cual_to_asset_name_test(
-                Cual::new("asset8://a"),
+                Cual::new("asset8://a/8"),
                 Default::default(),
             ))
             .unwrap(),
@@ -349,7 +349,7 @@ mod tests {
 
         let a = ag.tags_for_asset(
             ag.get_asset_index_from_name(&cual_to_asset_name_test(
-                Cual::new("asset5://a"),
+                Cual::new("asset5://a/5"),
                 Default::default(),
             ))
             .unwrap(),
@@ -358,7 +358,7 @@ mod tests {
 
         let a = ag.tags_for_asset(
             ag.get_asset_index_from_name(&cual_to_asset_name_test(
-                Cual::new("asset7://a"),
+                Cual::new("asset7://a/7"),
                 Default::default(),
             ))
             .unwrap(),
