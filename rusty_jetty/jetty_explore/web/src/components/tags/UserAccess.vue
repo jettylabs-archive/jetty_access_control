@@ -5,9 +5,7 @@
     :row-transformer="rowTransformer"
     :columns="columns"
     :csv-config="csvConfig"
-    :fetchPath="
-      '/api/tag/' + encodeURIComponent(nodeNameAsString(props.node)) + '/users'
-    "
+    :fetchPath="'/api/tag/' + nodeId(props.node) + '/users'"
     v-slot="{ props: { row } }: { props: { row: UserSummary } }"
     :tip="`Users with access to any asset with a ${nodeNameAsString(
       props.node
@@ -25,7 +23,7 @@
 import JettyTable from '../JettyTable.vue';
 import JettyBadge from '../JettyBadge.vue';
 import { UserSummary } from '../models';
-import { nodeNameAsString } from 'src/util';
+import { nodeNameAsString, nodeId } from 'src/util';
 import { mapNodeSummaryforSearch } from 'src/util/search';
 import UserHeadline from '../users/UserHeadline.vue';
 

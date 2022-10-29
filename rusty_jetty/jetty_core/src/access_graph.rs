@@ -533,7 +533,7 @@ pub struct AssetPath(Vec<String>);
 
 impl Display for AssetPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "/{}", self.0.join("/"))
+        write!(f, "{}", self.0.join("/"))
     }
 }
 

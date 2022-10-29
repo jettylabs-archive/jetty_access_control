@@ -102,8 +102,8 @@ impl Connector for DbtConnector {
             // TODO?
             tags: vec![],
             effective_permissions: HashMap::new(),
-            // Because dbt doesn't own any assets, the qual prefix doesn't matter
-            cual_prefix: Default::default(),
+            // Because dbt doesn't own any assets, it doesn't have a cual prefix
+            cual_prefix: None,
         }
     }
 }

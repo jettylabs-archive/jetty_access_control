@@ -3,15 +3,15 @@
     <JettyTable
       title="All Tags"
       :rows-per-page="30"
-      :filter-method="filterMethod"
+      :row-transformer="rowTransformer"
       :columns="columns"
       :csv-config="csvConfig"
       fetchPath="/api/tags"
-      v-slot="slotProps"
+      v-slot="{ props: { row } }: { props: { row: TagSummary } }"
     >
       <q-tr>
         <q-td key="name">
-          <TagHeadline :tag="slotProps.props.row" />
+          <TagHeadline :tag="row" />
         </q-td>
       </q-tr>
     </JettyTable>
@@ -20,9 +20,10 @@
 
 <script setup lang="ts">
 import JettyTable from 'src/components/JettyTable.vue';
+import { TagSummary } from 'src/components/models';
 import TagHeadline from 'src/components/tags/TagHeadline.vue';
-
-const props = defineProps(['node']);
+import { nodeConnectors, nodeNameAsString } from 'src/util';
+import { mapNodeSummaryforSearch } from 'src/util/search';
 
 const columns = [
   {
@@ -34,23 +35,17 @@ const columns = [
   },
 ];
 
-// Filters by name, privileges, or platform
-const filterMethod = (rows, terms) => {
-  const needles = terms.toLocaleLowerCase().split(' ');
-  return rows.filter((r) =>
-    needles.every(
-      (needle) =>
-        r.name.toLocaleLowerCase().indexOf(needle) > -1 ||
-        r.platforms.join(' ').toLocaleLowerCase().indexOf(needle) > -1
-    )
-  );
-};
+const rowTransformer = (row: TagSummary): string =>
+  mapNodeSummaryforSearch(row);
 
 const csvConfig = {
-  filename: 'tag.csv',
+  filename: 'tags.csv',
   columnNames: ['Tag Name', 'Platforms'],
   // accepts a row and returns the proper mapping
-  mappingFn: (filteredSortedRows) =>
-    filteredSortedRows.map((r) => [r.name, r.platforms.join(', ')]),
+  mappingFn: (filteredSortedRows: TagSummary[]): string[][] =>
+    filteredSortedRows.map((r) => [
+      nodeNameAsString(r),
+      nodeConnectors(r).join(' '),
+    ]),
 };
 </script>

@@ -5,11 +5,7 @@
     :row-transformer="rowTransformer"
     :columns="columns"
     :csv-config="csvConfig"
-    :fetchPath="
-      '/api/user/' +
-      encodeURIComponent(nodeNameAsString(props.node)) +
-      '/inherited_groups'
-    "
+    :fetchPath="'/api/user/' + nodeId(props.node) + '/inherited_groups'"
     v-slot="{ props: { row } }: { props: { row: GroupWithPaths } }"
     :tip="`The groups that ${nodeNameAsString(
       props.node
@@ -29,7 +25,7 @@
 <script lang="ts" setup>
 import JettyTable from '../JettyTable.vue';
 import { GroupWithPaths } from '../models';
-import { getPathAsString, nodeNameAsString } from 'src/util';
+import { getPathAsString, nodeNameAsString, nodeId } from 'src/util';
 import NodePath from '../NodePath.vue';
 import GroupHeadline from '../groups/GroupHeadline.vue';
 import { mapNodeSummaryforSearch } from 'src/util/search';

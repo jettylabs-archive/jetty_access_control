@@ -13,19 +13,17 @@
         <q-route-tab
           name="all_members"
           label="All Members"
-          :to="'/group/' + encodeURIComponent(props.node_id) + '/all_members'"
+          :to="'/group/' + props.node_id + '/all_members'"
         />
         <q-route-tab
           name="direct_members"
           label="Direct Members"
-          :to="
-            '/group/' + encodeURIComponent(props.node_id) + '/direct_members'
-          "
+          :to="'/group/' + props.node_id + '/direct_members'"
         />
         <q-route-tab
           name="member_of"
           label="Member Of"
-          :to="'/group/' + encodeURIComponent(props.node_id) + '/member_of'"
+          :to="'/group/' + props.node_id + '/member_of'"
         />
       </q-tabs>
 
@@ -57,7 +55,7 @@ import { ref, computed } from 'vue';
 import JettyHeader from 'src/components/JettyHeader.vue';
 import { useJettyStore } from 'stores/jetty';
 import { useRouter, useRoute } from 'vue-router';
-import { nodeNameAsString } from 'src/util';
+import { nodeId, nodeNameAsString } from 'src/util';
 
 const props = defineProps(['node_id']);
 const router = useRouter();
@@ -68,9 +66,7 @@ const nodeList = computed(() => store.nodes);
 const currentNode = computed(() => {
   let returnNode;
   if (nodeList.value != null) {
-    returnNode = nodeList.value.find(
-      (node) => nodeNameAsString(node) == props.node_id && 'Group' in node
-    );
+    returnNode = nodeList.value.find((node) => nodeId(node) == props.node_id);
   }
   return returnNode;
 });

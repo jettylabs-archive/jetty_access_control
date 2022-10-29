@@ -5,11 +5,7 @@
     :row-transformer="rowTransformer"
     :columns="columns"
     :csv-config="csvConfig"
-    :fetchPath="
-      '/api/asset/' +
-      encodeURIComponent(nodeNameAsString(props.node)) +
-      '/all_users'
-    "
+    :fetchPath="'/api/asset/' + nodeId(props.node) + '/all_users'"
     v-slot="{ props: { row } }: { props: { row: UserWithAssets } }"
     :tip="`Users with access to ${nodeNameAsString(
       props.node
@@ -28,7 +24,7 @@
               style="padding-top: 2px; padding-bottom: 2px"
             >
               <router-link
-                :to="'/asset/' + encodeURIComponent(nodeNameAsString(asset))"
+                :to="'/asset/' + nodeId(asset)"
                 style="text-decoration: none; color: inherit"
               >
                 {{ nodeNameAsString(asset) }}
@@ -45,7 +41,7 @@
 import JettyTable from '../JettyTable.vue';
 import JettyBadge from '../JettyBadge.vue';
 import { AssetSummary, UserSummary } from '../models';
-import { nodeNameAsString } from 'src/util';
+import { nodeNameAsString, nodeId } from 'src/util';
 import UserHeadline from '../users/UserHeadline.vue';
 import { mapNodeSummaryforSearch } from 'src/util/search';
 

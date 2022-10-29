@@ -13,17 +13,17 @@
         <q-route-tab
           name="all_assets"
           label="All Assets"
-          :to="'/tag/' + encodeURIComponent(props.node_id) + '/all_assets'"
+          :to="'/tag/' + props.node_id + '/all_assets'"
         />
         <q-route-tab
           name="direct_assets"
           label="Directly Tagged"
-          :to="'/tag/' + encodeURIComponent(props.node_id) + '/direct_assets'"
+          :to="'/tag/' + props.node_id + '/direct_assets'"
         />
         <q-route-tab
           name="users"
           label="User Access"
-          :to="'/tag/' + encodeURIComponent(props.node_id) + '/users'"
+          :to="'/tag/' + props.node_id + '/users'"
         />
       </q-tabs>
 
@@ -55,7 +55,7 @@ import { ref, computed } from 'vue';
 import JettyHeader from 'src/components/JettyHeader.vue';
 import { useJettyStore } from 'stores/jetty';
 import { useRoute, useRouter } from 'vue-router';
-import { nodeNameAsString } from 'src/util';
+import { nodeId, nodeNameAsString } from 'src/util';
 
 const route = useRoute();
 const router = useRouter();
@@ -71,9 +71,7 @@ const currentNode = computed(() => {
     platforms: [],
   };
   if (nodeList.value != null) {
-    returnNode = nodeList.value.find(
-      (node) => nodeNameAsString(node) == props.node_id && 'Tag' in node
-    );
+    returnNode = nodeList.value.find((node) => nodeId(node) == props.node_id);
   }
   return returnNode;
 });

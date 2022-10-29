@@ -3,15 +3,15 @@
     <JettyTable
       title="All Assets"
       :rows-per-page="30"
-      :filter-method="filterMethod"
+      :row-transformer="rowTransformer"
       :columns="columns"
       :csv-config="csvConfig"
       fetchPath="/api/assets"
-      v-slot="slotProps"
+      v-slot="{ props: { row } }: { props: { row: AssetSummary } }"
     >
       <q-tr>
         <q-td key="name">
-          <AssetHeadline :asset="slotProps.props.row" />
+          <AssetHeadline :asset="row" />
         </q-td>
       </q-tr>
     </JettyTable>
@@ -22,8 +22,9 @@
 import AssetHeadline from 'src/components/assets/AssetHeadline.vue';
 import JettyBadge from 'src/components/JettyBadge.vue';
 import JettyTable from 'src/components/JettyTable.vue';
-
-const props = defineProps(['node']);
+import { AssetSummary } from 'src/components/models';
+import { nodeConnectors, nodeNameAsString } from 'src/util';
+import { mapNodeSummaryforSearch } from 'src/util/search';
 
 const columns = [
   {
@@ -35,23 +36,17 @@ const columns = [
   },
 ];
 
-// Filters by name, privileges, or platform
-const filterMethod = (rows, terms) => {
-  const needles = terms.toLocaleLowerCase().split(' ');
-  return rows.filter((r) =>
-    needles.every(
-      (needle) =>
-        r.name.toLocaleLowerCase().indexOf(needle) > -1 ||
-        r.platforms.join(' ').toLocaleLowerCase().indexOf(needle) > -1
-    )
-  );
-};
+const rowTransformer = (row: AssetSummary): string =>
+  mapNodeSummaryforSearch(row);
 
 const csvConfig = {
   filename: 'assets.csv',
-  columnNames: ['Asset Name', 'Platforms'],
+  columnNames: ['Asset Name', 'Platform'],
   // accepts a row and returns the proper mapping
-  mappingFn: (filteredSortedRows) =>
-    filteredSortedRows.map((r) => [r.name, r.platforms.join(', ')]),
+  mappingFn: (filteredSortedRows: AssetSummary[]): string[][] =>
+    filteredSortedRows.map((r) => [
+      nodeNameAsString(r),
+      nodeConnectors(r).join(', '),
+    ]),
 };
 </script>

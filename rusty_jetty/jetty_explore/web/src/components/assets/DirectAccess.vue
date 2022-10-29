@@ -5,11 +5,7 @@
     :row-transformer="rowTransformer"
     :columns="columns"
     :csv-config="csvConfig"
-    :fetchPath="
-      '/api/asset/' +
-      encodeURIComponent(nodeNameAsString(props.node)) +
-      '/users'
-    "
+    :fetchPath="'/api/asset/' + nodeId(props.node) + '/users'"
     v-slot="{
       props: { row },
     }: {
@@ -53,7 +49,7 @@
 import JettyTable from '../JettyTable.vue';
 import UserHeadline from '../users/UserHeadline.vue';
 import { EffectivePermission, UserSummary } from '../models';
-import { nodeNameAsString } from 'src/util';
+import { nodeId, nodeNameAsString } from 'src/util';
 import { mapNodeSummaryforSearch } from 'src/util/search';
 
 interface UserWithEffectivePermissions {
