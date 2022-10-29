@@ -126,7 +126,7 @@ impl AccessGraph {
 mod tests {
 
     use crate::access_graph::{
-        graph::typed_indices::UserIndex, GroupAttributes, NodeName, UserAttributes,
+        GroupAttributes, NodeName, UserAttributes,
     };
 
     use anyhow::{anyhow, Result};

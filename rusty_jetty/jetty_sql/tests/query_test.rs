@@ -7,8 +7,8 @@ fn try_all_queries() -> Result<()> {
     let mut parse_failures = 0;
     let mut table_failures = 0;
     for i in 1..100 {
-        print!("Query: #{} - ", i);
-        let q = std::fs::read_to_string(format!("tests/queries/query_{}.sql", i));
+        print!("Query: #{i} - ");
+        let q = std::fs::read_to_string(format!("tests/queries/query_{i}.sql"));
         match q {
             Ok(query) => {
                 let tables = jetty_sql::get_tables(&query, jetty_sql::DbType::Generic);

@@ -47,7 +47,7 @@ pub(crate) async fn ask_snowflake_connector_setup() -> Result<CredentialsMap> {
         );
 
         let mut confirmed = false;
-        while confirmed == false {
+        while !confirmed {
             confirmed = Confirm::new("Enter (y) once the ALTER USER is complete").prompt()?;
         }
 

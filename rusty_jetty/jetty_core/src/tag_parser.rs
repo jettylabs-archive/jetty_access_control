@@ -87,7 +87,7 @@ impl From<AssetAttributes> for TargetAsset {
 impl Display for TargetAsset {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if let Some(t) = &self.asset_type {
-            write!(f, " - name: {}\n   asset_type: {}", self.name, t)
+            write!(f, " - name: {}\n   asset_type: {t}", self.name)
         } else {
             write!(f, " - name: {}", self.name)
         }
@@ -321,7 +321,7 @@ pub(crate) fn indicated_msg(doc: &[u8], mut pos: u64, lines_of_context: usize) -
     )
 }
 
-fn get_asset_nodes<'a>(ag: &'a AccessGraph) -> Vec<(NodeIndex, &'a AssetAttributes)> {
+fn get_asset_nodes(ag: &AccessGraph) -> Vec<(NodeIndex, &AssetAttributes)> {
     let nodes = ag.get_nodes();
     nodes
         .filter_map(|(i, n)| match n {
@@ -378,7 +378,7 @@ fn get_matching_assets<'a>(
 /// The strings are used to populate a nodes::Tag object which can then be added to the graph.
 fn get_asset_list_from_target_list(
     target_list: &Vec<TargetAsset>,
-    asset_list: &Vec<(NodeIndex, &AssetAttributes)>,
+    asset_list: &[(NodeIndex, &AssetAttributes)],
 ) -> (Vec<AssetMatchError>, HashSet<NodeName>) {
     let mut errors = vec![];
     let mut results = HashSet::new();
@@ -495,9 +495,8 @@ pub(crate) fn tags_to_jetty_node_helpers(
 mod test {
 
     use crate::access_graph::cual_to_asset_name_test;
-    use crate::connectors::nodes::RawTag;
+
     use crate::cual::Cual;
-    use crate::Connector;
 
     use super::*;
 
@@ -587,7 +586,7 @@ mod test {
         .to_owned();
 
         let tag_map = parse_tags(&config)?;
-        let t = tags_to_jetty_node_helpers(tag_map, &ag, &config)?;
+        tags_to_jetty_node_helpers(tag_map, &ag, &config)?;
         Ok(())
     }
 

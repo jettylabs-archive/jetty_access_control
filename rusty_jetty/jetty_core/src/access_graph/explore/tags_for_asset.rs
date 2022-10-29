@@ -132,7 +132,7 @@ impl AccessGraph {
     }
 }
 
-fn remove_poisoned_paths<'a>(
+fn remove_poisoned_paths(
     all_paths: HashMap<NodeIndex, HashSet<super::NodePath>>,
     poison_nodes: &HashMap<NodeIndex, HashSet<NodeIndex>>,
 ) -> HashSet<NodeIndex> {

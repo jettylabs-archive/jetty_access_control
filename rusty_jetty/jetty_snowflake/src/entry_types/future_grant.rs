@@ -58,7 +58,7 @@ impl Grant for FutureGrant {
         nodes::RawPolicy::new(
             // We add the `.future` to differentiate this policy from
             // non-heirarchical ones
-            format!("snowflake.future.{}.{}", self.role_name(), stripped_name),
+            format!("snowflake.future.{}.{stripped_name}", self.role_name()),
             all_privileges,
             // Unwrap here is fine since we asserted that the set was not empty above.
             HashSet::from([cual.uri()]),

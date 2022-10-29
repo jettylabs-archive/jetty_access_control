@@ -11,11 +11,13 @@ pub mod translate;
 
 use crate::connectors::nodes::{ConnectorData, EffectivePermission, SparseMatrix};
 use crate::connectors::processed_nodes::ProcessedConnectorData;
-use crate::connectors::UserIdentifier;
+#[cfg(test)]
+use crate::cual::Cual;
+
+use crate::connectors::AssetType;
 use crate::jetty::ConnectorNamespace;
 use crate::logging::debug;
 use crate::tag_parser::{parse_tags, tags_to_jetty_node_helpers};
-use crate::{connectors::AssetType, cual::Cual};
 
 use self::graph::typed_indices::{AssetIndex, GroupIndex, PolicyIndex, TagIndex, UserIndex};
 use self::helpers::NodeHelper;
@@ -37,10 +39,10 @@ pub use petgraph::stable_graph::NodeIndex;
 use serde::Deserialize;
 use serde::Serialize;
 use time::OffsetDateTime;
-use urlencoding;
+
 use uuid::Uuid;
 
-use crate::permissions::matrix::{InsertOrMerge, Merge};
+use crate::permissions::matrix::InsertOrMerge;
 
 const SAVED_GRAPH_PATH: &str = "jetty_graph";
 
@@ -599,8 +601,8 @@ impl Default for NodeName {
 impl Display for NodeName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            NodeName::User(n) => write!(f, "{}", n),
-            NodeName::Group { name, origin } => write!(f, "{}::{}", origin, name),
+            NodeName::User(n) => write!(f, "{n}"),
+            NodeName::Group { name, origin } => write!(f, "{origin}::{name}"),
             NodeName::Asset {
                 connector,
                 asset_type,
@@ -608,15 +610,15 @@ impl Display for NodeName {
             } => write!(
                 f,
                 "{}::{}::{}",
-                connector.to_string(),
+                connector,
                 asset_type
                     .as_ref()
                     .unwrap_or(&AssetType("".to_string()))
                     .to_string(),
-                path.to_string()
+                path
             ),
-            NodeName::Policy { name, origin } => write!(f, "{}::{}", origin, name),
-            NodeName::Tag(n) => write!(f, "{}", n),
+            NodeName::Policy { name, origin } => write!(f, "{origin}::{name}"),
+            NodeName::Tag(n) => write!(f, "{n}"),
         }
     }
 }
@@ -630,7 +632,7 @@ impl NodeName {
             } => {
                 // for Assets, the matchable portion is the namespace + path.
                 // The type must be matched separately.
-                format!("{}::{}", connector.to_string(), path.to_string())
+                format!("{connector}::{path}")
             }
             _ => todo!(),
         }
@@ -971,7 +973,6 @@ mod tests {
     use anyhow::Result;
 
     use crate::connectors::{
-        nodes::{self, ConnectorData},
         processed_nodes::ProcessedGroup,
     };
 

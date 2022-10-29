@@ -57,7 +57,7 @@ impl Graph {
     /// Save a svg of the access graph to the specified filename
     pub fn visualize(&self, path: &str) -> Result<String> {
         let my_dot = dot::Dot::new(&self.graph);
-        let g = graphviz::parse(&format!["{:?}", my_dot])
+        let g = graphviz::parse(&format!["{my_dot:?}"])
             .map_err(|s| anyhow!(s))
             .context("failed to parse")?;
         let draw = graphviz::exec(
@@ -187,16 +187,11 @@ impl Graph {
             .map(|n| NodeIndex::from(n.to_owned()))
         {
             Some(idx)
-        } else if let Some(idx) = self
+        } else { self
             .node_ids
             .tags
             .get(node)
-            .map(|n| NodeIndex::from(n.to_owned()))
-        {
-            Some(idx)
-        } else {
-            None
-        }
+            .map(|n| NodeIndex::from(n.to_owned())) }
     }
 
     /// Check whether a given node already exists in the graph, and, if so, return a typed index
@@ -268,7 +263,7 @@ impl Graph {
 
         *node = node
             .merge_nodes(new)
-            .context(format!["merging: {:?}, {:?}", node, new])?;
+            .context(format!["merging: {node:?}, {new:?}"])?;
         Ok(node.to_owned())
     }
 
@@ -304,9 +299,7 @@ mod tests {
     use anyhow::{anyhow, Context, Result};
 
     use crate::{
-        access_graph::{test_util::new_graph, AssetAttributes, GroupAttributes, JettyEdge},
-        connectors::AssetType,
-        cual::Cual,
+        access_graph::{test_util::new_graph, GroupAttributes},
         jetty::ConnectorNamespace,
     };
 

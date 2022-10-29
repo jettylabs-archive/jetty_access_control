@@ -20,7 +20,7 @@ pub(crate) async fn create_file<P: AsRef<Path> + Debug + Clone>(file_path: P) ->
 /// Create a directory, ignoring if it already exists.
 pub(crate) async fn create_dir_ignore_failure<P: AsRef<Path> + Debug + Clone>(dir_path: P) {
     if dir_path.as_ref().is_dir() {
-        println!("Directory {:?} already exists. Continuing.", dir_path);
+        println!("Directory {dir_path:?} already exists. Continuing.");
     }
     let res = create_dir(&dir_path).await;
     match res {

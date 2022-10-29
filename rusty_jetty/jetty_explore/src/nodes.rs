@@ -24,7 +24,7 @@ async fn get_nodes(Extension(ag): Extension<Arc<AccessGraph>>) -> Json<Vec<NodeS
         .filter(|n| !matches!(n, NodeSummary::Policy { .. }))
         .collect();
     // sort on the server
-    nodes.sort_by(|a, b| a.get_name().cmp(&b.get_name()));
+    nodes.sort_by_key(|a| a.get_name());
 
     Json(nodes)
 }
@@ -38,7 +38,7 @@ async fn get_users(Extension(ag): Extension<Arc<AccessGraph>>) -> Json<Vec<NodeS
         .filter(|n| matches!(n, NodeSummary::User { .. }))
         .collect();
     // sort on the server
-    nodes.sort_by(|a, b| a.get_name().cmp(&b.get_name()));
+    nodes.sort_by_key(|a| a.get_name());
 
     Json(nodes)
 }
@@ -52,7 +52,7 @@ async fn get_assets(Extension(ag): Extension<Arc<AccessGraph>>) -> Json<Vec<Node
         .filter(|n| matches!(n, NodeSummary::Asset { .. }))
         .collect();
     // sort on the server
-    nodes.sort_by(|a, b| a.get_name().cmp(&b.get_name()));
+    nodes.sort_by_key(|a| a.get_name());
 
     Json(nodes)
 }
@@ -66,7 +66,7 @@ async fn get_groups(Extension(ag): Extension<Arc<AccessGraph>>) -> Json<Vec<Node
         .filter(|n| matches!(n, NodeSummary::Group { .. }))
         .collect();
     // sort on the server
-    nodes.sort_by(|a, b| a.get_name().cmp(&b.get_name()));
+    nodes.sort_by_key(|a| a.get_name());
 
     Json(nodes)
 }
@@ -80,7 +80,7 @@ async fn get_tags(Extension(ag): Extension<Arc<AccessGraph>>) -> Json<Vec<NodeSu
         .filter(|n| matches!(n, NodeSummary::Tag { .. }))
         .collect();
     // sort on the server
-    nodes.sort_by(|a, b| a.get_name().cmp(&b.get_name()));
+    nodes.sort_by_key(|a| a.get_name());
 
     Json(nodes)
 }
