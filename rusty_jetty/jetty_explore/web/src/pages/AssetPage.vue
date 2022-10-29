@@ -1,6 +1,16 @@
 <template>
   <q-page class="flex column container-md">
-    <JettyHeader :node="currentNode" />
+    <JettyHeader :node="currentNode" :subtitle="nodeNameAsString(currentNode)">
+      <template #title>
+        <text class="name"
+          >{{ assetShortname }}
+          <span class="name asset-type">
+            ({{ currentNode.Asset.asset_type }})</span
+          >
+        </text>
+      </template>
+    </JettyHeader>
+
     <div class="q-px-md row items-start">
       <q-card flat class="tags-card q-mx-none">
         <q-card-section class="q-pa-xs">
@@ -47,6 +57,7 @@
         </q-card-section>
       </q-card>
     </div>
+
     <div class="asset-content">
       <q-tabs
         dense
@@ -126,7 +137,7 @@ import { useJettyStore } from 'stores/jetty';
 import { useRouter, useRoute } from 'vue-router';
 import JettyBadge from 'src/components/JettyBadge.vue';
 import { fetchJson, nodeId, nodeNameAsString } from 'src/util';
-import { TagSummary } from 'src/components/models';
+import { AssetSummary, TagSummary } from 'src/components/models';
 
 const props = defineProps(['node_id']);
 const router = useRouter();
@@ -134,17 +145,18 @@ const route = useRoute();
 
 const store = useJettyStore();
 const nodeList = computed(() => store.nodes);
-const currentNode = computed(() => {
-  let returnNode;
-  if (nodeList.value != null) {
-    returnNode = nodeList.value.find((node) => nodeId(node) == props.node_id);
-  }
-  return returnNode;
-});
+const currentNode = computed(
+  () =>
+    nodeList.value.find((node) => nodeId(node) == props.node_id) as AssetSummary
+);
 
 if (!currentNode.value) {
   router.push('/notfound');
 }
+
+const assetShortname = computed(() =>
+  nodeNameAsString(currentNode.value).split('::').pop().split('/').pop()
+);
 
 const tab = ref('users');
 
@@ -172,15 +184,8 @@ defineExpose({ updateTags });
 </script>
 
 <style lang="scss">
-.header {
-  padding-top: 40px;
-}
-.name {
-  font-size: 25pt;
-  font-weight: 200;
-}
-.title-and-icon {
-  align-items: center;
+.asset-type {
+  font-weight: 200 !important;
 }
 .asset-content {
   padding-top: 25px;

@@ -33,6 +33,6 @@ import { nodeId } from 'src/util';
 
 const props = defineProps<{ asset: AssetSummary }>();
 const assetShortname = computed(() =>
-  nodeNameAsString(props.asset).split('/').pop()
+  nodeNameAsString(props.asset).split('::').pop().split('/').pop()
 );
 </script>
