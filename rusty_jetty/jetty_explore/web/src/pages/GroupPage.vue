@@ -55,7 +55,7 @@ import { ref, computed } from 'vue';
 import JettyHeader from 'src/components/JettyHeader.vue';
 import { useJettyStore } from 'stores/jetty';
 import { useRouter, useRoute } from 'vue-router';
-import { nodeId, nodeNameAsString } from 'src/util';
+import { nodeId } from 'src/util';
 
 const props = defineProps(['node_id']);
 const router = useRouter();
