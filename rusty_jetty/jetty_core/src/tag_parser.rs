@@ -495,7 +495,7 @@ pub(crate) fn tags_to_jetty_node_helpers(
 mod test {
 
     use crate::access_graph::cual_to_asset_name_test;
-    use crate::connectors::nodes::RawTag;
+
     use crate::cual::Cual;
     use crate::Connector;
 
@@ -587,7 +587,7 @@ mod test {
         .to_owned();
 
         let tag_map = parse_tags(&config)?;
-        let t = tags_to_jetty_node_helpers(tag_map, &ag, &config)?;
+        tags_to_jetty_node_helpers(tag_map, &ag, &config)?;
         Ok(())
     }
 

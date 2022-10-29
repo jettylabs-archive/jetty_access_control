@@ -973,7 +973,6 @@ mod tests {
     use anyhow::Result;
 
     use crate::connectors::{
-        nodes::{self, ConnectorData},
         processed_nodes::ProcessedGroup,
     };
 

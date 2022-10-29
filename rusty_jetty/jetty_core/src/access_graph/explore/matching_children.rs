@@ -125,7 +125,6 @@ mod tests {
     use crate::{
         access_graph::{GroupAttributes, NodeName, UserAttributes},
         jetty::ConnectorNamespace,
-        logging::debug,
     };
 
     use anyhow::Result;

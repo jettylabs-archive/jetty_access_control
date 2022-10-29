@@ -304,9 +304,7 @@ mod tests {
     use anyhow::{anyhow, Context, Result};
 
     use crate::{
-        access_graph::{test_util::new_graph, AssetAttributes, GroupAttributes, JettyEdge},
-        connectors::AssetType,
-        cual::Cual,
+        access_graph::{test_util::new_graph, GroupAttributes},
         jetty::ConnectorNamespace,
     };
 
