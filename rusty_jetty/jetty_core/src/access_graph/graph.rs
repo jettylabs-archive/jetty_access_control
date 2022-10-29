@@ -12,6 +12,7 @@ use petgraph::stable_graph::NodeIndex;
 use petgraph::{dot, stable_graph::StableDiGraph};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use uuid::Uuid;
 
 use self::typed_indices::AssetIndex;
 use self::typed_indices::GroupIndex;
@@ -28,9 +29,11 @@ pub(crate) struct Graph {
     pub(crate) graph: StableDiGraph<JettyNode, EdgeType>,
     /// A map of node identifiers to indices
     pub(crate) nodes: NodeMap,
+    /// A map of node hashes to indices
+    pub(crate) node_ids: NodeIdMap,
 }
 
-/// The main graph wrapper
+/// A map of node names to typed indices
 #[derive(Serialize, Deserialize, Default, Debug)]
 pub(crate) struct NodeMap {
     assets: HashMap<NodeName, typed_indices::AssetIndex>,
@@ -38,6 +41,16 @@ pub(crate) struct NodeMap {
     groups: HashMap<NodeName, typed_indices::GroupIndex>,
     tags: HashMap<NodeName, typed_indices::TagIndex>,
     policies: HashMap<NodeName, typed_indices::PolicyIndex>,
+}
+
+/// The a map of UUIDs to typed indices
+#[derive(Serialize, Deserialize, Default, Debug)]
+pub(crate) struct NodeIdMap {
+    assets: HashMap<uuid::Uuid, typed_indices::AssetIndex>,
+    users: HashMap<uuid::Uuid, typed_indices::UserIndex>,
+    groups: HashMap<uuid::Uuid, typed_indices::GroupIndex>,
+    tags: HashMap<uuid::Uuid, typed_indices::TagIndex>,
+    policies: HashMap<uuid::Uuid, typed_indices::PolicyIndex>,
 }
 
 impl Graph {
@@ -59,7 +72,9 @@ impl Graph {
         Ok(draw)
     }
 
-    /// Check whether a given node already exists in the graph, and, if so, return the NodeIndex.
+    /// Check whether a given
+    ///
+    /// #[deprecated = "please transition to referencing nodes by their id rather than their name"]node already exists in the graph, and, if so, return the NodeIndex.
     /// If if the NodeName does not exist in the graph, returns None
     pub(crate) fn get_untyped_node_index(&self, node: &NodeName) -> Option<NodeIndex> {
         // I was hoping to do this with a trait object, but it turns out that
@@ -76,7 +91,7 @@ impl Graph {
                 .groups
                 .get(node)
                 .map(|n| NodeIndex::from(n.to_owned())),
-            NodeName::Asset(_) => self
+            NodeName::Asset { .. } => self
                 .nodes
                 .assets
                 .get(node)
@@ -94,13 +109,16 @@ impl Graph {
         }
     }
 
+    #[deprecated = "please transition to referencing nodes by their id rather than their name"]
     /// Check whether a given node already exists in the graph, and, if so, return a typed index
     pub(crate) fn get_asset_node_index(&self, node: &NodeName) -> Option<AssetIndex> {
         match node {
-            NodeName::Asset(_) => self.nodes.assets.get(node).map(|i| i.to_owned()),
+            NodeName::Asset { .. } => self.nodes.assets.get(node).map(|i| i.to_owned()),
             _ => None,
         }
     }
+
+    #[deprecated = "please transition to referencing nodes by their id rather than their name"]
     /// Check whether a given node already exists in the graph, and, if so, return a typed index
     pub(crate) fn get_user_node_index(&self, node: &NodeName) -> Option<UserIndex> {
         match node {
@@ -108,6 +126,8 @@ impl Graph {
             _ => None,
         }
     }
+
+    #[deprecated = "please transition to referencing nodes by their id rather than their name"]
     /// Check whether a given node already exists in the graph, and, if so, return a typed index
     pub(crate) fn get_group_node_index(&self, node: &NodeName) -> Option<GroupIndex> {
         match node {
@@ -115,6 +135,8 @@ impl Graph {
             _ => None,
         }
     }
+
+    #[deprecated = "please transition to referencing nodes by their id rather than their name"]
     /// Check whether a given node already exists in the graph, and, if so, return a typed index
     pub(crate) fn get_tag_node_index(&self, node: &NodeName) -> Option<TagIndex> {
         match node {
@@ -122,12 +144,81 @@ impl Graph {
             _ => None,
         }
     }
+
+    #[deprecated = "please transition to referencing nodes by their id rather than their name"]
     /// Check whether a given node already exists in the graph, and, if so, return a typed index
     pub(crate) fn get_policy_node_index(&self, node: &NodeName) -> Option<PolicyIndex> {
         match node {
             NodeName::Policy { .. } => self.nodes.policies.get(node).map(|i| i.to_owned()),
             _ => None,
         }
+    }
+
+    /// Check whether a given node already exists in the graph, and, if so, return the NodeIndex.
+    /// If if the NodeName does not exist in the graph, returns None
+    pub(crate) fn get_untyped_node_index_from_id(&self, node: &Uuid) -> Option<NodeIndex> {
+        // I was hoping to do this with a trait object, but it turns out that
+        // I couldn't easily return Option<&dyn ToNodeIndex> from the match -
+        // apparently because of the Option (it worked fine without)
+        if let Some(idx) = self
+            .node_ids
+            .users
+            .get(node)
+            .map(|n| NodeIndex::from(n.to_owned()))
+        {
+            Some(idx)
+        } else if let Some(idx) = self
+            .node_ids
+            .groups
+            .get(node)
+            .map(|n| NodeIndex::from(n.to_owned()))
+        {
+            Some(idx)
+        } else if let Some(idx) = self
+            .node_ids
+            .assets
+            .get(node)
+            .map(|n| NodeIndex::from(n.to_owned()))
+        {
+            Some(idx)
+        } else if let Some(idx) = self
+            .node_ids
+            .policies
+            .get(node)
+            .map(|n| NodeIndex::from(n.to_owned()))
+        {
+            Some(idx)
+        } else if let Some(idx) = self
+            .node_ids
+            .tags
+            .get(node)
+            .map(|n| NodeIndex::from(n.to_owned()))
+        {
+            Some(idx)
+        } else {
+            None
+        }
+    }
+
+    /// Check whether a given node already exists in the graph, and, if so, return a typed index
+    pub(crate) fn get_asset_node_index_from_id(&self, node: &Uuid) -> Option<AssetIndex> {
+        self.node_ids.assets.get(node).map(|i| i.to_owned())
+    }
+    /// Check whether a given node already exists in the graph, and, if so, return a typed index
+    pub(crate) fn get_user_node_index_from_id(&self, node: &Uuid) -> Option<UserIndex> {
+        self.node_ids.users.get(node).map(|i| i.to_owned())
+    }
+    /// Check whether a given node already exists in the graph, and, if so, return a typed index
+    pub(crate) fn get_group_node_index_from_id(&self, node: &Uuid) -> Option<GroupIndex> {
+        self.node_ids.groups.get(node).map(|i| i.to_owned())
+    }
+    /// Check whether a given node already exists in the graph, and, if so, return a typed index
+    pub(crate) fn get_tag_node_index_from_id(&self, node: &Uuid) -> Option<TagIndex> {
+        self.node_ids.tags.get(node).map(|i| i.to_owned())
+    }
+    /// Check whether a given node already exists in the graph, and, if so, return a typed index
+    pub(crate) fn get_policy_node_index_from_id(&self, node: &Uuid) -> Option<PolicyIndex> {
+        self.node_ids.policies.get(node).map(|i| i.to_owned())
     }
 
     /// Adds a node to the graph and returns the index.
@@ -221,31 +312,31 @@ mod tests {
     fn group_node_same_name_no_conflict() -> Result<()> {
         let mut g = new_graph();
 
+        let name = NodeName::Group {
+            name: "Group 1".to_string(),
+            origin: Default::default(),
+        };
+        let id = Uuid::new_v5(&Uuid::NAMESPACE_URL, name.to_string().as_bytes());
+
         let original_node = JettyNode::Group(GroupAttributes {
-            name: NodeName::Group {
-                name: "Group 1".to_string(),
-                origin: Default::default(),
-            },
+            name: name.to_owned(),
+            id,
             metadata: HashMap::new(),
             connectors: HashSet::from([ConnectorNamespace("test1".to_string())]),
         });
 
         // new_node introduces a new connector value
         let new_node = JettyNode::Group(GroupAttributes {
-            name: NodeName::Group {
-                name: "Group 1".to_string(),
-                origin: Default::default(),
-            },
+            name: name.to_owned(),
+            id,
             metadata: HashMap::new(),
             connectors: HashSet::from([ConnectorNamespace("test2".to_string())]),
         });
 
         // desired output
         let combined_node = JettyNode::Group(GroupAttributes {
-            name: NodeName::Group {
-                name: "Group 1".to_string(),
-                origin: Default::default(),
-            },
+            name,
+            id,
             metadata: HashMap::new(),
             connectors: HashSet::from([
                 ConnectorNamespace("test2".to_string()),
@@ -272,21 +363,28 @@ mod tests {
     fn group_node_name_conflict() -> Result<()> {
         let mut g = new_graph();
 
+        let name = NodeName::Group {
+            name: "Group 1".to_string(),
+            origin: Default::default(),
+        };
+        let id = Uuid::new_v5(&Uuid::NAMESPACE_URL, name.to_string().as_bytes());
+
         let original_node = JettyNode::Group(GroupAttributes {
-            name: NodeName::Group {
-                name: "Group 1".to_string(),
-                origin: Default::default(),
-            },
+            name,
+            id,
             metadata: HashMap::new(),
             connectors: HashSet::new(),
         });
 
+        let name2 = NodeName::Group {
+            name: "Group 2".to_string(),
+            origin: Default::default(),
+        };
+        let id2 = Uuid::new_v5(&Uuid::NAMESPACE_URL, name2.to_string().as_bytes());
         // new_node introduces a connector value
         let new_node = JettyNode::Group(GroupAttributes {
-            name: NodeName::Group {
-                name: "Group 2".to_string(),
-                origin: Default::default(),
-            },
+            name: name2,
+            id: id2,
             metadata: HashMap::new(),
             connectors: HashSet::new(),
         });
@@ -310,21 +408,23 @@ mod tests {
     fn group_node_hashmap_conflict() -> Result<()> {
         let mut g = new_graph();
 
+        let name = NodeName::Group {
+            name: "Group 1".to_string(),
+            origin: Default::default(),
+        };
+        let id = Uuid::new_v5(&Uuid::NAMESPACE_URL, name.to_string().as_bytes());
+
         let original_node = JettyNode::Group(GroupAttributes {
-            name: NodeName::Group {
-                name: "Group 1".to_string(),
-                origin: Default::default(),
-            },
+            name: name.to_owned(),
+            id,
             metadata: HashMap::from([("test1".to_string(), "value2".to_string())]),
             connectors: HashSet::new(),
         });
 
         // new_node introduces a conflicting metadata value
         let new_node = JettyNode::Group(GroupAttributes {
-            name: NodeName::Group {
-                name: "Group 1".to_string(),
-                origin: Default::default(),
-            },
+            name,
+            id,
             metadata: HashMap::from([("test1".to_string(), "other_value".to_string())]),
             connectors: HashSet::new(),
         });
@@ -348,31 +448,31 @@ mod tests {
     fn group_node_hashmap_expand() -> Result<()> {
         let mut g = new_graph();
 
+        let name = NodeName::Group {
+            name: "Group 1".to_string(),
+            origin: Default::default(),
+        };
+        let id = Uuid::new_v5(&Uuid::NAMESPACE_URL, name.to_string().as_bytes());
+
         let original_node = JettyNode::Group(GroupAttributes {
-            name: NodeName::Group {
-                name: "Group 1".to_string(),
-                origin: Default::default(),
-            },
+            name: name.to_owned(),
+            id,
             metadata: HashMap::from([("test1".to_string(), "value2".to_string())]),
             connectors: HashSet::new(),
         });
 
         // new_node introduces a new metadata key
         let new_node = JettyNode::Group(GroupAttributes {
-            name: NodeName::Group {
-                name: "Group 1".to_string(),
-                origin: Default::default(),
-            },
+            name: name.to_owned(),
+            id,
             metadata: HashMap::from([("test2".to_string(), "value 3".to_string())]),
             connectors: HashSet::new(),
         });
 
         // when merged, the result should be:
         let combined_node = JettyNode::Group(GroupAttributes {
-            name: NodeName::Group {
-                name: "Group 1".to_string(),
-                origin: Default::default(),
-            },
+            name,
+            id,
             metadata: HashMap::from([
                 ("test2".to_string(), "value 3".to_string()),
                 ("test1".to_string(), "value2".to_string()),

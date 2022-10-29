@@ -10,10 +10,11 @@ mod nodes;
 mod permissions;
 mod rest;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
 
 use coordinator::Environment;
+use rest::get_cual_prefix;
 pub use rest::TableauRestClient;
 use serde::Deserialize;
 use serde_json::json;
@@ -235,6 +236,10 @@ impl Connector for TableauConnector {
             policies,
             Default::default(),
             effective_permissions,
+            get_cual_prefix()
+                .context("tableau cual prefix not yet set")
+                .unwrap()
+                .to_owned(),
         )
     }
 }

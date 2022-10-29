@@ -7,31 +7,17 @@
     :csv-config="csvConfig"
     :fetchPath="
       '/api/group/' +
-      encodeURIComponent(props.node.name) +
+      encodeURIComponent(nodeNameAsString(props.node)) +
       '/direct_members_groups'
     "
     v-slot="{ props: { row } }: { props: { row: GroupSummary } }"
-    :tip="`All the groups that are explicitly assigned as members of ${props.node.name}`"
+    :tip="`All the groups that are explicitly assigned as members of ${nodeNameAsString(
+      props.node
+    )}`"
   >
     <q-tr>
       <q-td key="name">
-        <q-item class="q-px-none">
-          <q-item-section>
-            <router-link
-              :to="'/group/' + encodeURIComponent(nodeNameAsString(row))"
-              style="text-decoration: none; color: inherit"
-            >
-              <q-item-label> {{ nodeNameAsString(row) }}</q-item-label>
-            </router-link>
-            <q-item-label caption>
-              <JettyBadge
-                v-for="connector in row.Group.connectors"
-                :key="connector"
-                :name="connector"
-              />
-            </q-item-label>
-          </q-item-section>
-        </q-item>
+        <GroupHeadline :group="row" />
       </q-td>
     </q-tr>
   </JettyTable>
@@ -39,9 +25,9 @@
 
 <script lang="ts" setup>
 import JettyTable from '../JettyTable.vue';
-import JettyBadge from '../JettyBadge.vue';
 import { GroupSummary } from '../models';
 import { nodeNameAsString } from 'src/util';
+import GroupHeadline from './GroupHeadline.vue';
 import { mapNodeSummaryforSearch } from 'src/util/search';
 
 const props = defineProps(['node']);
@@ -60,7 +46,7 @@ const rowTransformer = (row: GroupSummary): string =>
   mapNodeSummaryforSearch(row);
 
 const csvConfig = {
-  filename: props.node.name + '_direct_members_groups.csv',
+  filename: nodeNameAsString(props.node) + '_direct_members_groups.csv',
   columnNames: ['Group Name', 'Platforms'],
   // accepts filtered sorted rows and returns the proper mapping
   mappingFn: (filteredSortedRows: GroupSummary[]) =>

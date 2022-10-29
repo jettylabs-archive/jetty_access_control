@@ -138,7 +138,7 @@ const currentNode = computed(() => {
   let returnNode;
   if (nodeList.value != null) {
     returnNode = nodeList.value.find(
-      (node) => node.name == props.node_id && node.type == 'asset'
+      (node) => nodeNameAsString(node) == props.node_id && 'Asset' in node
     );
   }
   return returnNode;

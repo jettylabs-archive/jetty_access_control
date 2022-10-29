@@ -124,7 +124,7 @@ fn remove_poisoned_paths_from_collection<'a>(
 mod tests {
 
     use crate::{
-        access_graph::{AssetAttributes, NodeName, TagAttributes},
+        access_graph::{cual_to_asset_name_test, AssetAttributes, NodeName, TagAttributes},
         cual::Cual,
     };
 
@@ -139,83 +139,104 @@ mod tests {
                 &JettyNode::Tag(TagAttributes::new("tag2".to_owned(), false, true)),
                 &JettyNode::Tag(TagAttributes::new("tag3".to_owned(), true, true)),
                 &JettyNode::Tag(TagAttributes::new("tag4".to_owned(), false, false)),
-                &JettyNode::Asset(AssetAttributes::new(Cual::new("asset1://a"))),
-                &JettyNode::Asset(AssetAttributes::new(Cual::new("asset3://a"))),
-                &JettyNode::Asset(AssetAttributes::new(Cual::new("asset4://a"))),
-                &JettyNode::Asset(AssetAttributes::new(Cual::new("asset5://a"))),
-                &JettyNode::Asset(AssetAttributes::new(Cual::new("asset6://a"))),
-                &JettyNode::Asset(AssetAttributes::new(Cual::new("asset7://a"))),
-                &JettyNode::Asset(AssetAttributes::new(Cual::new("asset8://a"))),
+                &JettyNode::Asset(AssetAttributes::new(
+                    Cual::new("asset1://a/1"),
+                    Default::default(),
+                )),
+                &JettyNode::Asset(AssetAttributes::new(
+                    Cual::new("asset3://a/3"),
+                    Default::default(),
+                )),
+                &JettyNode::Asset(AssetAttributes::new(
+                    Cual::new("asset4://a/4"),
+                    Default::default(),
+                )),
+                &JettyNode::Asset(AssetAttributes::new(
+                    Cual::new("asset5://a/5"),
+                    Default::default(),
+                )),
+                &JettyNode::Asset(AssetAttributes::new(
+                    Cual::new("asset6://a/6"),
+                    Default::default(),
+                )),
+                &JettyNode::Asset(AssetAttributes::new(
+                    Cual::new("asset7://a/7"),
+                    Default::default(),
+                )),
+                &JettyNode::Asset(AssetAttributes::new(
+                    Cual::new("asset8://a/8"),
+                    Default::default(),
+                )),
             ],
             &[
                 (
                     NodeName::Tag("tag1".to_owned()),
-                    NodeName::Asset(Cual::new("asset1://a")),
+                    cual_to_asset_name_test(Cual::new("asset1://a/1"), Default::default()),
                     EdgeType::AppliedTo,
                 ),
                 (
                     NodeName::Tag("tag2".to_owned()),
-                    NodeName::Asset(Cual::new("asset1://a")),
+                    cual_to_asset_name_test(Cual::new("asset1://a/1"), Default::default()),
                     EdgeType::AppliedTo,
                 ),
                 (
                     NodeName::Tag("tag3".to_owned()),
-                    NodeName::Asset(Cual::new("asset1://a")),
+                    cual_to_asset_name_test(Cual::new("asset1://a/1"), Default::default()),
                     EdgeType::AppliedTo,
                 ),
                 (
                     NodeName::Tag("tag4".to_owned()),
-                    NodeName::Asset(Cual::new("asset1://a")),
+                    cual_to_asset_name_test(Cual::new("asset1://a/1"), Default::default()),
                     EdgeType::AppliedTo,
                 ),
                 (
-                    NodeName::Asset(Cual::new("asset1://a")),
-                    NodeName::Asset(Cual::new("asset4://a")),
+                    cual_to_asset_name_test(Cual::new("asset1://a/1"), Default::default()),
+                    cual_to_asset_name_test(Cual::new("asset4://a/4"), Default::default()),
                     EdgeType::ParentOf,
                 ),
                 (
-                    NodeName::Asset(Cual::new("asset4://a")),
-                    NodeName::Asset(Cual::new("asset6://a")),
+                    cual_to_asset_name_test(Cual::new("asset4://a/4"), Default::default()),
+                    cual_to_asset_name_test(Cual::new("asset6://a/6"), Default::default()),
                     EdgeType::ParentOf,
                 ),
                 (
-                    NodeName::Asset(Cual::new("asset6://a")),
-                    NodeName::Asset(Cual::new("asset8://a")),
+                    cual_to_asset_name_test(Cual::new("asset6://a/6"), Default::default()),
+                    cual_to_asset_name_test(Cual::new("asset8://a/8"), Default::default()),
                     EdgeType::ParentOf,
                 ),
                 (
-                    NodeName::Asset(Cual::new("asset1://a")),
-                    NodeName::Asset(Cual::new("asset3://a")),
+                    cual_to_asset_name_test(Cual::new("asset1://a/1"), Default::default()),
+                    cual_to_asset_name_test(Cual::new("asset3://a/3"), Default::default()),
                     EdgeType::DerivedTo,
                 ),
                 (
-                    NodeName::Asset(Cual::new("asset3://a")),
-                    NodeName::Asset(Cual::new("asset5://a")),
+                    cual_to_asset_name_test(Cual::new("asset3://a/3"), Default::default()),
+                    cual_to_asset_name_test(Cual::new("asset5://a/5"), Default::default()),
                     EdgeType::DerivedTo,
                 ),
                 (
-                    NodeName::Asset(Cual::new("asset5://a")),
-                    NodeName::Asset(Cual::new("asset7://a")),
+                    cual_to_asset_name_test(Cual::new("asset5://a/5"), Default::default()),
+                    cual_to_asset_name_test(Cual::new("asset7://a/7"), Default::default()),
                     EdgeType::DerivedTo,
                 ),
                 (
                     NodeName::Tag("tag1".to_owned()),
-                    NodeName::Asset(Cual::new("asset6://a")),
+                    cual_to_asset_name_test(Cual::new("asset6://a/6"), Default::default()),
                     EdgeType::RemovedFrom,
                 ),
                 (
                     NodeName::Tag("tag2".to_owned()),
-                    NodeName::Asset(Cual::new("asset6://a")),
+                    cual_to_asset_name_test(Cual::new("asset6://a/6"), Default::default()),
                     EdgeType::RemovedFrom,
                 ),
                 (
                     NodeName::Tag("tag1".to_owned()),
-                    NodeName::Asset(Cual::new("asset5://a")),
+                    cual_to_asset_name_test(Cual::new("asset5://a/5"), Default::default()),
                     EdgeType::RemovedFrom,
                 ),
                 (
                     NodeName::Tag("tag2".to_owned()),
-                    NodeName::Asset(Cual::new("asset5://a")),
+                    cual_to_asset_name_test(Cual::new("asset5://a/5"), Default::default()),
                     EdgeType::RemovedFrom,
                 ),
             ],

@@ -5,7 +5,7 @@ use lazy_static::lazy_static;
 
 lazy_static! {
     static ref PROJECT_DIR: PathBuf = PathBuf::from("src");
-    static ref TAGS_CFG: PathBuf = PathBuf::from("tags.yaml");
+    static ref TAGS_CFG: PathBuf = PathBuf::from("./tags.yaml");
     static ref JETTY_CFG: PathBuf = PathBuf::from("jetty_config.yaml");
     static ref CONNECTOR_CFG: PathBuf = PathBuf::from("connectors.yaml");
     static ref CONNECTOR_CFG_DIR: PathBuf = PathBuf::from(".jetty");

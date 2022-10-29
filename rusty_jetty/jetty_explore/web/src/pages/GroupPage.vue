@@ -57,6 +57,7 @@ import { ref, computed } from 'vue';
 import JettyHeader from 'src/components/JettyHeader.vue';
 import { useJettyStore } from 'stores/jetty';
 import { useRouter, useRoute } from 'vue-router';
+import { nodeNameAsString } from 'src/util';
 
 const props = defineProps(['node_id']);
 const router = useRouter();
@@ -68,7 +69,7 @@ const currentNode = computed(() => {
   let returnNode;
   if (nodeList.value != null) {
     returnNode = nodeList.value.find(
-      (node) => node.name == props.node_id && node.type == 'group'
+      (node) => nodeNameAsString(node) == props.node_id && 'Group' in node
     );
   }
   return returnNode;
