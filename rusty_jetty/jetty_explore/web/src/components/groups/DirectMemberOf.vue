@@ -5,11 +5,7 @@
     :row-transformer="rowTransformer"
     :columns="columns"
     :csv-config="csvConfig"
-    :fetchPath="
-      '/api/group/' +
-      encodeURIComponent(nodeNameAsString(props.node)) +
-      '/direct_groups'
-    "
+    :fetchPath="'/api/group/' + nodeId(props.node) + '/direct_groups'"
     v-slot="{ props: { row } }: { props: { row: GroupSummary } }"
     :tip="`The groups that ${nodeNameAsString(
       props.node
@@ -27,7 +23,7 @@
 import JettyTable from '../JettyTable.vue';
 import JettyBadge from '../JettyBadge.vue';
 import { GroupSummary } from '../models';
-import { nodeNameAsString } from 'src/util';
+import { nodeNameAsString, nodeId } from 'src/util';
 import GroupHeadline from './GroupHeadline.vue';
 import { mapNodeSummaryforSearch } from 'src/util/search';
 

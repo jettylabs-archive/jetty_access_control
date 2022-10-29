@@ -7,12 +7,11 @@
     use-input
     hide-selected
     fill-input
-    clearable
     :input-debounce="debounceTime"
     :options="options"
     @filter="filterFn"
     @input-value="setModel"
-    option-label="name"
+    :option-label="optionLabel"
     ref="searchField"
     bg-color="white"
     :autofocus="props.autofocus"
@@ -37,8 +36,8 @@ import { ref, computed } from 'vue';
 import AutocompleteItem from './AutocompleteItem.vue';
 import { useJettyStore } from 'stores/jetty';
 import { useRouter } from 'vue-router';
-import { jettySearch } from 'src/util/search';
-import { nodeNameAsString } from 'src/util';
+import { jettySearch, mapNodeSummaryforSearch } from 'src/util/search';
+import { nodeId, nodeNameAsString, NodeSummary, nodeType } from 'src/util';
 
 const props = defineProps({
   autofocus: { type: Boolean },
@@ -50,12 +49,23 @@ const store = useJettyStore();
 const nodeOptions = computed(() => store.nodes);
 
 const model = ref(null);
-const options = ref([]);
+const options = ref<NodeSummary[]>([]);
 
 const searchField = ref(null);
 
 // we'll use this to keep the search feeling responsive
 const debounceTime = ref(10);
+
+// get the option label
+const optionLabel = (item: NodeSummary | null | string): string => {
+  if (item === null) {
+    return '';
+  } else if (typeof item === 'string') {
+    return item;
+  } else {
+    nodeNameAsString(item);
+  }
+};
 
 function filterFn(val, update) {
   update(
@@ -66,7 +76,7 @@ function filterFn(val, update) {
         var startTime = performance.now();
         options.value = jettySearch(
           nodeOptions.value,
-          (i) => nodeNameAsString(i),
+          (i) => mapNodeSummaryforSearch(i),
           val,
           {
             numResults: 15,
@@ -90,9 +100,9 @@ function setModel(val) {
   model.value = val;
 }
 
-function navigate(val) {
+function navigate(val: NodeSummary) {
   model.value = null;
-  let new_path = '/' + val.type + '/' + encodeURIComponent(val.name);
+  let new_path = '/' + nodeType(val) + '/' + nodeId(val);
   if (searchField.value) {
     searchField.value.blur();
   }

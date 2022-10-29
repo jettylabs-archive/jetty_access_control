@@ -34,7 +34,7 @@ use crate::GrantType;
 
 /// Number of metadata request to run currently (e.g. permissions).
 /// 15 seems to give the best performance. In some circumstances, we may want to bump this up.
-const CONCURRENT_METADATA_FETCHES: usize = 15;
+const CONCURRENT_METADATA_FETCHES: usize = 20;
 
 /// Environment is a collection of objects pulled right out of Snowflake.
 /// We process them to make jetty nodes and edges.
@@ -159,9 +159,11 @@ impl<'a> Coordinator<'a> {
             policies: self.get_jetty_policies(),
             effective_permissions: self.get_effective_permissions(),
             asset_references: Default::default(),
-            cual_prefix: cual::get_cual_prefix()
-                .context("cual account not yet set")
-                .unwrap(),
+            cual_prefix: Some(
+                cual::get_cual_prefix()
+                    .context("cual account not yet set")
+                    .unwrap(),
+            ),
         }
     }
 

@@ -1,5 +1,5 @@
 <template>
-  <q-item>
+  <q-item v-bind="props.scope.itemProps">
     <q-item-section avatar>
       <q-icon :name="nodeIconFromNode(scope.opt)" color="primary" />
     </q-item-section>

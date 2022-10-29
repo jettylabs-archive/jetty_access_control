@@ -5,7 +5,7 @@
   >
     <q-item class="q-px-none">
       <q-item-section>
-        <q-item-label class="text-weight-bold">
+        <q-item-label class="text-weight-medium">
           {{ nodeNameAsString(user) }}</q-item-label
         >
 
@@ -22,10 +22,11 @@
 </template>
 
 <script lang="ts" setup>
-import { nodeNameAsString } from 'src/util';
+import { nodeId, nodeNameAsString } from 'src/util';
 import { UserSummary } from '../models';
 import JettyBadge from '../JettyBadge.vue';
+import { ref } from 'vue';
 
 const props = defineProps<{ user: UserSummary }>();
-const userpath = encodeURIComponent(nodeNameAsString(props.user));
+const userpath = ref<string>(nodeId(props.user));
 </script>

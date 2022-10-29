@@ -59,22 +59,22 @@
         <q-route-tab
           name="users"
           label="Direct Access"
-          :to="'/asset/' + encodeURIComponent(props.node_id) + '/direct_access'"
+          :to="'/asset/' + props.node_id + '/direct_access'"
         />
         <q-route-tab
           name="all_users"
           label="Any Access"
-          :to="'/asset/' + encodeURIComponent(props.node_id) + '/any_access'"
+          :to="'/asset/' + props.node_id + '/any_access'"
         />
         <q-route-tab
           name="hierarchy"
           label="Hierarchy"
-          :to="'/asset/' + encodeURIComponent(props.node_id) + '/hierarchy'"
+          :to="'/asset/' + props.node_id + '/hierarchy'"
         />
         <q-route-tab
           name="lineage"
           label="Lineage"
-          :to="'/asset/' + encodeURIComponent(props.node_id) + '/lineage'"
+          :to="'/asset/' + props.node_id + '/lineage'"
         />
       </q-tabs>
 
@@ -125,7 +125,7 @@ import JettyHeader from 'src/components/JettyHeader.vue';
 import { useJettyStore } from 'stores/jetty';
 import { useRouter, useRoute } from 'vue-router';
 import JettyBadge from 'src/components/JettyBadge.vue';
-import { fetchJson, nodeNameAsString } from 'src/util';
+import { fetchJson, nodeId, nodeNameAsString } from 'src/util';
 import { TagSummary } from 'src/components/models';
 
 const props = defineProps(['node_id']);
@@ -137,9 +137,7 @@ const nodeList = computed(() => store.nodes);
 const currentNode = computed(() => {
   let returnNode;
   if (nodeList.value != null) {
-    returnNode = nodeList.value.find(
-      (node) => nodeNameAsString(node) == props.node_id && 'Asset' in node
-    );
+    returnNode = nodeList.value.find((node) => nodeId(node) == props.node_id);
   }
   return returnNode;
 });
@@ -161,7 +159,7 @@ const allTags: { tags: TagResponse } = reactive({
 });
 
 function updateTags(node_id: string) {
-  fetchJson('/api/asset/' + encodeURIComponent(node_id) + '/tags')
+  fetchJson('/api/asset/' + node_id + '/tags')
     .then((r: TagResponse) => {
       allTags.tags = r;
     })

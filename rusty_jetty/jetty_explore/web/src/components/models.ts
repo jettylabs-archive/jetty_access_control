@@ -21,6 +21,7 @@ export interface GroupName {
 export interface GroupSummary {
   Group: {
     name: GroupName;
+    id: string;
     connectors: string[];
   };
 }
@@ -32,19 +33,23 @@ export interface UserName {
 export interface UserSummary {
   User: {
     name: UserName;
+    id: string;
     connectors: string[];
   };
 }
 
 export interface AssetName {
   Asset: {
-    uri: string;
+    asset_type?: string;
+    connector: string;
+    path: string[];
   };
 }
 
 export interface AssetSummary {
   Asset: {
     name: AssetName;
+    id: string;
     asset_type: string;
     connectors: string[];
   };
@@ -63,6 +68,7 @@ export interface TagName {
 export interface TagSummary {
   Tag: {
     name: TagName;
+    id: string;
     description: null | string;
     pass_through_hierarch: boolean;
     pass_through_lineage: boolean;

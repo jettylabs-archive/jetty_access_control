@@ -5,11 +5,7 @@
     :row-transformer="rowTransformer"
     :columns="columns"
     :csv-config="csvConfig"
-    :fetchPath="
-      '/api/user/' +
-      encodeURIComponent(nodeNameAsString(props.node)) +
-      '/assets'
-    "
+    :fetchPath="'/api/user/' + nodeId(props.node) + '/assets'"
     v-slot="{
       props: { row },
     }: {
@@ -25,7 +21,7 @@
         <q-item class="q-px-none">
           <q-item-section>
             <router-link
-              :to="'/asset/' + encodeURIComponent(nodeNameAsString(row.node))"
+              :to="'/asset/' + nodeId(row.node)"
               style="text-decoration: none; color: inherit"
             >
               <q-item-label> {{ nodeNameAsString(row.node) }}</q-item-label>
@@ -73,7 +69,7 @@
 import JettyTable from '../JettyTable.vue';
 import JettyBadge from '../JettyBadge.vue';
 import { AssetSummary, EffectivePermission } from '../models';
-import { nodeNameAsString } from 'src/util';
+import { nodeNameAsString, nodeId } from 'src/util';
 import { mapNodeSummaryforSearch } from 'src/util/search';
 
 interface AssetWithEffectivePermissions {

@@ -5,11 +5,7 @@
     :row-transformer="rowTransformer"
     :columns="columns"
     :csv-config="csvConfig"
-    :fetchPath="
-      '/api/asset/' +
-      encodeURIComponent(nodeNameAsString(props.node)) +
-      '/lineage_upstream'
-    "
+    :fetchPath="'/api/asset/' + nodeId(props.node) + '/lineage_upstream'"
     v-slot="{ props: { row } }: { props: { row: AssetWithPaths } }"
     :tip="`Assets upstream from ${nodeNameAsString(
       props.node
@@ -29,7 +25,7 @@
 <script lang="ts" setup>
 import JettyTable from '../JettyTable.vue';
 import { AssetWithPaths } from 'src/components/models';
-import { getPathAsString, nodeNameAsString } from 'src/util';
+import { getPathAsString, nodeNameAsString, nodeId } from 'src/util';
 import NodePath from '../NodePath.vue';
 import AssetHeadline from './AssetHeadline.vue';
 

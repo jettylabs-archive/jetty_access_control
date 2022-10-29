@@ -72,10 +72,9 @@ impl Graph {
         Ok(draw)
     }
 
-    /// Check whether a given
-    ///
-    /// #[deprecated = "please transition to referencing nodes by their id rather than their name"]node already exists in the graph, and, if so, return the NodeIndex.
-    /// If if the NodeName does not exist in the graph, returns None
+    /// Check whether a given NodeName exists in the graph, and, if so, return the NodeIndex.
+    /// If it does not, returns None
+    #[deprecated = "please transition to referencing nodes by their id rather than their name"]
     pub(crate) fn get_untyped_node_index(&self, node: &NodeName) -> Option<NodeIndex> {
         // I was hoping to do this with a trait object, but it turns out that
         // I couldn't easily return Option<&dyn ToNodeIndex> from the match -
@@ -224,6 +223,7 @@ impl Graph {
     /// Adds a node to the graph and returns the index.
     pub(crate) fn add_node(&mut self, node: &JettyNode) -> Result<()> {
         let node_name = node.get_node_name();
+        let node_id = node.id();
         // Check for duplicate
         if let Some(idx) = self.get_untyped_node_index(&node_name) {
             self.merge_nodes(idx, node)?;
@@ -232,18 +232,25 @@ impl Graph {
             match node {
                 JettyNode::Group(_) => {
                     self.nodes.groups.insert(node_name, GroupIndex::new(idx));
+                    self.node_ids.groups.insert(node_id, GroupIndex::new(idx));
                 }
                 JettyNode::User(_) => {
                     self.nodes.users.insert(node_name, UserIndex::new(idx));
+                    self.node_ids.users.insert(node_id, UserIndex::new(idx));
                 }
                 JettyNode::Asset(_) => {
                     self.nodes.assets.insert(node_name, AssetIndex::new(idx));
+                    self.node_ids.assets.insert(node_id, AssetIndex::new(idx));
                 }
                 JettyNode::Tag(_) => {
                     self.nodes.tags.insert(node_name, TagIndex::new(idx));
+                    self.node_ids.tags.insert(node_id, TagIndex::new(idx));
                 }
                 JettyNode::Policy(_) => {
                     self.nodes.policies.insert(node_name, PolicyIndex::new(idx));
+                    self.node_ids
+                        .policies
+                        .insert(node_id, PolicyIndex::new(idx));
                 }
             };
         };
