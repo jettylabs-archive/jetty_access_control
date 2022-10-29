@@ -86,6 +86,12 @@ export const mapNodeSummaryforSearch = (summary: NodeSummary): string => {
       summary.Tag.description,
       ...nodeConnectors(summary),
     ].join(' ');
+  } else if ('Asset' in summary) {
+    return [
+      nodeNameAsString(summary),
+      summary.Asset.asset_type,
+      ...nodeConnectors(summary),
+    ].join(' ');
   } else {
     return [nodeNameAsString(summary), ...nodeConnectors(summary)].join(' ');
   }

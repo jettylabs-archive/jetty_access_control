@@ -5,9 +5,7 @@
     :row-transformer="rowTransformer"
     :columns="columns"
     :csv-config="csvConfig"
-    :fetchPath="
-      '/api/user/' + encodeURIComponent(nodeNameAsString(props.node)) + '/tags'
-    "
+    :fetchPath="'/api/user/' + nodeId(props.node) + '/tags'"
     v-slot="{ props: { row } }: { props: { row: TagWithAssets } }"
     :tip="`The tags that ${nodeNameAsString(
       props.node
@@ -21,7 +19,7 @@
         <ul class="q-my-none">
           <li
             v-for="asset in row.associations"
-            :key="asset.Asset.name.Asset.uri"
+            :key="nodeNameAsString(asset)"
             style="padding-top: 2px; padding-bottom: 2px"
           >
             <div class="q-pr-sm">
@@ -45,7 +43,7 @@
 import JettyTable from '../JettyTable.vue';
 import JettyBadge from '../JettyBadge.vue';
 import { AssetSummary, TagSummary } from '../models';
-import { nodeNameAsString } from 'src/util';
+import { nodeNameAsString, nodeId } from 'src/util';
 import { mapNodeSummaryforSearch } from 'src/util/search';
 import TagHeadline from '../tags/TagHeadline.vue';
 

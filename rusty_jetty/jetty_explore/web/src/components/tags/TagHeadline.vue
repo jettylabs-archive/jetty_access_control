@@ -1,6 +1,6 @@
 <template>
   <router-link
-    :to="'/tag/' + encodeURIComponent(nodeNameAsString(tag))"
+    :to="'/tag/' + nodeId(tag)"
     style="text-decoration: none; color: inherit"
   >
     <q-item class="q-px-none">
@@ -21,7 +21,7 @@
 </template>
 
 <script lang="ts" setup>
-import { nodeNameAsString } from 'src/util';
+import { nodeNameAsString, nodeId } from 'src/util';
 import { TagSummary } from '../models';
 import JettyBadge from '../JettyBadge.vue';
 

@@ -13,17 +13,17 @@
         <q-route-tab
           name="assets"
           label="Assets"
-          :to="'/user/' + encodeURIComponent(props.user_id) + '/assets'"
+          :to="'/user/' + props.user_id + '/assets'"
         />
         <q-route-tab
           name="groups"
           label="Groups"
-          :to="'/user/' + encodeURIComponent(props.user_id) + '/groups'"
+          :to="'/user/' + props.user_id + '/groups'"
         />
         <q-route-tab
           name="tags"
           label="Tags"
-          :to="'/user/' + encodeURIComponent(props.user_id) + '/tags'"
+          :to="'/user/' + props.user_id + '/tags'"
         />
       </q-tabs>
 
@@ -55,7 +55,7 @@ import { ref, computed } from 'vue';
 import JettyHeader from 'src/components/JettyHeader.vue';
 import { useJettyStore } from 'stores/jetty';
 import { useRoute, useRouter } from 'vue-router';
-import { nodeNameAsString } from 'src/util';
+import { nodeId, nodeNameAsString } from 'src/util';
 
 const props = defineProps(['user_id']);
 const route = useRoute();
@@ -70,9 +70,7 @@ const currentNode = computed(() => {
     platforms: [],
   };
   if (nodeList.value != null) {
-    returnNode = nodeList.value.find(
-      (node) => nodeNameAsString(node) == props.user_id && 'User' in node
-    );
+    returnNode = nodeList.value.find((node) => nodeId(node) == props.user_id);
   }
   return returnNode;
 });

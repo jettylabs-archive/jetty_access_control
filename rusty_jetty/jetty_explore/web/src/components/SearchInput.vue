@@ -7,7 +7,6 @@
     use-input
     hide-selected
     fill-input
-    clearable
     :input-debounce="debounceTime"
     :options="options"
     @filter="filterFn"
@@ -38,7 +37,7 @@ import AutocompleteItem from './AutocompleteItem.vue';
 import { useJettyStore } from 'stores/jetty';
 import { useRouter } from 'vue-router';
 import { jettySearch } from 'src/util/search';
-import { nodeNameAsString } from 'src/util';
+import { nodeId, nodeNameAsString, NodeSummary, nodeType } from 'src/util';
 
 const props = defineProps({
   autofocus: { type: Boolean },
@@ -50,7 +49,7 @@ const store = useJettyStore();
 const nodeOptions = computed(() => store.nodes);
 
 const model = ref(null);
-const options = ref([]);
+const options = ref<NodeSummary[]>([]);
 
 const searchField = ref(null);
 
@@ -90,9 +89,9 @@ function setModel(val) {
   model.value = val;
 }
 
-function navigate(val) {
+function navigate(val: NodeSummary) {
   model.value = null;
-  let new_path = '/' + val.type + '/' + encodeURIComponent(val.name);
+  let new_path = '/' + nodeType(val) + '/' + nodeId(val);
   if (searchField.value) {
     searchField.value.blur();
   }

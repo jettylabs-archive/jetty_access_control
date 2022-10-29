@@ -5,11 +5,7 @@
     :row-transformer="rowTransformer"
     :columns="columns"
     :csv-config="csvConfig"
-    :fetchPath="
-      '/api/group/' +
-      encodeURIComponent(nodeNameAsString(props.node)) +
-      '/direct_members_users'
-    "
+    :fetchPath="'/api/group/' + nodeId(props.node) + '/direct_members_users'"
     v-slot="{ props: { row } }: { props: { row: UserSummary } }"
     :tip="`All the users who are explicitly assigned as members of ${nodeNameAsString(
       props.node
@@ -26,7 +22,7 @@
 <script lang="ts" setup>
 import JettyTable from '../JettyTable.vue';
 import { UserSummary } from '../models';
-import { nodeNameAsString } from 'src/util';
+import { nodeNameAsString, nodeId } from 'src/util';
 import UserHeadline from '../users/UserHeadline.vue';
 import { mapNodeSummaryforSearch } from 'src/util/search';
 

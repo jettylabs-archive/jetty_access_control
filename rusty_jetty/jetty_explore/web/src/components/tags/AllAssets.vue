@@ -5,11 +5,7 @@
     :row-transformer="rowTransformer"
     :columns="columns"
     :csv-config="csvConfig"
-    :fetchPath="
-      '/api/tag/' +
-      encodeURIComponent(nodeNameAsString(props.node)) +
-      '/all_assets'
-    "
+    :fetchPath="'/api/tag/' + nodeId(props.node) + '/all_assets'"
     v-slot="{ props: { row } }: { props: { row: AssetWithPaths } }"
     :tip="`Assets with the ${nodeNameAsString(
       props.node
@@ -29,7 +25,7 @@
 <script lang="ts" setup>
 import JettyTable from '../JettyTable.vue';
 import { AssetWithPaths } from '../models';
-import { nodeNameAsString, getPathAsString } from 'src/util';
+import { nodeNameAsString, getPathAsString, nodeId } from 'src/util';
 import NodePath from '../NodePath.vue';
 import { mapNodeSummaryforSearch } from 'src/util/search';
 import AssetHeadline from '../assets/AssetHeadline.vue';

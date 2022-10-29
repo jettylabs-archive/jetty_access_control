@@ -206,6 +206,7 @@ impl Graph {
     }
     /// Check whether a given node already exists in the graph, and, if so, return a typed index
     pub(crate) fn get_user_node_index_from_id(&self, node: &Uuid) -> Option<UserIndex> {
+        dbg!(&self.node_ids.users);
         self.node_ids.users.get(node).map(|i| i.to_owned())
     }
     /// Check whether a given node already exists in the graph, and, if so, return a typed index
@@ -224,6 +225,7 @@ impl Graph {
     /// Adds a node to the graph and returns the index.
     pub(crate) fn add_node(&mut self, node: &JettyNode) -> Result<()> {
         let node_name = node.get_node_name();
+        let node_id = node.id();
         // Check for duplicate
         if let Some(idx) = self.get_untyped_node_index(&node_name) {
             self.merge_nodes(idx, node)?;
@@ -232,18 +234,25 @@ impl Graph {
             match node {
                 JettyNode::Group(_) => {
                     self.nodes.groups.insert(node_name, GroupIndex::new(idx));
+                    self.node_ids.groups.insert(node_id, GroupIndex::new(idx));
                 }
                 JettyNode::User(_) => {
                     self.nodes.users.insert(node_name, UserIndex::new(idx));
+                    self.node_ids.users.insert(node_id, UserIndex::new(idx));
                 }
                 JettyNode::Asset(_) => {
                     self.nodes.assets.insert(node_name, AssetIndex::new(idx));
+                    self.node_ids.assets.insert(node_id, AssetIndex::new(idx));
                 }
                 JettyNode::Tag(_) => {
                     self.nodes.tags.insert(node_name, TagIndex::new(idx));
+                    self.node_ids.tags.insert(node_id, TagIndex::new(idx));
                 }
                 JettyNode::Policy(_) => {
                     self.nodes.policies.insert(node_name, PolicyIndex::new(idx));
+                    self.node_ids
+                        .policies
+                        .insert(node_id, PolicyIndex::new(idx));
                 }
             };
         };
