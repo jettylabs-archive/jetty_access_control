@@ -28,7 +28,6 @@ async fn assets_handler(
     Path(node_id): Path<Uuid>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<NodeSummaryWithPrivileges>> {
-    dbg!(node_id);
     let from = ag
         .get_user_index_from_id(&node_id)
         .context("fetching user node")
