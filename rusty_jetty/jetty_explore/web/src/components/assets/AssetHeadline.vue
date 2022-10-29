@@ -5,8 +5,8 @@
   >
     <q-item class="q-px-none">
       <q-item-section>
-        <q-item-label
-          ><span class="q-pr-xs text-weight-bold">{{ assetShortname }} </span>
+        <q-item-label>
+          <span class="q-pr-xs text-weight-medium">{{ assetShortname }} </span>
           <span class="text-caption"
             >({{ asset.Asset.asset_type }})</span
           ></q-item-label
