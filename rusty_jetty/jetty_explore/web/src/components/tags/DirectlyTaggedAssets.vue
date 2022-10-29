@@ -5,11 +5,7 @@
     :row-transformer="rowTransformer"
     :columns="columns"
     :csv-config="csvConfig"
-    :fetchPath="
-      '/api/tag/' +
-      encodeURIComponent(nodeNameAsString(props.node)) +
-      '/direct_assets'
-    "
+    :fetchPath="'/api/tag/' + nodeId(props.node) + '/direct_assets'"
     v-slot="{ props: { row } }: { props: { row: AssetSummary } }"
     :tip="`Assets directly tagged with ${nodeNameAsString(props.node)}`"
   >
@@ -24,7 +20,7 @@
 <script lang="ts" setup>
 import JettyTable from '../JettyTable.vue';
 import { AssetSummary } from '../models';
-import { nodeNameAsString } from 'src/util';
+import { nodeNameAsString, nodeId } from 'src/util';
 import AssetHeadline from '../assets/AssetHeadline.vue';
 import { mapNodeSummaryforSearch } from 'src/util/search';
 

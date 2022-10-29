@@ -1,11 +1,11 @@
 <template>
   <router-link
-    :to="'/group/' + encodeURIComponent(nodeNameAsString(group))"
+    :to="'/group/' + nodeId(group)"
     style="text-decoration: none; color: inherit"
   >
     <q-item class="q-px-none">
       <q-item-section>
-        <q-item-label class="text-weight-bold">
+        <q-item-label class="text-weight-medium">
           {{ nodeNameAsString(group) }}</q-item-label
         >
         <q-item-label caption>
@@ -21,7 +21,7 @@
 </template>
 
 <script lang="ts" setup>
-import { nodeNameAsString } from 'src/util';
+import { nodeNameAsString, nodeId } from 'src/util';
 import { GroupSummary } from '../models';
 import JettyBadge from '../JettyBadge.vue';
 

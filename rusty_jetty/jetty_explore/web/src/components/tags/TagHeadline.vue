@@ -1,12 +1,15 @@
 <template>
   <router-link
-    :to="'/tag/' + encodeURIComponent(nodeNameAsString(tag))"
+    :to="'/tag/' + nodeId(tag)"
     style="text-decoration: none; color: inherit"
   >
     <q-item class="q-px-none">
       <q-item-section>
-        <q-item-label class="text-weight-bold">
+        <q-item-label class="text-weight-medium">
           {{ nodeNameAsString(tag) }}</q-item-label
+        >
+        <q-item-label v-if="tag.Tag.description" caption>
+          {{ tag.Tag.description }}</q-item-label
         >
         <q-item-label caption>
           <JettyBadge
@@ -21,7 +24,7 @@
 </template>
 
 <script lang="ts" setup>
-import { nodeNameAsString } from 'src/util';
+import { nodeNameAsString, nodeId } from 'src/util';
 import { TagSummary } from '../models';
 import JettyBadge from '../JettyBadge.vue';
 

@@ -3,15 +3,15 @@
     <JettyTable
       title="All Groups"
       :rows-per-page="30"
-      :filter-method="filterMethod"
+      :row-transformer="rowTransformer"
       :columns="columns"
       :csv-config="csvConfig"
       fetchPath="/api/groups"
-      v-slot="slotProps"
+      v-slot="{ props: { row } }: { props: { row: GroupSummary } }"
     >
       <q-tr>
         <q-td key="name">
-          <GroupHeadline :group="slotProps.props.row" />
+          <GroupHeadline :group="row" />
         </q-td>
       </q-tr>
     </JettyTable>
@@ -21,8 +21,9 @@
 <script setup lang="ts">
 import GroupHeadline from 'src/components/groups/GroupHeadline.vue';
 import JettyTable from 'src/components/JettyTable.vue';
-
-const props = defineProps(['node']);
+import { GroupSummary } from 'src/components/models';
+import { nodeConnectors, nodeNameAsString } from 'src/util';
+import { mapNodeSummaryforSearch } from 'src/util/search';
 
 const columns = [
   {
@@ -34,23 +35,17 @@ const columns = [
   },
 ];
 
-// Filters by name, privileges, or platform
-const filterMethod = (rows, terms) => {
-  const needles = terms.toLocaleLowerCase().split(' ');
-  return rows.filter((r) =>
-    needles.every(
-      (needle) =>
-        r.name.toLocaleLowerCase().indexOf(needle) > -1 ||
-        r.platforms.join(' ').toLocaleLowerCase().indexOf(needle) > -1
-    )
-  );
-};
+const rowTransformer = (row: GroupSummary): string =>
+  mapNodeSummaryforSearch(row);
 
 const csvConfig = {
   filename: 'groups.csv',
   columnNames: ['Group Name', 'Platforms'],
   // accepts a row and returns the proper mapping
-  mappingFn: (filteredSortedRows) =>
-    filteredSortedRows.map((r) => [r.name, r.platforms.join(', ')]),
+  mappingFn: (filteredSortedRows: GroupSummary[]): string[][] =>
+    filteredSortedRows.map((r) => [
+      nodeNameAsString(r),
+      nodeConnectors(r).join(', '),
+    ]),
 };
 </script>

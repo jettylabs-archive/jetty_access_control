@@ -64,8 +64,8 @@ impl Cual {
     /// Get the connector identifier from a CUAL.
     ///
     /// For `tableau://server-name:port@site-name/to/asset?type=project` this would return `tableau://server-name:port@site-name`
-    pub fn connector_prefix(&self) -> String {
-        self.uri.to_string().split('/').collect::<Vec<_>>()[..3].join("/")
+    pub fn connector_prefix(&self) -> Option<String> {
+        Some(self.uri.to_string().split('/').collect::<Vec<_>>()[..3].join("/"))
     }
 
     /// If there is a type value associated with the CUAL, return that as an AssetType

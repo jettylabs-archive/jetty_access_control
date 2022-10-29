@@ -5,11 +5,7 @@
     :row-transformer="rowTransformer"
     :columns="columns"
     :csv-config="csvConfig"
-    :fetchPath="
-      '/api/group/' +
-      encodeURIComponent(nodeNameAsString(props.node)) +
-      '/all_members'
-    "
+    :fetchPath="'/api/group/' + nodeId(props.node) + '/all_members'"
     v-slot="{ props: { row } }: { props: { row: UserWithPaths } }"
     :tip="`All the members of ${nodeNameAsString(
       props.node
@@ -30,7 +26,7 @@
 <script lang="ts" setup>
 import JettyTable from '../JettyTable.vue';
 import { NodePath as NodePathType, UserSummary } from '../models';
-import { getPathAsString, nodeNameAsString } from 'src/util';
+import { getPathAsString, nodeNameAsString, nodeId } from 'src/util';
 import NodePath from '../NodePath.vue';
 import UserHeadline from '../users/UserHeadline.vue';
 import { mapNodeSummaryforSearch } from 'src/util/search';

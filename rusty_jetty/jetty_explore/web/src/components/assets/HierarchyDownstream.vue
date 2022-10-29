@@ -5,11 +5,7 @@
     :row-transformer="rowTransformer"
     :columns="columns"
     :csv-config="csvConfig"
-    :fetchPath="
-      '/api/asset/' +
-      encodeURIComponent(nodeNameAsString(props.node)) +
-      '/hierarchy_downstream'
-    "
+    :fetchPath="'/api/asset/' + nodeId(props.node) + '/hierarchy_downstream'"
     v-slot="{ props: { row } }: { props: { row: AssetWithPaths } }"
     :tip="`Assets downstream from ${nodeNameAsString(
       props.node
@@ -30,7 +26,7 @@
 import JettyTable from '../JettyTable.vue';
 import JettyBadge from '../JettyBadge.vue';
 import { AssetWithPaths } from 'src/components/models';
-import { getPathAsString, nodeNameAsString } from 'src/util';
+import { getPathAsString, nodeNameAsString, nodeId } from 'src/util';
 import NodePath from '../NodePath.vue';
 import AssetHeadline from './AssetHeadline.vue';
 import { mapNodeSummaryforSearch } from 'src/util/search';

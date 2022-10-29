@@ -1,15 +1,15 @@
 <template>
   <router-link
-    :to="'/asset/' + encodeURIComponent(asset.Asset.name.Asset.uri)"
+    :to="'/asset/' + nodeId(props.asset)"
     style="text-decoration: none; color: inherit"
   >
     <q-item class="q-px-none">
       <q-item-section>
-        <q-item-label
-          ><span class="q-pr-xs text-weight-bold">{{ assetShortname }} </span>
-          <span v-if="assetTypename" class="text-caption">{{
-            `(${assetTypename})`
-          }}</span></q-item-label
+        <q-item-label>
+          <span class="q-pr-xs text-weight-medium">{{ assetShortname }} </span>
+          <span class="text-caption"
+            >({{ asset.Asset.asset_type }})</span
+          ></q-item-label
         >
         <q-item-label caption> {{ nodeNameAsString(asset) }}</q-item-label>
         <q-item-label caption>
@@ -29,14 +29,10 @@ import { nodeNameAsString } from 'src/util';
 import { AssetSummary } from '../models';
 import JettyBadge from '../JettyBadge.vue';
 import { computed } from 'vue';
+import { nodeId } from 'src/util';
 
 const props = defineProps<{ asset: AssetSummary }>();
 const assetShortname = computed(() =>
-  decodeURIComponent(
-    new URL(nodeNameAsString(props.asset)).pathname.split('/').pop()
-  )
-);
-const assetTypename = computed(
-  () => new URL(nodeNameAsString(props.asset)).searchParams.get('type') || ''
+  nodeNameAsString(props.asset).split('/').pop()
 );
 </script>
