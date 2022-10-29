@@ -33,7 +33,7 @@ use crate::Grant;
 use crate::GrantType;
 
 /// Number of metadata request to run currently (e.g. permissions).
-/// 15 seems to give the best performance. In some circumstances, we may want to bump this up.
+/// ~20 seems to give the best performance. In some circumstances, we may want to bump this up.
 const CONCURRENT_METADATA_FETCHES: usize = 20;
 
 /// Environment is a collection of objects pulled right out of Snowflake.
