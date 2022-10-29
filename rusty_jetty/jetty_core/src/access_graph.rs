@@ -12,10 +12,10 @@ pub mod translate;
 use crate::connectors::nodes::{ConnectorData, EffectivePermission, SparseMatrix};
 use crate::connectors::processed_nodes::ProcessedConnectorData;
 
+use crate::connectors::AssetType;
 use crate::jetty::ConnectorNamespace;
 use crate::logging::debug;
 use crate::tag_parser::{parse_tags, tags_to_jetty_node_helpers};
-use crate::{connectors::AssetType};
 
 use self::graph::typed_indices::{AssetIndex, GroupIndex, PolicyIndex, TagIndex, UserIndex};
 use self::helpers::NodeHelper;
@@ -40,7 +40,7 @@ use time::OffsetDateTime;
 
 use uuid::Uuid;
 
-use crate::permissions::matrix::{InsertOrMerge};
+use crate::permissions::matrix::InsertOrMerge;
 
 const SAVED_GRAPH_PATH: &str = "jetty_graph";
 
@@ -200,6 +200,8 @@ impl AssetAttributes {
     /// Convenience constructor for testing
     #[cfg(test)]
     pub(crate) fn new(cual: Cual, connector: ConnectorNamespace) -> Self {
+        use crate::cual::Cual;
+
         let node_name = NodeName::Asset {
             connector,
             asset_type: cual.asset_type(),

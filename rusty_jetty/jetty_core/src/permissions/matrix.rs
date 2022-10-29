@@ -170,6 +170,7 @@ mod tests {
     use super::*;
 
     use crate::connectors::nodes::{EffectivePermission, PermissionMode};
+    use crate::connectors::UserIdentifier;
     use crate::cual::Cual;
 
     use anyhow::Result;
