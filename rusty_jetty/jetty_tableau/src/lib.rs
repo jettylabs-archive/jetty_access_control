@@ -236,10 +236,12 @@ impl Connector for TableauConnector {
             policies,
             Default::default(),
             effective_permissions,
-            get_cual_prefix()
-                .context("tableau cual prefix not yet set")
-                .unwrap()
-                .to_owned(),
+            Some(
+                get_cual_prefix()
+                    .context("tableau cual prefix not yet set")
+                    .unwrap()
+                    .to_owned(),
+            ),
         )
     }
 }

@@ -159,9 +159,11 @@ impl<'a> Coordinator<'a> {
             policies: self.get_jetty_policies(),
             effective_permissions: self.get_effective_permissions(),
             asset_references: Default::default(),
-            cual_prefix: cual::get_cual_prefix()
-                .context("cual account not yet set")
-                .unwrap(),
+            cual_prefix: Some(
+                cual::get_cual_prefix()
+                    .context("cual account not yet set")
+                    .unwrap(),
+            ),
         }
     }
 

@@ -30,7 +30,7 @@ use bimap;
 pub struct Translator {
     global_to_local: GlobalToLocalIdentifiers,
     local_to_global: LocalToGlobalIdentifiers,
-    cual_prefix_to_namespace: bimap::BiHashMap<String, ConnectorNamespace>,
+    cual_prefix_to_namespace: bimap::BiHashMap<Option<String>, ConnectorNamespace>,
 }
 
 #[derive(Default)]
