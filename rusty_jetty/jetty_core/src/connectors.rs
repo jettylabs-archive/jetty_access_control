@@ -59,7 +59,7 @@ pub enum UserIdentifier {
 }
 
 /// The kind of asset within a connector
-#[derive(Default, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
 pub struct AssetType(pub String);
 
 impl ToString for AssetType {

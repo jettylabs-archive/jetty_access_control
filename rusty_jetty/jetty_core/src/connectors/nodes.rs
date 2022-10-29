@@ -143,6 +143,8 @@ pub struct ConnectorData {
     /// permissions for that user,asset combination, with one EffectivePermission
     /// per privilege containing possible explanations.
     pub effective_permissions: SparseMatrix<UserName, Cual, HashSet<EffectivePermission>>,
+    /// The globally unique cual prefix that can be used to match cuals to a namespace
+    pub cual_prefix: String,
 }
 
 impl ConnectorData {
@@ -155,6 +157,7 @@ impl ConnectorData {
         policies: Vec<RawPolicy>,
         asset_references: Vec<RawAssetReference>,
         effective_permissions: SparseMatrix<UserName, Cual, HashSet<EffectivePermission>>,
+        cual_prefix: String,
     ) -> Self {
         Self {
             groups,
@@ -164,6 +167,7 @@ impl ConnectorData {
             tags,
             policies,
             effective_permissions,
+            cual_prefix,
         }
     }
 }

@@ -8,24 +8,29 @@ use jetty_core::{
     jetty::ConnectorNamespace,
 };
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub(crate) enum NodeSummary {
     Asset {
         name: NodeName,
+        id: Uuid,
         asset_type: AssetType,
         connectors: HashSet<ConnectorNamespace>,
     },
     User {
         name: NodeName,
+        id: Uuid,
         connectors: HashSet<ConnectorNamespace>,
     },
     Group {
         name: NodeName,
+        id: Uuid,
         connectors: HashSet<ConnectorNamespace>,
     },
     Tag {
         name: NodeName,
+        id: Uuid,
         description: Option<String>,
         pass_through_hierarchy: bool,
         pass_through_lineage: bool,
@@ -55,19 +60,23 @@ impl From<JettyNode> for NodeSummary {
         match node {
             JettyNode::Group(n) => NodeSummary::Group {
                 name: n.name,
+                id: n.id,
                 connectors: n.connectors,
             },
             JettyNode::User(n) => NodeSummary::User {
                 name: n.name,
+                id: n.id,
                 connectors: n.connectors,
             },
             JettyNode::Asset(n) => NodeSummary::Asset {
                 name: n.name,
+                id: n.id,
                 asset_type: n.asset_type,
                 connectors: n.connectors,
             },
             JettyNode::Tag(n) => NodeSummary::Tag {
                 name: n.name,
+                id: n.id,
                 description: n.description,
                 pass_through_hierarchy: n.pass_through_hierarchy,
                 pass_through_lineage: n.pass_through_lineage,

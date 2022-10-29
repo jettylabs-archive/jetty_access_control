@@ -6,6 +6,7 @@ use jetty_core::{
     permissions::matrix::{InsertOrMerge, Merge},
 };
 use serde_json::{json, Value};
+use uuid::Uuid;
 
 use crate::{node_summaries::NodeSummary, NodeSummaryWithPaths};
 
@@ -19,10 +20,10 @@ pub(super) fn router() -> Router {
 
 /// Return all assets tagged with a tag (directly or through inheritance)
 async fn all_assets_handler(
-    Path(node_id): Path<String>,
+    Path(node_id): Path<Uuid>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<NodeSummaryWithPaths>> {
-    let from = ag.get_tag_index_from_name(&NodeName::Tag(node_id)).unwrap();
+    let from = ag.get_tag_index_from_id(&node_id).unwrap();
 
     let asset_paths = ag.asset_paths_for_tag(from);
     let mut combined_asset_paths = asset_paths.directly_tagged;
@@ -52,10 +53,10 @@ async fn all_assets_handler(
 
 /// Return all assets directly tagged with a tag
 async fn direct_assets_handler(
-    Path(node_id): Path<String>,
+    Path(node_id): Path<Uuid>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<NodeSummary>> {
-    let from = ag.get_tag_index_from_name(&NodeName::Tag(node_id)).unwrap();
+    let from = ag.get_tag_index_from_id(&node_id).unwrap();
 
     let asset_paths = ag.asset_paths_for_tag(from);
 
@@ -70,10 +71,10 @@ async fn direct_assets_handler(
 
 /// Return all users with access to assets tagged with a tag
 async fn users_handler(
-    Path(node_id): Path<String>,
+    Path(node_id): Path<Uuid>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<NodeSummary>> {
-    let from = ag.get_tag_index_from_name(&NodeName::Tag(node_id)).unwrap();
+    let from = ag.get_tag_index_from_id(&node_id).unwrap();
 
     let asset_paths = ag.asset_paths_for_tag(from);
 

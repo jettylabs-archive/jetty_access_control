@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use axum::{extract::Path, routing::get, Extension, Json, Router};
+use uuid::Uuid;
 
 use crate::{
     node_summaries::NodeSummary, NodeSummaryWithPaths, NodeSummaryWithPrivileges,
@@ -24,11 +25,11 @@ pub(super) fn router() -> Router {
 
 /// Return information about a user's access to assets, including privilege and explanation
 async fn assets_handler(
-    Path(node_id): Path<String>,
+    Path(node_id): Path<Uuid>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<NodeSummaryWithPrivileges>> {
     let from = ag
-        .get_user_index_from_name(&NodeName::User(node_id))
+        .get_user_index_from_id(&node_id)
         .context("fetching user node")
         .unwrap();
     // use the effective permissions to get all the assets that a user has access to
@@ -52,11 +53,11 @@ async fn assets_handler(
 
 /// Return information about a users access to tagged assets, grouped by tag
 async fn tags_handler(
-    Path(node_id): Path<String>,
+    Path(node_id): Path<Uuid>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<SummaryWithAssociatedSummaries>> {
     let from = ag
-        .get_user_index_from_name(&NodeName::User(node_id))
+        .get_user_index_from_id(&node_id)
         .context("fetching user node")
         .unwrap();
 
@@ -80,11 +81,11 @@ async fn tags_handler(
 
 /// Returns groups that user is a direct member of
 async fn direct_groups_handler(
-    Path(node_id): Path<String>,
+    Path(node_id): Path<Uuid>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<NodeSummary>> {
     let from = ag
-        .get_user_index_from_name(&NodeName::User(node_id))
+        .get_user_index_from_id(&node_id)
         .context("fetching user node")
         .unwrap();
 
@@ -114,11 +115,11 @@ async fn direct_groups_handler(
 
 /// Returns groups that user is an inherited member of
 async fn inherited_groups_handler(
-    Path(node_id): Path<String>,
+    Path(node_id): Path<Uuid>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<NodeSummaryWithPaths>> {
     let from = ag
-        .get_user_index_from_name(&NodeName::User(node_id))
+        .get_user_index_from_id(&node_id)
         .context("fetching user node")
         .unwrap();
 
