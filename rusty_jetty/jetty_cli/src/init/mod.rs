@@ -88,7 +88,7 @@ async fn initialize_project_structure(
     if let Ok(mut cfg) = connectors_config {
         cfg.write_all(connectors_yaml.as_bytes()).await?;
     }
-    create_dir_ignore_failure(Path::new(&project_path).join("src")).await;
+    create_dir_ignore_failure(Path::new(&project_path).join("tags")).await;
     let mut tags_config = create_file(project::tags_cfg_path(project_path)).await?;
 
     tags_config
