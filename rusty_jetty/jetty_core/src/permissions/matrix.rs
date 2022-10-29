@@ -7,12 +7,9 @@ use std::{
 };
 
 use crate::{
-    access_graph::graph::typed_indices::{AssetIndex, UserIndex},
     connectors::{
         nodes::{EffectivePermission, SparseMatrix},
-        UserIdentifier,
     },
-    cual::Cual,
 };
 
 use anyhow::{bail, Result};

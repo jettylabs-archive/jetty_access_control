@@ -11,11 +11,11 @@ pub mod translate;
 
 use crate::connectors::nodes::{ConnectorData, EffectivePermission, SparseMatrix};
 use crate::connectors::processed_nodes::ProcessedConnectorData;
-use crate::connectors::UserIdentifier;
+
 use crate::jetty::ConnectorNamespace;
 use crate::logging::debug;
 use crate::tag_parser::{parse_tags, tags_to_jetty_node_helpers};
-use crate::{connectors::AssetType, cual::Cual};
+use crate::{connectors::AssetType};
 
 use self::graph::typed_indices::{AssetIndex, GroupIndex, PolicyIndex, TagIndex, UserIndex};
 use self::helpers::NodeHelper;
@@ -37,10 +37,10 @@ pub use petgraph::stable_graph::NodeIndex;
 use serde::Deserialize;
 use serde::Serialize;
 use time::OffsetDateTime;
-use urlencoding;
+
 use uuid::Uuid;
 
-use crate::permissions::matrix::{InsertOrMerge, Merge};
+use crate::permissions::matrix::{InsertOrMerge};
 
 const SAVED_GRAPH_PATH: &str = "jetty_graph";
 

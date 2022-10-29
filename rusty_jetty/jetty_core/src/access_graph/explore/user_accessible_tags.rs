@@ -1,14 +1,13 @@
 use std::collections::HashMap;
 
-use anyhow::Context;
-use petgraph::stable_graph::NodeIndex;
+
+
 
 use crate::{
     access_graph::{
         graph::typed_indices::{AssetIndex, TagIndex, UserIndex},
-        AccessGraph, JettyNode,
+        AccessGraph,
     },
-    connectors::UserIdentifier,
 };
 
 impl AccessGraph {

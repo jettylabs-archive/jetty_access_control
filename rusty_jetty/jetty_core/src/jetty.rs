@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::{collections::HashMap, fmt::Display};
 
 use anyhow::{anyhow, Result};
-use dirs::home_dir;
+
 use log::debug;
 use serde::{Deserialize, Serialize};
 use yaml_peg::serde as yaml;

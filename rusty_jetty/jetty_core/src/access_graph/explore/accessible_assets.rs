@@ -6,13 +6,11 @@ use std::collections::{HashMap, HashSet};
 use crate::{
     access_graph::{
         graph::typed_indices::{AssetIndex, UserIndex},
-        AccessGraph, NodeName,
+        AccessGraph,
     },
     connectors::{
         nodes::{EffectivePermission, PermissionMode},
-        UserIdentifier,
     },
-    cual::Cual,
 };
 
 impl AccessGraph {
