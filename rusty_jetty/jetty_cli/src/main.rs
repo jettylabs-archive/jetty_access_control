@@ -62,7 +62,7 @@ async fn main() -> Result<()> {
     match &args.command {
         JettyCommand::Init { from } => {
             println!("Welcome to Jetty! We are so glad you're here.");
-            let config = init::init(from).await?;
+            init::init(from).await?;
         }
 
         JettyCommand::Fetch {

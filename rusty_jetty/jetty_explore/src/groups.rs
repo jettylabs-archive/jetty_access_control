@@ -1,4 +1,4 @@
-use std::{collections::HashSet, sync::Arc};
+use std::{sync::Arc};
 
 use anyhow::Context;
 use axum::{extract::Path, routing::get, Extension, Json, Router};
@@ -6,7 +6,7 @@ use jetty_core::{
     access_graph::{self, EdgeType, JettyNode, NodeName},
     jetty::ConnectorNamespace,
 };
-use serde::{Deserialize, Serialize};
+
 use uuid::Uuid;
 
 use crate::node_summaries::NodeSummary;
@@ -212,7 +212,7 @@ async fn all_members_handler(
         .into_iter()
         .filter_map(|(i, p)| {
             let jetty_node = &ag.graph()[i];
-            if let JettyNode::User(u) = jetty_node {
+            if let JettyNode::User(_u) = jetty_node {
                 Some(NodeSummaryWithPaths {
                     node: NodeSummary::from(jetty_node.to_owned()),
                     paths: p

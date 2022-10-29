@@ -9,17 +9,15 @@ use jetty_core::{
     access_graph::{
         self,
         graph::typed_indices::{AssetIndex, UserIndex},
-        EdgeType, JettyNode, NodeName,
+        EdgeType, JettyNode,
     },
     connectors::nodes::PermissionMode,
-    cual::Cual,
 };
 use serde::Serialize;
 use uuid::Uuid;
 
 use crate::{
-    node_summaries::NodeSummary, NodeSummaryWithPaths, NodeSummaryWithPrivileges,
-    PrivilegeResponse, SummaryWithAssociatedSummaries, UserAssetsResponse,
+    node_summaries::NodeSummary, NodeSummaryWithPaths, NodeSummaryWithPrivileges, SummaryWithAssociatedSummaries,
 };
 
 /// Return a router to handle all asset-related requests

@@ -2,10 +2,10 @@ use std::{collections::HashSet, sync::Arc};
 
 use axum::{extract::Path, routing::get, Extension, Json, Router};
 use jetty_core::{
-    access_graph::{self, explore::NodePath, graph::typed_indices::AssetIndex, NodeName},
-    permissions::matrix::{InsertOrMerge, Merge},
+    access_graph::{self, graph::typed_indices::AssetIndex},
+    permissions::matrix::{Merge},
 };
-use serde_json::{json, Value};
+
 use uuid::Uuid;
 
 use crate::{node_summaries::NodeSummary, NodeSummaryWithPaths};

@@ -7,7 +7,7 @@ use jetty_core::{connectors::nodes::RawAssetReference as JettyAssetReference, cu
 use std::collections::{HashMap, HashSet};
 
 use super::DbtProjectManifest;
-use crate::consts::TABLE;
+
 use crate::cual::{cual, get_cual_account_name};
 
 pub(crate) trait NamePartable {

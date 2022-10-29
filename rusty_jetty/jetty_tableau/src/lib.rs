@@ -23,7 +23,7 @@ use jetty_core::{
     connectors::{
         nodes::ConnectorData,
         nodes::{self as jetty_nodes, EffectivePermission, SparseMatrix},
-        ConnectorClient, UserIdentifier,
+        ConnectorClient,
     },
     cual::Cual,
     jetty::{ConnectorConfig, CredentialsMap},

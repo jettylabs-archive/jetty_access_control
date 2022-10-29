@@ -6,11 +6,7 @@ use std::{
     hash::Hash,
 };
 
-use crate::{
-    connectors::{
-        nodes::{EffectivePermission, SparseMatrix},
-    },
-};
+use crate::connectors::nodes::{EffectivePermission, SparseMatrix};
 
 use anyhow::{bail, Result};
 
@@ -174,6 +170,7 @@ mod tests {
     use super::*;
 
     use crate::connectors::nodes::{EffectivePermission, PermissionMode};
+    use crate::cual::Cual;
 
     use anyhow::Result;
 
