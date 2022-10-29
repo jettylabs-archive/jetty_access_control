@@ -49,7 +49,7 @@ pub(crate) struct LocalToGlobalIdentifiers {
 
 impl Translator {
     /// Use the ConnectorData from all connectors to populate the mappings
-    pub fn new(data: &Vec<(ConnectorData, ConnectorNamespace)>) -> Self {
+    pub fn new(data: &[(ConnectorData, ConnectorNamespace)]) -> Self {
         let mut t = Translator::default();
 
         // build the namespace mapping
@@ -63,7 +63,7 @@ impl Translator {
         t
     }
 
-    fn build_cual_namespace_map(&mut self, data: &Vec<(ConnectorData, ConnectorNamespace)>) {
+    fn build_cual_namespace_map(&mut self, data: &[(ConnectorData, ConnectorNamespace)]) {
         for (ConnectorData { cual_prefix, .. }, namespace) in data {
             self.cual_prefix_to_namespace
                 .insert(cual_prefix.to_owned(), namespace.to_owned());
@@ -71,7 +71,7 @@ impl Translator {
     }
 
     /// This is entity resolution for users. Right now it is very simple, but it can be built out as needed
-    fn resolve_users(&mut self, data: &Vec<(ConnectorData, ConnectorNamespace)>) {
+    fn resolve_users(&mut self, data: &[(ConnectorData, ConnectorNamespace)]) {
         let user_data: Vec<_> = data.iter().map(|(c, n)| (&c.users, n)).collect();
         // for each connector, look over all the users.
         for (users, namespace) in user_data {
@@ -100,7 +100,7 @@ impl Translator {
 
     /// This resolves groups. When we start allowing cross-platform Jetty groups, this will need an update.
     /// This takes the name of a group and creates a NodeName::Group from it
-    fn resolve_groups(&mut self, data: &Vec<(ConnectorData, ConnectorNamespace)>) {
+    fn resolve_groups(&mut self, data: &[(ConnectorData, ConnectorNamespace)]) {
         let group_data: Vec<_> = data.iter().map(|(c, n)| (&c.groups, n)).collect();
         // for each connector, look over all the users.
         for (groups, namespace) in group_data {
@@ -127,7 +127,7 @@ impl Translator {
 
     /// This resolves policies. When we start allowing cross-platform Jetty policies, this will need an update.
     /// This takes the name of a policy and creates a NodeName::Policy from it
-    fn resolve_policies(&mut self, data: &Vec<(ConnectorData, ConnectorNamespace)>) {
+    fn resolve_policies(&mut self, data: &[(ConnectorData, ConnectorNamespace)]) {
         let policy_data: Vec<_> = data.iter().map(|(c, n)| (&c.policies, n)).collect();
         // for each connector, look over all the policies.
         for (policies, namespace) in policy_data {
@@ -302,11 +302,7 @@ impl Translator {
                 .into_iter()
                 .map(|g| self.cual_to_asset_name(Cual::new(g.as_str())))
                 .collect(),
-            tagged_as: asset
-                .tagged_as
-                .into_iter()
-                .map(NodeName::Tag)
-                .collect(),
+            tagged_as: asset.tagged_as.into_iter().map(NodeName::Tag).collect(),
             connector,
         }
     }
@@ -345,11 +341,7 @@ impl Translator {
                 .into_iter()
                 .map(|g| self.cual_to_asset_name(Cual::new(g.as_str())))
                 .collect(),
-            tagged_as: asset
-                .tagged_as
-                .into_iter()
-                .map(NodeName::Tag)
-                .collect(),
+            tagged_as: asset.tagged_as.into_iter().map(NodeName::Tag).collect(),
         }
     }
 
@@ -394,11 +386,7 @@ impl Translator {
                 .into_iter()
                 .map(|a| self.cual_to_asset_name(Cual::new(a.as_str())))
                 .collect(),
-            governs_tags: policy
-                .governs_tags
-                .into_iter()
-                .map(NodeName::Tag)
-                .collect(),
+            governs_tags: policy.governs_tags.into_iter().map(NodeName::Tag).collect(),
             granted_to_groups: policy
                 .granted_to_groups
                 .iter()

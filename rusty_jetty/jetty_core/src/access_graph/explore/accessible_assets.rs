@@ -8,17 +8,15 @@ use crate::{
         graph::typed_indices::{AssetIndex, UserIndex},
         AccessGraph,
     },
-    connectors::{
-        nodes::{EffectivePermission, PermissionMode},
-    },
+    connectors::nodes::{EffectivePermission, PermissionMode},
 };
 
 impl AccessGraph {
     /// Return accessible assets
-    pub fn get_user_accessible_assets<'a>(
-        &'a self,
+    pub fn get_user_accessible_assets(
+        &self,
         user: UserIndex,
-    ) -> HashMap<AssetIndex, HashSet<&'a EffectivePermission>> {
+    ) -> HashMap<AssetIndex, HashSet<&EffectivePermission>> {
         let perms = &self.effective_permissions[&user];
         perms
             .iter()

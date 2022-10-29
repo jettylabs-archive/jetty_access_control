@@ -6,8 +6,6 @@ use std::{
     collections::{HashMap, HashSet},
 };
 
-
-
 use uuid::Uuid;
 
 use crate::{
@@ -17,7 +15,6 @@ use crate::{
         PolicyAttributes, TagAttributes, UserAttributes,
     },
     jetty::ConnectorNamespace,
-    Connector,
 };
 
 use super::nodes::{EffectivePermission, SparseMatrix};

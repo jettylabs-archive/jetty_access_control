@@ -105,7 +105,7 @@ impl DbtProjectManifest for DbtManifest {
                     .unwrap()
                     .relation_name
                     .as_ref()
-                    .unwrap_or_else(|| panic!("trying to get {} from {:#?}", name, &manifest.nodes))
+                    .unwrap_or_else(|| panic!("trying to get {name} from {:#?}", &manifest.nodes))
                     .to_owned()
             }
         }
@@ -123,7 +123,7 @@ impl DbtProjectManifest for DbtManifest {
             format!("deserializing manifest json from {manifest_path:?}"),
         )?;
         // First we will ingest the nodes.
-        for (node) in json_manifest.nodes.values() {
+        for node in json_manifest.nodes.values() {
             let asset_type = node.resource_type.try_to_asset_type()?;
             if let Some(ty) = asset_type {
                 self.nodes.insert(

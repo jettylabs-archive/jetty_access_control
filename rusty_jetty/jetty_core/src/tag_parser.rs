@@ -321,7 +321,7 @@ pub(crate) fn indicated_msg(doc: &[u8], mut pos: u64, lines_of_context: usize) -
     )
 }
 
-fn get_asset_nodes<'a>(ag: &'a AccessGraph) -> Vec<(NodeIndex, &'a AssetAttributes)> {
+fn get_asset_nodes(ag: &AccessGraph) -> Vec<(NodeIndex, &AssetAttributes)> {
     let nodes = ag.get_nodes();
     nodes
         .filter_map(|(i, n)| match n {
@@ -497,7 +497,6 @@ mod test {
     use crate::access_graph::cual_to_asset_name_test;
 
     use crate::cual::Cual;
-    use crate::Connector;
 
     use super::*;
 
