@@ -26,3 +26,5 @@ Cargo.lock
 
 jetty_graph
 tags.yaml
+# Staging area for dev projects
+jetty_project

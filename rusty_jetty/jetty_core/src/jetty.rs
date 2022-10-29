@@ -51,6 +51,11 @@ impl JettyConfig {
         self.name = name;
     }
 
+    /// Get the name
+    pub fn get_name(&self) -> String {
+        self.name.to_owned()
+    }
+
     /// Convert this config to a yaml string.
     pub fn to_yaml(&self) -> Result<String> {
         yaml::to_string(self).map_err(anyhow::Error::from)
