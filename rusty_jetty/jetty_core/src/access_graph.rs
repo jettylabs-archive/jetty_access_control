@@ -11,6 +11,8 @@ pub mod translate;
 
 use crate::connectors::nodes::{ConnectorData, EffectivePermission, SparseMatrix};
 use crate::connectors::processed_nodes::ProcessedConnectorData;
+#[cfg(test)]
+use crate::cual::Cual;
 
 use crate::connectors::AssetType;
 use crate::jetty::ConnectorNamespace;
@@ -200,8 +202,6 @@ impl AssetAttributes {
     /// Convenience constructor for testing
     #[cfg(test)]
     pub(crate) fn new(cual: Cual, connector: ConnectorNamespace) -> Self {
-        use crate::cual::Cual;
-
         let node_name = NodeName::Asset {
             connector,
             asset_type: cual.asset_type(),
