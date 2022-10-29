@@ -139,7 +139,7 @@ where
     Y: Hash + Eq,
 {
     fn double_insert(&mut self, key1: K, key2: Y, val: V) -> Option<V> {
-        let x = self.entry(key1).or_insert(Default::default());
+        let x = self.entry(key1).or_default();
         x.insert(key2, val)
     }
 }

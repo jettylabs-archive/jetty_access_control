@@ -105,10 +105,8 @@ impl DbtProjectManifest for DbtManifest {
                     .unwrap()
                     .relation_name
                     .as_ref()
-                    .expect(&format!(
-                        "trying to get {} from {:#?}",
-                        name, &manifest.nodes
-                    ))
+                    .unwrap_or_else(|| panic!("trying to get {} from {:#?}",
+                        name, &manifest.nodes))
                     .to_owned()
             }
         }
@@ -121,9 +119,9 @@ impl DbtProjectManifest for DbtManifest {
         let manifest_path = file_path.clone().unwrap_or_else(|| self.path());
 
         let file_contents =
-            read_to_string(&manifest_path).context(format!("reading file {:?}", file_path))?;
+            read_to_string(&manifest_path).context(format!("reading file {file_path:?}"))?;
         let json_manifest: DbtManifestJson = serde_json::from_str(&file_contents).context(
-            format!("deserializing manifest json from {:?}", manifest_path),
+            format!("deserializing manifest json from {manifest_path:?}"),
         )?;
         // First we will ingest the nodes.
         for (_node_name, node) in &json_manifest.nodes {
@@ -164,7 +162,7 @@ impl DbtProjectManifest for DbtManifest {
                 if name.starts_with("test") {
                     None
                 } else {
-                    let relation_name = get_node_relation_name_from_mani(&json_manifest, &name);
+                    let relation_name = get_node_relation_name_from_mani(&json_manifest, name);
                     let new_relation_deps: HashSet<_> = new_deps
                         .iter()
                         .cloned()

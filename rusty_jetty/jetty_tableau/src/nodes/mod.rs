@@ -394,7 +394,7 @@ impl SerializedPermission {
             } => Grantee::Group(
                 env.groups
                     .get(id)
-                    .unwrap_or_else(|| panic!("Group {} not yet in environment", id))
+                    .unwrap_or_else(|| panic!("Group {id} not yet in environment"))
                     .clone(),
             ),
             Self {
@@ -403,7 +403,7 @@ impl SerializedPermission {
             } => Grantee::User(
                 env.users
                     .get(id)
-                    .unwrap_or_else(|| panic!("User {} not yet in environment", id))
+                    .unwrap_or_else(|| panic!("User {id} not yet in environment"))
                     .clone(),
             ),
             _ => bail!("no user or group for permission {:#?}", self),

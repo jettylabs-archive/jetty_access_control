@@ -305,7 +305,7 @@ impl Translator {
             tagged_as: asset
                 .tagged_as
                 .into_iter()
-                .map(|t| NodeName::Tag(t))
+                .map(NodeName::Tag)
                 .collect(),
             connector,
         }
@@ -348,7 +348,7 @@ impl Translator {
             tagged_as: asset
                 .tagged_as
                 .into_iter()
-                .map(|t| NodeName::Tag(t))
+                .map(NodeName::Tag)
                 .collect(),
         }
     }
@@ -397,7 +397,7 @@ impl Translator {
             governs_tags: policy
                 .governs_tags
                 .into_iter()
-                .map(|t| NodeName::Tag(t))
+                .map(NodeName::Tag)
                 .collect(),
             granted_to_groups: policy
                 .granted_to_groups
@@ -429,7 +429,7 @@ impl Translator {
             for (k1, v1) in &c_data.effective_permissions {
                 for (k2, v2) in v1 {
                     result.insert_or_merge(
-                        self.local_to_global.users[&namespace][k1].to_owned(),
+                        self.local_to_global.users[namespace][k1].to_owned(),
                         HashMap::from([(self.cual_to_asset_name(k2.to_owned()), v2.to_owned())]),
                     );
                 }

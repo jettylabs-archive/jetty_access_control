@@ -169,7 +169,7 @@ async fn users_incl_downstream_handler(
 
     let user_asset_map = asset_list
         .into_iter()
-        .map(|a| {
+        .flat_map(|a| {
             ag.get_users_with_access_to_asset(AssetIndex::new(a))
                 .iter()
                 // If they don't have an allow privilege, it shouldn't count as access
@@ -182,7 +182,6 @@ async fn users_incl_downstream_handler(
                 })
                 .collect::<Vec<_>>()
         })
-        .flatten()
         .fold(
             HashMap::<UserIndex, HashSet<AssetIndex>>::new(),
             |mut acc, (user, asset)| {

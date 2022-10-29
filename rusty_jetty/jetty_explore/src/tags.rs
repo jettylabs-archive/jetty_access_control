@@ -38,7 +38,7 @@ async fn all_assets_handler(
             .map(|(&k, v)| NodeSummaryWithPaths {
                 node: ag[k].to_owned().into(),
                 paths: v
-                    .into_iter()
+                    .iter()
                     .map(|p| {
                         ag.path_as_jetty_nodes(p)
                             .iter()

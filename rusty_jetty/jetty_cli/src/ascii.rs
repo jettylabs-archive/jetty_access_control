@@ -99,7 +99,7 @@ pub(crate) fn print_banner() {
         .lines()
         .zip(BANNER.lines().zip(BATS.lines()))
         .map(|(j_line, (banner_line, bats_line))| {
-            format!("{}  {} {}", j_line, banner_line, bats_line)
+            format!("{j_line}  {banner_line} {bats_line}")
         })
         .collect::<Vec<_>>()
         .join("\n");

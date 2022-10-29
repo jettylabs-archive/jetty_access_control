@@ -77,7 +77,7 @@ impl Cual {
                 return Some(AssetType(q.1.to_string()));
             }
         }
-        return None;
+        None
     }
 
     /// Derive an asset-path from a Cual.

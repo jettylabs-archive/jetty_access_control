@@ -87,7 +87,7 @@ impl From<AssetAttributes> for TargetAsset {
 impl Display for TargetAsset {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if let Some(t) = &self.asset_type {
-            write!(f, " - name: {}\n   asset_type: {}", self.name, t)
+            write!(f, " - name: {}\n   asset_type: {t}", self.name)
         } else {
             write!(f, " - name: {}", self.name)
         }
@@ -378,7 +378,7 @@ fn get_matching_assets<'a>(
 /// The strings are used to populate a nodes::Tag object which can then be added to the graph.
 fn get_asset_list_from_target_list(
     target_list: &Vec<TargetAsset>,
-    asset_list: &Vec<(NodeIndex, &AssetAttributes)>,
+    asset_list: &[(NodeIndex, &AssetAttributes)],
 ) -> (Vec<AssetMatchError>, HashSet<NodeName>) {
     let mut errors = vec![];
     let mut results = HashSet::new();

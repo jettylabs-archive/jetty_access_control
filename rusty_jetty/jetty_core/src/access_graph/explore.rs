@@ -43,14 +43,11 @@ impl AccessGraph {
 
     /// Get a node path as a string
     pub fn path_as_string(&self, path: &NodePath) -> String {
-        format!(
-            "{}",
-            path.0
+        path.0
                 .iter()
                 .map(|idx| self[*idx].get_string_name())
                 .collect::<Vec<_>>()
                 .join(" ⇨ ")
-        )
     }
 
     /// Get a node path as a vector of JettyNodes
@@ -330,7 +327,7 @@ mod tests {
             None,
             None,
         );
-        a.iter().for_each(|p| debug!("{}", ag.path_as_string(&p)));
+        a.iter().for_each(|p| debug!("{}", ag.path_as_string(p)));
         assert_eq!(a.len(), 2);
 
         Ok(())

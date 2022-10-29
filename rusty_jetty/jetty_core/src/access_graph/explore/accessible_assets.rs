@@ -70,6 +70,6 @@ fn get_access_by_asset(
     asset: AssetIndex,
 ) -> HashMap<UserIndex, &HashSet<EffectivePermission>> {
     m.iter()
-        .filter_map(|(k, v)| v.get(&asset).and_then(|ep| Some((k.to_owned(), ep))))
+        .filter_map(|(k, v)| v.get(&asset).map(|ep| (k.to_owned(), ep)))
         .collect::<HashMap<_, _>>()
 }

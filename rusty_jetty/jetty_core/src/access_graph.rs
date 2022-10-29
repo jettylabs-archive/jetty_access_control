@@ -601,8 +601,8 @@ impl Default for NodeName {
 impl Display for NodeName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            NodeName::User(n) => write!(f, "{}", n),
-            NodeName::Group { name, origin } => write!(f, "{}::{}", origin, name),
+            NodeName::User(n) => write!(f, "{n}"),
+            NodeName::Group { name, origin } => write!(f, "{origin}::{name}"),
             NodeName::Asset {
                 connector,
                 asset_type,
@@ -610,15 +610,15 @@ impl Display for NodeName {
             } => write!(
                 f,
                 "{}::{}::{}",
-                connector.to_string(),
+                connector,
                 asset_type
                     .as_ref()
                     .unwrap_or(&AssetType("".to_string()))
                     .to_string(),
-                path.to_string()
+                path
             ),
-            NodeName::Policy { name, origin } => write!(f, "{}::{}", origin, name),
-            NodeName::Tag(n) => write!(f, "{}", n),
+            NodeName::Policy { name, origin } => write!(f, "{origin}::{name}"),
+            NodeName::Tag(n) => write!(f, "{n}"),
         }
     }
 }
@@ -632,7 +632,7 @@ impl NodeName {
             } => {
                 // for Assets, the matchable portion is the namespace + path.
                 // The type must be matched separately.
-                format!("{}::{}", connector.to_string(), path.to_string())
+                format!("{connector}::{path}")
             }
             _ => todo!(),
         }
