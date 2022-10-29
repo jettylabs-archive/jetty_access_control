@@ -206,7 +206,6 @@ impl Graph {
     }
     /// Check whether a given node already exists in the graph, and, if so, return a typed index
     pub(crate) fn get_user_node_index_from_id(&self, node: &Uuid) -> Option<UserIndex> {
-        dbg!(&self.node_ids.users);
         self.node_ids.users.get(node).map(|i| i.to_owned())
     }
     /// Check whether a given node already exists in the graph, and, if so, return a typed index
