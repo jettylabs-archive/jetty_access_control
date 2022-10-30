@@ -1,8 +1,10 @@
 <template>
   <q-page class="flex column container-md">
-    <JettyHeader :node="currentNode" :subtitle="currentNode.Tag.description">
-      <template #title>
-        <text class="name"> {{ nodeNameAsString(currentNode) }}</text>
+    <JettyHeader :node="currentNode">
+      <template #subtitle>
+        <text class="text-h6 text-weight-thin">
+          {{ currentNode.Tag.description }}</text
+        >
         <div class="flex row">
           <q-item class="q-pl-none"
             >{{
@@ -13,7 +15,7 @@
           <q-separator vertical inset class="q-mb-md" />
           <q-item
             >{{
-              currentNode.Tag.pass_through_lineage ? 'Passed' : 'Not passed'
+              currentNode.Tag.pass_through_hierarchy ? 'Passed' : 'Not passed'
             }}
             via hierarchy
           </q-item>

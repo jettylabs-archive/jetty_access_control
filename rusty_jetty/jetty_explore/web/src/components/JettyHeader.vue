@@ -6,14 +6,17 @@
         <slot name="title">
           <text class="name">{{ nodeNameAsString(node) }}</text>
         </slot>
-        <text v-if="props.subtitle" class="text-h6 text-weight-thin">
-          {{ props.subtitle }}</text
-        >
-        <div class="header-badges">
+        <slot name="subtitle">
+          <text v-if="props.subtitle" class="text-h6 text-weight-thin">
+            {{ props.subtitle }}</text
+          >
+        </slot>
+        <div>
           <JettyBadge
             v-for="platform in nodeConnectors(node)"
             :key="platform"
             :name="platform"
+            class="header-badge"
             big
           />
         </div>
@@ -40,6 +43,9 @@ const props = defineProps(['node', 'subtitle']);
 }
 .title-and-icon {
   align-items: start;
+}
+.header-badge {
+  margin-left: -4px;
 }
 .content {
   padding-top: 30px;
