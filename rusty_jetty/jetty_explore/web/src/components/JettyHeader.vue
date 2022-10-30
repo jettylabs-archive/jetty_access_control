@@ -11,12 +11,11 @@
             {{ props.subtitle }}</text
           >
         </slot>
-        <div>
+        <div class="header-badges">
           <JettyBadge
             v-for="platform in nodeConnectors(node)"
             :key="platform"
             :name="platform"
-            class="header-badge"
             big
           />
         </div>
@@ -44,7 +43,7 @@ const props = defineProps(['node', 'subtitle']);
 .title-and-icon {
   align-items: start;
 }
-.header-badge {
+.header-badges {
   margin-left: -4px;
 }
 .content {
