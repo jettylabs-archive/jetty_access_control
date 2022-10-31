@@ -11,8 +11,6 @@ path = "src/lib/lib.rs"
 name = "jetty_cli"
 path = "src/main.rs"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 jetty_core = { path = "../jetty_core" }
 jetty_snowflake = { path = "../jetty_snowflake" }
@@ -26,7 +24,9 @@ colored = "2"
 inquire = "0.4.0"
 crossterm = "0.25.0"
 yaml-peg = { version = "1.0.4", features = ["serde"] }
-openssl = "0.10.42"
+# Vendored install required to ship openssl as a dependency for cross-platform builds
+# https://github.com/messense/maturin-action/discussions/78
+openssl = { version = "0.10.42", features = ["vendored"] }
 sha2 = "0.10.6"
 base64 = "0.13.1"
 dirs = "4.0.0"
