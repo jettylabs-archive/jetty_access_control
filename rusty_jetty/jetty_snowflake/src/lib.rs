@@ -3,6 +3,7 @@
 //! Everything needed for connection and interaction with Snowflake.&
 //!
 //! ```
+//! use std::path::PathBuf;
 //! use jetty_core::connectors::{Connector, ConnectorClient};
 //! use jetty_core::jetty::{ConnectorConfig, CredentialsMap};
 //! use jetty_snowflake::SnowflakeConnector;
@@ -10,7 +11,7 @@
 //! let config = ConnectorConfig::default();
 //! let credentials = CredentialsMap::default();
 //! let connector_client = ConnectorClient::Core;
-//! let snow = SnowflakeConnector::new(&config, &credentials, Some(connector_client));
+//! let snow = SnowflakeConnector::new(&config, &credentials, Some(connector_client), PathBuf::new());
 //! ```
 
 mod consts;
