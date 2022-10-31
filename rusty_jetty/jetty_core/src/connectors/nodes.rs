@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::cual::Cual;
 
-use super::UserIdentifier;
+
 
 /// Alias for a sparse matrix addressable by matrix\[x\]\[y\], where each entry is of type T.
 pub type SparseMatrix<X, Y, T> = HashMap<X, HashMap<Y, T>>;

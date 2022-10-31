@@ -6,20 +6,15 @@ use std::{
     collections::{HashMap, HashSet},
 };
 
-use derivative::Derivative;
-use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::{
     access_graph::{
-        graph::typed_indices::{AssetIndex, UserIndex},
         helpers::{insert_edge_pair, NodeHelper},
         AssetAttributes, EdgeType, GroupAttributes, JettyEdge, JettyNode, NodeName,
         PolicyAttributes, TagAttributes, UserAttributes,
     },
-    cual::Cual,
     jetty::ConnectorNamespace,
-    Connector,
 };
 
 use super::nodes::{EffectivePermission, SparseMatrix};

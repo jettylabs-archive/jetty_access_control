@@ -41,7 +41,7 @@ impl Group {
             .iter()
             .map(|uid| {
                 users.get(&uid.id).unwrap_or_else(|| {
-                    panic!("user id {:?} not in tableau users {:?}", uid.id, users)
+                    panic!("user id {:?} not in tableau users {users:?}", uid.id)
                 })
             })
             .cloned()

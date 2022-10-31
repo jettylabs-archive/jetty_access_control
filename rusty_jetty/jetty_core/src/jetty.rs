@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::{collections::HashMap, fmt::Display};
 
 use anyhow::{anyhow, Result};
-use dirs::home_dir;
+
 use log::debug;
 use serde::{Deserialize, Serialize};
 use yaml_peg::serde as yaml;
@@ -49,6 +49,11 @@ impl JettyConfig {
     /// Set the project name.
     pub fn set_name(&mut self, name: String) {
         self.name = name;
+    }
+
+    /// Get the name
+    pub fn get_name(&self) -> String {
+        self.name.to_owned()
     }
 
     /// Convert this config to a yaml string.

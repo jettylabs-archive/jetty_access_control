@@ -62,7 +62,7 @@ async fn main() -> Result<()> {
     match &args.command {
         JettyCommand::Init { from } => {
             println!("Welcome to Jetty! We are so glad you're here.");
-            let config = init::init(from).await?;
+            init::init(from).await?;
         }
 
         JettyCommand::Fetch {
@@ -87,7 +87,7 @@ async fn main() -> Result<()> {
             }
             match AccessGraph::deserialize_graph() {
                 Ok(mut ag) => {
-                    let tags_path = project::tags_cfg_path();
+                    let tags_path = project::tags_cfg_path_local();
                     if tags_path.exists() {
                         debug!("Getting tags from config.");
                         let tag_config = std::fs::read_to_string(&tags_path);
@@ -121,7 +121,7 @@ async fn main() -> Result<()> {
 }
 
 async fn fetch(connectors: &Vec<String>, &visualize: &bool) -> Result<()> {
-    let jetty = Jetty::new(project::jetty_cfg_path())?;
+    let jetty = Jetty::new(project::jetty_cfg_path_local())?;
     let creds = fetch_credentials(project::connector_cfg_path())?;
 
     if connectors.is_empty() {

@@ -12,13 +12,16 @@ pub(crate) async fn create_file<P: AsRef<Path> + Debug + Clone>(file_path: P) ->
         .await
         .map_err(anyhow::Error::from);
     if res.is_err() {
-        debug!("Failed to create file {:?}", file_path);
+        println!("Failed to create file {:?}. Continuing.", file_path);
     }
     res
 }
 
 /// Create a directory, ignoring if it already exists.
 pub(crate) async fn create_dir_ignore_failure<P: AsRef<Path> + Debug + Clone>(dir_path: P) {
+    if dir_path.as_ref().is_dir() {
+        println!("Directory {dir_path:?} already exists. Continuing.");
+    }
     let res = create_dir(&dir_path).await;
     match res {
         Ok(_) => (),

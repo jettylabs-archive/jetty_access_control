@@ -2,7 +2,10 @@ mod fs;
 mod inquiry;
 mod pki;
 
-use std::{collections::HashMap, path::PathBuf};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
 
 use anyhow::Result;
 
@@ -55,18 +58,22 @@ pub(crate) async fn init(from: &Option<PathBuf>) -> Result<()> {
 /// The project structure currently looks like this:
 ///
 /// pwd
-///  ├── jetty_config.yaml
-///  └── src
-///       └── tags.yaml
+///  └──{project_name}
+///       ├── jetty_config.yaml
+///       └── src
+///            └── tags.yaml
 async fn initialize_project_structure(
     ProjectStructure {
         jetty_config: jt_config,
         credentials,
     }: ProjectStructure,
 ) -> Result<()> {
-    // The configs don't exist yet. Create them and then the project.
+    // We assume the configs don't exist yet. Create them and then the project.
     println!("Creating project files...");
-    let jetty_config = create_file(project::jetty_cfg_path()).await;
+
+    let project_path = jt_config.get_name();
+    create_dir_ignore_failure(&project_path).await;
+    let jetty_config = create_file(project::jetty_cfg_path(&project_path)).await;
     let home_dir = dirs::home_dir().expect("Couldn't find your home directory.");
     let jetty_config_dir = home_dir.join("./.jetty");
     create_dir_ignore_failure(jetty_config_dir).await;
@@ -81,8 +88,8 @@ async fn initialize_project_structure(
     if let Ok(mut cfg) = connectors_config {
         cfg.write_all(connectors_yaml.as_bytes()).await?;
     }
-    create_dir_ignore_failure("./src/").await;
-    let mut tags_config = create_file(project::tags_cfg_path()).await?;
+    create_dir_ignore_failure(Path::new(&project_path).join("tags")).await;
+    let mut tags_config = create_file(project::tags_cfg_path(project_path)).await?;
 
     tags_config
         .write_all(

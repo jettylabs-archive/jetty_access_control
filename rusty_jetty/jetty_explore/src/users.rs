@@ -9,7 +9,7 @@ use crate::{
     SummaryWithAssociatedSummaries,
 };
 
-use jetty_core::access_graph::{self, EdgeType, JettyNode, NodeName};
+use jetty_core::access_graph::{self, EdgeType, JettyNode};
 
 /// Return a router to handle all user-related requests
 pub(super) fn router() -> Router {
@@ -138,7 +138,7 @@ async fn inherited_groups_handler(
         .into_iter()
         .filter_map(|(i, p)| {
             let jetty_node = &ag.graph()[i];
-            if let JettyNode::Group(g) = jetty_node {
+            if let JettyNode::Group(_) = jetty_node {
                 Some(NodeSummaryWithPaths {
                     node: jetty_node.to_owned().into(),
                     paths: p

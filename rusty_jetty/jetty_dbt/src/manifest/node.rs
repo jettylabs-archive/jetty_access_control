@@ -7,7 +7,7 @@ use jetty_core::{connectors::nodes::RawAssetReference as JettyAssetReference, cu
 use std::collections::{HashMap, HashSet};
 
 use super::DbtProjectManifest;
-use crate::consts::TABLE;
+
 use crate::cual::{cual, get_cual_account_name};
 
 pub(crate) trait NamePartable {
@@ -39,7 +39,7 @@ pub(crate) trait NamePartable {
             1 => cual!(name_parts[0]),
             2 => cual!(name_parts[0], name_parts[1]),
             3 => cual!(name_parts[0], name_parts[1], name_parts[2]),
-            num => panic!("{} name parts is too many for a dbt CUAL", num),
+            num => panic!("{num} name parts is too many for a dbt CUAL"),
         }
     }
 }

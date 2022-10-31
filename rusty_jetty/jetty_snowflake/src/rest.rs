@@ -117,7 +117,7 @@ impl SnowflakeRestClient {
             .header(consts::USER_AGENT_HEADER, "jetty-labs");
         if config.use_jwt {
             let token = self.get_jwt().context("failed to get jwt")?;
-            builder = builder.header(consts::AUTH_HEADER, format!["Bearer {}", token]);
+            builder = builder.header(consts::AUTH_HEADER, format!["Bearer {token}"]);
         }
         Ok(builder)
     }
@@ -142,7 +142,7 @@ impl SnowflakeRestClient {
             let claims = JwtClaims {
                 exp: (get_current_timestamp() + 3600) as usize,
                 iat: get_current_timestamp() as usize,
-                iss: format!["{}.{}", qualified_username, self.credentials.public_key_fp],
+                iss: format!["{qualified_username}.{}", self.credentials.public_key_fp],
                 sub: qualified_username,
             };
 

@@ -89,8 +89,8 @@ fn cual_from_name_parts(
             "{}/{}/{}/{}",
             prefix, name_parts[0], name_parts[1], name_parts[2]
         ),
-        2 => format!("{}/{}/{}/{}", prefix, db, name_parts[0], name_parts[1]),
-        1 => format!("{}/{}/{}/{}", prefix, db, schema, name_parts[0]),
+        2 => format!("{prefix}/{db}/{}/{}", name_parts[0], name_parts[1]),
+        1 => format!("{prefix}/{db}/{schema}/{}", name_parts[0]),
         _ => bail!("unable to build cual"),
     };
     Ok(Cual::new(&cual))

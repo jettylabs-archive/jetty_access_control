@@ -252,7 +252,6 @@ mod tests {
                     "test2".to_owned(),
                     DbtNode::SourceNode(DbtSourceNode {
                         name: "test2".to_owned(),
-                        ..Default::default()
                     }),
                 ),
             ]))
@@ -261,49 +260,47 @@ mod tests {
             DbtConnector::new_with_manifest(manifest_mock).context("creating connector")?;
 
         let mut assets = connector.get_data().await.assets;
-        dbg!(&assets);
-        assert_eq!(
-            assets.sort(),
-            vec![
-                RawAsset {
-                    cual: Cual::new("snowflake:////"),
-                    name: "".to_owned(),
-                    asset_type: AssetType(VIEW.to_owned()),
-                    metadata: HashMap::from([("enabled".to_owned(), "false".to_owned())]),
-                    governed_by: HashSet::new(),
-                    child_of: HashSet::new(),
-                    parent_of: HashSet::new(),
-                    derived_from: HashSet::new(),
-                    derived_to: HashSet::from(["".to_owned()]),
-                    tagged_as: HashSet::new()
-                },
-                RawAsset {
-                    cual: Cual::new("snowflake:////test"),
-                    name: "test".to_owned(),
-                    asset_type: AssetType(VIEW.to_owned()),
-                    metadata: HashMap::from([("enabled".to_owned(), "false".to_owned())]),
-                    governed_by: HashSet::new(),
-                    child_of: HashSet::new(),
-                    parent_of: HashSet::new(),
-                    derived_from: HashSet::new(),
-                    derived_to: HashSet::from(["".to_owned()]),
-                    tagged_as: HashSet::new()
-                },
-                RawAsset {
-                    cual: Cual::new("snowflake://test2db/test2schema/test2"),
-                    name: "test2".to_owned(),
-                    asset_type: AssetType(VIEW.to_owned()),
-                    metadata: HashMap::from([("enabled".to_owned(), "false".to_owned())]),
-                    governed_by: HashSet::new(),
-                    child_of: HashSet::new(),
-                    parent_of: HashSet::new(),
-                    derived_from: HashSet::new(),
-                    derived_to: HashSet::from(["".to_owned()]),
-                    tagged_as: HashSet::new()
-                },
-            ]
-            .sort(),
-        );
+        assets.sort();
+        let mut expected = vec![
+            RawAsset {
+                cual: Cual::new("snowflake:////"),
+                name: "".to_owned(),
+                asset_type: AssetType(VIEW.to_owned()),
+                metadata: HashMap::from([("enabled".to_owned(), "false".to_owned())]),
+                governed_by: HashSet::new(),
+                child_of: HashSet::new(),
+                parent_of: HashSet::new(),
+                derived_from: HashSet::new(),
+                derived_to: HashSet::from(["".to_owned()]),
+                tagged_as: HashSet::new(),
+            },
+            RawAsset {
+                cual: Cual::new("snowflake:////test"),
+                name: "test".to_owned(),
+                asset_type: AssetType(VIEW.to_owned()),
+                metadata: HashMap::from([("enabled".to_owned(), "false".to_owned())]),
+                governed_by: HashSet::new(),
+                child_of: HashSet::new(),
+                parent_of: HashSet::new(),
+                derived_from: HashSet::new(),
+                derived_to: HashSet::from(["".to_owned()]),
+                tagged_as: HashSet::new(),
+            },
+            RawAsset {
+                cual: Cual::new("snowflake://test2db/test2schema/test2"),
+                name: "test2".to_owned(),
+                asset_type: AssetType(VIEW.to_owned()),
+                metadata: HashMap::from([("enabled".to_owned(), "false".to_owned())]),
+                governed_by: HashSet::new(),
+                child_of: HashSet::new(),
+                parent_of: HashSet::new(),
+                derived_from: HashSet::new(),
+                derived_to: HashSet::from(["".to_owned()]),
+                tagged_as: HashSet::new(),
+            },
+        ];
+        expected.sort();
+        assert_eq!(assets, expected);
         Ok(())
     }
 }

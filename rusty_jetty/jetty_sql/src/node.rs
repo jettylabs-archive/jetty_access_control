@@ -605,22 +605,18 @@ impl Traversable for ast::With {
 impl Traversable for ast::Action {
     fn get_children(&self) -> Vec<Node> {
         match &self {
-            ast::Action::Insert { columns } => match columns {
-                Some(n) => n.iter().map(|n| Node::Ident(n.to_owned())).collect(),
-                None => vec![],
-            },
-            ast::Action::References { columns } => match columns {
-                Some(n) => n.iter().map(|n| Node::Ident(n.to_owned())).collect(),
-                None => vec![],
-            },
-            ast::Action::Select { columns } => match columns {
-                Some(n) => n.iter().map(|n| Node::Ident(n.to_owned())).collect(),
-                None => vec![],
-            },
-            ast::Action::Update { columns } => match columns {
-                Some(n) => n.iter().map(|n| Node::Ident(n.to_owned())).collect(),
-                None => vec![],
-            },
+            ast::Action::Insert { columns: Some(n) } => {
+                n.iter().map(|n| Node::Ident(n.to_owned())).collect()
+            }
+            ast::Action::References { columns: Some(n) } => {
+                n.iter().map(|n| Node::Ident(n.to_owned())).collect()
+            }
+            ast::Action::Select { columns: Some(n) } => {
+                n.iter().map(|n| Node::Ident(n.to_owned())).collect()
+            }
+            ast::Action::Update { columns: Some(n) } => {
+                n.iter().map(|n| Node::Ident(n.to_owned())).collect()
+            }
             _ => vec![],
         }
     }

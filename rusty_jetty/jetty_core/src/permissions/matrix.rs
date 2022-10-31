@@ -6,14 +6,7 @@ use std::{
     hash::Hash,
 };
 
-use crate::{
-    access_graph::graph::typed_indices::{AssetIndex, UserIndex},
-    connectors::{
-        nodes::{EffectivePermission, SparseMatrix},
-        UserIdentifier,
-    },
-    cual::Cual,
-};
+use crate::connectors::nodes::{EffectivePermission, SparseMatrix};
 
 use anyhow::{bail, Result};
 
@@ -146,7 +139,7 @@ where
     Y: Hash + Eq,
 {
     fn double_insert(&mut self, key1: K, key2: Y, val: V) -> Option<V> {
-        let x = self.entry(key1).or_insert(Default::default());
+        let x = self.entry(key1).or_default();
         x.insert(key2, val)
     }
 }
@@ -177,6 +170,8 @@ mod tests {
     use super::*;
 
     use crate::connectors::nodes::{EffectivePermission, PermissionMode};
+    use crate::connectors::UserIdentifier;
+    use crate::cual::Cual;
 
     use anyhow::Result;
 

@@ -2,11 +2,10 @@
 
 use std::collections::HashSet;
 
-use crate::{cual::Cual, jetty::ConnectorNamespace};
+
 
 use super::{
-    connectors::nodes, AssetAttributes, EdgeType, GroupAttributes, JettyEdge, JettyNode, NodeName,
-    PolicyAttributes, TagAttributes, UserAttributes,
+    EdgeType, JettyEdge, JettyNode, NodeName,
 };
 
 /// All helper types implement NodeHelpers.
