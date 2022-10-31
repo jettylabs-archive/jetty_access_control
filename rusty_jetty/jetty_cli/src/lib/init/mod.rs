@@ -1,3 +1,6 @@
+//! Utilities for initializing a Jetty project from scratch.
+//!
+
 mod fs;
 mod inquiry;
 mod pki;
@@ -36,7 +39,9 @@ impl ProjectStructure {
     }
 }
 
-pub(crate) async fn init(from: &Option<PathBuf>) -> Result<()> {
+/// Main initialization fn to ask the user for the necessary information and
+/// create the relevant project structure.
+pub async fn init(from: &Option<PathBuf>) -> Result<()> {
     let (jetty_config, credentials) = if let Some(from_config) = from {
         // This is a shortcut for debugging and reinitialization with an existing config.
         let jt = JettyConfig::read_from_file(from_config)?;
