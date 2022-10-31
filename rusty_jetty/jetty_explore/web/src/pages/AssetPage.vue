@@ -18,6 +18,7 @@
             Direct Tags
           </div>
           <div class="flex justify-center">
+            <span v-if="allTags.tags.direct.length === 0">None</span>
             <JettyBadge
               v-for="tag in allTags.tags.direct"
               :key="nodeNameAsString(tag)"
@@ -33,6 +34,7 @@
             Inherited Tags - Hierarchy
           </div>
           <div class="flex justify-center">
+            <span v-if="allTags.tags.via_hierarchy.length === 0">None</span>
             <JettyBadge
               v-for="tag in allTags.tags.via_hierarchy"
               :key="nodeNameAsString(tag)"
@@ -48,6 +50,7 @@
             Inherited Tags - Lineage
           </div>
           <div class="flex justify-center">
+            <span v-if="allTags.tags.via_lineage.length === 0">None</span>
             <JettyBadge
               v-for="tag in allTags.tags.via_lineage"
               :key="nodeNameAsString(tag)"
