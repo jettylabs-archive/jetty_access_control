@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use anyhow::{anyhow, bail, Result};
-use jetty_core::logging::error;
+use jetty_core::logging::{debug, error};
 use regex::Regex;
 
 use super::{
@@ -86,7 +86,7 @@ fn get_named_connections(node: roxmltree::Node) -> HashMap<String, NamedConnecti
                 named_connections.insert(c.0, c.1);
             }
             Err(e) => {
-                error!("skipping named connection: {}", e);
+                debug!("skipping named connection: {}", e);
             }
         };
     }
@@ -137,7 +137,7 @@ fn get_relations(
             Ok(rel) => {
                 relations.insert(rel);
             }
-            Err(e) => error!("{}", e),
+            Err(e) => debug!("{}", e),
         }
     }
 
