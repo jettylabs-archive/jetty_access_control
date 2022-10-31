@@ -55,7 +55,7 @@ import { ref, computed } from 'vue';
 import JettyHeader from 'src/components/JettyHeader.vue';
 import { useJettyStore } from 'stores/jetty';
 import { useRoute, useRouter } from 'vue-router';
-import { nodeId, nodeNameAsString } from 'src/util';
+import { nodeId } from 'src/util';
 
 const props = defineProps(['user_id']);
 const route = useRoute();
@@ -81,19 +81,3 @@ if (!currentNode.value) {
 
 const tab = ref('assets');
 </script>
-
-<style lang="scss">
-.header {
-  padding-top: 40px;
-}
-.name {
-  font-size: 25pt;
-  font-weight: 200;
-}
-.title-and-icon {
-  align-items: center;
-}
-.content {
-  padding-top: 50px;
-}
-</style>

@@ -70,7 +70,7 @@ export interface TagSummary {
     name: TagName;
     id: string;
     description: null | string;
-    pass_through_hierarch: boolean;
+    pass_through_hierarchy: boolean;
     pass_through_lineage: boolean;
     connectors: string[];
   };

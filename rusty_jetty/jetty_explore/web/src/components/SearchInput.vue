@@ -57,13 +57,11 @@ const searchField = ref(null);
 const debounceTime = ref(10);
 
 // get the option label
-const optionLabel = (item: NodeSummary | null | string): string => {
-  if (item === null) {
+const optionLabel = (item: NodeSummary | string): string => {
+  if (typeof item === 'string') {
     return '';
-  } else if (typeof item === 'string') {
-    return item;
   } else {
-    nodeNameAsString(item);
+    return nodeNameAsString(item);
   }
 };
 

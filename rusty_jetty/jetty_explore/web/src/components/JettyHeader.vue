@@ -3,7 +3,14 @@
     <div class="title-and-icon flex q-pl-md">
       <q-icon :name="nodeIconFromNode(node)" color="primary" size="5em" />
       <div class="q-pl-md flex column">
-        <text class="name">{{ nodeNameAsString(node) }}</text>
+        <slot name="title">
+          <text class="name">{{ nodeNameAsString(node) }}</text>
+        </slot>
+        <slot name="subtitle">
+          <text v-if="props.subtitle" class="text-h6 text-weight-thin">
+            {{ props.subtitle }}</text
+          >
+        </slot>
         <div class="header-badges">
           <JettyBadge
             v-for="platform in nodeConnectors(node)"
@@ -12,6 +19,7 @@
             big
           />
         </div>
+        <slot></slot>
       </div>
     </div>
   </div>
@@ -21,7 +29,7 @@
 import JettyBadge from 'src/components/JettyBadge.vue';
 import { nodeConnectors, nodeIconFromNode, nodeNameAsString } from 'src/util';
 
-const props = defineProps(['node']);
+const props = defineProps(['node', 'subtitle']);
 </script>
 
 <style lang="scss">
@@ -30,12 +38,15 @@ const props = defineProps(['node']);
 }
 .name {
   font-size: 25pt;
-  font-weight: 200;
+  font-weight: 300;
 }
 .title-and-icon {
-  align-items: center;
+  align-items: start;
+}
+.header-badges {
+  margin-left: -4px;
 }
 .content {
-  padding-top: 50px;
+  padding-top: 30px;
 }
 </style>
