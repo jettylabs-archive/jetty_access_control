@@ -7,4 +7,5 @@ members = [
     "jetty_dbt",
     "jetty_sql",
     "jetty_explore",
+    "jetty_py",
 ]

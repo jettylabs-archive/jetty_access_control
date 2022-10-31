@@ -6,3 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+jetty_cli = { path = "../jetty_cli" }
+anyhow = "^1"
+tokio = { version = "1.20.1", features = ["fs", "rt", "macros"] }
