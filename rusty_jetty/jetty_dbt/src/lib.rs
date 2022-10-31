@@ -265,13 +265,11 @@ mod tests {
         let mut connector =
             DbtConnector::new_with_manifest(manifest_mock).context("creating connector")?;
 
-        let mut assets = connector.get_data().await.assets;
+        let mut assets = connector.get_data().await.asset_references;
         assets.sort();
         let mut expected = vec![
-            RawAsset {
+            JettyAssetReference {
                 cual: Cual::new("snowflake:////"),
-                name: "".to_owned(),
-                asset_type: AssetType(VIEW.to_owned()),
                 metadata: HashMap::from([("enabled".to_owned(), "false".to_owned())]),
                 governed_by: HashSet::new(),
                 child_of: HashSet::new(),
@@ -280,10 +278,8 @@ mod tests {
                 derived_to: HashSet::from(["".to_owned()]),
                 tagged_as: HashSet::new(),
             },
-            RawAsset {
+            JettyAssetReference {
                 cual: Cual::new("snowflake:////test"),
-                name: "test".to_owned(),
-                asset_type: AssetType(VIEW.to_owned()),
                 metadata: HashMap::from([("enabled".to_owned(), "false".to_owned())]),
                 governed_by: HashSet::new(),
                 child_of: HashSet::new(),
@@ -292,10 +288,8 @@ mod tests {
                 derived_to: HashSet::from(["".to_owned()]),
                 tagged_as: HashSet::new(),
             },
-            RawAsset {
+            JettyAssetReference {
                 cual: Cual::new("snowflake://test2db/test2schema/test2"),
-                name: "test2".to_owned(),
-                asset_type: AssetType(VIEW.to_owned()),
                 metadata: HashMap::from([("enabled".to_owned(), "false".to_owned())]),
                 governed_by: HashSet::new(),
                 child_of: HashSet::new(),
