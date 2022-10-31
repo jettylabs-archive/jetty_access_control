@@ -1,3 +1,6 @@
+//! Path utilities for project organization.
+//!
+
 use std::path::{Path, PathBuf};
 
 use dirs::home_dir;
@@ -17,10 +20,12 @@ pub(crate) fn tags_cfg_path<P: AsRef<Path>>(project_path: P) -> PathBuf {
     project_path.as_ref().join(tags_cfg_path_local())
 }
 
+/// Local path for the tags config.
 pub(crate) fn tags_cfg_path_local() -> PathBuf {
     TAGS_DIR.as_path().join(TAGS_CFG.as_path())
 }
 
+/// Path for the connector config.
 pub(crate) fn connector_cfg_path() -> PathBuf {
     home_dir()
         .expect("getting home dir")
@@ -32,6 +37,7 @@ pub(crate) fn jetty_cfg_path<P: AsRef<Path>>(project_path: P) -> PathBuf {
     project_path.as_ref().join(JETTY_CFG.as_path())
 }
 
+/// Local path for the jetty config.
 pub(crate) fn jetty_cfg_path_local() -> PathBuf {
     JETTY_CFG.clone()
 }

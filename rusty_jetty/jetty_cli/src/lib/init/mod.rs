@@ -1,3 +1,6 @@
+//! Utilities for initializing a Jetty project from scratch.
+//!
+
 mod fs;
 mod inquiry;
 mod pki;
@@ -38,7 +41,9 @@ impl ProjectStructure {
     }
 }
 
-pub(crate) async fn init(
+/// Main initialization fn to ask the user for the necessary information and
+/// create the relevant project structure.
+pub async fn init(
     from: &Option<PathBuf>,
     overwrite_project_dir: bool,
     project_name: &Option<String>,
