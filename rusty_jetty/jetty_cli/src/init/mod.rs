@@ -4,6 +4,8 @@ mod pki;
 
 use std::{
     collections::HashMap,
+    fs::OpenOptions,
+    io::Write,
     path::{Path, PathBuf},
 };
 
@@ -78,7 +80,10 @@ async fn initialize_project_structure(
     let jetty_config_dir = home_dir.join("./.jetty");
     create_dir_ignore_failure(jetty_config_dir).await;
 
-    let connectors_config = create_file(project::connector_cfg_path()).await;
+    let connectors_config = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(project::connector_cfg_path());
 
     if let Ok(mut cfg) = jetty_config {
         cfg.write_all(jt_config.to_yaml()?.as_bytes()).await?;
@@ -86,7 +91,7 @@ async fn initialize_project_structure(
 
     let connectors_yaml = yaml_peg::serde::to_string(&credentials).map_err(anyhow::Error::from)?;
     if let Ok(mut cfg) = connectors_config {
-        cfg.write_all(connectors_yaml.as_bytes()).await?;
+        cfg.write_all(connectors_yaml.as_bytes())?;
     }
     // create tags parent dir if needed
     create_dir_ignore_failure(tags_cfg_path(project_path.clone()).parent().unwrap()).await;
