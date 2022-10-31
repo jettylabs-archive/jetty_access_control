@@ -4,8 +4,8 @@
 #![deny(missing_docs)]
 
 mod ascii;
-pub mod init;
-pub mod project;
+mod init;
+mod project;
 mod tui;
 
 use std::{path::PathBuf, sync::Arc, time::Instant};
@@ -54,7 +54,8 @@ enum JettyCommand {
     },
 }
 
-async fn cli() -> Result<()> {
+/// Main CLI entrypoint.
+pub async fn cli() -> Result<()> {
     let args = Args::parse();
     logging::setup(args.log_level);
 
