@@ -31,6 +31,7 @@ mod validation;
 /// config and the connectors config, producing both.
 pub(crate) async fn inquire_init(
     overwrite_project_dir: bool,
+    project_name: &Option<String>,
 ) -> Result<(JettyConfig, HashMap<String, CredentialsMap>)> {
     // Create an alternate screen for this scope.
     let alt_screen_context = AltScreenContext::start()?;
@@ -43,7 +44,7 @@ pub(crate) async fn inquire_init(
     let mut jetty_config = JettyConfig::new();
     let mut credentials = HashMap::new();
 
-    jetty_config.set_name(ask_project_name(overwrite_project_dir)?);
+    jetty_config.set_name(ask_project_name(overwrite_project_dir, project_name)?);
     let connector_types = ask_select_connectors()?;
 
     for connector in connector_types {
@@ -86,12 +87,21 @@ fn setup_render_config() {
     set_global_render_config(render_config);
 }
 
-fn ask_project_name(overwrite_project_dir: bool) -> Result<String> {
-    let project_name = Text::new("Project Name")
-        .with_validator(filled_validator)
-        .with_placeholder("jetty")
-        .with_default("jetty")
-        .prompt()?;
+fn ask_project_name(
+    overwrite_project_dir: bool,
+    project_name_input: &Option<String>,
+) -> Result<String> {
+    let mut project_name;
+    if let Some(s) = project_name_input {
+        project_name = s.to_owned();
+    } else {
+        project_name = Text::new("Project Name")
+            .with_validator(filled_validator)
+            .with_placeholder("jetty")
+            .with_default("jetty")
+            .prompt()?;
+    }
+
     // Check to see if the directory <project_name> exists
     if Path::new(&project_name).is_dir() && !overwrite_project_dir {
         return Err(anyhow::anyhow!(

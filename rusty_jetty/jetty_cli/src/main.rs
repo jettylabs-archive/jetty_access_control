@@ -40,6 +40,8 @@ struct Args {
 enum JettyCommand {
     /// Initialize a Jetty project.
     Init {
+        /// Project name
+        project_name: Option<String>,
         /// Initialize from an existing config (as a shortcut).
         #[clap(short, long, hide = true)]
         from: Option<PathBuf>,
@@ -67,9 +69,13 @@ async fn main() -> Result<()> {
     logging::setup(args.log_level);
 
     match &args.command {
-        JettyCommand::Init { from, overwrite } => {
+        JettyCommand::Init {
+            from,
+            overwrite,
+            project_name,
+        } => {
             println!("Welcome to Jetty! We are so glad you're here.");
-            init::init(from, *overwrite).await?;
+            init::init(from, *overwrite, project_name).await?;
         }
 
         JettyCommand::Fetch {

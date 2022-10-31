@@ -38,14 +38,18 @@ impl ProjectStructure {
     }
 }
 
-pub(crate) async fn init(from: &Option<PathBuf>, overwrite_project_dir: bool) -> Result<()> {
+pub(crate) async fn init(
+    from: &Option<PathBuf>,
+    overwrite_project_dir: bool,
+    project_name: &Option<String>,
+) -> Result<()> {
     let (jetty_config, credentials) = if let Some(from_config) = from {
         // This is a shortcut for debugging and reinitialization with an existing config.
         let jt = JettyConfig::read_from_file(from_config)?;
         let credentials = fetch_credentials(project::connector_cfg_path())?;
         (jt, credentials)
     } else {
-        inquire_init(overwrite_project_dir).await?
+        inquire_init(overwrite_project_dir, project_name).await?
     };
 
     initialize_project_structure(ProjectStructure::new(jetty_config, credentials)).await?;
