@@ -35,7 +35,7 @@ pub(crate) async fn ask_snowflake_connector_setup() -> Result<CredentialsMap> {
         let keypair = create_keypair()?;
         println!("Keypair generated!");
 
-        println!("Authorize Jetty access to your account by copying the following SQL statement into Snowflake.");
+        println!("Authorize Jetty access to your account by running the following SQL statement in Snowflake.");
         println!(
             "\n{}\n",
             format!(

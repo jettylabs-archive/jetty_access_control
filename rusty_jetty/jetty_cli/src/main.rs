@@ -37,8 +37,11 @@ enum JettyCommand {
     /// Initialize a Jetty project.
     Init {
         /// Initialize from an existing config (as a shortcut).
-        #[clap(short, long)]
+        #[clap(short, long, hide = true)]
         from: Option<PathBuf>,
+        /// Overwrite project directory if it exists
+        #[clap(short, long, value_parser, default_value = "false")]
+        overwrite: bool,
     },
     Fetch {
         /// Visualize the graph in an SVG file.
@@ -60,9 +63,9 @@ async fn main() -> Result<()> {
     logging::setup(args.log_level);
 
     match &args.command {
-        JettyCommand::Init { from } => {
+        JettyCommand::Init { from, overwrite } => {
             println!("Welcome to Jetty! We are so glad you're here.");
-            init::init(from).await?;
+            init::init(from, *overwrite).await?;
         }
 
         JettyCommand::Fetch {

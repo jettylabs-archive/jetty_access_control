@@ -8,7 +8,7 @@ use crate::{
     tui::AltScreenContext,
 };
 
-use std::collections::HashMap;
+use std::{collections::HashMap, path::Path};
 
 use anyhow::Result;
 use colored::Colorize;
@@ -29,7 +29,9 @@ mod validation;
 
 /// Ask the user to respond to a series of questions to create the Jetty
 /// config and the connectors config, producing both.
-pub(crate) async fn inquire_init() -> Result<(JettyConfig, HashMap<String, CredentialsMap>)> {
+pub(crate) async fn inquire_init(
+    overwrite_project_dir: bool,
+) -> Result<(JettyConfig, HashMap<String, CredentialsMap>)> {
     // Create an alternate screen for this scope.
     let alt_screen_context = AltScreenContext::start()?;
     // Print the Jetty Labs banner.
@@ -41,7 +43,7 @@ pub(crate) async fn inquire_init() -> Result<(JettyConfig, HashMap<String, Crede
     let mut jetty_config = JettyConfig::new();
     let mut credentials = HashMap::new();
 
-    jetty_config.set_name(ask_project_name()?);
+    jetty_config.set_name(ask_project_name(overwrite_project_dir)?);
     let connector_types = ask_select_connectors()?;
 
     for connector in connector_types {
@@ -83,12 +85,19 @@ fn setup_render_config() {
     set_global_render_config(render_config);
 }
 
-fn ask_project_name() -> Result<String> {
+fn ask_project_name(overwrite_project_dir: bool) -> Result<String> {
     let project_name = Text::new("Project Name")
         .with_validator(filled_validator)
         .with_placeholder("jetty")
         .with_default("jetty")
         .prompt()?;
+    // Check to see if the directory <project_name> exists
+    if Path::new(&project_name).is_dir() && !overwrite_project_dir {
+        return Err(anyhow::anyhow!(
+            "The directory {project_name} already exists. Choose a different project name or --overwrite to overwrite this directory."
+        ));
+    }
+
     Ok(project_name)
 }
 
