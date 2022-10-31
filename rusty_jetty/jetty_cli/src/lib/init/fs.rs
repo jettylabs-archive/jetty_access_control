@@ -12,7 +12,7 @@ pub(crate) async fn create_file<P: AsRef<Path> + Debug + Clone>(file_path: P) ->
         .await
         .map_err(anyhow::Error::from);
     if res.is_err() {
-        println!("Failed to create file {:?}. Continuing.", file_path);
+        debug!("Failed to create file {:?}. Continuing.", file_path);
     }
     res
 }
