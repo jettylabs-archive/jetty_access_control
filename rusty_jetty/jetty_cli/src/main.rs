@@ -92,7 +92,9 @@ async fn main() -> Result<()> {
                 )
                 .await?;
             }
-            match AccessGraph::deserialize_graph() {
+            match AccessGraph::deserialize_graph(
+                project::data_dir().join(project::graph_filename()),
+            ) {
                 Ok(mut ag) => {
                     let tags_path = project::tags_cfg_path_local();
                     if tags_path.exists() {
@@ -128,7 +130,7 @@ async fn main() -> Result<()> {
 }
 
 async fn fetch(connectors: &Vec<String>, &visualize: &bool) -> Result<()> {
-    let jetty = Jetty::new(project::jetty_cfg_path_local())?;
+    let jetty = Jetty::new(project::jetty_cfg_path_local(), project::data_dir())?;
     let creds = fetch_credentials(project::connector_cfg_path())?;
 
     if connectors.is_empty() {
@@ -146,7 +148,7 @@ async fn fetch(connectors: &Vec<String>, &visualize: &bool) -> Result<()> {
             &jetty.config.connectors[&ConnectorNamespace("dbt".to_owned())],
             &creds["dbt"],
             Some(ConnectorClient::Core),
-            Path::new("./data/dbt").into(),
+            project::data_dir().join("dbt"),
         )
         .await?;
         info!("dbt took {} seconds", now.elapsed().as_secs_f32());
@@ -166,7 +168,7 @@ async fn fetch(connectors: &Vec<String>, &visualize: &bool) -> Result<()> {
             &jetty.config.connectors[&ConnectorNamespace("snow".to_owned())],
             &creds["snow"],
             Some(ConnectorClient::Core),
-            Path::new("./data/snowflake").into(),
+            project::data_dir().join("snowflake"),
         )
         .await?;
         info!("snowflake took {} seconds", now.elapsed().as_secs_f32());
@@ -189,7 +191,7 @@ async fn fetch(connectors: &Vec<String>, &visualize: &bool) -> Result<()> {
             &jetty.config.connectors[&ConnectorNamespace("tableau".to_owned())],
             &creds["tableau"],
             Some(ConnectorClient::Core),
-            Path::new("./data/tableau").into(),
+            project::data_dir().join("tableau"),
         )
         .await?;
         info!("tableau took {} seconds", now.elapsed().as_secs_f32());
@@ -212,7 +214,7 @@ async fn fetch(connectors: &Vec<String>, &visualize: &bool) -> Result<()> {
         "access graph creation took {} seconds",
         now.elapsed().as_secs_f32()
     );
-    ag.serialize_graph()?;
+    ag.serialize_graph(project::data_dir().join(project::graph_filename()))?;
 
     if visualize {
         info!("visualizing access graph");

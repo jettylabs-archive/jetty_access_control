@@ -225,11 +225,11 @@ impl Coordinator {
         self.env = new_env;
 
         // serialize as JSON
-        fs::write(
-            self.data_dir.join(SERIALIZED_ENV_FILENAME),
-            serde_json::to_string_pretty(&self.env).unwrap(),
-        )?;
-
+        let file_path = self.data_dir.join(SERIALIZED_ENV_FILENAME);
+        if let Some(p) = file_path.parent() {
+            fs::create_dir_all(p)?
+        };
+        fs::write(file_path, serde_json::to_string_pretty(&self.env).unwrap())?;
         Ok(())
     }
 
