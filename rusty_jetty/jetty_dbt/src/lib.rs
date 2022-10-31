@@ -13,7 +13,10 @@ mod consts;
 mod cual;
 mod manifest;
 
-use std::{collections::HashMap, path::Path};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
 
 use cual::set_cual_account_name;
 use jetty_core::{
@@ -53,6 +56,7 @@ impl Connector for DbtConnector {
         _config: &ConnectorConfig,
         credentials: &CredentialsMap,
         _client: Option<connectors::ConnectorClient>,
+        _data_dir: PathBuf,
     ) -> Result<Box<Self>> {
         if !credentials.contains_key("project_dir") {
             bail!("missing project_dir key in connectors.yaml");
@@ -138,6 +142,7 @@ mod tests {
             &ConnectorConfig::default(),
             &CredentialsMap::new(),
             Some(connectors::ConnectorClient::Test),
+            PathBuf::new(),
         )
         .await
         .unwrap();
@@ -149,6 +154,7 @@ mod tests {
             &ConnectorConfig::default(),
             &HashMap::from([("project_dir".to_owned(), "something/not/a/path".to_owned())]),
             Some(ConnectorClient::Test),
+            PathBuf::new(),
         )
         .await;
         assert!(connector.is_err());

@@ -1,3 +1,5 @@
+use std::path::{Path, PathBuf};
+
 use dirs::home_dir;
 use jetty_core::{
     connectors::ConnectorClient, fetch_credentials, jetty::ConnectorNamespace, logging::info,
@@ -14,6 +16,7 @@ async fn test_fetch_data_works() -> Result<()> {
         &jetty.config.connectors[&ConnectorNamespace("tableau".to_owned())],
         &creds["tableau"],
         Some(ConnectorClient::Core),
+        Path::new(".").into(),
     )
     .await?;
 

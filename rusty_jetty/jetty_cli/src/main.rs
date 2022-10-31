@@ -8,7 +8,11 @@ mod init;
 mod project;
 mod tui;
 
-use std::{path::PathBuf, sync::Arc, time::Instant};
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+    time::Instant,
+};
 
 use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
@@ -142,6 +146,7 @@ async fn fetch(connectors: &Vec<String>, &visualize: &bool) -> Result<()> {
             &jetty.config.connectors[&ConnectorNamespace("dbt".to_owned())],
             &creds["dbt"],
             Some(ConnectorClient::Core),
+            Path::new("./data/dbt").into(),
         )
         .await?;
         info!("dbt took {} seconds", now.elapsed().as_secs_f32());
@@ -161,6 +166,7 @@ async fn fetch(connectors: &Vec<String>, &visualize: &bool) -> Result<()> {
             &jetty.config.connectors[&ConnectorNamespace("snow".to_owned())],
             &creds["snow"],
             Some(ConnectorClient::Core),
+            Path::new("./data/snowflake").into(),
         )
         .await?;
         info!("snowflake took {} seconds", now.elapsed().as_secs_f32());
@@ -183,6 +189,7 @@ async fn fetch(connectors: &Vec<String>, &visualize: &bool) -> Result<()> {
             &jetty.config.connectors[&ConnectorNamespace("tableau".to_owned())],
             &creds["tableau"],
             Some(ConnectorClient::Core),
+            Path::new("./data/tableau").into(),
         )
         .await?;
         info!("tableau took {} seconds", now.elapsed().as_secs_f32());

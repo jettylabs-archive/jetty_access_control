@@ -32,6 +32,7 @@ use serde::de::value::MapDeserializer;
 
 use std::collections::{HashMap, HashSet};
 use std::iter::zip;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use jetty_core::{
@@ -94,6 +95,7 @@ impl Connector for SnowflakeConnector {
         _config: &ConnectorConfig,
         credentials: &CredentialsMap,
         connector_client: Option<connectors::ConnectorClient>,
+        _data_dir: PathBuf,
     ) -> Result<Box<Self>> {
         let mut conn = creds::SnowflakeCredentials::default();
         let mut required_fields: HashSet<_> = vec![

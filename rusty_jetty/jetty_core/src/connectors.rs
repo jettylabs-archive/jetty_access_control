@@ -4,6 +4,8 @@
 pub mod nodes;
 pub mod processed_nodes;
 
+use std::path::{Path, PathBuf};
+
 use anyhow::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -32,6 +34,8 @@ pub trait Connector {
         config: &ConnectorConfig,
         credentials: &CredentialsMap,
         client: Option<ConnectorClient>,
+        // A connector is allowed to create and write to this directory.
+        data_dir: PathBuf,
     ) -> Result<Box<Self>>;
     /// Check if the Connector is properly set up and return the connection
     /// status (true for connected, false for not).

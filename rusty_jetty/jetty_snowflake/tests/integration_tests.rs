@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use std::{boxed::Box, collections::HashSet};
 
 use jetty_core::{
@@ -235,6 +236,7 @@ async fn construct_connector_from(input: &TestInput) -> TestHarness<SnowflakeCon
             &ConnectorConfig::default(),
             &creds,
             Some(ConnectorClient::Test),
+            PathBuf::new(),
         )
         .await
         .unwrap(),

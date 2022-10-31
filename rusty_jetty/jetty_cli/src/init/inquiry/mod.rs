@@ -51,20 +51,21 @@ pub(crate) async fn inquire_init(
             "{}",
             format!("{} connector configuration", connector.color(JETTY_ORANGE)).underline()
         );
-        let connector_namespace = ask_connector_namespace(connector)?;
+        let connector_namespace_user_input = ask_connector_namespace(connector)?;
+        let connector_namespace = ConnectorNamespace(connector_namespace_user_input.clone());
         jetty_config.connectors.insert(
-            ConnectorNamespace(connector_namespace.clone()),
+            connector_namespace.clone(),
             ConnectorConfig::new(connector.to_owned(), Default::default()),
         );
 
         let mut credentials_map = match connector {
             "dbt" => ask_dbt_connector_setup()?,
-            "snowflake" => ask_snowflake_connector_setup().await?,
+            "snowflake" => ask_snowflake_connector_setup(connector_namespace).await?,
             "tableau" => ask_tableau_connector_setup().await?,
             &_ => panic!("Unrecognized input"),
         };
         credentials_map.insert("type".to_owned(), connector.to_owned());
-        credentials.insert(connector_namespace.to_owned(), credentials_map);
+        credentials.insert(connector_namespace_user_input.to_owned(), credentials_map);
     }
 
     // Leave the alternate screen.
