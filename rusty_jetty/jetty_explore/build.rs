@@ -1,12 +1,18 @@
 use std::path::Path;
 use std::process::Command;
 
+#[cfg(windows)]
+pub const NPM: &'static str = "npm.cmd";
+
+#[cfg(not(windows))]
+pub const NPM: &'static str = "npm";
+
 fn main() {
     let project_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
 
     let web_project_path = Path::new(&project_dir).join("web/");
 
-    let output = Command::new("npm")
+    let output = Command::new(NPM)
         .args(["install"])
         .current_dir(web_project_path.clone())
         .output()
