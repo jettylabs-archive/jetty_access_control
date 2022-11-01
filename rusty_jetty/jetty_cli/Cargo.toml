@@ -31,3 +31,4 @@ sha2 = "0.10.6"
 base64 = "0.13.1"
 dirs = "4.0.0"
 lazy_static = "1.4.0"
+human-panic = { git = "https://github.com/jettylabs/human-panic", branch = "master" }
