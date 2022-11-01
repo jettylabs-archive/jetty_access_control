@@ -4,6 +4,7 @@ use anyhow::Result;
 use colored::Colorize;
 use inquire::{Confirm, Text};
 use jetty_core::{
+    connectors::NewConnector,
     jetty::{ConnectorConfig, ConnectorNamespace, CredentialsMap},
     Connector,
 };
@@ -61,15 +62,8 @@ pub(crate) async fn ask_snowflake_connector_setup(
             ("private_key".to_owned(), keypair.private_key()),
             ("role".to_owned(), "SECURITYADMIN".to_owned()),
         ]);
-        let connector = SnowflakeConnector::new(
-            &ConnectorConfig::default(),
-            &creds,
-            None,
-            Path::new(".")
-                .join("data")
-                .join(connector_namespace.to_string()),
-        )
-        .await?;
+        let connector =
+            SnowflakeConnector::new(&ConnectorConfig::default(), &creds, None, None).await?;
         if connector.check().await {
             println!("successful connection!");
             return Ok(creds);

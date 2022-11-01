@@ -103,15 +103,20 @@ pub(crate) struct Coordinator {
     /// A client to access the Tableau environment
     pub(crate) rest_client: rest::TableauRestClient,
     /// Directory where connector_specific data can be stored
-    pub(crate) data_dir: PathBuf,
+    pub(crate) data_dir: Option<PathBuf>,
 }
 
 impl Coordinator {
     /// Create a new Coordinator object with data read from a saved
     /// environment (if available) and a new rest client.
-    pub(crate) async fn new(creds: TableauCredentials, data_dir: PathBuf) -> Self {
+    pub(crate) async fn new(creds: TableauCredentials, data_dir: Option<PathBuf>) -> Self {
+        let env = if let Some(dir) = data_dir.clone() {
+            read_environment_assets(dir).unwrap_or_default()
+        } else {
+            Default::default()
+        };
         Coordinator {
-            env: read_environment_assets(data_dir.to_owned()).unwrap_or_default(),
+            env,
             rest_client: rest::TableauRestClient::new(creds).await.unwrap(),
             data_dir,
         }
@@ -121,12 +126,10 @@ impl Coordinator {
     /// a file, if available, but cannot be updated.
     #[cfg(test)]
     pub(crate) fn new_dummy() -> Self {
-        use std::path::Path;
-
         Coordinator {
-            env: read_environment_assets(Path::new(".").into()).unwrap_or_default(),
+            env: Default::default(),
             rest_client: rest::TableauRestClient::new_dummy(),
-            data_dir: Path::new(".").into(),
+            data_dir: None,
         }
     }
 
@@ -225,11 +228,13 @@ impl Coordinator {
         self.env = new_env;
 
         // serialize as JSON
-        let file_path = self.data_dir.join(SERIALIZED_ENV_FILENAME);
-        if let Some(p) = file_path.parent() {
-            fs::create_dir_all(p)?
-        };
-        fs::write(file_path, serde_json::to_string_pretty(&self.env).unwrap())?;
+        if let Some(dir) = &self.data_dir {
+            let file_path = dir.join(SERIALIZED_ENV_FILENAME);
+            if let Some(p) = file_path.parent() {
+                fs::create_dir_all(p)?
+            };
+            fs::write(file_path, serde_json::to_string_pretty(&self.env).unwrap())?;
+        }
         Ok(())
     }
 

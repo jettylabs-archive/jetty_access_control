@@ -20,7 +20,7 @@ use clap::{Parser, Subcommand};
 
 use jetty_core::{
     access_graph::AccessGraph,
-    connectors::ConnectorClient,
+    connectors::{ConnectorClient, NewConnector},
     fetch_credentials,
     jetty::ConnectorNamespace,
     logging::{self, debug, info, warn, LevelFilter},
@@ -140,16 +140,17 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
 
     let selected_connectors;
 
-    if let Some(conns) = connectors {
-        selected_connectors = jetty
+    selected_connectors = if let Some(conns) = connectors {
+        jetty
             .config
             .connectors
             .into_iter()
             .filter(|(name, _config)| conns.contains(&name.to_string()))
-            .collect::<HashMap<_, _>>();
+            .collect::<HashMap<_, _>>()
     } else {
-        selected_connectors = jetty.config.connectors
-    }
+        jetty.config.connectors
+    };
+
     for (namespace, config) in &selected_connectors {
         match config.connector_type.as_str() {
             "dbt" => {
@@ -157,7 +158,7 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
                     &selected_connectors[namespace],
                     &creds[namespace.to_string().as_str()],
                     Some(ConnectorClient::Core),
-                    project::data_dir().join(namespace.to_string()),
+                    Some(project::data_dir().join(namespace.to_string())),
                 )
                 .await?;
 
@@ -177,7 +178,7 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
                     &selected_connectors[namespace],
                     &creds[namespace.to_string().as_str()],
                     Some(ConnectorClient::Core),
-                    project::data_dir().join(namespace.to_string()),
+                    Some(project::data_dir().join(namespace.to_string())),
                 )
                 .await?;
 
@@ -197,7 +198,7 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
                     &selected_connectors[namespace],
                     &creds[namespace.to_string().as_str()],
                     Some(ConnectorClient::Core),
-                    project::data_dir().join(namespace.to_string()),
+                    Some(project::data_dir().join(namespace.to_string())),
                 )
                 .await?;
 
