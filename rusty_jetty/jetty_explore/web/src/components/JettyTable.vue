@@ -2,6 +2,7 @@
   <div class="q-pa-md">
     <q-table
       :title="props.title"
+      :loading="loading"
       :rows="rows"
       :columns="props.columns"
       row-key="name"
@@ -10,7 +11,7 @@
       :pagination="pagination"
       wrap-cells
       :filter="tableFilter"
-      :filter-method="props.filterMethod"
+      :filter-method="filterMethod"
       ref="jettyTable"
       dense
     >
@@ -27,7 +28,12 @@
             </q-badge>
           </div>
           <div class="flex">
-            <q-input outlined dense v-model="tableFilter">
+            <q-input
+              outlined
+              dense
+              v-model="tableFilter"
+              :debounce="debounceTime"
+            >
               <template v-slot:prepend>
                 <q-icon name="o_filter_alt" />
               </template>
@@ -54,11 +60,12 @@
 <script lang="ts" setup>
 import { ref } from 'vue';
 import { downloadCSV, fetchJson } from 'src/util';
+import { jettySearch } from 'src/util/search';
 
 const props = defineProps([
   'title',
   'rowsPerPage',
-  'filterMethod',
+  'rowTransformer',
   'columns',
   'csvConfig',
   'fetchPath',
@@ -66,6 +73,7 @@ const props = defineProps([
 ]);
 
 var rows = ref([]);
+var loading = ref(true);
 
 const pagination = ref({
   sortBy: 'name',
@@ -85,7 +93,24 @@ const exportTable = () => {
   );
 };
 
+// we'll use this to keep the search feeling responsive
+const debounceTime = ref(10);
+
+const filterMethod = (rows: any[], terms) => {
+  if (terms == '') {
+    return rows;
+  } else {
+    var startTime = performance.now();
+    const results = jettySearch(rows, props.rowTransformer, terms);
+    debounceTime.value = Math.ceil(
+      Math.max(debounceTime.value * 0.75, performance.now() - startTime)
+    );
+    return results;
+  }
+};
+
 fetchJson(props.fetchPath)
   .then((r) => (rows.value = r))
-  .catch((error) => console.log('unable to fetch: ', error));
+  .catch((error) => console.log('unable to fetch: ', error))
+  .finally(() => (loading.value = false));
 </script>

@@ -9,16 +9,15 @@ use jetty_core::{
     access_graph::{
         self,
         graph::typed_indices::{AssetIndex, UserIndex},
-        EdgeType, JettyNode, NodeName,
+        EdgeType, JettyNode,
     },
     connectors::nodes::PermissionMode,
-    cual::Cual,
 };
 use serde::Serialize;
+use uuid::Uuid;
 
 use crate::{
-    node_summaries::NodeSummary, NodeSummaryWithPaths, NodeSummaryWithPrivileges,
-    PrivilegeResponse, SummaryWithAssociatedSummaries, UserAssetsResponse,
+    node_summaries::NodeSummary, NodeSummaryWithPaths, NodeSummaryWithPrivileges, SummaryWithAssociatedSummaries,
 };
 
 /// Return a router to handle all asset-related requests
@@ -52,7 +51,7 @@ struct AssetTagSummaries {
 /// Return information about upstream assets, by hierarchy. Includes path to the current asset
 async fn hierarchy_upstream_handler(
     // node_id is the cual for an asset
-    Path(node_id): Path<String>,
+    Path(node_id): Path<Uuid>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<NodeSummaryWithPaths>> {
     Json(asset_genealogy_with_path(node_id, ag, |e| {
@@ -63,7 +62,7 @@ async fn hierarchy_upstream_handler(
 /// Return information about downstream assets, by hierarchy. Includes path to the current asset
 async fn hierarchy_downstream_handler(
     // node_id is the cual for an asset
-    Path(node_id): Path<String>,
+    Path(node_id): Path<Uuid>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<NodeSummaryWithPaths>> {
     Json(asset_genealogy_with_path(node_id, ag, |e| {
@@ -74,7 +73,7 @@ async fn hierarchy_downstream_handler(
 /// Return information about upstream assets, by data lineage. Includes path to the current asset
 async fn lineage_upstream_handler(
     // node_id is the cual for an asset
-    Path(node_id): Path<String>,
+    Path(node_id): Path<Uuid>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<NodeSummaryWithPaths>> {
     Json(asset_genealogy_with_path(node_id, ag, |e| {
@@ -85,7 +84,7 @@ async fn lineage_upstream_handler(
 /// Return information about downstream assets, by data lineage. Includes path to the current asset
 async fn lineage_downstream_handler(
     // node_id is the cual for an asset
-    Path(node_id): Path<String>,
+    Path(node_id): Path<Uuid>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<NodeSummaryWithPaths>> {
     Json(asset_genealogy_with_path(node_id, ag, |e| {
@@ -96,13 +95,11 @@ async fn lineage_downstream_handler(
 /// Return information about the tags that an asset is tagged with
 async fn tags_handler(
     // node_id is the cual for an asset
-    Path(node_id): Path<String>,
+    Path(node_id): Path<Uuid>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<AssetTagSummaries> {
     // convert the node_id to an AssetIndex
-    let asset_index = ag
-        .get_asset_index_from_name(&NodeName::Asset(Cual::new(node_id.as_str())))
-        .unwrap();
+    let asset_index = ag.get_asset_index_from_id(&node_id).unwrap();
 
     let tags = ag.tags_for_asset_by_source(asset_index);
 
@@ -128,13 +125,11 @@ async fn tags_handler(
 /// Return users that have direct access to the asset, including their levels of privilege and privilege explanation
 async fn direct_users_handler(
     // node_id is the cual for an asset
-    Path(node_id): Path<String>,
+    Path(node_id): Path<Uuid>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<NodeSummaryWithPrivileges>> {
     // convert the node_id to an AssetIndex
-    let asset_index = ag
-        .get_asset_index_from_name(&NodeName::Asset(Cual::new(node_id.as_str())))
-        .unwrap();
+    let asset_index = ag.get_asset_index_from_id(&node_id).unwrap();
 
     let users = ag.get_users_with_access_to_asset(asset_index);
 
@@ -152,12 +147,12 @@ async fn direct_users_handler(
 /// Return users that have access to this asset directly, or through downstream assets (via data lineage)
 async fn users_incl_downstream_handler(
     // node_id is the cual for an asset
-    Path(node_id): Path<String>,
+    Path(node_id): Path<Uuid>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<SummaryWithAssociatedSummaries>> {
     // get all assets that that reference the given asset
     let asset_index = ag
-        .get_asset_index_from_name(&NodeName::Asset(Cual::new(node_id.as_str())))
+        .get_asset_index_from_id(&node_id)
         .context("getting asset node index")
         .unwrap();
 
@@ -174,7 +169,7 @@ async fn users_incl_downstream_handler(
 
     let user_asset_map = asset_list
         .into_iter()
-        .map(|a| {
+        .flat_map(|a| {
             ag.get_users_with_access_to_asset(AssetIndex::new(a))
                 .iter()
                 // If they don't have an allow privilege, it shouldn't count as access
@@ -187,7 +182,6 @@ async fn users_incl_downstream_handler(
                 })
                 .collect::<Vec<_>>()
         })
-        .flatten()
         .fold(
             HashMap::<UserIndex, HashSet<AssetIndex>>::new(),
             |mut acc, (user, asset)| {
@@ -217,12 +211,12 @@ async fn users_incl_downstream_handler(
 /// get the ascending or descending assets with paths, based on edge matcher
 fn asset_genealogy_with_path(
     // node_id is the cual for an asset
-    node_id: String,
+    node_id: Uuid,
     ag: Arc<access_graph::AccessGraph>,
     edge_matcher: fn(&EdgeType) -> bool,
 ) -> Vec<NodeSummaryWithPaths> {
     let asset_index = ag
-        .get_asset_index_from_name(&NodeName::Asset(Cual::new(node_id.as_str())))
+        .get_asset_index_from_id(&node_id)
         .context("getting asset node index")
         .unwrap();
 

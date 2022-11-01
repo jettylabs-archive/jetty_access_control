@@ -41,7 +41,7 @@ impl Group {
             .iter()
             .map(|uid| {
                 users.get(&uid.id).unwrap_or_else(|| {
-                    panic!("user id {:?} not in tableau users {:?}", uid.id, users)
+                    panic!("user id {:?} not in tableau users {users:?}", uid.id)
                 })
             })
             .cloned()
@@ -61,7 +61,7 @@ impl Group {
 impl From<Group> for jetty_nodes::RawGroup {
     fn from(val: Group) -> Self {
         jetty_nodes::RawGroup::new(
-            val.id.to_owned(),
+            val.name.to_owned(),
             HashMap::from([("tableau::id".to_owned(), val.id)]),
             // No nested groups in tableau
             HashSet::new(),

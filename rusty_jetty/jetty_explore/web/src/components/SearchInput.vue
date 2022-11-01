@@ -7,11 +7,11 @@
     use-input
     hide-selected
     fill-input
-    input-debounce="0"
-    :options="limitedOptions"
+    :input-debounce="debounceTime"
+    :options="options"
     @filter="filterFn"
     @input-value="setModel"
-    option-label="name"
+    :option-label="optionLabel"
     ref="searchField"
     bg-color="white"
     :autofocus="props.autofocus"
@@ -36,6 +36,8 @@ import { ref, computed } from 'vue';
 import AutocompleteItem from './AutocompleteItem.vue';
 import { useJettyStore } from 'stores/jetty';
 import { useRouter } from 'vue-router';
+import { jettySearch, mapNodeSummaryforSearch } from 'src/util/search';
+import { nodeId, nodeNameAsString, NodeSummary, nodeType } from 'src/util';
 
 const props = defineProps({
   autofocus: { type: Boolean },
@@ -47,21 +49,41 @@ const store = useJettyStore();
 const nodeOptions = computed(() => store.nodes);
 
 const model = ref(null);
-const options = ref([]);
+const options = ref<NodeSummary[]>([]);
 
 const searchField = ref(null);
 
-const limitedOptions = computed(() => {
-  return options.value.slice(0, 5);
-});
+// we'll use this to keep the search feeling responsive
+const debounceTime = ref(10);
 
-function filterFn(val, update, abort) {
+// get the option label
+const optionLabel = (item: NodeSummary | string): string => {
+  if (typeof item === 'string') {
+    return '';
+  } else {
+    return nodeNameAsString(item);
+  }
+};
+
+function filterFn(val, update) {
   update(
     () => {
-      const needle = val.toLocaleLowerCase();
-      options.value = nodeOptions.value.filter(
-        (v) => v.name.toLocaleLowerCase().indexOf(needle) > -1
-      );
+      if (val == '') {
+        options.value = [];
+      } else {
+        var startTime = performance.now();
+        options.value = jettySearch(
+          nodeOptions.value,
+          (i) => mapNodeSummaryforSearch(i),
+          val,
+          {
+            numResults: 15,
+          }
+        );
+        debounceTime.value = Math.ceil(
+          Math.max(debounceTime.value * 0.75, performance.now() - startTime)
+        );
+      }
     },
     (ref) => {
       if (val !== '' && ref.options.length > 0) {
@@ -76,9 +98,9 @@ function setModel(val) {
   model.value = val;
 }
 
-function navigate(val) {
+function navigate(val: NodeSummary) {
   model.value = null;
-  let new_path = '/' + val.type + '/' + encodeURIComponent(val.name);
+  let new_path = '/' + nodeType(val) + '/' + nodeId(val);
   if (searchField.value) {
     searchField.value.blur();
   }

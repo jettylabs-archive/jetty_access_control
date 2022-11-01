@@ -30,10 +30,8 @@ pub(crate) fn ask_dbt_connector_setup() -> Result<CredentialsMap> {
         .with_validator(FilepathValidator::new(
             Some("target/manifest.json".to_owned()),
             PathType::File,
-            format!(
-                "target/manifest.json not found. Please run 'dbt docs generate' in the directory to generate it and then try again.",
-            )
-            .to_owned(),
+            "target/manifest.json not found. Please run 'dbt docs generate' in the directory to generate it and then try again.".to_string()
+            ,
         ))
         .with_placeholder("/path/to/dbt/project")
         .with_autocomplete(FilepathCompleter::default())

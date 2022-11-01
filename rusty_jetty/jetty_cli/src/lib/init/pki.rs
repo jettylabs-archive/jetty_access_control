@@ -1,4 +1,4 @@
-use std::{fs::File, io::Write, path::Path};
+
 
 use anyhow::Result;
 use openssl::{pkey::PKey, rsa::Rsa};
@@ -18,7 +18,7 @@ impl KeyPair {
     pub(crate) fn public_inner(&self) -> String {
         let lines = self.public.lines().collect::<Vec<_>>();
         let len = lines.len();
-        lines[1..len - 1].into_iter().cloned().collect::<String>()
+        lines[1..len - 1].iter().cloned().collect::<String>()
     }
 
     pub(crate) fn fingerprint(&self) -> String {
@@ -38,8 +38,8 @@ pub(crate) fn create_keypair() -> Result<KeyPair> {
     let public = rsa.public_key_to_pem()?;
     // Fingerprint must be generated from der format.
     let public_der = rsa.public_key_to_der()?;
-    let digest = Sha256::digest(&public_der).to_vec();
-    let fingerprint = format!("SHA256:{}", base64::encode(&digest));
+    let digest = Sha256::digest(public_der).to_vec();
+    let fingerprint = format!("SHA256:{}", base64::encode(digest));
     Ok(KeyPair {
         private,
         fingerprint,

@@ -2,16 +2,18 @@
   <JettyTable
     title="User-Accessible Assets"
     :rows-per-page="20"
-    :filter-method="filterMethod"
+    :row-transformer="rowTransformer"
     :columns="columns"
     :csv-config="csvConfig"
-    :fetchPath="'/api/user/' + encodeURIComponent(props.node.name) + '/assets'"
+    :fetchPath="'/api/user/' + nodeId(props.node) + '/assets'"
     v-slot="{
       props: { row },
     }: {
       props: { row: AssetWithEffectivePermissions },
     }"
-    :tip="`All the assets ${props.node.name} has access too, including the privilege levels and
+    :tip="`All the assets ${nodeNameAsString(
+      props.node
+    )} has access too, including the privilege levels and
     sources of those privileges`"
   >
     <q-tr>
@@ -19,7 +21,7 @@
         <q-item class="q-px-none">
           <q-item-section>
             <router-link
-              :to="'/asset/' + encodeURIComponent(nodeNameAsString(row.node))"
+              :to="'/asset/' + nodeId(row.node)"
               style="text-decoration: none; color: inherit"
             >
               <q-item-label> {{ nodeNameAsString(row.node) }}</q-item-label>
@@ -67,7 +69,8 @@
 import JettyTable from '../JettyTable.vue';
 import JettyBadge from '../JettyBadge.vue';
 import { AssetSummary, EffectivePermission } from '../models';
-import { nodeNameAsString } from 'src/util';
+import { nodeNameAsString, nodeId } from 'src/util';
+import { mapNodeSummaryforSearch } from 'src/util/search';
 
 interface AssetWithEffectivePermissions {
   node: AssetSummary;
@@ -76,22 +79,11 @@ interface AssetWithEffectivePermissions {
 
 const props = defineProps(['node']);
 
-// Filters by name, privileges, or connector
-const filterMethod = (rows, terms) => {
-  const needles = terms.toLocaleLowerCase().split(' ');
-  return rows.filter((r) =>
-    needles.every(
-      (needle) =>
-        r.name.toLocaleLowerCase().indexOf(needle) > -1 ||
-        r.connectors.join(' ').toLocaleLowerCase().indexOf(needle) > -1 ||
-        r.privileges
-          .map((a) => a.name)
-          .join(' ')
-          .toLocaleLowerCase()
-          .indexOf(needle) > -1
-    )
-  );
-};
+const rowTransformer = (row: AssetWithEffectivePermissions): string =>
+  [
+    mapNodeSummaryforSearch(row.node),
+    ...row.privileges.map((p) => p.privilege),
+  ].join(' ');
 
 const columns = [
   {
@@ -111,7 +103,7 @@ const columns = [
 ];
 
 const csvConfig = {
-  filename: props.node.name + '_assets.csv',
+  filename: nodeNameAsString(props.node) + '_assets.csv',
   columnNames: ['Asset Name', 'Asset Platform', 'Privilege', 'Explanation'],
   // accepts a row and returns the proper mapping
   mappingFn: (filteredSortedRows: AssetWithEffectivePermissions[]) =>

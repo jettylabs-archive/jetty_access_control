@@ -4,7 +4,7 @@
 
 use anyhow::Result;
 
-use std::collections::HashMap;
+
 
 use super::{graph::Graph, EdgeType, JettyEdge, JettyNode, NodeName};
 
@@ -30,5 +30,6 @@ pub(crate) fn new_graph() -> Graph {
     Graph {
         graph: petgraph::stable_graph::StableDiGraph::new(),
         nodes: Default::default(),
+        node_ids: Default::default(),
     }
 }

@@ -3,6 +3,14 @@ name = "jetty_cli"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "jetty_lib"
+path = "src/lib/lib.rs"
+
+[[bin]]
+name = "jetty_cli"
+path = "src/main.rs"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -22,4 +30,4 @@ openssl = "0.10.42"
 sha2 = "0.10.6"
 base64 = "0.13.1"
 dirs = "4.0.0"
-human-panic = "1.0.3"
+lazy_static = "1.4.0"

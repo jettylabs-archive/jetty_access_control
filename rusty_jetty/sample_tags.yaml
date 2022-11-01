@@ -1,14 +1,19 @@
 pii:
-    description: This data contains pii from ppis
-    apply_to:
-        - snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB2/RAW/IRIS
+  description: This data contains pii from ppis
+  pass_through_lineage: true
+  apply_to:
+    - snowflake::JETTY_TEST_DB/RAW/IRIS
 
 pii2:
-    description: This data contains pii from ppis
-    apply_to:
-        - snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB2/RAW/IRIS
+  description: This data contains pii from ppis
+  apply_to:
+    - snowflake::JETTY_TEST_DB2/RAW/IRIS
 
 pii3:
-    description: This data contains pii from ppis
-    apply_to:
-        - snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB2/RAW/IRIS
+  description: This data contains pii from ppis
+  apply_to:
+    - snowflake::JETTY_TEST_DB2/RAW/IRIS
+
+isaac test:
+  apply_to:
+    - Iris Workbook/Sheet 1

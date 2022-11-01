@@ -1,13 +1,17 @@
 import { exportFile } from 'quasar';
 import {
   AssetSummary,
-  GroupName,
   GroupSummary,
   NodePath,
   TagSummary,
-  UserName,
   UserSummary,
 } from './components/models';
+
+export type NodeSummary =
+  | AssetSummary
+  | GroupSummary
+  | UserSummary
+  | TagSummary;
 
 export const getBadgeColor = (stringInput: string) => {
   if (stringInput.toLocaleLowerCase() == 'jetty') {
@@ -21,21 +25,17 @@ export const getBadgeColor = (stringInput: string) => {
   return `hsl(${stringUniqueHash % 360}, 95%, 35%)`;
 };
 
-export const getNodeIcon = (stringInput: string) => {
+export const nodeIconFromNode = (node: NodeSummary) => {
   let icon = 'person';
-  switch (stringInput) {
-    case 'user':
-      icon = 'person';
-      break;
-    case 'asset':
-      icon = 'table_chart';
-      break;
-    case 'group':
-      icon = 'group';
-      break;
-    case 'tag':
-      icon = 'sell';
-      break;
+
+  if ('Group' in node) {
+    icon = 'group';
+  } else if ('User' in node) {
+    icon = 'person';
+  } else if ('Asset' in node) {
+    icon = 'table_chart';
+  } else if ('Tag' in node) {
+    icon = 'sell';
   }
   return icon;
 };
@@ -78,23 +78,23 @@ export function fetchJson(path: string) {
     .catch((error) => console.log('error fetching data:', error));
 }
 
-export function nodeNameAsString(
-  node: GroupSummary | UserSummary | AssetSummary | TagSummary
-): string {
+export function nodeNameAsString(node: NodeSummary): string {
   if ('Group' in node) {
     return node.Group.name.Group.origin + '::' + node.Group.name.Group.name;
   } else if ('User' in node) {
     return node.User.name.User;
   } else if ('Asset' in node) {
-    return node.Asset.name.Asset.uri;
+    return (
+      node.Asset.name.Asset.connector +
+      '::' +
+      node.Asset.name.Asset.path.join('/')
+    );
   } else if ('Tag' in node) {
     return node.Tag.name.Tag;
   }
 }
 
-export function nodeConnectors(
-  node: GroupSummary | UserSummary | AssetSummary | TagSummary
-): string[] {
+export function nodeConnectors(node: NodeSummary): string[] {
   if ('Group' in node) {
     return node.Group.connectors;
   } else if ('User' in node) {
@@ -109,3 +109,27 @@ export function nodeConnectors(
 export const getPathAsString = (path: NodePath): string => {
   return path.map((g) => nodeNameAsString(g)).join(' ⇨ ');
 };
+
+export function nodeId(node: NodeSummary): string {
+  if ('Group' in node) {
+    return node.Group.id;
+  } else if ('User' in node) {
+    return node.User.id;
+  } else if ('Asset' in node) {
+    return node.Asset.id;
+  } else if ('Tag' in node) {
+    return node.Tag.id;
+  }
+}
+
+export function nodeType(node: NodeSummary): string {
+  if ('Group' in node) {
+    return 'group';
+  } else if ('User' in node) {
+    return 'user';
+  } else if ('Asset' in node) {
+    return 'asset';
+  } else if ('Tag' in node) {
+    return 'tag';
+  }
+}

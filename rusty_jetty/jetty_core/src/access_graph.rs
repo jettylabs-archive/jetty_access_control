@@ -11,11 +11,13 @@ pub mod translate;
 
 use crate::connectors::nodes::{ConnectorData, EffectivePermission, SparseMatrix};
 use crate::connectors::processed_nodes::ProcessedConnectorData;
-use crate::connectors::UserIdentifier;
+#[cfg(test)]
+use crate::cual::Cual;
+
+use crate::connectors::AssetType;
 use crate::jetty::ConnectorNamespace;
 use crate::logging::debug;
 use crate::tag_parser::{parse_tags, tags_to_jetty_node_helpers};
-use crate::{connectors::AssetType, cual::Cual};
 
 use self::graph::typed_indices::{AssetIndex, GroupIndex, PolicyIndex, TagIndex, UserIndex};
 use self::helpers::NodeHelper;
@@ -38,7 +40,9 @@ use serde::Deserialize;
 use serde::Serialize;
 use time::OffsetDateTime;
 
-use crate::permissions::matrix::{InsertOrMerge, Merge};
+use uuid::Uuid;
+
+use crate::permissions::matrix::InsertOrMerge;
 
 const SAVED_GRAPH_PATH: &str = "jetty_graph";
 
@@ -47,6 +51,8 @@ const SAVED_GRAPH_PATH: &str = "jetty_graph";
 pub struct UserAttributes {
     /// User name
     pub name: NodeName,
+    /// Node Id
+    pub id: Uuid,
     /// Specific user identifiers
     pub identifiers: HashSet<connectors::UserIdentifier>,
     /// Misc user identifiers
@@ -65,6 +71,7 @@ impl UserAttributes {
         let connectors = merge_set(&self.connectors, &new_attributes.connectors);
         Ok(UserAttributes {
             name,
+            id: self.id,
             identifiers,
             metadata,
             connectors,
@@ -75,7 +82,11 @@ impl UserAttributes {
     #[cfg(test)]
     fn new(name: String) -> Self {
         Self {
-            name: NodeName::User(name),
+            name: NodeName::User(name.to_owned()),
+            id: Uuid::new_v5(
+                &Uuid::NAMESPACE_URL,
+                NodeName::User(name).to_string().as_bytes(),
+            ),
             identifiers: Default::default(),
             metadata: Default::default(),
             connectors: Default::default(),
@@ -100,6 +111,8 @@ impl TryFrom<JettyNode> for UserAttributes {
 pub struct GroupAttributes {
     /// Name of group
     pub name: NodeName,
+    /// Node Id
+    pub id: Uuid,
     /// k-v pairs of group metadata
     pub metadata: HashMap<String, String>,
     /// All the connectors the group is present in
@@ -115,6 +128,7 @@ impl GroupAttributes {
         let connectors = merge_set(&self.connectors, &new_attributes.connectors);
         Ok(GroupAttributes {
             name,
+            id: self.id,
             metadata,
             connectors,
         })
@@ -149,6 +163,8 @@ impl TryFrom<JettyNode> for GroupAttributes {
 pub struct AssetAttributes {
     /// Name of Asset
     pub name: NodeName,
+    /// Node Id
+    pub id: Uuid,
     /// Asset type
     pub asset_type: AssetType,
     /// Asset metadata
@@ -168,6 +184,7 @@ impl AssetAttributes {
         let connectors = merge_set(&self.connectors, &new_attributes.connectors);
         Ok(AssetAttributes {
             name,
+            id: self.id,
             asset_type,
             metadata,
             connectors,
@@ -184,9 +201,15 @@ impl AssetAttributes {
 
     /// Convenience constructor for testing
     #[cfg(test)]
-    pub(crate) fn new(cual: Cual) -> Self {
+    pub(crate) fn new(cual: Cual, connector: ConnectorNamespace) -> Self {
+        let node_name = NodeName::Asset {
+            connector,
+            asset_type: cual.asset_type(),
+            path: cual.asset_path(),
+        };
         Self {
-            name: NodeName::Asset(cual),
+            name: node_name.to_owned(),
+            id: Uuid::new_v5(&Uuid::NAMESPACE_URL, node_name.to_string().as_bytes()),
             asset_type: AssetType::default(),
             metadata: Default::default(),
             connectors: Default::default(),
@@ -211,6 +234,8 @@ impl TryFrom<JettyNode> for AssetAttributes {
 pub struct TagAttributes {
     /// Name of tag
     pub name: NodeName,
+    /// Node Id
+    pub id: Uuid,
     /// optional discription of the tag
     pub description: Option<String>,
     /// an optional value
@@ -246,6 +271,7 @@ impl TagAttributes {
 
         Ok(TagAttributes {
             name,
+            id: self.id,
             value,
             description,
             pass_through_hierarchy,
@@ -257,8 +283,10 @@ impl TagAttributes {
     /// Convenience constructor for testing
     #[cfg(test)]
     fn new(name: String, pass_through_hierarchy: bool, pass_through_lineage: bool) -> Self {
+        let node_name = NodeName::Tag(name);
         Self {
-            name: NodeName::Tag(name),
+            name: node_name.to_owned(),
+            id: Uuid::new_v5(&Uuid::NAMESPACE_URL, node_name.to_string().as_bytes()),
             description: None,
             value: Default::default(),
             pass_through_hierarchy,
@@ -285,6 +313,8 @@ impl TryFrom<JettyNode> for TagAttributes {
 pub struct PolicyAttributes {
     /// Policy name
     pub name: NodeName,
+    /// Node Id
+    pub id: Uuid,
     /// Policy privileges
     pub privileges: HashSet<String>,
     /// Whether the policy is passed through hierarchy
@@ -315,6 +345,7 @@ impl PolicyAttributes {
         let connectors = merge_set(&self.connectors, &new_attributes.connectors);
         Ok(PolicyAttributes {
             name,
+            id: self.id,
             privileges,
             pass_through_hierarchy,
             pass_through_lineage,
@@ -325,11 +356,13 @@ impl PolicyAttributes {
     /// Convenience constructor for testing
     #[cfg(test)]
     fn new(name: String) -> Self {
+        let node_name = NodeName::Policy {
+            name,
+            origin: Default::default(),
+        };
         Self {
-            name: NodeName::Policy {
-                name,
-                origin: Default::default(),
-            },
+            name: node_name.to_owned(),
+            id: Uuid::new_v5(&Uuid::NAMESPACE_URL, node_name.to_string().as_bytes()),
             privileges: Default::default(),
             pass_through_hierarchy: Default::default(),
             pass_through_lineage: Default::default(),
@@ -426,6 +459,17 @@ impl JettyNode {
             JettyNode::User(a) => a.name.to_owned(),
         }
     }
+
+    /// Get id from a JettyNode
+    pub fn id(&self) -> Uuid {
+        match &self {
+            JettyNode::Group(n) => n.id,
+            JettyNode::User(n) => n.id,
+            JettyNode::Asset(n) => n.id,
+            JettyNode::Tag(n) => n.id,
+            JettyNode::Policy(n) => n.id,
+        }
+    }
 }
 
 /// Enum of edge types
@@ -484,6 +528,38 @@ fn get_edge_type_pair(edge_type: &EdgeType) -> EdgeType {
     }
 }
 
+/// A type representing the path of an asset
+///
+#[derive(PartialEq, Eq, Hash, Clone, Debug, Serialize, Deserialize, PartialOrd, Ord)]
+pub struct AssetPath(Vec<String>);
+
+impl Display for AssetPath {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0.join("/"))
+    }
+}
+
+impl AssetPath {
+    /// Return a Vec<String> of the different path components
+    pub fn components(&self) -> &Vec<String> {
+        &self.0
+    }
+
+    /// Return the ancestors of a path
+    pub fn ancestors(&self) -> Vec<&[String]> {
+        self.0
+            .iter()
+            .enumerate()
+            .map(|(i, _)| &self.0[..i + 1])
+            .collect()
+    }
+
+    /// Build a new asset path
+    pub(crate) fn new(path: Vec<String>) -> Self {
+        Self(path)
+    }
+}
+
 /// Mapping of node identifiers (like asset name) to their id in the graph
 #[derive(PartialEq, Eq, Hash, Clone, Debug, Serialize, Deserialize, PartialOrd, Ord)]
 pub enum NodeName {
@@ -497,7 +573,14 @@ pub enum NodeName {
         origin: ConnectorNamespace,
     },
     /// Asset node
-    Asset(Cual),
+    Asset {
+        /// The assets connector
+        connector: ConnectorNamespace,
+        /// The AssetType if, and only if, it is included in the cual
+        asset_type: Option<AssetType>,
+        /// The path to the asset
+        path: AssetPath,
+    },
     /// Policy node
     Policy {
         /// Policy name
@@ -518,11 +601,40 @@ impl Default for NodeName {
 impl Display for NodeName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            NodeName::User(n) => write!(f, "{}", n.to_owned()),
-            NodeName::Group { name, origin } => write!(f, "{}::{}", origin, name),
-            NodeName::Asset(c) => write!(f, "{}", c.to_string()),
-            NodeName::Policy { name, origin } => write!(f, "{}::{}", origin, name),
-            NodeName::Tag(n) => write!(f, "{}", n.to_owned()),
+            NodeName::User(n) => write!(f, "{n}"),
+            NodeName::Group { name, origin } => write!(f, "{origin}::{name}"),
+            NodeName::Asset {
+                connector,
+                asset_type,
+                path,
+            } => write!(
+                f,
+                "{}::{}::{}",
+                connector,
+                asset_type
+                    .as_ref()
+                    .unwrap_or(&AssetType("".to_string()))
+                    .to_string(),
+                path
+            ),
+            NodeName::Policy { name, origin } => write!(f, "{origin}::{name}"),
+            NodeName::Tag(n) => write!(f, "{n}"),
+        }
+    }
+}
+
+impl NodeName {
+    /// This function generates a string intended to be used for matching in configuration files
+    pub fn name_for_string_matching(&self) -> String {
+        match self {
+            NodeName::Asset {
+                connector, path, ..
+            } => {
+                // for Assets, the matchable portion is the namespace + path.
+                // The type must be matched separately.
+                format!("{connector}::{path}")
+            }
+            _ => todo!(),
         }
     }
 }
@@ -580,6 +692,7 @@ impl AccessGraph {
             graph: graph::Graph {
                 graph: petgraph::stable_graph::StableDiGraph::new(),
                 nodes: Default::default(),
+                node_ids: Default::default(),
             },
             edge_cache: HashSet::new(),
             last_modified: OffsetDateTime::now_utc(),
@@ -634,30 +747,70 @@ impl AccessGraph {
         result
     }
 
+    // Get indices by id
+
+    #[deprecated = "please transition to referencing nodes by their id rather than their name"]
     /// Get the untyped node index for a given NodeName
     pub fn get_untyped_index_from_name(&self, node_name: &NodeName) -> Option<NodeIndex> {
         self.graph.get_untyped_node_index(node_name)
     }
 
+    #[deprecated = "please transition to referencing nodes by their id rather than their name"]
     /// Get the typed node index for a given NodeName
     pub fn get_asset_index_from_name(&self, node_name: &NodeName) -> Option<AssetIndex> {
         self.graph.get_asset_node_index(node_name)
     }
+
+    #[deprecated = "please transition to referencing nodes by their id rather than their name"]
     /// Get the untyped node index for a given NodeName
     pub fn get_user_index_from_name(&self, node_name: &NodeName) -> Option<UserIndex> {
         self.graph.get_user_node_index(node_name)
     }
+
+    #[deprecated = "please transition to referencing nodes by their id rather than their name"]
     /// Get the untyped node index for a given NodeName
     pub fn get_tag_index_from_name(&self, node_name: &NodeName) -> Option<TagIndex> {
         self.graph.get_tag_node_index(node_name)
     }
+
+    #[deprecated = "please transition to referencing nodes by their id rather than their name"]
     /// Get the untyped node index for a given NodeName
     pub fn get_policy_index_from_name(&self, node_name: &NodeName) -> Option<PolicyIndex> {
         self.graph.get_policy_node_index(node_name)
     }
+
+    #[deprecated = "please transition to referencing nodes by their id rather than their name"]
     /// Get the untyped node index for a given NodeName
     pub fn get_group_index_from_name(&self, node_name: &NodeName) -> Option<GroupIndex> {
         self.graph.get_group_node_index(node_name)
+    }
+
+    // Get indices by id
+
+    /// Get the untyped node index for a given Node ID
+    pub fn get_untyped_index_from_id(&self, node_id: &Uuid) -> Option<NodeIndex> {
+        self.graph.get_untyped_node_index_from_id(node_id)
+    }
+
+    /// Get the typed node index for a given Node Id
+    pub fn get_asset_index_from_id(&self, node_id: &Uuid) -> Option<AssetIndex> {
+        self.graph.get_asset_node_index_from_id(node_id)
+    }
+    /// Get the typed node index for a given Node Id
+    pub fn get_user_index_from_id(&self, node_id: &Uuid) -> Option<UserIndex> {
+        self.graph.get_user_node_index_from_id(node_id)
+    }
+    /// Get the typed node index for a given Node Id
+    pub fn get_tag_index_from_id(&self, node_id: &Uuid) -> Option<TagIndex> {
+        self.graph.get_tag_node_index_from_id(node_id)
+    }
+    /// Get the typed node index for a given Node Id
+    pub fn get_policy_index_from_id(&self, node_id: &Uuid) -> Option<PolicyIndex> {
+        self.graph.get_policy_node_index_from_id(node_id)
+    }
+    /// Get the typed node index for a given Node Id
+    pub fn get_group_index_from_id(&self, node_id: &Uuid) -> Option<GroupIndex> {
+        self.graph.get_group_node_index_from_id(node_id)
     }
 
     #[cfg(test)]
@@ -679,21 +832,12 @@ impl AccessGraph {
     }
 
     pub(crate) fn add_nodes(&mut self, data: &ProcessedConnectorData) -> Result<()> {
-        self.register_nodes_and_edges(&data.groups, None)?;
-        self.register_nodes_and_edges(&data.users, None)?;
-        self.register_nodes_and_edges(
-            &data.assets,
-            Some(|node, connector| {
-                debug!("Filtering non-connector edge");
-                if let NodeName::Asset(cual) = &node.name {
-                    cual.scheme() != connector.to_string().trim()
-                } else {
-                    panic!("improper node type")
-                }
-            }),
-        )?;
-        self.register_nodes_and_edges(&data.policies, None)?;
-        self.register_nodes_and_edges(&data.tags, None)?;
+        self.register_nodes_and_edges(&data.groups)?;
+        self.register_nodes_and_edges(&data.users)?;
+        self.register_nodes_and_edges(&data.assets)?;
+        self.register_nodes_and_edges(&data.policies)?;
+        self.register_nodes_and_edges(&data.tags)?;
+        self.register_nodes_and_edges(&data.asset_references)?;
         Ok(())
     }
 
@@ -708,23 +852,15 @@ impl AccessGraph {
     }
 
     /// Add nodes to the graph and add edges to the edge cache
-    fn register_nodes_and_edges<T: NodeHelper>(
-        &mut self,
-        nodes: &Vec<T>,
-        filter: Option<fn(&T, &ConnectorNamespace) -> bool>,
-    ) -> Result<()> {
+    fn register_nodes_and_edges<T: NodeHelper>(&mut self, nodes: &Vec<T>) -> Result<()> {
         for n in nodes {
             // Edges get added regardless of connector.
             let edges = n.get_edges();
             self.edge_cache.extend(edges);
-            if let Some(should_filter) = filter {
-                if should_filter(n, &n.get_connector()) {
-                    debug!("Filtering node {:?}", n.get_node().get_string_name());
-                    continue;
-                }
+
+            if let Some(node) = n.get_node() {
+                self.graph.add_node(&node)?;
             }
-            let node = n.get_node();
-            self.graph.add_node(&node)?;
         }
         Ok(())
     }
@@ -822,13 +958,21 @@ where
 }
 
 #[cfg(test)]
+pub fn cual_to_asset_name_test(cual: Cual, connector: ConnectorNamespace) -> NodeName {
+    NodeName::Asset {
+        connector,
+        asset_type: cual.asset_type(),
+        path: cual.asset_path(),
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use std::collections::HashSet;
 
     use anyhow::Result;
 
     use crate::connectors::{
-        nodes::{self, ConnectorData},
         processed_nodes::ProcessedGroup,
     };
 
@@ -972,7 +1116,7 @@ mod tests {
             },
         ]);
 
-        ag.register_nodes_and_edges(&input_group, None)?;
+        ag.register_nodes_and_edges(&input_group)?;
         assert_eq!(ag.edge_cache, output_edges);
         Ok(())
     }

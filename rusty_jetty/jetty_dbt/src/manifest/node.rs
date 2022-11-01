@@ -2,12 +2,12 @@ use serde::Deserialize;
 
 use jetty_core::connectors::AssetType;
 use jetty_core::cual::Cual;
-use jetty_core::{connectors::nodes::RawAsset as JettyAsset, cual::Cualable};
+use jetty_core::{connectors::nodes::RawAssetReference as JettyAssetReference, cual::Cualable};
 
 use std::collections::{HashMap, HashSet};
 
 use super::DbtProjectManifest;
-use crate::consts::TABLE;
+
 use crate::cual::{cual, get_cual_account_name};
 
 pub(crate) trait NamePartable {
@@ -39,7 +39,7 @@ pub(crate) trait NamePartable {
             1 => cual!(name_parts[0]),
             2 => cual!(name_parts[0], name_parts[1]),
             3 => cual!(name_parts[0], name_parts[1], name_parts[2]),
-            num => panic!("{} name parts is too many for a dbt CUAL", num),
+            num => panic!("{num} name parts is too many for a dbt CUAL"),
         }
     }
 }
@@ -79,7 +79,7 @@ impl DbtNode {
     pub(crate) fn to_jetty_asset(
         &self,
         manifest: &Box<dyn DbtProjectManifest + Send + Sync>,
-    ) -> JettyAsset {
+    ) -> JettyAssetReference {
         match self {
             Self::ModelNode(m_node) => {
                 let node_dependencies = manifest
@@ -90,10 +90,8 @@ impl DbtNode {
                     .iter()
                     .map(|dep_name| manifest.cual_for_node(dep_name.to_owned()).unwrap().uri())
                     .collect();
-                JettyAsset::new(
+                JettyAssetReference::new(
                     (m_node as &dyn NamePartable).cual(),
-                    "".to_owned(),
-                    m_node.materialized_as.clone(),
                     m_node.get_metadata(),
                     // No policies in dbt.
                     HashSet::new(),
@@ -118,10 +116,8 @@ impl DbtNode {
                     .iter()
                     .map(|dep_name| manifest.cual_for_node(dep_name.to_owned()).unwrap().uri())
                     .collect();
-                JettyAsset::new(
+                JettyAssetReference::new(
                     (s_node as &dyn NamePartable).cual(),
-                    "".to_owned(),
-                    AssetType(TABLE.to_owned()),
                     HashMap::new(),
                     // No policies in dbt.
                     HashSet::new(),

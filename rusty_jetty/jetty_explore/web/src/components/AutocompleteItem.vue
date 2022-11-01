@@ -1,27 +1,24 @@
 <template>
   <q-item v-bind="props.scope.itemProps">
     <q-item-section avatar>
-      <q-icon :name="getNodeIcon(scope.opt.type)" color="primary" />
+      <q-icon :name="nodeIconFromNode(scope.opt)" color="primary" />
     </q-item-section>
+
     <q-item-section>
-      <q-item-label class="text-subtitle1 text-weight-light">
-        {{ scope.opt.name }}
-      </q-item-label>
-      <q-item-label caption>
-        <JettyBadge
-          v-for="platform in scope.opt.platforms"
-          v-bind:key="platform"
-          :name="platform"
-        >
-        </JettyBadge>
-      </q-item-label>
+      <GroupHeadline v-if="'Group' in scope.opt" :group="scope.opt" />
+      <TagHeadline v-else-if="'Tag' in scope.opt" :tag="scope.opt" />
+      <UserHeadline v-else-if="'User' in scope.opt" :user="scope.opt" />
+      <AssetHeadline v-else-if="'Asset' in scope.opt" :asset="scope.opt" />
     </q-item-section>
   </q-item>
 </template>
 
 <script lang="ts" setup>
-import { getNodeIcon } from '../util';
-import JettyBadge from './JettyBadge.vue';
+import { nodeIconFromNode } from '../util';
+import AssetHeadline from './assets/AssetHeadline.vue';
+import GroupHeadline from './groups/GroupHeadline.vue';
+import TagHeadline from './tags/TagHeadline.vue';
+import UserHeadline from './users/UserHeadline.vue';
 
 const props = defineProps(['scope']);
 </script>

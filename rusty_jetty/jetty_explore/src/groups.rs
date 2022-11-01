@@ -1,4 +1,4 @@
-use std::{collections::HashSet, sync::Arc};
+use std::{sync::Arc};
 
 use anyhow::Context;
 use axum::{extract::Path, routing::get, Extension, Json, Router};
@@ -6,7 +6,8 @@ use jetty_core::{
     access_graph::{self, EdgeType, JettyNode, NodeName},
     jetty::ConnectorNamespace,
 };
-use serde::{Deserialize, Serialize};
+
+use uuid::Uuid;
 
 use crate::node_summaries::NodeSummary;
 
@@ -30,14 +31,14 @@ pub(super) fn router() -> Router {
 
 /// Return the groups that this group is a direct member of
 async fn direct_groups_handler(
-    Path(node_id): Path<String>,
+    Path(node_id): Path<Uuid>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<NodeSummary>> {
     // Group names in the url will be written as origin::group_name, so
     // we need to parse that out
     // Eventually, we could switch this to a hash
     let from = ag
-        .get_group_index_from_name(&group_name_from_url_param(node_id))
+        .get_group_index_from_id(&node_id)
         .context("fetching group node")
         .unwrap();
 
@@ -67,14 +68,14 @@ async fn direct_groups_handler(
 
 /// Return the groups that this group is an inherited member of
 async fn inherited_groups_handler(
-    Path(node_id): Path<String>,
+    Path(node_id): Path<Uuid>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<NodeSummaryWithPaths>> {
     // Group names in the url will be written as origin::group_name, so
     // we need to parse that out
     // Eventually, we could switch this to a hash
     let from = ag
-        .get_group_index_from_name(&group_name_from_url_param(node_id))
+        .get_group_index_from_id(&node_id)
         .context("fetching group node")
         .unwrap();
 
@@ -115,14 +116,14 @@ async fn inherited_groups_handler(
 
 /// Return the groups that are direct members of this group
 async fn direct_members_groups_handler(
-    Path(node_id): Path<String>,
+    Path(node_id): Path<Uuid>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<NodeSummary>> {
     // Group names in the url will be written as origin::group_name, so
     // we need to parse that out
     // Eventually, we could switch this to a hash
     let from = ag
-        .get_group_index_from_name(&group_name_from_url_param(node_id))
+        .get_group_index_from_id(&node_id)
         .context("fetching group node")
         .unwrap();
 
@@ -152,14 +153,14 @@ async fn direct_members_groups_handler(
 
 /// Return the users that are direct members of this group
 async fn direct_members_users_handler(
-    Path(node_id): Path<String>,
+    Path(node_id): Path<Uuid>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<NodeSummary>> {
     // Group names in the url will be written as origin::group_name, so
     // we need to parse that out
     // Eventually, we could switch this to a hash
     let from = ag
-        .get_group_index_from_name(&group_name_from_url_param(node_id))
+        .get_group_index_from_id(&node_id)
         .context("fetching group node")
         .unwrap();
     let group_nodes = ag.get_matching_children(
@@ -187,14 +188,14 @@ async fn direct_members_users_handler(
 
 /// Return all users that are members of the group, directly or through inheritance
 async fn all_members_handler(
-    Path(node_id): Path<String>,
+    Path(node_id): Path<Uuid>,
     Extension(ag): Extension<Arc<access_graph::AccessGraph>>,
 ) -> Json<Vec<NodeSummaryWithPaths>> {
     // Group names in the url will be written as origin::group_name, so
     // we need to parse that out
     // Eventually, we could switch this to a hash
     let from = ag
-        .get_group_index_from_name(&group_name_from_url_param(node_id))
+        .get_group_index_from_id(&node_id)
         .context("fetching group node")
         .unwrap();
 
@@ -211,7 +212,7 @@ async fn all_members_handler(
         .into_iter()
         .filter_map(|(i, p)| {
             let jetty_node = &ag.graph()[i];
-            if let JettyNode::User(u) = jetty_node {
+            if let JettyNode::User(_u) = jetty_node {
                 Some(NodeSummaryWithPaths {
                     node: NodeSummary::from(jetty_node.to_owned()),
                     paths: p

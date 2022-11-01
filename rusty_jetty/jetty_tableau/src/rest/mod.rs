@@ -6,7 +6,6 @@ mod cual;
 use std::io::{Cursor, Read};
 
 use super::*;
-#[cfg(test)]
 pub(crate) use cual::get_cual_prefix;
 #[cfg(not(test))]
 use cual::set_cual_prefix;
@@ -278,7 +277,7 @@ pub(crate) fn get_json_from_path(
     let mut return_val = val;
 
     for p in path {
-        full_path = format!("{}.{}", full_path, p);
+        full_path = format!("{full_path}.{p}");
         return_val = return_val.get(p).ok_or_else(|| {
             anyhow!(
                 "unable to parse json - no such path exists: {}\n{}",

@@ -6,21 +6,17 @@ use std::collections::{HashMap, HashSet};
 use crate::{
     access_graph::{
         graph::typed_indices::{AssetIndex, UserIndex},
-        AccessGraph, NodeName,
+        AccessGraph,
     },
-    connectors::{
-        nodes::{EffectivePermission, PermissionMode},
-        UserIdentifier,
-    },
-    cual::Cual,
+    connectors::nodes::{EffectivePermission, PermissionMode},
 };
 
 impl AccessGraph {
     /// Return accessible assets
-    pub fn get_user_accessible_assets<'a>(
-        &'a self,
+    pub fn get_user_accessible_assets(
+        &self,
         user: UserIndex,
-    ) -> HashMap<AssetIndex, HashSet<&'a EffectivePermission>> {
+    ) -> HashMap<AssetIndex, HashSet<&EffectivePermission>> {
         let perms = &self.effective_permissions[&user];
         perms
             .iter()
@@ -40,7 +36,7 @@ impl AccessGraph {
             .collect()
     }
 
-    /// Return accessible assets by user
+    /// Return accessible assets by user. To be accessible, the asset must have at least one Allow privilege
     pub fn get_users_with_access_to_asset<'a>(
         &'a self,
         asset: AssetIndex,
@@ -72,6 +68,6 @@ fn get_access_by_asset(
     asset: AssetIndex,
 ) -> HashMap<UserIndex, &HashSet<EffectivePermission>> {
     m.iter()
-        .filter_map(|(k, v)| v.get(&asset).and_then(|ep| Some((k.to_owned(), ep))))
+        .filter_map(|(k, v)| v.get(&asset).map(|ep| (k.to_owned(), ep)))
         .collect::<HashMap<_, _>>()
 }

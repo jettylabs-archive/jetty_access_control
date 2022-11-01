@@ -3,31 +3,15 @@
     <JettyTable
       title="All Tags"
       :rows-per-page="30"
-      :filter-method="filterMethod"
+      :row-transformer="rowTransformer"
       :columns="columns"
       :csv-config="csvConfig"
       fetchPath="/api/tags"
-      v-slot="slotProps"
+      v-slot="{ props: { row } }: { props: { row: TagSummary } }"
     >
       <q-tr>
         <q-td key="name">
-          <router-link
-            :to="'/tag/' + encodeURIComponent(slotProps.props.row.name)"
-            style="text-decoration: none; color: inherit"
-          >
-            <q-item class="q-px-none">
-              <q-item-section>
-                <q-item-label> {{ slotProps.props.row.name }}</q-item-label>
-                <q-item-label caption>
-                  <JettyBadge
-                    v-for="platform in slotProps.props.row.platforms"
-                    :key="platform"
-                    :name="platform"
-                  />
-                </q-item-label>
-              </q-item-section>
-            </q-item>
-          </router-link>
+          <TagHeadline :tag="row" />
         </q-td>
       </q-tr>
     </JettyTable>
@@ -35,10 +19,11 @@
 </template>
 
 <script setup lang="ts">
-import JettyBadge from 'src/components/JettyBadge.vue';
 import JettyTable from 'src/components/JettyTable.vue';
-
-const props = defineProps(['node']);
+import { TagSummary } from 'src/components/models';
+import TagHeadline from 'src/components/tags/TagHeadline.vue';
+import { nodeConnectors, nodeNameAsString } from 'src/util';
+import { mapNodeSummaryforSearch } from 'src/util/search';
 
 const columns = [
   {
@@ -50,23 +35,17 @@ const columns = [
   },
 ];
 
-// Filters by name, privileges, or platform
-const filterMethod = (rows, terms) => {
-  const needles = terms.toLocaleLowerCase().split(' ');
-  return rows.filter((r) =>
-    needles.every(
-      (needle) =>
-        r.name.toLocaleLowerCase().indexOf(needle) > -1 ||
-        r.platforms.join(' ').toLocaleLowerCase().indexOf(needle) > -1
-    )
-  );
-};
+const rowTransformer = (row: TagSummary): string =>
+  mapNodeSummaryforSearch(row);
 
 const csvConfig = {
-  filename: 'tag.csv',
+  filename: 'tags.csv',
   columnNames: ['Tag Name', 'Platforms'],
   // accepts a row and returns the proper mapping
-  mappingFn: (filteredSortedRows) =>
-    filteredSortedRows.map((r) => [r.name, r.platforms.join(', ')]),
+  mappingFn: (filteredSortedRows: TagSummary[]): string[][] =>
+    filteredSortedRows.map((r) => [
+      nodeNameAsString(r),
+      nodeConnectors(r).join(' '),
+    ]),
 };
 </script>

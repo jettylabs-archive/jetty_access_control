@@ -13,15 +13,17 @@ mod user_accessible_tags;
 
 use petgraph::{stable_graph::NodeIndex, visit::IntoNodeReferences};
 
+use crate::permissions::matrix::Merge;
+
 use super::{AccessGraph, EdgeType, JettyNode};
 pub use tags_for_asset::AssetTags;
 
 /// A path from one node to another, including start and end nodes.
 /// Inside, it's a Vec<JettyNode>
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub struct NodePath(Vec<NodeIndex>);
 
-impl NodePath {}
+impl Merge for NodePath {}
 
 /// A DiGraph derived from an AccessGraph
 pub struct SubGraph(petgraph::graph::DiGraph<JettyNode, EdgeType>);
@@ -41,14 +43,11 @@ impl AccessGraph {
 
     /// Get a node path as a string
     pub fn path_as_string(&self, path: &NodePath) -> String {
-        format!(
-            "{}",
-            path.0
+        path.0
                 .iter()
                 .map(|idx| self[*idx].get_string_name())
                 .collect::<Vec<_>>()
                 .join(" ⇨ ")
-        )
     }
 
     /// Get a node path as a vector of JettyNodes
@@ -62,7 +61,8 @@ mod tests {
 
     use crate::{
         access_graph::{
-            AssetAttributes, GroupAttributes, NodeName, PolicyAttributes, UserAttributes,
+            cual_to_asset_name_test, AssetAttributes, GroupAttributes, NodeName, PolicyAttributes,
+            UserAttributes,
         },
         cual::Cual,
         logging::debug,
@@ -76,7 +76,10 @@ mod tests {
     fn get_matching_children_works() -> Result<()> {
         let ag = AccessGraph::new_dummy(
             &[
-                &JettyNode::Asset(AssetAttributes::new(Cual::new("mycual://a"))),
+                &JettyNode::Asset(AssetAttributes::new(
+                    Cual::new("mycual://a/a"),
+                    Default::default(),
+                )),
                 &JettyNode::Policy(PolicyAttributes::new("policy".to_owned())),
                 &JettyNode::User(UserAttributes::new("user".to_owned())),
             ],
@@ -94,7 +97,7 @@ mod tests {
                         name: "policy".to_owned(),
                         origin: Default::default(),
                     },
-                    NodeName::Asset(Cual::new("mycual://a")),
+                    cual_to_asset_name_test(Cual::new("mycual://a/a"), Default::default()),
                     EdgeType::Governs,
                 ),
             ],
@@ -324,7 +327,7 @@ mod tests {
             None,
             None,
         );
-        a.iter().for_each(|p| debug!("{}", ag.path_as_string(&p)));
+        a.iter().for_each(|p| debug!("{}", ag.path_as_string(p)));
         assert_eq!(a.len(), 2);
 
         Ok(())

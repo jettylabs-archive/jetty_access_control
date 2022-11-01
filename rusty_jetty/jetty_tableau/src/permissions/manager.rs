@@ -3,7 +3,6 @@ use std::collections::{HashMap, HashSet};
 use jetty_core::{
     connectors::{
         nodes::{EffectivePermission, PermissionMode, SparseMatrix},
-        UserIdentifier,
     },
     cual::Cual,
     logging::debug,

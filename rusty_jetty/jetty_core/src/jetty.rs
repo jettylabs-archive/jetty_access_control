@@ -1,11 +1,11 @@
 //! Jetty Module
 //!
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::{collections::HashMap, fmt::Display};
 
 use anyhow::{anyhow, Result};
-use dirs::home_dir;
+
 use log::debug;
 use serde::{Deserialize, Serialize};
 use yaml_peg::serde as yaml;
@@ -51,6 +51,11 @@ impl JettyConfig {
         self.name = name;
     }
 
+    /// Get the name
+    pub fn get_name(&self) -> String {
+        self.name.to_owned()
+    }
+
     /// Convert this config to a yaml string.
     pub fn to_yaml(&self) -> Result<String> {
         yaml::to_string(self).map_err(anyhow::Error::from)
@@ -82,13 +87,9 @@ impl ConnectorConfig {
 pub type CredentialsMap = HashMap<String, String>;
 
 /// Fetch the credentials from the Jetty connectors config.
-pub fn fetch_credentials() -> Result<HashMap<String, CredentialsMap>> {
-    let mut default_path = home_dir().unwrap();
-
-    default_path.push(".jetty/connectors.yaml");
-
-    debug!("Trying to read credentials from {:?}", default_path);
-    let credentials_raw = fs::read_to_string(default_path)?;
+pub fn fetch_credentials(path: PathBuf) -> Result<HashMap<String, CredentialsMap>> {
+    debug!("Trying to read credentials from {:?}", path);
+    let credentials_raw = fs::read_to_string(path)?;
     let mut config = yaml::from_str::<HashMap<String, CredentialsMap>>(&credentials_raw)?;
 
     config
@@ -106,11 +107,11 @@ pub struct Jetty {
 impl Jetty {
     /// Convenience method for struct creation. Uses the default location for
     /// config files.
-    pub fn new() -> Result<Self> {
+    pub fn new<P: AsRef<Path>>(jetty_config_path: P) -> Result<Self> {
         // load a saved access graph or create an empty one
 
         Ok(Jetty {
-            config: JettyConfig::read_from_file("./jetty_config.yaml")?,
+            config: JettyConfig::read_from_file(jetty_config_path)?,
         })
     }
 }

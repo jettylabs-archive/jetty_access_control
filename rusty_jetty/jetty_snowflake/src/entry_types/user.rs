@@ -1,4 +1,4 @@
-use anyhow::{Result};
+use anyhow::Result;
 use serde::{de, Deserialize, Serialize};
 
 /// Snowflake User entry.
@@ -70,7 +70,7 @@ mod tests {
         };
 
         let user: User = serde_json::from_value(user_json)?;
-        assert_eq!(user.disabled, false);
+        assert!(user.disabled);
 
         let user_json = json! {
             {
@@ -85,7 +85,7 @@ mod tests {
         };
 
         let user: User = serde_json::from_value(user_json)?;
-        assert_eq!(user.disabled, true);
+        assert!(user.disabled);
         Ok(())
     }
 }

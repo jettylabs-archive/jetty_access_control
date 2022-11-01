@@ -13,17 +13,17 @@
         <q-route-tab
           name="assets"
           label="Assets"
-          :to="'/user/' + encodeURIComponent(props.user_id) + '/assets'"
+          :to="'/user/' + props.user_id + '/assets'"
         />
         <q-route-tab
           name="groups"
           label="Groups"
-          :to="'/user/' + encodeURIComponent(props.user_id) + '/groups'"
+          :to="'/user/' + props.user_id + '/groups'"
         />
         <q-route-tab
           name="tags"
           label="Tags"
-          :to="'/user/' + encodeURIComponent(props.user_id) + '/tags'"
+          :to="'/user/' + props.user_id + '/tags'"
         />
       </q-tabs>
 
@@ -55,6 +55,7 @@ import { ref, computed } from 'vue';
 import JettyHeader from 'src/components/JettyHeader.vue';
 import { useJettyStore } from 'stores/jetty';
 import { useRoute, useRouter } from 'vue-router';
+import { nodeId } from 'src/util';
 
 const props = defineProps(['user_id']);
 const route = useRoute();
@@ -69,9 +70,7 @@ const currentNode = computed(() => {
     platforms: [],
   };
   if (nodeList.value != null) {
-    returnNode = nodeList.value.find(
-      (node) => node.name == props.user_id && node.type == 'user'
-    );
+    returnNode = nodeList.value.find((node) => nodeId(node) == props.user_id);
   }
   return returnNode;
 });
@@ -82,19 +81,3 @@ if (!currentNode.value) {
 
 const tab = ref('assets');
 </script>
-
-<style lang="scss">
-.header {
-  padding-top: 40px;
-}
-.name {
-  font-size: 25pt;
-  font-weight: 200;
-}
-.title-and-icon {
-  align-items: center;
-}
-.content {
-  padding-top: 50px;
-}
-</style>

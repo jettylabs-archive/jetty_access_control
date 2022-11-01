@@ -7,12 +7,12 @@ use super::NodeName;
 use crate::{
     connectors::{
         nodes::{
-            ConnectorData, EffectivePermission, RawAsset, RawGroup, RawPolicy, RawTag, RawUser,
-            SparseMatrix,
+            ConnectorData, EffectivePermission, RawAsset, RawAssetReference, RawGroup, RawPolicy,
+            RawTag, RawUser, SparseMatrix,
         },
         processed_nodes::{
-            ProcessedAsset, ProcessedConnectorData, ProcessedGroup, ProcessedPolicy, ProcessedTag,
-            ProcessedUser,
+            ProcessedAsset, ProcessedAssetReference, ProcessedConnectorData, ProcessedGroup,
+            ProcessedPolicy, ProcessedTag, ProcessedUser,
         },
         UserIdentifier,
     },
@@ -21,12 +21,16 @@ use crate::{
     permissions::matrix::{DoubleInsert, InsertOrMerge},
 };
 
+use anyhow::Context;
+use bimap;
+
 /// Struct to translate local data to global data and back again
 /// Eventually, this will need to be persisted with the graph to enable the write path
 #[derive(Default)]
 pub struct Translator {
     global_to_local: GlobalToLocalIdentifiers,
     local_to_global: LocalToGlobalIdentifiers,
+    cual_prefix_to_namespace: bimap::BiHashMap<Option<String>, ConnectorNamespace>,
 }
 
 #[derive(Default)]
@@ -45,8 +49,11 @@ pub(crate) struct LocalToGlobalIdentifiers {
 
 impl Translator {
     /// Use the ConnectorData from all connectors to populate the mappings
-    pub fn new(data: &Vec<(ConnectorData, ConnectorNamespace)>) -> Self {
+    pub fn new(data: &[(ConnectorData, ConnectorNamespace)]) -> Self {
         let mut t = Translator::default();
+
+        // build the namespace mapping
+        t.build_cual_namespace_map(data);
 
         // Start by pulling out all the user nodes and resolving them to single identities
         t.resolve_users(data);
@@ -56,8 +63,15 @@ impl Translator {
         t
     }
 
+    fn build_cual_namespace_map(&mut self, data: &[(ConnectorData, ConnectorNamespace)]) {
+        for (ConnectorData { cual_prefix, .. }, namespace) in data {
+            self.cual_prefix_to_namespace
+                .insert(cual_prefix.to_owned(), namespace.to_owned());
+        }
+    }
+
     /// This is entity resolution for users. Right now it is very simple, but it can be built out as needed
-    fn resolve_users(&mut self, data: &Vec<(ConnectorData, ConnectorNamespace)>) {
+    fn resolve_users(&mut self, data: &[(ConnectorData, ConnectorNamespace)]) {
         let user_data: Vec<_> = data.iter().map(|(c, n)| (&c.users, n)).collect();
         // for each connector, look over all the users.
         for (users, namespace) in user_data {
@@ -86,7 +100,7 @@ impl Translator {
 
     /// This resolves groups. When we start allowing cross-platform Jetty groups, this will need an update.
     /// This takes the name of a group and creates a NodeName::Group from it
-    fn resolve_groups(&mut self, data: &Vec<(ConnectorData, ConnectorNamespace)>) {
+    fn resolve_groups(&mut self, data: &[(ConnectorData, ConnectorNamespace)]) {
         let group_data: Vec<_> = data.iter().map(|(c, n)| (&c.groups, n)).collect();
         // for each connector, look over all the users.
         for (groups, namespace) in group_data {
@@ -113,7 +127,7 @@ impl Translator {
 
     /// This resolves policies. When we start allowing cross-platform Jetty policies, this will need an update.
     /// This takes the name of a policy and creates a NodeName::Policy from it
-    fn resolve_policies(&mut self, data: &Vec<(ConnectorData, ConnectorNamespace)>) {
+    fn resolve_policies(&mut self, data: &[(ConnectorData, ConnectorNamespace)]) {
         let policy_data: Vec<_> = data.iter().map(|(c, n)| (&c.policies, n)).collect();
         // for each connector, look over all the policies.
         for (policies, namespace) in policy_data {
@@ -184,6 +198,13 @@ impl Translator {
                     .map(|p| self.translate_policy_to_global(p, namespace.to_owned()))
                     .collect::<Vec<ProcessedPolicy>>(),
             );
+            // convert the assets
+            result.asset_references.extend(
+                cd.asset_references
+                    .into_iter()
+                    .map(|a| self.translate_asset_reference_to_global(a, namespace.to_owned()))
+                    .collect::<Vec<ProcessedAssetReference>>(),
+            );
         }
 
         result
@@ -253,7 +274,7 @@ impl Translator {
         connector: ConnectorNamespace,
     ) -> ProcessedAsset {
         ProcessedAsset {
-            name: NodeName::Asset(asset.cual),
+            name: self.cual_to_asset_name(asset.cual),
             asset_type: asset.asset_type,
             metadata: asset.metadata,
             governed_by: asset
@@ -264,29 +285,63 @@ impl Translator {
             child_of: asset
                 .child_of
                 .into_iter()
-                .map(|g| NodeName::Asset(Cual::new(g.as_str())))
+                .map(|g| self.cual_to_asset_name(Cual::new(g.as_str())))
                 .collect(),
             parent_of: asset
                 .parent_of
                 .into_iter()
-                .map(|g| NodeName::Asset(Cual::new(g.as_str())))
+                .map(|g| self.cual_to_asset_name(Cual::new(g.as_str())))
                 .collect(),
             derived_from: asset
                 .derived_from
                 .into_iter()
-                .map(|g| NodeName::Asset(Cual::new(g.as_str())))
+                .map(|g| self.cual_to_asset_name(Cual::new(g.as_str())))
                 .collect(),
             derived_to: asset
                 .derived_to
                 .into_iter()
-                .map(|g| NodeName::Asset(Cual::new(g.as_str())))
+                .map(|g| self.cual_to_asset_name(Cual::new(g.as_str())))
                 .collect(),
-            tagged_as: asset
-                .tagged_as
-                .into_iter()
-                .map(|t| NodeName::Tag(t))
-                .collect(),
+            tagged_as: asset.tagged_as.into_iter().map(NodeName::Tag).collect(),
             connector,
+        }
+    }
+
+    /// Convert node from connector into ProcessedNode by converting all references to global NodeNames
+    fn translate_asset_reference_to_global(
+        &self,
+        asset: RawAssetReference,
+        connector: ConnectorNamespace,
+    ) -> ProcessedAssetReference {
+        ProcessedAssetReference {
+            name: self.cual_to_asset_name(asset.cual),
+            metadata: asset.metadata,
+            governed_by: asset
+                .governed_by
+                .iter()
+                .map(|g| self.local_to_global.policies[&connector][g].to_owned())
+                .collect(),
+            child_of: asset
+                .child_of
+                .into_iter()
+                .map(|g| self.cual_to_asset_name(Cual::new(g.as_str())))
+                .collect(),
+            parent_of: asset
+                .parent_of
+                .into_iter()
+                .map(|g| self.cual_to_asset_name(Cual::new(g.as_str())))
+                .collect(),
+            derived_from: asset
+                .derived_from
+                .into_iter()
+                .map(|g| self.cual_to_asset_name(Cual::new(g.as_str())))
+                .collect(),
+            derived_to: asset
+                .derived_to
+                .into_iter()
+                .map(|g| self.cual_to_asset_name(Cual::new(g.as_str())))
+                .collect(),
+            tagged_as: asset.tagged_as.into_iter().map(NodeName::Tag).collect(),
         }
     }
 
@@ -301,12 +356,12 @@ impl Translator {
             applied_to: tag
                 .applied_to
                 .into_iter()
-                .map(|t| NodeName::Asset(Cual::new(t.as_str())))
+                .map(|t| self.cual_to_asset_name(Cual::new(t.as_str())))
                 .collect(),
             removed_from: tag
                 .removed_from
                 .into_iter()
-                .map(|t| NodeName::Asset(Cual::new(t.as_str())))
+                .map(|t| self.cual_to_asset_name(Cual::new(t.as_str())))
                 .collect(),
             governed_by: tag
                 .governed_by
@@ -329,13 +384,9 @@ impl Translator {
             governs_assets: policy
                 .governs_assets
                 .into_iter()
-                .map(|a| NodeName::Asset(Cual::new(a.as_str())))
+                .map(|a| self.cual_to_asset_name(Cual::new(a.as_str())))
                 .collect(),
-            governs_tags: policy
-                .governs_tags
-                .into_iter()
-                .map(|t| NodeName::Tag(t))
-                .collect(),
+            governs_tags: policy.governs_tags.into_iter().map(NodeName::Tag).collect(),
             granted_to_groups: policy
                 .granted_to_groups
                 .iter()
@@ -366,12 +417,29 @@ impl Translator {
             for (k1, v1) in &c_data.effective_permissions {
                 for (k2, v2) in v1 {
                     result.insert_or_merge(
-                        self.local_to_global.users[&namespace][k1].to_owned(),
-                        HashMap::from([(NodeName::Asset(k2.to_owned()), v2.to_owned())]),
+                        self.local_to_global.users[namespace][k1].to_owned(),
+                        HashMap::from([(self.cual_to_asset_name(k2.to_owned()), v2.to_owned())]),
                     );
                 }
             }
         }
         result
+    }
+
+    /// Convert a cual to NodeName::Asset()
+    pub fn cual_to_asset_name(&self, cual: Cual) -> NodeName {
+        let connector_prefix = cual.connector_prefix();
+        let connector = self
+            .cual_prefix_to_namespace
+            .get_by_left(&connector_prefix)
+            .context("unable to match cual prefix")
+            .unwrap()
+            .to_owned();
+
+        NodeName::Asset {
+            connector,
+            asset_type: cual.asset_type(),
+            path: cual.asset_path(),
+        }
     }
 }

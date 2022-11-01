@@ -2,31 +2,24 @@
   <JettyTable
     title="User-Accessible Tags"
     :rows-per-page="20"
-    :filter-method="filterMethod"
+    :row-transformer="rowTransformer"
     :columns="columns"
     :csv-config="csvConfig"
-    :fetchPath="'/api/user/' + encodeURIComponent(props.node.name) + '/tags'"
+    :fetchPath="'/api/user/' + nodeId(props.node) + '/tags'"
     v-slot="{ props: { row } }: { props: { row: TagWithAssets } }"
-    :tip="`The tags that ${props.node.name} has access to, through any asset privilege`"
+    :tip="`The tags that ${nodeNameAsString(
+      props.node
+    )} has access to, through any asset privilege`"
   >
     <q-tr>
       <q-td key="name">
-        <q-item class="q-px-none">
-          <q-item-section>
-            <router-link
-              :to="'/tag/' + encodeURIComponent(nodeNameAsString(row.node))"
-              style="text-decoration: none; color: inherit"
-            >
-              <q-item-label> {{ nodeNameAsString(row.node) }}</q-item-label>
-            </router-link>
-          </q-item-section>
-        </q-item>
+        <TagHeadline :tag="row.node" />
       </q-td>
       <q-td key="assets" style="padding-right: 0px">
         <ul class="q-my-none">
           <li
             v-for="asset in row.associations"
-            :key="asset.Asset.name.Asset.uri"
+            :key="nodeNameAsString(asset)"
             style="padding-top: 2px; padding-bottom: 2px"
           >
             <div class="q-pr-sm">
@@ -50,7 +43,9 @@
 import JettyTable from '../JettyTable.vue';
 import JettyBadge from '../JettyBadge.vue';
 import { AssetSummary, TagSummary } from '../models';
-import { nodeNameAsString } from 'src/util';
+import { nodeNameAsString, nodeId } from 'src/util';
+import { mapNodeSummaryforSearch } from 'src/util/search';
+import TagHeadline from '../tags/TagHeadline.vue';
 
 interface TagWithAssets {
   node: TagSummary;
@@ -76,29 +71,14 @@ const columns = [
   },
 ];
 
-// Filters by name, asset name, or asset platform
-const filterMethod = (rows, terms) => {
-  const needles = terms.toLocaleLowerCase().split(' ');
-  return rows.filter((r) =>
-    needles.every(
-      (needle) =>
-        r.name.toLocaleLowerCase().indexOf(needle) > -1 ||
-        r.assets
-          .map((a) => a.name)
-          .join(' ')
-          .toLocaleLowerCase()
-          .indexOf(needle) > -1 ||
-        r.assets
-          .map((a) => a.platform)
-          .join(' ')
-          .toLocaleLowerCase()
-          .indexOf(needle) > -1
-    )
-  );
-};
+const rowTransformer = (row: TagWithAssets): string =>
+  [
+    mapNodeSummaryforSearch(row.node),
+    ...row.associations.map((a) => mapNodeSummaryforSearch(a)),
+  ].join(' ');
 
 const csvConfig = {
-  filename: props.node.name + '_tags.csv',
+  filename: nodeNameAsString(props.node) + '_tags.csv',
   columnNames: ['Tag Name', 'Accessible Asset', 'Asset Platform'],
   // accepts a row and returns the proper mapping
   mappingFn: (filteredSortedRows: TagWithAssets[]) =>

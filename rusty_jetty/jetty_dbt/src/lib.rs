@@ -19,7 +19,7 @@ use cual::set_cual_account_name;
 use jetty_core::{
     connectors::{
         self,
-        nodes::{ConnectorData, RawAsset as JettyAsset},
+        nodes::{ConnectorData, RawAssetReference as JettyAssetReference},
     },
     jetty::{ConnectorConfig, CredentialsMap},
     Connector,
@@ -83,7 +83,7 @@ impl Connector for DbtConnector {
 
     async fn get_data(&mut self) -> ConnectorData {
         self.manifest.init(&None).unwrap();
-        let all_nodes_as_assets: Vec<JettyAsset> = self
+        let all_nodes_as_assets: Vec<JettyAssetReference> = self
             .manifest
             .get_nodes()
             .unwrap()
@@ -97,10 +97,13 @@ impl Connector for DbtConnector {
             users: vec![],
             // No policies in dbt.
             policies: vec![],
-            assets: all_nodes_as_assets,
+            assets: vec![],
+            asset_references: all_nodes_as_assets,
             // TODO?
             tags: vec![],
             effective_permissions: HashMap::new(),
+            // Because dbt doesn't own any assets, it doesn't have a cual prefix
+            cual_prefix: None,
         }
     }
 }
@@ -198,10 +201,8 @@ mod tests {
         assert_eq!(
             data,
             ConnectorData {
-                assets: vec![RawAsset {
+                asset_references: vec![JettyAssetReference {
                     cual: Cual::new("snowflake://account.snowflakecomputing.com/DB/SCHEMA/MODEL"),
-                    name: "".to_owned(),
-                    asset_type: AssetType(VIEW.to_owned()),
                     metadata: HashMap::from([("enabled".to_owned(), "false".to_owned())]),
                     governed_by: HashSet::new(),
                     child_of: HashSet::new(),
@@ -251,7 +252,6 @@ mod tests {
                     "test2".to_owned(),
                     DbtNode::SourceNode(DbtSourceNode {
                         name: "test2".to_owned(),
-                        ..Default::default()
                     }),
                 ),
             ]))
@@ -260,49 +260,47 @@ mod tests {
             DbtConnector::new_with_manifest(manifest_mock).context("creating connector")?;
 
         let mut assets = connector.get_data().await.assets;
-        dbg!(&assets);
-        assert_eq!(
-            assets.sort(),
-            vec![
-                RawAsset {
-                    cual: Cual::new("snowflake:////"),
-                    name: "".to_owned(),
-                    asset_type: AssetType(VIEW.to_owned()),
-                    metadata: HashMap::from([("enabled".to_owned(), "false".to_owned())]),
-                    governed_by: HashSet::new(),
-                    child_of: HashSet::new(),
-                    parent_of: HashSet::new(),
-                    derived_from: HashSet::new(),
-                    derived_to: HashSet::from(["".to_owned()]),
-                    tagged_as: HashSet::new()
-                },
-                RawAsset {
-                    cual: Cual::new("snowflake:////test"),
-                    name: "test".to_owned(),
-                    asset_type: AssetType(VIEW.to_owned()),
-                    metadata: HashMap::from([("enabled".to_owned(), "false".to_owned())]),
-                    governed_by: HashSet::new(),
-                    child_of: HashSet::new(),
-                    parent_of: HashSet::new(),
-                    derived_from: HashSet::new(),
-                    derived_to: HashSet::from(["".to_owned()]),
-                    tagged_as: HashSet::new()
-                },
-                RawAsset {
-                    cual: Cual::new("snowflake://test2db/test2schema/test2"),
-                    name: "test2".to_owned(),
-                    asset_type: AssetType(VIEW.to_owned()),
-                    metadata: HashMap::from([("enabled".to_owned(), "false".to_owned())]),
-                    governed_by: HashSet::new(),
-                    child_of: HashSet::new(),
-                    parent_of: HashSet::new(),
-                    derived_from: HashSet::new(),
-                    derived_to: HashSet::from(["".to_owned()]),
-                    tagged_as: HashSet::new()
-                },
-            ]
-            .sort(),
-        );
+        assets.sort();
+        let mut expected = vec![
+            RawAsset {
+                cual: Cual::new("snowflake:////"),
+                name: "".to_owned(),
+                asset_type: AssetType(VIEW.to_owned()),
+                metadata: HashMap::from([("enabled".to_owned(), "false".to_owned())]),
+                governed_by: HashSet::new(),
+                child_of: HashSet::new(),
+                parent_of: HashSet::new(),
+                derived_from: HashSet::new(),
+                derived_to: HashSet::from(["".to_owned()]),
+                tagged_as: HashSet::new(),
+            },
+            RawAsset {
+                cual: Cual::new("snowflake:////test"),
+                name: "test".to_owned(),
+                asset_type: AssetType(VIEW.to_owned()),
+                metadata: HashMap::from([("enabled".to_owned(), "false".to_owned())]),
+                governed_by: HashSet::new(),
+                child_of: HashSet::new(),
+                parent_of: HashSet::new(),
+                derived_from: HashSet::new(),
+                derived_to: HashSet::from(["".to_owned()]),
+                tagged_as: HashSet::new(),
+            },
+            RawAsset {
+                cual: Cual::new("snowflake://test2db/test2schema/test2"),
+                name: "test2".to_owned(),
+                asset_type: AssetType(VIEW.to_owned()),
+                metadata: HashMap::from([("enabled".to_owned(), "false".to_owned())]),
+                governed_by: HashSet::new(),
+                child_of: HashSet::new(),
+                parent_of: HashSet::new(),
+                derived_from: HashSet::new(),
+                derived_to: HashSet::from(["".to_owned()]),
+                tagged_as: HashSet::new(),
+            },
+        ];
+        expected.sort();
+        assert_eq!(assets, expected);
         Ok(())
     }
 }

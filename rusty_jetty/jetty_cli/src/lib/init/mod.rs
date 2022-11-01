@@ -1,15 +1,24 @@
+//! Utilities for initializing a Jetty project from scratch.
+//!
+
 mod fs;
 mod inquiry;
 mod pki;
 
-use std::{collections::HashMap, path::PathBuf};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
 
 use anyhow::Result;
 
 use jetty_core::{fetch_credentials, jetty::JettyConfig};
 use tokio::io::AsyncWriteExt;
 
-use crate::init::fs::{create_dir_ignore_failure, create_file};
+use crate::{
+    init::fs::{create_dir_ignore_failure, create_file},
+    project,
+};
 
 use self::inquiry::inquire_init;
 
@@ -30,11 +39,13 @@ impl ProjectStructure {
     }
 }
 
-pub(crate) async fn init(from: &Option<PathBuf>) -> Result<()> {
+/// Main initialization fn to ask the user for the necessary information and
+/// create the relevant project structure.
+pub async fn init(from: &Option<PathBuf>) -> Result<()> {
     let (jetty_config, credentials) = if let Some(from_config) = from {
         // This is a shortcut for debugging and reinitialization with an existing config.
         let jt = JettyConfig::read_from_file(from_config)?;
-        let credentials = fetch_credentials()?;
+        let credentials = fetch_credentials(project::connector_cfg_path())?;
         (jt, credentials)
     } else {
         inquire_init().await?
@@ -52,23 +63,27 @@ pub(crate) async fn init(from: &Option<PathBuf>) -> Result<()> {
 /// The project structure currently looks like this:
 ///
 /// pwd
-///  ├── jetty_config.yaml
-///  └── src
-///       └── tags.yaml
+///  └──{project_name}
+///       ├── jetty_config.yaml
+///       └── src
+///            └── tags.yaml
 async fn initialize_project_structure(
     ProjectStructure {
         jetty_config: jt_config,
         credentials,
     }: ProjectStructure,
 ) -> Result<()> {
-    // The configs don't exist yet. Create them and then the project.
+    // We assume the configs don't exist yet. Create them and then the project.
     println!("Creating project files...");
-    let jetty_config = create_file("./jetty_config.yaml").await;
+
+    let project_path = jt_config.get_name();
+    create_dir_ignore_failure(&project_path).await;
+    let jetty_config = create_file(project::jetty_cfg_path(&project_path)).await;
     let home_dir = dirs::home_dir().expect("Couldn't find your home directory.");
     let jetty_config_dir = home_dir.join("./.jetty");
     create_dir_ignore_failure(jetty_config_dir).await;
 
-    let connectors_config = create_file("~/.jetty/connectors.yaml").await;
+    let connectors_config = create_file(project::connector_cfg_path()).await;
 
     if let Ok(mut cfg) = jetty_config {
         cfg.write_all(jt_config.to_yaml()?.as_bytes()).await?;
@@ -78,8 +93,8 @@ async fn initialize_project_structure(
     if let Ok(mut cfg) = connectors_config {
         cfg.write_all(connectors_yaml.as_bytes()).await?;
     }
-    create_dir_ignore_failure("./src/").await;
-    let mut tags_config = create_file("./src/tags.yaml").await?;
+    create_dir_ignore_failure(Path::new(&project_path).join("tags")).await;
+    let mut tags_config = create_file(project::tags_cfg_path(project_path)).await?;
 
     tags_config
         .write_all(
@@ -90,10 +105,11 @@ async fn initialize_project_structure(
 # identifiable information (PII). 
 # See more at docs.get-jetty.com/docs/getting-started/assets#tagging-assets
 #
-#    pii:
-#    description: This data contains pii from ppis
-#    apply_to:
-#        - snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB2/RAW/IRIS
+# pii:
+#   description: This data contains pii from ppis
+#   apply_to:
+#       - snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB2/RAW/IRIS
+
     "
             .as_bytes(),
         )

@@ -99,7 +99,7 @@ pub(crate) async fn get_basic_projects(
 impl Permissionable for Project {
     fn get_endpoint(&self) -> String {
         let ProjectId(id) = &self.id;
-        format!("projects/{}/permissions", id)
+        format!("projects/{id}/permissions")
     }
     fn set_permissions(&mut self, permissions: Vec<super::Permission>) {
         self.permissions = permissions;

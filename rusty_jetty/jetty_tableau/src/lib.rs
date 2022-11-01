@@ -10,10 +10,11 @@ mod nodes;
 mod permissions;
 mod rest;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
 
 use coordinator::Environment;
+use rest::get_cual_prefix;
 pub use rest::TableauRestClient;
 use serde::Deserialize;
 use serde_json::json;
@@ -22,7 +23,7 @@ use jetty_core::{
     connectors::{
         nodes::ConnectorData,
         nodes::{self as jetty_nodes, EffectivePermission, SparseMatrix},
-        ConnectorClient, UserIdentifier,
+        ConnectorClient,
     },
     cual::Cual,
     jetty::{ConnectorConfig, CredentialsMap},
@@ -227,6 +228,20 @@ impl Connector for TableauConnector {
     async fn get_data(&mut self) -> ConnectorData {
         let (groups, users, assets, tags, policies) = self.env_to_jetty_all();
         let effective_permissions = self.get_effective_permissions();
-        ConnectorData::new(groups, users, assets, tags, policies, effective_permissions)
+        ConnectorData::new(
+            groups,
+            users,
+            assets,
+            tags,
+            policies,
+            Default::default(),
+            effective_permissions,
+            Some(
+                get_cual_prefix()
+                    .context("tableau cual prefix not yet set")
+                    .unwrap()
+                    .to_owned(),
+            ),
+        )
     }
 }

@@ -1,7 +1,7 @@
 //! Utilities for exploration of the graph.
 //!
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use indexmap::IndexSet;
 use petgraph::{stable_graph::NodeIndex, Direction};
@@ -19,7 +19,7 @@ impl AccessGraph {
         target_matcher: fn(&JettyNode) -> bool,
         min_depth: Option<usize>,
         max_depth: Option<usize>,
-    ) -> HashMap<NodeIndex, Vec<NodePath>> {
+    ) -> HashMap<NodeIndex, HashSet<NodePath>> {
         let from_idx: NodeIndex = from.into();
 
         let max_depth = if let Some(l) = max_depth {
@@ -61,7 +61,7 @@ impl AccessGraph {
         max_depth: usize,
         current_depth: usize,
         visited: &mut IndexSet<NodeIndex>,
-        results: &mut HashMap<NodeIndex, Vec<NodePath>>,
+        results: &mut HashMap<NodeIndex, HashSet<NodePath>>,
     ) {
         let legal_connections = self
             .graph
@@ -95,10 +95,10 @@ impl AccessGraph {
                     let x = results.get_mut(&child);
                     match x {
                         Some(p) => {
-                            p.push(NodePath(path));
+                            p.insert(NodePath(path));
                         }
                         None => {
-                            results.insert(child, vec![NodePath(path)]);
+                            results.insert(child, HashSet::from([NodePath(path)]));
                         }
                     };
                 }
@@ -126,7 +126,7 @@ impl AccessGraph {
 mod tests {
 
     use crate::access_graph::{
-        graph::typed_indices::UserIndex, GroupAttributes, NodeName, UserAttributes,
+        GroupAttributes, NodeName, UserAttributes,
     };
 
     use anyhow::{anyhow, Result};

@@ -51,20 +51,18 @@ pub(crate) async fn ask_tableau_connector_setup() -> Result<CredentialsMap> {
         // If the rest client is created successfully, the credentials are valid.
         if TableauRestClient::new(creds).await.is_ok() {
             break;
+        } else if tries_left > 0 {
+            println!(
+                "{}",
+                "Could not connect to Tableau. Please enter your credentials again.".red()
+            );
+            tries_left -= 1;
         } else {
-            if tries_left > 0 {
-                println!(
-                    "{}",
-                    "Could not connect to Tableau. Please enter your credentials again.".red()
-                );
-                tries_left -= 1;
-            } else {
-                panic!(
-                    "{}",
-                    "Could not connect to Tableau. Please reach out to us at support@get-jetty.com"
-                        .red()
-                );
-            }
+            panic!(
+                "{}",
+                "Could not connect to Tableau. Please reach out to us at support@get-jetty.com"
+                    .red()
+            );
         }
     }
     Ok(HashMap::from([

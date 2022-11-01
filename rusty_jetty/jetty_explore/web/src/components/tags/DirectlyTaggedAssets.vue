@@ -2,30 +2,16 @@
   <JettyTable
     title="Directly Tagged Assets"
     :rows-per-page="20"
-    :filter-method="filterMethod"
+    :row-transformer="rowTransformer"
     :columns="columns"
     :csv-config="csvConfig"
-    :fetchPath="
-      '/api/tag/' + encodeURIComponent(props.node.name) + '/direct_assets'
-    "
-    v-slot="slotProps"
-    :tip="`Assets directly tagged with ${props.node.name}`"
+    :fetchPath="'/api/tag/' + nodeId(props.node) + '/direct_assets'"
+    v-slot="{ props: { row } }: { props: { row: AssetSummary } }"
+    :tip="`Assets directly tagged with ${nodeNameAsString(props.node)}`"
   >
     <q-tr>
       <q-td key="name">
-        <q-item class="q-px-none">
-          <q-item-section>
-            <router-link
-              :to="'/group/' + encodeURIComponent(slotProps.props.row.name)"
-              style="text-decoration: none; color: inherit"
-            >
-              <q-item-label> {{ slotProps.props.row.name }}</q-item-label>
-            </router-link>
-            <q-item-label caption>
-              <JettyBadge :name="slotProps.props.row.platform" />
-            </q-item-label>
-          </q-item-section>
-        </q-item>
+        <AssetHeadline :asset="row" />
       </q-td>
     </q-tr>
   </JettyTable>
@@ -33,7 +19,10 @@
 
 <script lang="ts" setup>
 import JettyTable from '../JettyTable.vue';
-import JettyBadge from '../JettyBadge.vue';
+import { AssetSummary } from '../models';
+import { nodeNameAsString, nodeId } from 'src/util';
+import AssetHeadline from '../assets/AssetHeadline.vue';
+import { mapNodeSummaryforSearch } from 'src/util/search';
 
 const props = defineProps(['node']);
 
@@ -47,23 +36,17 @@ const columns = [
   },
 ];
 
-// Filters by name or platform
-const filterMethod = (rows, terms) => {
-  const needles = terms.toLocaleLowerCase().split(' ');
-  return rows.filter((r) =>
-    needles.every(
-      (needle) =>
-        r.name.toLocaleLowerCase().indexOf(needle) > -1 ||
-        r.platform.toLocaleLowerCase().indexOf(needle) > -1
-    )
-  );
-};
+const rowTransformer = (row: AssetSummary): string =>
+  mapNodeSummaryforSearch(row);
 
 const csvConfig = {
-  filename: props.node.name + '_direct_assets.csv',
+  filename: nodeNameAsString(props.node) + '_direct_assets.csv',
   columnNames: ['Asset Name', 'Asset Platform'],
   // accepts filtered sorted rows and returns the proper mapping
-  mappingFn: (filteredSortedRows) =>
-    filteredSortedRows.flatMap((r) => [r.name, r.platform]),
+  mappingFn: (filteredSortedRows: AssetSummary[]) =>
+    filteredSortedRows.map((r) => [
+      nodeNameAsString(r),
+      r.Asset.connectors.join(', '),
+    ]),
 };
 </script>

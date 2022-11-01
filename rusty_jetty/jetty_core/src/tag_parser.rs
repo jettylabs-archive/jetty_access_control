@@ -77,7 +77,7 @@ pub(crate) struct TargetAsset {
 impl From<AssetAttributes> for TargetAsset {
     fn from(a: AssetAttributes) -> Self {
         TargetAsset {
-            name: a.name().to_string(),
+            name: a.name().name_for_string_matching(),
             asset_type: Some(a.asset_type().to_string()),
             pos: 0,
         }
@@ -87,7 +87,7 @@ impl From<AssetAttributes> for TargetAsset {
 impl Display for TargetAsset {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if let Some(t) = &self.asset_type {
-            write!(f, " - name: {}\n   asset_type: {}", self.name, t)
+            write!(f, " - name: {}\n   asset_type: {t}", self.name)
         } else {
             write!(f, " - name: {}", self.name)
         }
@@ -321,7 +321,7 @@ pub(crate) fn indicated_msg(doc: &[u8], mut pos: u64, lines_of_context: usize) -
     )
 }
 
-fn get_asset_nodes<'a>(ag: &'a AccessGraph) -> Vec<(NodeIndex, &'a AssetAttributes)> {
+fn get_asset_nodes(ag: &AccessGraph) -> Vec<(NodeIndex, &AssetAttributes)> {
     let nodes = ag.get_nodes();
     nodes
         .filter_map(|(i, n)| match n {
@@ -331,14 +331,18 @@ fn get_asset_nodes<'a>(ag: &'a AccessGraph) -> Vec<(NodeIndex, &'a AssetAttribut
         .collect::<Vec<_>>()
 }
 
+/// Return a list of assets that match the asset specified in the configuration.
 fn get_matching_assets<'a>(
     target: &TargetAsset,
     asset_list: &[(NodeIndex, &'a AssetAttributes)],
 ) -> Vec<(NodeIndex, &'a AssetAttributes)> {
-    asset_list
+    // first look for "exact-end" matches. These are assets whose names end with the exact search term
+    // if there 1 or more, return them.
+    let exact_end_match = asset_list
         .iter()
         .filter(|(_, n)| {
-            n.name().to_string().contains(target.name.as_str())
+            n.name().name_for_string_matching().ends_with(target.name.as_str())
+                // if there is a type, it needs to be a match    
                 && if let Some(val) = &target.asset_type {
                     n.asset_type().to_string() == *val
                 } else {
@@ -346,14 +350,35 @@ fn get_matching_assets<'a>(
                 }
         })
         .map(|(i, n)| (i.to_owned(), *n))
-        .collect::<Vec<_>>()
+        .collect::<Vec<_>>();
+
+    if exact_end_match.len() == 1 {
+        exact_end_match
+    }
+    // if exact_end_match doesn't find any matches, we look for the term anywhere inside the word
+    else {
+        asset_list
+            .iter()
+            .filter(|(_, n)| {
+                n.name()
+                    .name_for_string_matching()
+                    .contains(target.name.as_str())
+                    && if let Some(val) = &target.asset_type {
+                        n.asset_type().to_string() == *val
+                    } else {
+                        true
+                    }
+            })
+            .map(|(i, n)| (i.to_owned(), *n))
+            .collect::<Vec<_>>()
+    }
 }
 
 /// Given a list of target assets and a list of all existing assets, return a tuple of AssetMatchErrors and Strings
 /// The strings are used to populate a nodes::Tag object which can then be added to the graph.
 fn get_asset_list_from_target_list(
     target_list: &Vec<TargetAsset>,
-    asset_list: &Vec<(NodeIndex, &AssetAttributes)>,
+    asset_list: &[(NodeIndex, &AssetAttributes)],
 ) -> (Vec<AssetMatchError>, HashSet<NodeName>) {
     let mut errors = vec![];
     let mut results = HashSet::new();
@@ -469,7 +494,8 @@ pub(crate) fn tags_to_jetty_node_helpers(
 #[cfg(test)]
 mod test {
 
-    use crate::connectors::nodes::RawTag;
+    use crate::access_graph::cual_to_asset_name_test;
+
     use crate::cual::Cual;
 
     use super::*;
@@ -498,8 +524,14 @@ mod test {
     fn ambiguous_asset_name_error_works() -> Result<()> {
         let ag = AccessGraph::new_dummy(
             &[
-                &JettyNode::Asset(AssetAttributes::new(Cual::new("asset1://a"))),
-                &JettyNode::Asset(AssetAttributes::new(Cual::new("asset2://a"))),
+                &JettyNode::Asset(AssetAttributes::new(
+                    Cual::new("asset1://a/asset1"),
+                    ConnectorNamespace("cn1".to_owned()),
+                )),
+                &JettyNode::Asset(AssetAttributes::new(
+                    Cual::new("asset2://a/asset1"),
+                    ConnectorNamespace("cn2".to_owned()),
+                )),
             ],
             &[],
         );
@@ -529,11 +561,47 @@ mod test {
     }
 
     #[test]
+    fn end_match_works() -> Result<()> {
+        let ag = AccessGraph::new_dummy(
+            &[
+                &JettyNode::Asset(AssetAttributes::new(
+                    Cual::new("asset1://a/a"),
+                    Default::default(),
+                )),
+                &JettyNode::Asset(AssetAttributes::new(
+                    Cual::new("asset2://b/b"),
+                    Default::default(),
+                )),
+            ],
+            &[],
+        );
+
+        let config = r#"
+        pii:
+            description: This data contains pii from ppis
+            value: I don't know if we want values, but Snowflake has them
+            apply_to:
+                - a
+"#
+        .to_owned();
+
+        let tag_map = parse_tags(&config)?;
+        tags_to_jetty_node_helpers(tag_map, &ag, &config)?;
+        Ok(())
+    }
+
+    #[test]
     fn building_tags_works() -> Result<()> {
         let ag = AccessGraph::new_dummy(
             &[
-                &JettyNode::Asset(AssetAttributes::new(Cual::new("asset1://a"))),
-                &JettyNode::Asset(AssetAttributes::new(Cual::new("asset2://a"))),
+                &JettyNode::Asset(AssetAttributes::new(
+                    Cual::new("asset1://a/a1"),
+                    Default::default(),
+                )),
+                &JettyNode::Asset(AssetAttributes::new(
+                    Cual::new("asset2://a/a2"),
+                    Default::default(),
+                )),
             ],
             &[],
         );
@@ -543,13 +611,13 @@ pii:
     description: This data contains pii from ppis
     value: I don't know if we want values, but Snowflake has them
     apply_to:
-        - asset1
+        - a1
     remove_from:
-        - asset2
+        - a2
 pii2:
     pass_through_lineage: true
     apply_to:
-        - name: asset1
+        - name: a1
           asset_type: ""
 "#
         .to_owned();
@@ -559,15 +627,24 @@ pii2:
                 name: NodeName::Tag("pii".to_owned()),
                 description: Some("This data contains pii from ppis".to_owned()),
                 value: Some("I don't know if we want values, but Snowflake has them".to_owned()),
-                applied_to: HashSet::from([NodeName::Asset(Cual::new("asset1://a"))]),
-                removed_from: HashSet::from([NodeName::Asset(Cual::new("asset2://a"))]),
+                applied_to: HashSet::from([cual_to_asset_name_test(
+                    Cual::new("asset1://a/a1"),
+                    Default::default(),
+                )]),
+                removed_from: HashSet::from([cual_to_asset_name_test(
+                    Cual::new("asset2://a/a2"),
+                    Default::default(),
+                )]),
                 connector: ConnectorNamespace("Jetty".to_owned()),
                 ..Default::default()
             },
             ProcessedTag {
                 name: NodeName::Tag("pii2".to_owned()),
                 pass_through_lineage: true,
-                applied_to: HashSet::from([NodeName::Asset(Cual::new("asset1://a"))]),
+                applied_to: HashSet::from([cual_to_asset_name_test(
+                    Cual::new("asset1://a/a1"),
+                    Default::default(),
+                )]),
                 connector: ConnectorNamespace("Jetty".to_owned()),
                 ..Default::default()
             },
