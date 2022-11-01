@@ -8,7 +8,7 @@ use lazy_static::lazy_static;
 
 lazy_static! {
     static ref TAGS_DIR: PathBuf = PathBuf::from("tags");
-    static ref DATA_DIR: PathBuf = PathBuf::from("data");
+    static ref DATA_DIR: PathBuf = PathBuf::from(".data");
     static ref TAGS_CFG: PathBuf = PathBuf::from("tags.yaml");
     static ref JETTY_CFG: PathBuf = PathBuf::from("jetty_config.yaml");
     static ref CONNECTOR_CFG: PathBuf = PathBuf::from("connectors.yaml");

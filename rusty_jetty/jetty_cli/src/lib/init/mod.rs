@@ -69,9 +69,13 @@ pub async fn init(
 /// The project structure currently looks like this:
 ///
 /// pwd
-///  └──{project_name}
+///  └── {project_name}
 ///       ├── jetty_config.yaml
-///       └── src
+///       ├── .data
+///       │    ├── jetty_graph
+///       │    └── {connector}
+///       │         └── {connector-specific data}
+///       └── tags
 ///            └── tags.yaml
 async fn initialize_project_structure(
     ProjectStructure {
@@ -103,7 +107,11 @@ async fn initialize_project_structure(
         cfg.write_all(connectors_yaml.as_bytes())?;
     }
     // create tags parent dir if needed
-    create_dir_ignore_failure(tags_cfg_path(project_path.clone()).parent().unwrap()).await;
+    let tags_parent_dir = tags_cfg_path(project_path.clone())
+        .parent()
+        .unwrap()
+        .to_owned();
+    create_dir_ignore_failure(tags_parent_dir).await;
     let mut tags_config = create_file(project::tags_cfg_path(project_path)).await?;
 
     tags_config
