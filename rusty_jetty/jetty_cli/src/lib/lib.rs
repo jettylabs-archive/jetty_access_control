@@ -61,6 +61,10 @@ enum JettyCommand {
     Explore {
         #[clap(short, long, value_parser, default_value = "false")]
         fetch_first: bool,
+
+        /// Select the ip and port to bind the server to (e.g. 127.0.0.1:3000)
+        #[clap(short, long, value_parser)]
+        bind: Option<String>,
     },
 }
 
@@ -86,7 +90,7 @@ pub async fn cli() -> Result<()> {
             fetch(connectors, visualize).await?;
         }
 
-        JettyCommand::Explore { fetch_first } => {
+        JettyCommand::Explore { fetch_first, bind } => {
             if *fetch_first {
                 info!("Fetching all data first.");
                 fetch(&None, &false).await?;
@@ -115,7 +119,7 @@ pub async fn cli() -> Result<()> {
                         debug!("No tags file found. Skipping ingestion.")
                     }
 
-                    jetty_explore::explore_web_ui(Arc::new(ag)).await;
+                    jetty_explore::explore_web_ui(Arc::new(ag), bind).await;
                 }
                 Err(e) => info!(
                     "Unable to find saved graph. Try running `jetty fetch`\nError: {}",
