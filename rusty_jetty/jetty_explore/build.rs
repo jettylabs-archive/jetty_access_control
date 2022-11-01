@@ -3,9 +3,13 @@ use std::process::Command;
 
 #[cfg(windows)]
 pub const NPM: &'static str = "npm.cmd";
+#[cfg(windows)]
+pub const NPX: &'static str = "npx.cmd";
 
 #[cfg(not(windows))]
 pub const NPM: &'static str = "npm";
+#[cfg(not(windows))]
+pub const NPX: &'static str = "npx";
 
 fn main() {
     let project_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
