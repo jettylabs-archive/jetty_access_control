@@ -98,10 +98,9 @@ pub(crate) fn print_banner() {
     let ascii = JETTY_J
         .lines()
         .zip(BANNER.lines().zip(BATS.lines()))
-        .map(|(j_line, (banner_line, bats_line))| {
-            format!("{j_line}  {banner_line} {bats_line}")
-        })
+        .map(|(j_line, (banner_line, bats_line))| format!("{j_line}  {banner_line} {bats_line}"))
         .collect::<Vec<_>>()
         .join("\n");
+    println!("{}", "Happy Halloween from".color(JETTY_ORANGE));
     println!("\n{}\n", ascii.color(JETTY_ORANGE));
 }
