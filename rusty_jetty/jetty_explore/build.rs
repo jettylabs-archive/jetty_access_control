@@ -36,7 +36,7 @@ fn main() {
     }
     // Note that there are a number of downsides to this approach, the comments
     // below detail how to improve the portability of these commands.
-    let output = Command::new("npx")
+    let output = Command::new(NPX)
         .args(build_cmd)
         .current_dir(web_project_path)
         .output()
