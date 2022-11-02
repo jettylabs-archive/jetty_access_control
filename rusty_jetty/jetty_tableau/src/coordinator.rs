@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 
+use std::path::PathBuf;
 use std::pin::Pin;
 use std::{collections::HashMap, fs, io};
 
@@ -21,7 +22,7 @@ const CONCURRENT_ASSET_DOWNLOADS: usize = 25;
 /// Number of metadata request to run currently (e.g. permissions)
 const CONCURRENT_METADATA_FETCHES: usize = 100;
 /// Path to serialized version of the Tableau Env
-const SERIALIZED_ENV_PATH: &str = "tableau_env.json";
+const SERIALIZED_ENV_FILENAME: &str = "tableau_env.json";
 
 /// The state of a tableau site. We use this to persist state and
 /// enable incremental updates.
@@ -101,15 +102,18 @@ pub(crate) struct Coordinator {
     pub(crate) env: Environment,
     /// A client to access the Tableau environment
     pub(crate) rest_client: rest::TableauRestClient,
+    /// Directory where connector_specific data can be stored
+    pub(crate) data_dir: PathBuf,
 }
 
 impl Coordinator {
     /// Create a new Coordinator object with data read from a saved
     /// environment (if available) and a new rest client.
-    pub(crate) async fn new(creds: TableauCredentials) -> Self {
+    pub(crate) async fn new(creds: TableauCredentials, data_dir: PathBuf) -> Self {
         Coordinator {
-            env: read_environment_assets().unwrap_or_default(),
+            env: read_environment_assets(data_dir.to_owned()).unwrap_or_default(),
             rest_client: rest::TableauRestClient::new(creds).await.unwrap(),
+            data_dir,
         }
     }
 
@@ -117,9 +121,12 @@ impl Coordinator {
     /// a file, if available, but cannot be updated.
     #[cfg(test)]
     pub(crate) fn new_dummy() -> Self {
+        use std::path::Path;
+
         Coordinator {
-            env: read_environment_assets().unwrap_or_default(),
+            env: read_environment_assets(Path::new(".").into()).unwrap_or_default(),
             rest_client: rest::TableauRestClient::new_dummy(),
+            data_dir: Path::new(".").into(),
         }
     }
 
@@ -218,11 +225,11 @@ impl Coordinator {
         self.env = new_env;
 
         // serialize as JSON
-        fs::write(
-            SERIALIZED_ENV_PATH,
-            serde_json::to_string_pretty(&self.env).unwrap(),
-        )?;
-
+        let file_path = self.data_dir.join(SERIALIZED_ENV_FILENAME);
+        if let Some(p) = file_path.parent() {
+            fs::create_dir_all(p)?
+        };
+        fs::write(file_path, serde_json::to_string_pretty(&self.env).unwrap())?;
         Ok(())
     }
 
@@ -288,9 +295,10 @@ impl Coordinator {
 }
 
 /// Read and parse the saved Tableau environment asset information
-fn read_environment_assets() -> Result<Environment> {
+fn read_environment_assets(data_dir: PathBuf) -> Result<Environment> {
     // Open the file in read-only mode with buffer.
-    let file = fs::File::open(SERIALIZED_ENV_PATH).context("opening environment file")?;
+    let file = fs::File::open(data_dir.join(SERIALIZED_ENV_FILENAME))
+        .context("opening environment file")?;
     let reader = io::BufReader::new(file);
 
     let e = serde_json::from_reader(reader).context("parsing environment")?;

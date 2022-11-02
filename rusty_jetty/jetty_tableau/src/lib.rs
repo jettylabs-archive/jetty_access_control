@@ -34,7 +34,10 @@ use jetty_core::{
 use nodes::{asset_to_policy::env_to_jetty_policies, FromTableau};
 use permissions::PermissionManager;
 
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    path::{Path, PathBuf},
+};
 
 /// Map wrapper for config values.
 pub type TableauConfig = HashMap<String, String>;
@@ -70,6 +73,7 @@ impl TableauCredentials {
 pub struct TableauConnector {
     config: TableauConfig,
     coordinator: coordinator::Coordinator,
+    data_dir: PathBuf,
 }
 
 impl TableauConnector {
@@ -185,6 +189,7 @@ impl Connector for TableauConnector {
         config: &ConnectorConfig,
         credentials: &CredentialsMap,
         _client: Option<ConnectorClient>,
+        data_dir: PathBuf,
     ) -> Result<Box<Self>> {
         let mut creds = TableauCredentials::default();
         let mut required_fields = HashSet::from([
@@ -215,7 +220,8 @@ impl Connector for TableauConnector {
 
         let tableau_connector = TableauConnector {
             config: config.config.to_owned(),
-            coordinator: coordinator::Coordinator::new(creds).await,
+            coordinator: coordinator::Coordinator::new(creds, data_dir.clone()).await,
+            data_dir,
         };
 
         Ok(Box::new(tableau_connector))

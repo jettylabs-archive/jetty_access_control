@@ -29,9 +29,10 @@ use core::hash::Hash;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt::{Debug, Display};
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::BufWriter;
 use std::ops::{Index, IndexMut};
+use std::path::PathBuf;
 
 use anyhow::{anyhow, bail, Context, Result};
 // reexporting for use in other packages
@@ -43,8 +44,6 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::permissions::matrix::InsertOrMerge;
-
-const SAVED_GRAPH_PATH: &str = "jetty_graph";
 
 /// Attributes associated with a User node
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -871,16 +870,19 @@ impl AccessGraph {
     }
 
     /// Write the graph to disk
-    pub fn serialize_graph(&self) -> Result<()> {
-        let f = File::create(SAVED_GRAPH_PATH).context("creating file")?;
+    pub fn serialize_graph(&self, graph_path: PathBuf) -> Result<()> {
+        if let Some(p) = graph_path.parent() {
+            fs::create_dir_all(p)?
+        };
+        let f = File::create(graph_path).context("creating file")?;
         let f = BufWriter::new(f);
         bincode::serialize_into(f, &self).context("serializing graph into file")?;
         Ok(())
     }
 
     /// Read the graph from disk
-    pub fn deserialize_graph() -> Result<Self> {
-        let f = File::open(SAVED_GRAPH_PATH).context("opening graph file")?;
+    pub fn deserialize_graph(graph_path: PathBuf) -> Result<Self> {
+        let f = File::open(graph_path).context("opening graph file")?;
         let decoded = bincode::deserialize_from(f).context("deserializing graph from file")?;
         Ok(decoded)
     }
@@ -972,9 +974,7 @@ mod tests {
 
     use anyhow::Result;
 
-    use crate::connectors::{
-        processed_nodes::ProcessedGroup,
-    };
+    use crate::connectors::processed_nodes::ProcessedGroup;
 
     use super::*;
 

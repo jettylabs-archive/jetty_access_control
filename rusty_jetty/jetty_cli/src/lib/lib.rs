@@ -8,7 +8,11 @@ mod init;
 mod project;
 mod tui;
 
-use std::{path::PathBuf, sync::Arc, time::Instant};
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+    time::Instant,
+};
 
 use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
@@ -36,9 +40,14 @@ struct Args {
 enum JettyCommand {
     /// Initialize a Jetty project.
     Init {
+        /// Project name
+        project_name: Option<String>,
         /// Initialize from an existing config (as a shortcut).
-        #[clap(short, long)]
+        #[clap(short, long, hide = true)]
         from: Option<PathBuf>,
+        /// Overwrite project directory if it exists
+        #[clap(short, long, value_parser, default_value = "false")]
+        overwrite: bool,
     },
     Fetch {
         /// Visualize the graph in an SVG file.
@@ -60,9 +69,13 @@ pub async fn cli() -> Result<()> {
     logging::setup(args.log_level);
 
     match &args.command {
-        JettyCommand::Init { from } => {
+        JettyCommand::Init {
+            from,
+            project_name,
+            overwrite,
+        } => {
             println!("Welcome to Jetty! We are so glad you're here.");
-            init::init(from).await?;
+            init::init(from, *overwrite, project_name).await?;
         }
 
         JettyCommand::Fetch {
@@ -85,7 +98,9 @@ pub async fn cli() -> Result<()> {
                 )
                 .await?;
             }
-            match AccessGraph::deserialize_graph() {
+            match AccessGraph::deserialize_graph(
+                project::data_dir().join(project::graph_filename()),
+            ) {
                 Ok(mut ag) => {
                     let tags_path = project::tags_cfg_path_local();
                     if tags_path.exists() {
@@ -121,7 +136,7 @@ pub async fn cli() -> Result<()> {
 }
 
 async fn fetch(connectors: &Vec<String>, &visualize: &bool) -> Result<()> {
-    let jetty = Jetty::new(project::jetty_cfg_path_local())?;
+    let jetty = Jetty::new(project::jetty_cfg_path_local(), project::data_dir())?;
     let creds = fetch_credentials(project::connector_cfg_path())?;
 
     if connectors.is_empty() {
@@ -139,6 +154,7 @@ async fn fetch(connectors: &Vec<String>, &visualize: &bool) -> Result<()> {
             &jetty.config.connectors[&ConnectorNamespace("dbt".to_owned())],
             &creds["dbt"],
             Some(ConnectorClient::Core),
+            project::data_dir().join("dbt"),
         )
         .await?;
         info!("dbt took {} seconds", now.elapsed().as_secs_f32());
@@ -158,6 +174,7 @@ async fn fetch(connectors: &Vec<String>, &visualize: &bool) -> Result<()> {
             &jetty.config.connectors[&ConnectorNamespace("snow".to_owned())],
             &creds["snow"],
             Some(ConnectorClient::Core),
+            project::data_dir().join("snowflake"),
         )
         .await?;
         info!("snowflake took {} seconds", now.elapsed().as_secs_f32());
@@ -180,6 +197,7 @@ async fn fetch(connectors: &Vec<String>, &visualize: &bool) -> Result<()> {
             &jetty.config.connectors[&ConnectorNamespace("tableau".to_owned())],
             &creds["tableau"],
             Some(ConnectorClient::Core),
+            project::data_dir().join("tableau"),
         )
         .await?;
         info!("tableau took {} seconds", now.elapsed().as_secs_f32());
@@ -202,7 +220,7 @@ async fn fetch(connectors: &Vec<String>, &visualize: &bool) -> Result<()> {
         "access graph creation took {} seconds",
         now.elapsed().as_secs_f32()
     );
-    ag.serialize_graph()?;
+    ag.serialize_graph(project::data_dir().join(project::graph_filename()))?;
 
     if visualize {
         info!("visualizing access graph");

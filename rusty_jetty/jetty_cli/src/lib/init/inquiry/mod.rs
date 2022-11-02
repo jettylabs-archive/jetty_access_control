@@ -8,7 +8,7 @@ use crate::{
     tui::AltScreenContext,
 };
 
-use std::collections::HashMap;
+use std::{collections::HashMap, path::Path};
 
 use anyhow::Result;
 use colored::Colorize;
@@ -29,7 +29,10 @@ mod validation;
 
 /// Ask the user to respond to a series of questions to create the Jetty
 /// config and the connectors config, producing both.
-pub(crate) async fn inquire_init() -> Result<(JettyConfig, HashMap<String, CredentialsMap>)> {
+pub(crate) async fn inquire_init(
+    overwrite_project_dir: bool,
+    project_name: &Option<String>,
+) -> Result<(JettyConfig, HashMap<String, CredentialsMap>)> {
     // Create an alternate screen for this scope.
     let alt_screen_context = AltScreenContext::start()?;
     // Print the Jetty Labs banner.
@@ -41,7 +44,7 @@ pub(crate) async fn inquire_init() -> Result<(JettyConfig, HashMap<String, Crede
     let mut jetty_config = JettyConfig::new();
     let mut credentials = HashMap::new();
 
-    jetty_config.set_name(ask_project_name()?);
+    jetty_config.set_name(ask_project_name(overwrite_project_dir, project_name)?);
     let connector_types = ask_select_connectors()?;
 
     for connector in connector_types {
@@ -49,20 +52,21 @@ pub(crate) async fn inquire_init() -> Result<(JettyConfig, HashMap<String, Crede
             "{}",
             format!("{} connector configuration", connector.color(JETTY_ORANGE)).underline()
         );
-        let connector_namespace = ask_connector_namespace(connector)?;
+        let connector_namespace_user_input = ask_connector_namespace(connector)?;
+        let connector_namespace = ConnectorNamespace(connector_namespace_user_input.clone());
         jetty_config.connectors.insert(
-            ConnectorNamespace(connector_namespace.clone()),
+            connector_namespace.clone(),
             ConnectorConfig::new(connector.to_owned(), Default::default()),
         );
 
         let mut credentials_map = match connector {
             "dbt" => ask_dbt_connector_setup()?,
-            "snowflake" => ask_snowflake_connector_setup().await?,
+            "snowflake" => ask_snowflake_connector_setup(connector_namespace).await?,
             "tableau" => ask_tableau_connector_setup().await?,
             &_ => panic!("Unrecognized input"),
         };
         credentials_map.insert("type".to_owned(), connector.to_owned());
-        credentials.insert(connector_namespace.to_owned(), credentials_map);
+        credentials.insert(connector_namespace_user_input.to_owned(), credentials_map);
     }
 
     // Leave the alternate screen.
@@ -83,12 +87,28 @@ fn setup_render_config() {
     set_global_render_config(render_config);
 }
 
-fn ask_project_name() -> Result<String> {
-    let project_name = Text::new("Project Name")
-        .with_validator(filled_validator)
-        .with_placeholder("jetty")
-        .with_default("jetty")
-        .prompt()?;
+fn ask_project_name(
+    overwrite_project_dir: bool,
+    project_name_input: &Option<String>,
+) -> Result<String> {
+    let mut project_name;
+    if let Some(s) = project_name_input {
+        project_name = s.to_owned();
+    } else {
+        project_name = Text::new("Project Name")
+            .with_validator(filled_validator)
+            .with_placeholder("jetty")
+            .with_default("jetty")
+            .prompt()?;
+    }
+
+    // Check to see if the directory <project_name> exists
+    if Path::new(&project_name).is_dir() && !overwrite_project_dir {
+        return Err(anyhow::anyhow!(
+            "The directory {project_name} already exists. Choose a different project name or --overwrite to overwrite this directory."
+        ));
+    }
+
     Ok(project_name)
 }
 

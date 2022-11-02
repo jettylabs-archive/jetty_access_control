@@ -8,10 +8,12 @@ use lazy_static::lazy_static;
 
 lazy_static! {
     static ref TAGS_DIR: PathBuf = PathBuf::from("tags");
+    static ref DATA_DIR: PathBuf = PathBuf::from("data");
     static ref TAGS_CFG: PathBuf = PathBuf::from("tags.yaml");
     static ref JETTY_CFG: PathBuf = PathBuf::from("jetty_config.yaml");
     static ref CONNECTOR_CFG: PathBuf = PathBuf::from("connectors.yaml");
     static ref CONNECTOR_CFG_DIR: PathBuf = PathBuf::from(".jetty");
+    static ref JETTY_GRAPH: PathBuf = PathBuf::from("jetty_graph");
 }
 
 pub(crate) fn tags_cfg_path<P: AsRef<Path>>(project_path: P) -> PathBuf {
@@ -38,4 +40,12 @@ pub(crate) fn jetty_cfg_path<P: AsRef<Path>>(project_path: P) -> PathBuf {
 /// Local path for the jetty config.
 pub(crate) fn jetty_cfg_path_local() -> PathBuf {
     JETTY_CFG.clone()
+}
+
+pub(crate) fn data_dir() -> PathBuf {
+    DATA_DIR.clone()
+}
+
+pub(crate) fn graph_filename() -> PathBuf {
+    JETTY_GRAPH.clone()
 }

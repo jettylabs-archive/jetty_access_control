@@ -1,10 +1,10 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, path::Path};
 
 use anyhow::Result;
 use colored::Colorize;
 use inquire::{Confirm, Text};
 use jetty_core::{
-    jetty::{ConnectorConfig, CredentialsMap},
+    jetty::{ConnectorConfig, ConnectorNamespace, CredentialsMap},
     Connector,
 };
 use jetty_snowflake::SnowflakeConnector;
@@ -13,7 +13,9 @@ use crate::init::pki::create_keypair;
 
 use super::validation::filled_validator;
 
-pub(crate) async fn ask_snowflake_connector_setup() -> Result<CredentialsMap> {
+pub(crate) async fn ask_snowflake_connector_setup(
+    connector_namespace: ConnectorNamespace,
+) -> Result<CredentialsMap> {
     // Loop until a successful connection.
     loop {
         let snowflake_account_id = Text::new("Snowflake Account Identifier:")
@@ -35,7 +37,7 @@ pub(crate) async fn ask_snowflake_connector_setup() -> Result<CredentialsMap> {
         let keypair = create_keypair()?;
         println!("Keypair generated!");
 
-        println!("Authorize Jetty access to your account by copying the following SQL statement into Snowflake.");
+        println!("Authorize Jetty access to your account by running the following SQL statement in Snowflake.");
         println!(
             "\n{}\n",
             format!(
@@ -59,7 +61,15 @@ pub(crate) async fn ask_snowflake_connector_setup() -> Result<CredentialsMap> {
             ("private_key".to_owned(), keypair.private_key()),
             ("role".to_owned(), "SECURITYADMIN".to_owned()),
         ]);
-        let connector = SnowflakeConnector::new(&ConnectorConfig::default(), &creds, None).await?;
+        let connector = SnowflakeConnector::new(
+            &ConnectorConfig::default(),
+            &creds,
+            None,
+            Path::new(".")
+                .join("data")
+                .join(connector_namespace.to_string()),
+        )
+        .await?;
         if connector.check().await {
             println!("successful connection!");
             return Ok(creds);
