@@ -1,12 +1,12 @@
 <template>
   <router-link
-    :to="'/group/' + nodeId(group)"
+    :to="'/group/' + nodeId(props.group)"
     style="text-decoration: none; color: inherit"
   >
     <q-item class="q-px-none">
       <q-item-section>
         <q-item-label class="text-weight-medium">
-          {{ nodeNameAsString(group) }}</q-item-label
+          {{ nodeNameAsString(props.group) }}</q-item-label
         >
         <q-item-label caption>
           <JettyBadge

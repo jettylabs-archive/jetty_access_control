@@ -1,12 +1,12 @@
 <template>
   <router-link
-    :to="'/user/' + userpath"
+    :to="'/user/' + nodeId(props.user)"
     style="text-decoration: none; color: inherit"
   >
     <q-item class="q-px-none">
       <q-item-section>
         <q-item-label class="text-weight-medium">
-          {{ nodeNameAsString(user) }}</q-item-label
+          {{ nodeNameAsString(props.user) }}</q-item-label
         >
 
         <q-item-label caption>
@@ -25,8 +25,6 @@
 import { nodeId, nodeNameAsString } from 'src/util';
 import { UserSummary } from '../models';
 import JettyBadge from '../JettyBadge.vue';
-import { ref } from 'vue';
 
 const props = defineProps<{ user: UserSummary }>();
-const userpath = ref<string>(nodeId(props.user));
 </script>
