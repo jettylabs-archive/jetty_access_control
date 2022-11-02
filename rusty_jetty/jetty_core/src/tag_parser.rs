@@ -356,13 +356,16 @@ fn get_matching_assets<'a>(
         exact_end_match
     }
     // if exact_end_match doesn't find any matches, we look for the term anywhere inside the word
+    // this part is case insensitive. The logic might be a little weird, but if they have an exact match,
+    // we'll use that, and it's case sensitive. Otherwise, we'll let them see everything that's close.
     else {
         asset_list
             .iter()
             .filter(|(_, n)| {
                 n.name()
                     .name_for_string_matching()
-                    .contains(target.name.as_str())
+                    .to_lowercase()
+                    .contains(target.name.to_lowercase().as_str())
                     && if let Some(val) = &target.asset_type {
                         n.asset_type().to_string() == *val
                     } else {
