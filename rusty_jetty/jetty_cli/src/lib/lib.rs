@@ -15,7 +15,7 @@ use std::{
     time::Instant,
 };
 
-use anyhow::{bail, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use clap::{Parser, Subcommand};
 
 use jetty_core::{
@@ -132,8 +132,19 @@ pub async fn cli() -> Result<()> {
 }
 
 async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()> {
-    let jetty = Jetty::new(project::jetty_cfg_path_local(), project::data_dir())?;
-    let creds = fetch_credentials(project::connector_cfg_path())?;
+    let jetty = Jetty::new(project::jetty_cfg_path_local(), project::data_dir()).map_err(|_| {
+        anyhow!(
+            "unable to find {} - make sure you are in a \
+        Jetty project directory, or create a new project by running `jetty init`",
+            project::jetty_cfg_path_local().display()
+        )
+    })?;
+    let creds = fetch_credentials(project::connector_cfg_path()).map_err(|_| {
+        anyhow!(
+            "unable to find {} - you can set this up by running `jetty init`",
+            project::connector_cfg_path().display()
+        )
+    })?;
 
     let mut data_from_connectors = vec![];
 
@@ -155,7 +166,14 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
             "dbt" => {
                 let mut dbt = jetty_dbt::DbtConnector::new(
                     &selected_connectors[namespace],
-                    &creds[namespace.to_string().as_str()],
+                    &creds
+                        .get(namespace.to_string().as_str())
+                        .ok_or(anyhow!(
+                            "unable to find a connector called {} in {}",
+                            namespace,
+                            project::connector_cfg_path().display()
+                        ))?
+                        .to_owned(),
                     Some(ConnectorClient::Core),
                     Some(project::data_dir().join(namespace.to_string())),
                 )
@@ -175,7 +193,14 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
             "snowflake" => {
                 let mut snow = jetty_snowflake::SnowflakeConnector::new(
                     &selected_connectors[namespace],
-                    &creds[namespace.to_string().as_str()],
+                    &creds
+                        .get(namespace.to_string().as_str())
+                        .ok_or(anyhow!(
+                            "unable to find a connector called {} in {}",
+                            namespace,
+                            project::connector_cfg_path().display()
+                        ))?
+                        .to_owned(),
                     Some(ConnectorClient::Core),
                     Some(project::data_dir().join(namespace.to_string())),
                 )
@@ -195,7 +220,14 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
             "tableau" => {
                 let mut tab = jetty_tableau::TableauConnector::new(
                     &selected_connectors[namespace],
-                    &creds[namespace.to_string().as_str()],
+                    &creds
+                        .get(namespace.to_string().as_str())
+                        .ok_or(anyhow!(
+                            "unable to find a connector called {} in {}",
+                            namespace,
+                            project::connector_cfg_path().display()
+                        ))?
+                        .to_owned(),
                     Some(ConnectorClient::Core),
                     Some(project::data_dir().join(namespace.to_string())),
                 )
