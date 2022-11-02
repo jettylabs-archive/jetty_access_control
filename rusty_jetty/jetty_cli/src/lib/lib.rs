@@ -17,6 +17,7 @@ use std::{
 
 use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
+use human_panic::setup_panic;
 
 use jetty_core::{
     access_graph::AccessGraph,
@@ -70,6 +71,12 @@ enum JettyCommand {
 
 /// Main CLI entrypoint.
 pub async fn cli() -> Result<()> {
+    setup_panic!(Metadata {
+        name: env!("CARGO_PKG_NAME").into(),
+        version: env!("CARGO_PKG_VERSION").into(),
+        authors: "Jetty Support <support@get-jetty.com".into(),
+        homepage: "get-jetty.com".into(),
+    });
     let args = Args::parse();
     logging::setup(args.log_level);
 
