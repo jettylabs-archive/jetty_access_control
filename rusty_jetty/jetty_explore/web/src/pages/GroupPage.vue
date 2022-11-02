@@ -9,16 +9,17 @@
         indicator-color="primary"
         align="justify"
         narrow-indicator
+        v-model="tab"
       >
-        <q-route-tab
-          name="all_members"
-          label="All Members"
-          :to="'/group/' + props.node_id + '/all_members'"
-        />
         <q-route-tab
           name="direct_members"
           label="Direct Members"
           :to="'/group/' + props.node_id + '/direct_members'"
+        />
+        <q-route-tab
+          name="all_members"
+          label="All Members"
+          :to="'/group/' + props.node_id + '/all_members'"
         />
         <q-route-tab
           name="member_of"
