@@ -78,6 +78,7 @@ pub struct TableauConnector {
 impl TableauConnector {
     /// Setup after creation. Fetch and update the local environment.
     pub async fn setup(&mut self) -> Result<()> {
+        self.coordinator.update_env().await?;
         Ok(())
     }
 
