@@ -112,7 +112,7 @@ async fn initialize_project_structure(
         .unwrap()
         .to_owned();
     create_dir_ignore_failure(tags_parent_dir).await;
-    let mut tags_config = create_file(project::tags_cfg_path(project_path)).await?;
+    let mut tags_config = create_file(project::tags_cfg_path(project_path.clone())).await?;
 
     tags_config
         .write_all(
@@ -121,18 +121,34 @@ async fn initialize_project_structure(
 # 
 # For example, you may want to identify a Snowflake table as personally 
 # identifiable information (PII). 
-# See more at docs.get-jetty.com/docs/getting-started/assets#tagging-assets
+# See more at docs.get-jetty.com/docs/getting-started
 #
 # pii:
-#   description: This data contains pii from ppis
+#   # Optional - description of the tag
+#   description: Includes sensitive information 
+#   # Optional - whether the tag should be inherited by assets in the downstream hierarchy (default: false)
+#   pass_through_hierarchy: false
+#   # Optional - whether the tag should be inherited by assets derived from these assets (default: false)
+#   pass_through_lineage: true
+#   # List of assets to be tagged
 #   apply_to:
-#       - snowflake://cea26391.snowflakecomputing.com/JETTY_TEST_DB2/RAW/IRIS
+#       # Can be a full asset name or a unique fragment of an asset name
+#       - snow::JETTY_TEST_DB/RAW/IRIS
+#       # Can also be an object that specifies the name and type of an asset
+#       - name: snow::JETTY_TEST_DB/RAW/CUSTOMERS
+#         type: table
+#   # Optional - list of assets to have the tag removed from
+#   remove_from:
+#       - tableau::My Project/Iris Dashboard
 
-    "
+"
             .as_bytes(),
         )
         .await?;
 
-    println!("Project created!");
+    println!("\n\nCongratulations, your jetty project has been created and configured!");
+    println!("To get started, run the following commands:\n");
+    println!("\t$ cd {}", project_path);
+    println!("\t$ jetty explore --fetch\n\n");
     Ok(())
 }

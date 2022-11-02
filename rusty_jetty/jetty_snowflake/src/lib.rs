@@ -4,14 +4,14 @@
 //!
 //! ```
 //! use std::path::PathBuf;
-//! use jetty_core::connectors::{Connector, ConnectorClient};
+//! use jetty_core::connectors::{Connector, ConnectorClient, NewConnector};
 //! use jetty_core::jetty::{ConnectorConfig, CredentialsMap};
 //! use jetty_snowflake::SnowflakeConnector;
 //!
 //! let config = ConnectorConfig::default();
 //! let credentials = CredentialsMap::default();
 //! let connector_client = ConnectorClient::Core;
-//! let snow = SnowflakeConnector::new(&config, &credentials, Some(connector_client), PathBuf::new());
+//! let snow = SnowflakeConnector::new(&config, &credentials, Some(connector_client), None);
 //! ```
 
 mod consts;

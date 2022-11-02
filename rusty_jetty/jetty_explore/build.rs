@@ -1,12 +1,22 @@
 use std::path::Path;
 use std::process::Command;
 
+#[cfg(windows)]
+pub const NPM: &'static str = "npm.cmd";
+#[cfg(windows)]
+pub const NPX: &'static str = "npx.cmd";
+
+#[cfg(not(windows))]
+pub const NPM: &'static str = "npm";
+#[cfg(not(windows))]
+pub const NPX: &'static str = "npx";
+
 fn main() {
     let project_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
 
     let web_project_path = Path::new(&project_dir).join("web/");
 
-    let output = Command::new("npm")
+    let output = Command::new(NPM)
         .args(["install"])
         .current_dir(web_project_path.clone())
         .output()
@@ -26,7 +36,7 @@ fn main() {
     }
     // Note that there are a number of downsides to this approach, the comments
     // below detail how to improve the portability of these commands.
-    let output = Command::new("npx")
+    let output = Command::new(NPX)
         .args(build_cmd)
         .current_dir(web_project_path)
         .output()

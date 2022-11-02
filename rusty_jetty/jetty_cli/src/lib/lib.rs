@@ -15,7 +15,7 @@ use std::{
     time::Instant,
 };
 
-use anyhow::{bail, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use clap::{Parser, Subcommand};
 use human_panic::setup_panic;
 
@@ -30,7 +30,7 @@ use jetty_core::{
 
 /// Jetty CLI: Open-source data access control for modern teams
 #[derive(Parser, Debug)]
-#[clap(author, version, about, long_about = None)]
+#[clap(author, version, about, long_about = None, arg_required_else_help = true)]
 struct Args {
     #[clap(subcommand)]
     command: JettyCommand,
@@ -61,7 +61,7 @@ enum JettyCommand {
     },
     Explore {
         #[clap(short, long, value_parser, default_value = "false")]
-        fetch_first: bool,
+        fetch: bool,
 
         /// Select the ip and port to bind the server to (e.g. 127.0.0.1:3000)
         #[clap(short, long, value_parser)]
@@ -74,7 +74,7 @@ pub async fn cli() -> Result<()> {
     setup_panic!(Metadata {
         name: env!("CARGO_PKG_NAME").into(),
         version: env!("CARGO_PKG_VERSION").into(),
-        authors: "Jetty Support <support@get-jetty.com".into(),
+        authors: "Jetty Support <support@get-jetty.com>".into(),
         homepage: "get-jetty.com".into(),
     });
     let args = Args::parse();
@@ -86,7 +86,6 @@ pub async fn cli() -> Result<()> {
             project_name,
             overwrite,
         } => {
-            println!("Welcome to Jetty! We are so glad you're here.");
             init::init(from, *overwrite, project_name).await?;
         }
 
@@ -97,7 +96,10 @@ pub async fn cli() -> Result<()> {
             fetch(connectors, visualize).await?;
         }
 
-        JettyCommand::Explore { fetch_first, bind } => {
+        JettyCommand::Explore {
+            fetch: fetch_first,
+            bind,
+        } => {
             if *fetch_first {
                 info!("Fetching all data first.");
                 fetch(&None, &false).await?;
@@ -140,8 +142,19 @@ pub async fn cli() -> Result<()> {
 }
 
 async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()> {
-    let jetty = Jetty::new(project::jetty_cfg_path_local(), project::data_dir())?;
-    let creds = fetch_credentials(project::connector_cfg_path())?;
+    let jetty = Jetty::new(project::jetty_cfg_path_local(), project::data_dir()).map_err(|_| {
+        anyhow!(
+            "unable to find {} - make sure you are in a \
+        Jetty project directory, or create a new project by running `jetty init`",
+            project::jetty_cfg_path_local().display()
+        )
+    })?;
+    let creds = fetch_credentials(project::connector_cfg_path()).map_err(|_| {
+        anyhow!(
+            "unable to find {} - you can set this up by running `jetty init`",
+            project::connector_cfg_path().display()
+        )
+    })?;
 
     let mut data_from_connectors = vec![];
 
@@ -163,7 +176,14 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
             "dbt" => {
                 let mut dbt = jetty_dbt::DbtConnector::new(
                     &selected_connectors[namespace],
-                    &creds[namespace.to_string().as_str()],
+                    &creds
+                        .get(namespace.to_string().as_str())
+                        .ok_or(anyhow!(
+                            "unable to find a connector called {} in {}",
+                            namespace,
+                            project::connector_cfg_path().display()
+                        ))?
+                        .to_owned(),
                     Some(ConnectorClient::Core),
                     Some(project::data_dir().join(namespace.to_string())),
                 )
@@ -174,7 +194,7 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
                 let dbt_data = dbt.get_data().await;
                 let dbt_pcd = (dbt_data, namespace.to_owned());
                 info!(
-                    "{} data took {} seconds",
+                    "{} data took {:.1} seconds",
                     namespace,
                     now.elapsed().as_secs_f32()
                 );
@@ -183,7 +203,14 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
             "snowflake" => {
                 let mut snow = jetty_snowflake::SnowflakeConnector::new(
                     &selected_connectors[namespace],
-                    &creds[namespace.to_string().as_str()],
+                    &creds
+                        .get(namespace.to_string().as_str())
+                        .ok_or(anyhow!(
+                            "unable to find a connector called {} in {}",
+                            namespace,
+                            project::connector_cfg_path().display()
+                        ))?
+                        .to_owned(),
                     Some(ConnectorClient::Core),
                     Some(project::data_dir().join(namespace.to_string())),
                 )
@@ -194,7 +221,7 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
                 let snow_data = snow.get_data().await;
                 let snow_pcd = (snow_data, namespace.to_owned());
                 info!(
-                    "{} data took {} seconds",
+                    "{} data took {:.1} seconds",
                     namespace,
                     now.elapsed().as_secs_f32()
                 );
@@ -203,7 +230,14 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
             "tableau" => {
                 let mut tab = jetty_tableau::TableauConnector::new(
                     &selected_connectors[namespace],
-                    &creds[namespace.to_string().as_str()],
+                    &creds
+                        .get(namespace.to_string().as_str())
+                        .ok_or(anyhow!(
+                            "unable to find a connector called {} in {}",
+                            namespace,
+                            project::connector_cfg_path().display()
+                        ))?
+                        .to_owned(),
                     Some(ConnectorClient::Core),
                     Some(project::data_dir().join(namespace.to_string())),
                 )
@@ -215,7 +249,7 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
                 let tab_data = tab.get_data().await;
                 let tab_pcd = (tab_data, namespace.to_owned());
                 info!(
-                    "{} data took {} seconds",
+                    "{} data took {:.1} seconds",
                     namespace,
                     now.elapsed().as_secs_f32()
                 );
@@ -231,7 +265,7 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
     let ag = AccessGraph::new_from_connector_data(data_from_connectors)?;
 
     info!(
-        "access graph creation took {} seconds",
+        "access graph creation took {:.1} seconds",
         now.elapsed().as_secs_f32()
     );
     ag.serialize_graph(project::data_dir().join(project::graph_filename()))?;
@@ -242,7 +276,7 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
         ag.visualize("/tmp/graph.svg")
             .context("failed to visualize")?;
         info!(
-            "access graph creation took {} seconds",
+            "access graph creation took {:.1} seconds",
             now.elapsed().as_secs_f32()
         );
     } else {

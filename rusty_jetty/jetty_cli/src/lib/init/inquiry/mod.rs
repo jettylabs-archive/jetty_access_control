@@ -91,15 +91,20 @@ fn ask_project_name(
     overwrite_project_dir: bool,
     project_name_input: &Option<String>,
 ) -> Result<String> {
-    let mut project_name = if let Some(s) = project_name_input {
+    let project_name = if let Some(s) = project_name_input {
         s.to_owned()
     } else {
-        Text::new("Project Name")
+        let mut project_name_prompt = Text::new("Project Name")
             .with_validator(filled_validator)
-            .with_validator(project_dir_does_not_exist_validator)
             .with_placeholder("jetty")
-            .with_default("jetty")
-            .prompt()?
+            .with_default("jetty");
+
+        if !overwrite_project_dir {
+            project_name_prompt =
+                project_name_prompt.with_validator(project_dir_does_not_exist_validator)
+        }
+
+        project_name_prompt.prompt()?
     };
 
     // Check to see if the directory <project_name> exists. This is also checked with

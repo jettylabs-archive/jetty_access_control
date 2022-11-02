@@ -99,6 +99,10 @@ pub(crate) fn parse_tags(config: &String) -> Result<HashMap<String, TagConfig>> 
     // Parse into Node representation and selecting the first element in the Vec
     let root = &parse::<RcRepr>(config).context("unable to parse tags file - invalid yaml")?[0];
 
+    // Return an empty HashMap if there are no tags
+    if root.is_null() {
+        return Ok(Default::default());
+    }
     let mapped_root = root
         .as_map()
         .map_err(|_| anyhow!("improperly formatted tags file: should be a dictionary of tag names and configurations \
@@ -338,7 +342,7 @@ fn get_matching_assets<'a>(
 ) -> Vec<(NodeIndex, &'a AssetAttributes)> {
     // first look for "exact-end" matches. These are assets whose names end with the exact search term
     // if there 1 or more, return them.
-    let exact_end_match = asset_list
+    let mut exact_end_match = asset_list
         .iter()
         .filter(|(_, n)| {
             n.name().name_for_string_matching().ends_with(target.name.as_str())
@@ -352,17 +356,36 @@ fn get_matching_assets<'a>(
         .map(|(i, n)| (i.to_owned(), *n))
         .collect::<Vec<_>>();
 
+    // if there are no matches, try again, but without case sensitivity
+    if exact_end_match.len() == 0 {
+        exact_end_match = asset_list
+        .iter()
+        .filter(|(_, n)| {
+            n.name().name_for_string_matching().to_lowercase().ends_with(target.name.to_lowercase().as_str())
+                // if there is a type, it needs to be a match    
+                && if let Some(val) = &target.asset_type {
+                    n.asset_type().to_string() == *val
+                } else {
+                    true
+                }
+        })
+        .map(|(i, n)| (i.to_owned(), *n))
+        .collect::<Vec<_>>();
+    }
+
     if exact_end_match.len() == 1 {
         exact_end_match
     }
     // if exact_end_match doesn't find any matches, we look for the term anywhere inside the word
+    // This part is case insensitive.
     else {
         asset_list
             .iter()
             .filter(|(_, n)| {
                 n.name()
                     .name_for_string_matching()
-                    .contains(target.name.as_str())
+                    .to_lowercase()
+                    .contains(target.name.to_lowercase().as_str())
                     && if let Some(val) = &target.asset_type {
                         n.asset_type().to_string() == *val
                     } else {

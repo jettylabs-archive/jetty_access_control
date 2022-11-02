@@ -11,8 +11,6 @@ path = "src/lib/lib.rs"
 name = "jetty_cli"
 path = "src/main.rs"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 jetty_core = { path = "../jetty_core" }
 jetty_snowflake = { path = "../jetty_snowflake" }
