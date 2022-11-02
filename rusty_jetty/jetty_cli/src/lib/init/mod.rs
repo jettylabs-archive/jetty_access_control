@@ -112,7 +112,7 @@ async fn initialize_project_structure(
         .unwrap()
         .to_owned();
     create_dir_ignore_failure(tags_parent_dir).await;
-    let mut tags_config = create_file(project::tags_cfg_path(project_path)).await?;
+    let mut tags_config = create_file(project::tags_cfg_path(project_path.clone())).await?;
 
     tags_config
         .write_all(
@@ -141,6 +141,9 @@ async fn initialize_project_structure(
         )
         .await?;
 
-    println!("Project created!");
+    println!("\n\nCongratulations, your jetty project has been created and configured!");
+    println!("To get started, run the following commands:\n");
+    println!("\t$ cd {}", project_path);
+    println!("\t$ jetty explore -f\n\n");
     Ok(())
 }
