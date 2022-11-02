@@ -30,7 +30,7 @@ use jetty_core::{
 
 /// Jetty CLI: Open-source data access control for modern teams
 #[derive(Parser, Debug)]
-#[clap(author, version, about, long_about = None)]
+#[clap(author, version, about, long_about = None, arg_required_else_help = true)]
 struct Args {
     #[clap(subcommand)]
     command: JettyCommand,
@@ -61,7 +61,7 @@ enum JettyCommand {
     },
     Explore {
         #[clap(short, long, value_parser, default_value = "false")]
-        fetch_first: bool,
+        fetch: bool,
 
         /// Select the ip and port to bind the server to (e.g. 127.0.0.1:3000)
         #[clap(short, long, value_parser)]
@@ -74,7 +74,7 @@ pub async fn cli() -> Result<()> {
     setup_panic!(Metadata {
         name: env!("CARGO_PKG_NAME").into(),
         version: env!("CARGO_PKG_VERSION").into(),
-        authors: "Jetty Support <support@get-jetty.com".into(),
+        authors: "Jetty Support <support@get-jetty.com>".into(),
         homepage: "get-jetty.com".into(),
     });
     let args = Args::parse();
@@ -96,7 +96,10 @@ pub async fn cli() -> Result<()> {
             fetch(connectors, visualize).await?;
         }
 
-        JettyCommand::Explore { fetch_first, bind } => {
+        JettyCommand::Explore {
+            fetch: fetch_first,
+            bind,
+        } => {
             if *fetch_first {
                 info!("Fetching all data first.");
                 fetch(&None, &false).await?;
