@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 
 use anyhow::Result;
 use colored::Colorize;
@@ -47,8 +47,16 @@ pub(crate) fn ask_dbt_connector_setup() -> Result<CredentialsMap> {
         .with_help_message("This is easiest to get in SQL with 'SELECT current_account();'. This field can be the account locator (like 'cea29483') or org account name, dash-separated (like 'MRLDK-ESA98348') See https://tinyurl.com/snow-account-id for more.")
         .prompt()?;
 
+    // Get the full path to the dbt project directory. Safe to unwrap because the path
+    // is validated by the validator above.
+    let mut canonical_dbt_project_dir = PathBuf::from(dbt_project_dir)
+        .canonicalize()
+        .unwrap()
+        .to_string_lossy()
+        .to_string();
+
     Ok(HashMap::from([
-        ("project_dir".to_owned(), dbt_project_dir),
+        ("project_dir".to_owned(), canonical_dbt_project_dir),
         ("snowflake_account".to_owned(), snowflake_account_id),
     ]))
 }
