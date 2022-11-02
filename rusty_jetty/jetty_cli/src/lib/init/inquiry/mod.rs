@@ -1,4 +1,4 @@
-use self::validation::filled_validator;
+use self::validation::{filled_validator, project_dir_does_not_exist_validator};
 use crate::{
     ascii::{print_banner, JETTY_ACCENT, JETTY_ORANGE, JETTY_ORANGE_DARK},
     init::inquiry::{
@@ -91,21 +91,24 @@ fn ask_project_name(
     overwrite_project_dir: bool,
     project_name_input: &Option<String>,
 ) -> Result<String> {
-    let mut project_name;
-    if let Some(s) = project_name_input {
-        project_name = s.to_owned();
+    let mut project_name = if let Some(s) = project_name_input {
+        s.to_owned()
     } else {
-        project_name = Text::new("Project Name")
+        Text::new("Project Name")
             .with_validator(filled_validator)
+            .with_validator(project_dir_does_not_exist_validator)
             .with_placeholder("jetty")
             .with_default("jetty")
-            .prompt()?;
-    }
+            .prompt()?
+    };
 
-    // Check to see if the directory <project_name> exists
+    // Check to see if the directory <project_name> exists. This is also checked with
+    // project_dir_does_not_exist_validator, but this is still necessary in the case
+    // that a project name is specified via the init command.
     if Path::new(&project_name).is_dir() && !overwrite_project_dir {
         return Err(anyhow::anyhow!(
-            "The directory {project_name} already exists. Choose a different project name or --overwrite to overwrite this directory."
+            "The directory {project_name} already exists. Choose a different project name or \
+            use the -o flag to overwrite the existing directory."
         ));
     }
 
