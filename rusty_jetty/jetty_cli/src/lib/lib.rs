@@ -86,7 +86,6 @@ pub async fn cli() -> Result<()> {
             project_name,
             overwrite,
         } => {
-            println!("Welcome to Jetty! We are so glad you're here.");
             init::init(from, *overwrite, project_name).await?;
         }
 
