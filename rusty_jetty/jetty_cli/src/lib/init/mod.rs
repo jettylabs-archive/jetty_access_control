@@ -132,10 +132,15 @@ async fn initialize_project_structure(
 #   pass_through_lineage: true
 #   # List of assets to be tagged
 #   apply_to:
-#       - snow::JETTY_TEST_DB2/RAW/IRIS
+#       # Can be a full asset name or a unique fragment of an asset name
+#       - snow::JETTY_TEST_DB/RAW/IRIS
+#       # Can also be an object that specifies the name and type of an asset
+#       - name: snow::JETTY_TEST_DB/RAW/CUSTOMERS
+#         type: table
 #   # Optional - list of assets to have the tag removed from
 #   remove_from:
 #       - tableau::My Project/Iris Dashboard
+
 "
             .as_bytes(),
         )

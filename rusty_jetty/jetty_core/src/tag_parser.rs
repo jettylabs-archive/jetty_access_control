@@ -99,6 +99,10 @@ pub(crate) fn parse_tags(config: &String) -> Result<HashMap<String, TagConfig>> 
     // Parse into Node representation and selecting the first element in the Vec
     let root = &parse::<RcRepr>(config).context("unable to parse tags file - invalid yaml")?[0];
 
+    // Return an empty HashMap if there are no tags
+    if root.is_null() {
+        return Ok(Default::default());
+    }
     let mapped_root = root
         .as_map()
         .map_err(|_| anyhow!("improperly formatted tags file: should be a dictionary of tag names and configurations \
