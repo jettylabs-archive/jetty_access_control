@@ -20,7 +20,7 @@ pub fn setup(level: Option<LevelFilter>) {
     let level_filter = level.unwrap_or(LevelFilter::INFO);
 
     let env = std::env::var("RUST_LOG")
-        .unwrap_or_else(|_| format!("{level_filter},tower_http=debug,hyper=info,reqwest=info"));
+        .unwrap_or_else(|_| format!("{level_filter},tower_http=info,hyper=info,reqwest=info"));
 
     let logging_layers = vec![tracing_subscriber::fmt::layer()
         .with_filter(tracing_subscriber::EnvFilter::new(env))
