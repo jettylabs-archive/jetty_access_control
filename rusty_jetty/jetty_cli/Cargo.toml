@@ -24,10 +24,9 @@ colored = "2"
 inquire = "0.4.0"
 crossterm = "0.25.0"
 yaml-peg = { version = "1.0.4", features = ["serde"] }
-# Vendored install required to ship openssl as a dependency for cross-platform builds
-# https://github.com/messense/maturin-action/discussions/78
 openssl = { version = "0.10.42", features = ["vendored"] }
 sha2 = "0.10.6"
 base64 = "0.13.1"
 dirs = "4.0.0"
 lazy_static = "1.4.0"
+human-panic = { git = "https://github.com/jettylabs/human-panic", branch = "master" }

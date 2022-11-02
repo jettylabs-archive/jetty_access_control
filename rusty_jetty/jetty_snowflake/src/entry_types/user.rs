@@ -70,7 +70,7 @@ mod tests {
         };
 
         let user: User = serde_json::from_value(user_json)?;
-        assert!(user.disabled);
+        assert!(!user.disabled);
 
         let user_json = json! {
             {

@@ -14,6 +14,23 @@ pub(crate) fn filled_validator(input: &str) -> Result<Validation, CustomUserErro
     }
 }
 
+pub(crate) fn project_dir_does_not_exist_validator(
+    input: &str,
+) -> Result<Validation, CustomUserError> {
+    if Path::new(input).is_dir() {
+        Ok(Validation::Invalid(
+            format!(
+            "A directory called {} already exists. Choose a different project name, or run jetty \
+            with the -o flag to overwrite.",
+            input
+        )
+            .into(),
+        ))
+    } else {
+        Ok(Validation::Valid)
+    }
+}
+
 #[derive(Clone)]
 pub(crate) enum PathType {
     File,

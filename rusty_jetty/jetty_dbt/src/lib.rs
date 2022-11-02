@@ -13,13 +13,17 @@ mod consts;
 mod cual;
 mod manifest;
 
-use std::{collections::HashMap, path::Path};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
 
 use cual::set_cual_account_name;
 use jetty_core::{
     connectors::{
         self,
         nodes::{ConnectorData, RawAssetReference as JettyAssetReference},
+        NewConnector,
     },
     jetty::{ConnectorConfig, CredentialsMap},
     Connector,
@@ -48,11 +52,12 @@ impl DbtConnector {
 }
 
 #[async_trait]
-impl Connector for DbtConnector {
+impl NewConnector for DbtConnector {
     async fn new(
         _config: &ConnectorConfig,
         credentials: &CredentialsMap,
         _client: Option<connectors::ConnectorClient>,
+        _data_dir: Option<PathBuf>,
     ) -> Result<Box<Self>> {
         if !credentials.contains_key("project_dir") {
             bail!("missing project_dir key in connectors.yaml");
@@ -65,7 +70,10 @@ impl Connector for DbtConnector {
             .context("creating dbt manifest object")?;
         Self::new_with_manifest(manifest)
     }
+}
 
+#[async_trait]
+impl Connector for DbtConnector {
     async fn check(&self) -> bool {
         // Check that the manifest file exists and is valid json
         let project_dir = &self.manifest.get_project_dir();
@@ -138,6 +146,7 @@ mod tests {
             &ConnectorConfig::default(),
             &CredentialsMap::new(),
             Some(connectors::ConnectorClient::Test),
+            None,
         )
         .await
         .unwrap();
@@ -149,6 +158,7 @@ mod tests {
             &ConnectorConfig::default(),
             &HashMap::from([("project_dir".to_owned(), "something/not/a/path".to_owned())]),
             Some(ConnectorClient::Test),
+            None,
         )
         .await;
         assert!(connector.is_err());
@@ -214,93 +224,6 @@ mod tests {
                 ..Default::default()
             }
         );
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn get_data_returns_valid_dbt_assets_and_lineage() -> Result<()> {
-        // Create mocked manifest
-        let mut manifest_mock = MockDbtProjectManifest::new();
-
-        manifest_mock.expect_init().times(1).returning(|_| Ok(()));
-        manifest_mock
-            .expect_get_dependencies()
-            .times(3)
-            .returning(|_| Ok(Some(HashSet::from(["test".to_owned()]))));
-        manifest_mock
-            .expect_cual_for_node()
-            .times(3)
-            .returning(|_| Ok(Cual::new("cual://a")));
-        manifest_mock.expect_get_nodes().times(1).returning(|| {
-            Ok(HashMap::from([
-                (
-                    "".to_owned(),
-                    DbtNode::ModelNode(DbtModelNode {
-                        materialized_as: AssetType(VIEW.to_owned()),
-                        ..Default::default()
-                    }),
-                ),
-                (
-                    "test".to_owned(),
-                    DbtNode::ModelNode(DbtModelNode {
-                        materialized_as: AssetType(VIEW.to_owned()),
-                        name: "test".to_owned(),
-                        ..Default::default()
-                    }),
-                ),
-                (
-                    "test2".to_owned(),
-                    DbtNode::SourceNode(DbtSourceNode {
-                        name: "test2".to_owned(),
-                    }),
-                ),
-            ]))
-        });
-        let mut connector =
-            DbtConnector::new_with_manifest(manifest_mock).context("creating connector")?;
-
-        let mut assets = connector.get_data().await.assets;
-        assets.sort();
-        let mut expected = vec![
-            RawAsset {
-                cual: Cual::new("snowflake:////"),
-                name: "".to_owned(),
-                asset_type: AssetType(VIEW.to_owned()),
-                metadata: HashMap::from([("enabled".to_owned(), "false".to_owned())]),
-                governed_by: HashSet::new(),
-                child_of: HashSet::new(),
-                parent_of: HashSet::new(),
-                derived_from: HashSet::new(),
-                derived_to: HashSet::from(["".to_owned()]),
-                tagged_as: HashSet::new(),
-            },
-            RawAsset {
-                cual: Cual::new("snowflake:////test"),
-                name: "test".to_owned(),
-                asset_type: AssetType(VIEW.to_owned()),
-                metadata: HashMap::from([("enabled".to_owned(), "false".to_owned())]),
-                governed_by: HashSet::new(),
-                child_of: HashSet::new(),
-                parent_of: HashSet::new(),
-                derived_from: HashSet::new(),
-                derived_to: HashSet::from(["".to_owned()]),
-                tagged_as: HashSet::new(),
-            },
-            RawAsset {
-                cual: Cual::new("snowflake://test2db/test2schema/test2"),
-                name: "test2".to_owned(),
-                asset_type: AssetType(VIEW.to_owned()),
-                metadata: HashMap::from([("enabled".to_owned(), "false".to_owned())]),
-                governed_by: HashSet::new(),
-                child_of: HashSet::new(),
-                parent_of: HashSet::new(),
-                derived_from: HashSet::new(),
-                derived_to: HashSet::from(["".to_owned()]),
-                tagged_as: HashSet::new(),
-            },
-        ];
-        expected.sort();
-        assert_eq!(assets, expected);
         Ok(())
     }
 }

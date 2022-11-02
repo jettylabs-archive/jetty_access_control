@@ -3,6 +3,7 @@
 //! Everything needed for connection and interaction with Snowflake.&
 //!
 //! ```
+//! use std::path::PathBuf;
 //! use jetty_core::connectors::{Connector, ConnectorClient};
 //! use jetty_core::jetty::{ConnectorConfig, CredentialsMap};
 //! use jetty_snowflake::SnowflakeConnector;
@@ -10,7 +11,7 @@
 //! let config = ConnectorConfig::default();
 //! let credentials = CredentialsMap::default();
 //! let connector_client = ConnectorClient::Core;
-//! let snow = SnowflakeConnector::new(&config, &credentials, Some(connector_client));
+//! let snow = SnowflakeConnector::new(&config, &credentials, Some(connector_client), PathBuf::new());
 //! ```
 
 mod consts;
@@ -26,12 +27,14 @@ pub use entry_types::{
     Asset, Database, Entry, FutureGrant, Grant, GrantOf, GrantType, Object, Role, RoleName, Schema,
     StandardGrant, Table, User, View, Warehouse,
 };
+use jetty_core::connectors::NewConnector;
 use jetty_core::logging::error;
 use rest::{SnowflakeRequestConfig, SnowflakeRestClient, SnowflakeRestConfig};
 use serde::de::value::MapDeserializer;
 
 use std::collections::{HashMap, HashSet};
 use std::iter::zip;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use jetty_core::{
@@ -59,32 +62,8 @@ struct SnowflakeField {
     name: String,
 }
 
-/// Main connector implementation.
 #[async_trait]
-impl Connector for SnowflakeConnector {
-    async fn check(&self) -> bool {
-        let res = self
-            .rest_client
-            .execute(&SnowflakeRequestConfig {
-                sql: "SELECT 1".to_string(),
-                use_jwt: true,
-            })
-            .await;
-        return match res {
-            Err(e) => {
-                error!("{:?}", e);
-                false
-            }
-            Ok(_) => true,
-        };
-    }
-
-    async fn get_data(&mut self) -> nodes::ConnectorData {
-        // Fetch Snowflake Environment
-        let mut c = coordinator::Coordinator::new(self);
-        c.get_data().await
-    }
-
+impl NewConnector for SnowflakeConnector {
     /// Validates the configs and bootstraps a Snowflake connection.
     ///
     /// Validates that the required fields are present to authenticate to
@@ -94,6 +73,7 @@ impl Connector for SnowflakeConnector {
         _config: &ConnectorConfig,
         credentials: &CredentialsMap,
         connector_client: Option<connectors::ConnectorClient>,
+        _data_dir: Option<PathBuf>,
     ) -> Result<Box<Self>> {
         let mut conn = creds::SnowflakeCredentials::default();
         let mut required_fields: HashSet<_> = vec![
@@ -136,6 +116,33 @@ impl Connector for SnowflakeConnector {
                 rest_client: SnowflakeRestClient::new(conn, SnowflakeRestConfig { retry: true })?,
             }))
         }
+    }
+}
+
+/// Main connector implementation.
+#[async_trait]
+impl Connector for SnowflakeConnector {
+    async fn check(&self) -> bool {
+        let res = self
+            .rest_client
+            .execute(&SnowflakeRequestConfig {
+                sql: "SELECT 1".to_string(),
+                use_jwt: true,
+            })
+            .await;
+        return match res {
+            Err(e) => {
+                error!("{:?}", e);
+                false
+            }
+            Ok(_) => true,
+        };
+    }
+
+    async fn get_data(&mut self) -> nodes::ConnectorData {
+        // Fetch Snowflake Environment
+        let mut c = coordinator::Coordinator::new(self);
+        c.get_data().await
     }
 }
 

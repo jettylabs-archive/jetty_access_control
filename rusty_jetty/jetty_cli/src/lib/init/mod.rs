@@ -7,6 +7,8 @@ mod pki;
 
 use std::{
     collections::HashMap,
+    fs::OpenOptions,
+    io::Write,
     path::{Path, PathBuf},
 };
 
@@ -17,7 +19,7 @@ use tokio::io::AsyncWriteExt;
 
 use crate::{
     init::fs::{create_dir_ignore_failure, create_file},
-    project,
+    project::{self, tags_cfg_path},
 };
 
 use self::inquiry::inquire_init;
@@ -41,14 +43,18 @@ impl ProjectStructure {
 
 /// Main initialization fn to ask the user for the necessary information and
 /// create the relevant project structure.
-pub async fn init(from: &Option<PathBuf>) -> Result<()> {
+pub async fn init(
+    from: &Option<PathBuf>,
+    overwrite_project_dir: bool,
+    project_name: &Option<String>,
+) -> Result<()> {
     let (jetty_config, credentials) = if let Some(from_config) = from {
         // This is a shortcut for debugging and reinitialization with an existing config.
         let jt = JettyConfig::read_from_file(from_config)?;
         let credentials = fetch_credentials(project::connector_cfg_path())?;
         (jt, credentials)
     } else {
-        inquire_init().await?
+        inquire_init(overwrite_project_dir, project_name).await?
     };
 
     initialize_project_structure(ProjectStructure::new(jetty_config, credentials)).await?;
@@ -63,9 +69,13 @@ pub async fn init(from: &Option<PathBuf>) -> Result<()> {
 /// The project structure currently looks like this:
 ///
 /// pwd
-///  └──{project_name}
+///  └── {project_name}
 ///       ├── jetty_config.yaml
-///       └── src
+///       ├── .data
+///       │    ├── jetty_graph
+///       │    └── {connector}
+///       │         └── {connector-specific data}
+///       └── tags
 ///            └── tags.yaml
 async fn initialize_project_structure(
     ProjectStructure {
@@ -83,7 +93,10 @@ async fn initialize_project_structure(
     let jetty_config_dir = home_dir.join("./.jetty");
     create_dir_ignore_failure(jetty_config_dir).await;
 
-    let connectors_config = create_file(project::connector_cfg_path()).await;
+    let connectors_config = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(project::connector_cfg_path());
 
     if let Ok(mut cfg) = jetty_config {
         cfg.write_all(jt_config.to_yaml()?.as_bytes()).await?;
@@ -91,9 +104,14 @@ async fn initialize_project_structure(
 
     let connectors_yaml = yaml_peg::serde::to_string(&credentials).map_err(anyhow::Error::from)?;
     if let Ok(mut cfg) = connectors_config {
-        cfg.write_all(connectors_yaml.as_bytes()).await?;
+        cfg.write_all(connectors_yaml.as_bytes())?;
     }
-    create_dir_ignore_failure(Path::new(&project_path).join("tags")).await;
+    // create tags parent dir if needed
+    let tags_parent_dir = tags_cfg_path(project_path.clone())
+        .parent()
+        .unwrap()
+        .to_owned();
+    create_dir_ignore_failure(tags_parent_dir).await;
     let mut tags_config = create_file(project::tags_cfg_path(project_path)).await?;
 
     tags_config

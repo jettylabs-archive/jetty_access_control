@@ -8,14 +8,20 @@ mod init;
 mod project;
 mod tui;
 
-use std::{path::PathBuf, sync::Arc, time::Instant};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+    sync::Arc,
+    time::Instant,
+};
 
 use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
+use human_panic::setup_panic;
 
 use jetty_core::{
     access_graph::AccessGraph,
-    connectors::ConnectorClient,
+    connectors::{ConnectorClient, NewConnector},
     fetch_credentials,
     jetty::ConnectorNamespace,
     logging::{self, debug, info, warn, LevelFilter},
@@ -36,33 +42,52 @@ struct Args {
 enum JettyCommand {
     /// Initialize a Jetty project.
     Init {
+        /// Project name
+        project_name: Option<String>,
         /// Initialize from an existing config (as a shortcut).
-        #[clap(short, long)]
+        #[clap(short, long, hide = true)]
         from: Option<PathBuf>,
+        /// Overwrite project directory if it exists
+        #[clap(short, long, value_parser, default_value = "false")]
+        overwrite: bool,
     },
     Fetch {
         /// Visualize the graph in an SVG file.
         #[clap(short, long, value_parser, default_value = "false")]
         visualize: bool,
         /// Connectors to collect for.
-        #[clap(short, long, use_value_delimiter=true, value_delimiter=',', default_values_t = vec!["snowflake".to_owned(),"tableau".to_owned(),"dbt".to_owned()])]
-        connectors: Vec<String>,
+        #[clap(short, long, use_value_delimiter = true, value_delimiter = ',')]
+        connectors: Option<Vec<String>>,
     },
     Explore {
         #[clap(short, long, value_parser, default_value = "false")]
         fetch_first: bool,
+
+        /// Select the ip and port to bind the server to (e.g. 127.0.0.1:3000)
+        #[clap(short, long, value_parser)]
+        bind: Option<String>,
     },
 }
 
 /// Main CLI entrypoint.
 pub async fn cli() -> Result<()> {
+    setup_panic!(Metadata {
+        name: env!("CARGO_PKG_NAME").into(),
+        version: env!("CARGO_PKG_VERSION").into(),
+        authors: "Jetty Support <support@get-jetty.com".into(),
+        homepage: "get-jetty.com".into(),
+    });
     let args = Args::parse();
     logging::setup(args.log_level);
 
     match &args.command {
-        JettyCommand::Init { from } => {
+        JettyCommand::Init {
+            from,
+            project_name,
+            overwrite,
+        } => {
             println!("Welcome to Jetty! We are so glad you're here.");
-            init::init(from).await?;
+            init::init(from, *overwrite, project_name).await?;
         }
 
         JettyCommand::Fetch {
@@ -72,20 +97,14 @@ pub async fn cli() -> Result<()> {
             fetch(connectors, visualize).await?;
         }
 
-        JettyCommand::Explore { fetch_first } => {
+        JettyCommand::Explore { fetch_first, bind } => {
             if *fetch_first {
                 info!("Fetching all data first.");
-                fetch(
-                    &vec![
-                        "snowflake".to_owned(),
-                        "tableau".to_owned(),
-                        "dbt".to_owned(),
-                    ],
-                    &false,
-                )
-                .await?;
+                fetch(&None, &false).await?;
             }
-            match AccessGraph::deserialize_graph() {
+            match AccessGraph::deserialize_graph(
+                project::data_dir().join(project::graph_filename()),
+            ) {
                 Ok(mut ag) => {
                     let tags_path = project::tags_cfg_path_local();
                     if tags_path.exists() {
@@ -107,7 +126,7 @@ pub async fn cli() -> Result<()> {
                         debug!("No tags file found. Skipping ingestion.")
                     }
 
-                    jetty_explore::explore_web_ui(Arc::new(ag)).await;
+                    jetty_explore::explore_web_ui(Arc::new(ag), bind).await;
                 }
                 Err(e) => info!(
                     "Unable to find saved graph. Try running `jetty fetch`\nError: {}",
@@ -120,77 +139,90 @@ pub async fn cli() -> Result<()> {
     Ok(())
 }
 
-async fn fetch(connectors: &Vec<String>, &visualize: &bool) -> Result<()> {
-    let jetty = Jetty::new(project::jetty_cfg_path_local())?;
+async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()> {
+    let jetty = Jetty::new(project::jetty_cfg_path_local(), project::data_dir())?;
     let creds = fetch_credentials(project::connector_cfg_path())?;
-
-    if connectors.is_empty() {
-        warn!("No connectors, huh?");
-        bail!("Select a connector");
-    }
 
     let mut data_from_connectors = vec![];
 
-    if connectors.contains(&"dbt".to_owned()) {
-        info!("initializing dbt");
-        let now = Instant::now();
-        // Initialize connectors
-        let mut dbt = jetty_dbt::DbtConnector::new(
-            &jetty.config.connectors[&ConnectorNamespace("dbt".to_owned())],
-            &creds["dbt"],
-            Some(ConnectorClient::Core),
-        )
-        .await?;
-        info!("dbt took {} seconds", now.elapsed().as_secs_f32());
+    let selected_connectors;
 
-        info!("getting dbt data");
-        let now = Instant::now();
-        let dbt_data = dbt.get_data().await;
-        let dbt_pcd = (dbt_data, ConnectorNamespace("dbt".to_owned()));
-        info!("dbt data took {} seconds", now.elapsed().as_secs_f32());
-        data_from_connectors.push(dbt_pcd);
-    }
+    selected_connectors = if let Some(conns) = connectors {
+        jetty
+            .config
+            .connectors
+            .into_iter()
+            .filter(|(name, _config)| conns.contains(&name.to_string()))
+            .collect::<HashMap<_, _>>()
+    } else {
+        jetty.config.connectors
+    };
 
-    if connectors.contains(&"snowflake".to_owned()) {
-        info!("intializing snowflake");
-        let now = Instant::now();
-        let mut snow = jetty_snowflake::SnowflakeConnector::new(
-            &jetty.config.connectors[&ConnectorNamespace("snow".to_owned())],
-            &creds["snow"],
-            Some(ConnectorClient::Core),
-        )
-        .await?;
-        info!("snowflake took {} seconds", now.elapsed().as_secs_f32());
+    for (namespace, config) in &selected_connectors {
+        match config.connector_type.as_str() {
+            "dbt" => {
+                let mut dbt = jetty_dbt::DbtConnector::new(
+                    &selected_connectors[namespace],
+                    &creds[namespace.to_string().as_str()],
+                    Some(ConnectorClient::Core),
+                    Some(project::data_dir().join(namespace.to_string())),
+                )
+                .await?;
 
-        info!("getting snowflake data");
-        let now = Instant::now();
-        let snow_data = snow.get_data().await;
-        let snow_pcd = (snow_data, ConnectorNamespace("snowflake".to_owned()));
-        info!(
-            "snowflake data took {} seconds",
-            now.elapsed().as_secs_f32()
-        );
-        data_from_connectors.push(snow_pcd);
-    }
+                info!("getting {} data", namespace);
+                let now = Instant::now();
+                let dbt_data = dbt.get_data().await;
+                let dbt_pcd = (dbt_data, namespace.to_owned());
+                info!(
+                    "{} data took {} seconds",
+                    namespace,
+                    now.elapsed().as_secs_f32()
+                );
+                data_from_connectors.push(dbt_pcd);
+            }
+            "snowflake" => {
+                let mut snow = jetty_snowflake::SnowflakeConnector::new(
+                    &selected_connectors[namespace],
+                    &creds[namespace.to_string().as_str()],
+                    Some(ConnectorClient::Core),
+                    Some(project::data_dir().join(namespace.to_string())),
+                )
+                .await?;
 
-    if connectors.contains(&"tableau".to_owned()) {
-        info!("initializing tableau");
-        let now = Instant::now();
-        let mut tab = jetty_tableau::TableauConnector::new(
-            &jetty.config.connectors[&ConnectorNamespace("tableau".to_owned())],
-            &creds["tableau"],
-            Some(ConnectorClient::Core),
-        )
-        .await?;
-        info!("tableau took {} seconds", now.elapsed().as_secs_f32());
+                info!("getting {} data", namespace);
+                let now = Instant::now();
+                let snow_data = snow.get_data().await;
+                let snow_pcd = (snow_data, namespace.to_owned());
+                info!(
+                    "{} data took {} seconds",
+                    namespace,
+                    now.elapsed().as_secs_f32()
+                );
+                data_from_connectors.push(snow_pcd);
+            }
+            "tableau" => {
+                let mut tab = jetty_tableau::TableauConnector::new(
+                    &selected_connectors[namespace],
+                    &creds[namespace.to_string().as_str()],
+                    Some(ConnectorClient::Core),
+                    Some(project::data_dir().join(namespace.to_string())),
+                )
+                .await?;
 
-        info!("getting tableau data");
-        let now = Instant::now();
-        tab.setup().await?;
-        let tab_data = tab.get_data().await;
-        let tab_pcd = (tab_data, ConnectorNamespace("tableau".to_owned()));
-        info!("tableau data took {} seconds", now.elapsed().as_secs_f32());
-        data_from_connectors.push(tab_pcd);
+                info!("getting {} data", namespace);
+                let now = Instant::now();
+                tab.setup().await?;
+                let tab_data = tab.get_data().await;
+                let tab_pcd = (tab_data, namespace.to_owned());
+                info!(
+                    "{} data took {} seconds",
+                    namespace,
+                    now.elapsed().as_secs_f32()
+                );
+                data_from_connectors.push(tab_pcd);
+            }
+            o => bail!("unknown connector type: {o}"),
+        }
     }
 
     info!("creating access graph");
@@ -202,7 +234,7 @@ async fn fetch(connectors: &Vec<String>, &visualize: &bool) -> Result<()> {
         "access graph creation took {} seconds",
         now.elapsed().as_secs_f32()
     );
-    ag.serialize_graph()?;
+    ag.serialize_graph(project::data_dir().join(project::graph_filename()))?;
 
     if visualize {
         info!("visualizing access graph");

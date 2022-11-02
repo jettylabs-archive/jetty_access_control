@@ -41,5 +41,14 @@ pub(crate) fn ask_dbt_connector_setup() -> Result<CredentialsMap> {
         ))
         .prompt()?;
 
-    Ok(HashMap::from([("project_dir".to_owned(), dbt_project_dir)]))
+    let snowflake_account_id = Text::new("Account Identifier of Snowflake Account Used with dbt:")
+        .with_validator(filled_validator)
+        .with_placeholder("org-account_name")
+        .with_help_message("This is easiest to get in SQL with 'SELECT current_account();'. This field can be the account locator (like 'cea29483') or org account name, dash-separated (like 'MRLDK-ESA98348') See https://tinyurl.com/snow-account-id for more.")
+        .prompt()?;
+
+    Ok(HashMap::from([
+        ("project_dir".to_owned(), dbt_project_dir),
+        ("snowflake_account".to_owned(), snowflake_account_id),
+    ]))
 }

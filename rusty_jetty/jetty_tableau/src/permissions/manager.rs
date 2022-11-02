@@ -1,9 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use jetty_core::{
-    connectors::{
-        nodes::{EffectivePermission, PermissionMode, SparseMatrix},
-    },
+    connectors::nodes::{EffectivePermission, PermissionMode, SparseMatrix},
     cual::Cual,
     logging::debug,
     permissions::matrix::{InsertOrMerge, Merge},
@@ -326,6 +324,8 @@ impl<'x> PermissionManager<'x> {
 
 #[cfg(test)]
 mod tests {
+    use std::path::Path;
+
     use crate::{
         coordinator::Environment,
         nodes::{Flow, Project, User},
@@ -344,7 +344,11 @@ mod tests {
         env.users = HashMap::from([("".to_owned(), user)]);
         env.projects = HashMap::from([("".to_owned(), Project::default())]);
         let rest_client = TableauRestClient::new_dummy();
-        let coordinator = &Coordinator { env, rest_client };
+        let coordinator = &Coordinator {
+            env,
+            rest_client,
+            data_dir: None,
+        };
 
         let m = PermissionManager::new(coordinator);
 

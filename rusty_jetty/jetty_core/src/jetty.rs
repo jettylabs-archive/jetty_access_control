@@ -66,8 +66,9 @@ impl JettyConfig {
 #[allow(dead_code)]
 #[derive(Deserialize, Serialize, Default, Debug)]
 pub struct ConnectorConfig {
+    /// The connector type
     #[serde(rename = "type")]
-    connector_type: String,
+    pub connector_type: String,
     /// Additional configuration, specific to the connector
     #[serde(flatten)]
     pub config: HashMap<String, String>,
@@ -102,16 +103,19 @@ pub struct Jetty {
     /// The main jetty_config.yaml
     pub config: JettyConfig,
     // connector_config: HashMap<String, ConnectorCredentials>,
+    /// The directory where data (such as the materialized graph) should be stored
+    data_dir: PathBuf,
 }
 
 impl Jetty {
     /// Convenience method for struct creation. Uses the default location for
     /// config files.
-    pub fn new<P: AsRef<Path>>(jetty_config_path: P) -> Result<Self> {
+    pub fn new<P: AsRef<Path>>(jetty_config_path: P, data_dir: PathBuf) -> Result<Self> {
         // load a saved access graph or create an empty one
 
         Ok(Jetty {
             config: JettyConfig::read_from_file(jetty_config_path)?,
+            data_dir,
         })
     }
 }
