@@ -11,7 +11,9 @@
             >({{ asset.Asset.asset_type }})</span
           ></q-item-label
         >
-        <q-item-label caption> {{ nodeNameAsString(asset) }}</q-item-label>
+        <q-item-label caption>
+          {{ nodeNameAsString(props.asset) }}</q-item-label
+        >
         <q-item-label caption>
           <JettyBadge
             v-for="platform in asset.Asset.connectors"

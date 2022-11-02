@@ -21,8 +21,8 @@
             {{ props.title }}
             <q-badge v-if="props.tip" outline class="q-px-none" align="top">
               <q-icon name="help_outline" color="secondary" size="1rem">
-                <q-tooltip class="text-body2" max-width="300px">
-                  {{ props.tip }}
+                <q-tooltip class="text-body2 tooltip-wrap" max-width="300px">
+                  {{ props.tip.replace('/', '/&shy;') }}
                 </q-tooltip>
               </q-icon>
             </q-badge>
@@ -114,3 +114,10 @@ fetchJson(props.fetchPath)
   .catch((error) => console.log('unable to fetch: ', error))
   .finally(() => (loading.value = false));
 </script>
+
+<style lang="scss">
+.tooltip-wrap {
+  overflow-wrap: break-word;
+  hyphenate-character: '';
+}
+</style>

@@ -1,12 +1,12 @@
 <template>
   <router-link
-    :to="'/tag/' + nodeId(tag)"
+    :to="'/tag/' + nodeId(props.tag)"
     style="text-decoration: none; color: inherit"
   >
     <q-item class="q-px-none">
       <q-item-section>
         <q-item-label class="text-weight-medium">
-          {{ nodeNameAsString(tag) }}</q-item-label
+          {{ nodeNameAsString(props.tag) }}</q-item-label
         >
         <q-item-label v-if="tag.Tag.description" caption>
           {{ tag.Tag.description }}</q-item-label

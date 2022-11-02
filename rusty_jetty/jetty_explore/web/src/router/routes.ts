@@ -49,7 +49,7 @@ const routes: RouteRecordRaw[] = [
         component: () => import('pages/GroupPage.vue'),
         props: true,
         children: [
-          { path: '', redirect: { name: 'all_members' } },
+          { path: '', redirect: { name: 'direct_members' } },
           {
             name: 'direct_members',
             path: '/group/:node_id/direct_members',
