@@ -11,7 +11,7 @@ mod static_server;
 mod tags;
 mod users;
 
-use std::{collections::HashSet, net::SocketAddr, sync::Arc};
+use std::{collections::HashSet, net::SocketAddr, str::FromStr, sync::Arc};
 
 use axum::{extract::Extension, routing::get, Json, Router};
 use node_summaries::NodeSummary;
@@ -68,7 +68,7 @@ pub(crate) struct PrivilegeResponse {
 }
 
 /// Launch the Jetty Explore web ui and accompanying server
-pub async fn explore_web_ui(ag: Arc<access_graph::AccessGraph>) {
+pub async fn explore_web_ui(ag: Arc<access_graph::AccessGraph>, user_bind: &Option<String>) {
     // build our application with a route
     let app = Router::new()
         .nest("/api/", nodes::router())
@@ -87,23 +87,41 @@ pub async fn explore_web_ui(ag: Arc<access_graph::AccessGraph>) {
 
     let app_service = app.into_make_service();
 
-    // iterate through ports to find one that we can use
-    for port in 3000..65535 {
-        let addr = SocketAddr::from(([127, 0, 0, 1], port));
-        debug!("trying to bind on {}", addr);
-        if let Ok(server) = axum::Server::try_bind(&addr) {
-            info!("Serving Jetty explore on {}", addr);
-            let open_url = format!("http://{}", &addr);
-            // Open a web browser to the appropriate port
-            match open::that(&open_url) {
-                Ok(()) => debug!("Opened browser successfully."),
-                Err(err) => error!(
-                    "An error occurred when opening the browser to '{}': {}",
-                    &open_url, err
-                ),
+    if let Some(binding) = user_bind {
+        info!("Binding to {}", binding);
+        // Open a web browser to the appropriate port
+        let open_url = format!("http://{}", &binding);
+        match open::that(&open_url) {
+            Ok(()) => debug!("Opened browser successfully."),
+            Err(err) => error!(
+                "An error occurred when opening the browser to '{}': {}",
+                &open_url, err
+            ),
+        }
+        let bind_addr = SocketAddr::from_str(&binding).unwrap();
+        axum::Server::bind(&bind_addr)
+            .serve(app_service.to_owned())
+            .await
+            .unwrap();
+    } else {
+        // iterate through ports to find one that we can use
+        for port in 3000..65535 {
+            let addr = SocketAddr::from(([127, 0, 0, 1], port));
+            debug!("trying to bind on {}", addr);
+            if let Ok(server) = axum::Server::try_bind(&addr) {
+                info!("Serving Jetty explore on {}", addr);
+                let open_url = format!("http://{}", &addr);
+                // Open a web browser to the appropriate port
+                match open::that(&open_url) {
+                    Ok(()) => debug!("Opened browser successfully."),
+                    Err(err) => error!(
+                        "An error occurred when opening the browser to '{}': {}",
+                        &open_url, err
+                    ),
+                }
+                server.serve(app_service.to_owned()).await.unwrap();
+                break;
             }
-            server.serve(app_service.to_owned()).await.unwrap();
-            break;
         }
     }
 }

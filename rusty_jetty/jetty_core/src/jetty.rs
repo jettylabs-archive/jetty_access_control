@@ -66,8 +66,9 @@ impl JettyConfig {
 #[allow(dead_code)]
 #[derive(Deserialize, Serialize, Default, Debug)]
 pub struct ConnectorConfig {
+    /// The connector type
     #[serde(rename = "type")]
-    connector_type: String,
+    pub connector_type: String,
     /// Additional configuration, specific to the connector
     #[serde(flatten)]
     pub config: HashMap<String, String>,

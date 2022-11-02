@@ -23,6 +23,7 @@ use jetty_core::{
     connectors::{
         self,
         nodes::{ConnectorData, RawAssetReference as JettyAssetReference},
+        NewConnector,
     },
     jetty::{ConnectorConfig, CredentialsMap},
     Connector,
@@ -51,12 +52,12 @@ impl DbtConnector {
 }
 
 #[async_trait]
-impl Connector for DbtConnector {
+impl NewConnector for DbtConnector {
     async fn new(
         _config: &ConnectorConfig,
         credentials: &CredentialsMap,
         _client: Option<connectors::ConnectorClient>,
-        _data_dir: PathBuf,
+        _data_dir: Option<PathBuf>,
     ) -> Result<Box<Self>> {
         if !credentials.contains_key("project_dir") {
             bail!("missing project_dir key in connectors.yaml");
@@ -69,7 +70,10 @@ impl Connector for DbtConnector {
             .context("creating dbt manifest object")?;
         Self::new_with_manifest(manifest)
     }
+}
 
+#[async_trait]
+impl Connector for DbtConnector {
     async fn check(&self) -> bool {
         // Check that the manifest file exists and is valid json
         let project_dir = &self.manifest.get_project_dir();
@@ -142,7 +146,7 @@ mod tests {
             &ConnectorConfig::default(),
             &CredentialsMap::new(),
             Some(connectors::ConnectorClient::Test),
-            PathBuf::new(),
+            None,
         )
         .await
         .unwrap();
@@ -154,7 +158,7 @@ mod tests {
             &ConnectorConfig::default(),
             &HashMap::from([("project_dir".to_owned(), "something/not/a/path".to_owned())]),
             Some(ConnectorClient::Test),
-            PathBuf::new(),
+            None,
         )
         .await;
         assert!(connector.is_err());

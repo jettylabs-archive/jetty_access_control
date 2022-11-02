@@ -347,7 +347,7 @@ mod tests {
         let coordinator = &Coordinator {
             env,
             rest_client,
-            data_dir: Path::new(".").into(),
+            data_dir: None,
         };
 
         let m = PermissionManager::new(coordinator);

@@ -29,19 +29,24 @@ pub enum ConnectorClient {
 /// The trait all connectors are expected to implement.
 #[async_trait]
 pub trait Connector {
+    /// Check if the Connector is properly set up and return the connection
+    /// status (true for connected, false for not).
+    async fn check(&self) -> bool;
+    /// Get all data in one container for the connector to supply to the graph.
+    async fn get_data(&mut self) -> ConnectorData;
+}
+
+/// The trait all connectors are expected to implement.
+#[async_trait]
+pub trait NewConnector {
     /// Instantiate a Connector from configuration.
     async fn new(
         config: &ConnectorConfig,
         credentials: &CredentialsMap,
         client: Option<ConnectorClient>,
         // A connector is allowed to create and write to this directory.
-        data_dir: PathBuf,
+        data_dir: Option<PathBuf>,
     ) -> Result<Box<Self>>;
-    /// Check if the Connector is properly set up and return the connection
-    /// status (true for connected, false for not).
-    async fn check(&self) -> bool;
-    /// Get all data in one container for the connector to supply to the graph.
-    async fn get_data(&mut self) -> ConnectorData;
 }
 
 /// Enum of identifiers used to resolve user identities
