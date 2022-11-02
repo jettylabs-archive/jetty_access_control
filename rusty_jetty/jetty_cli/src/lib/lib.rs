@@ -184,7 +184,7 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
                 let dbt_data = dbt.get_data().await;
                 let dbt_pcd = (dbt_data, namespace.to_owned());
                 info!(
-                    "{} data took {} seconds",
+                    "{} data took {:.1} seconds",
                     namespace,
                     now.elapsed().as_secs_f32()
                 );
@@ -211,7 +211,7 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
                 let snow_data = snow.get_data().await;
                 let snow_pcd = (snow_data, namespace.to_owned());
                 info!(
-                    "{} data took {} seconds",
+                    "{} data took {:.1} seconds",
                     namespace,
                     now.elapsed().as_secs_f32()
                 );
@@ -239,7 +239,7 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
                 let tab_data = tab.get_data().await;
                 let tab_pcd = (tab_data, namespace.to_owned());
                 info!(
-                    "{} data took {} seconds",
+                    "{} data took {:.1} seconds",
                     namespace,
                     now.elapsed().as_secs_f32()
                 );
@@ -255,7 +255,7 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
     let ag = AccessGraph::new_from_connector_data(data_from_connectors)?;
 
     info!(
-        "access graph creation took {} seconds",
+        "access graph creation took {:.1} seconds",
         now.elapsed().as_secs_f32()
     );
     ag.serialize_graph(project::data_dir().join(project::graph_filename()))?;
@@ -266,7 +266,7 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
         ag.visualize("/tmp/graph.svg")
             .context("failed to visualize")?;
         info!(
-            "access graph creation took {} seconds",
+            "access graph creation took {:.1} seconds",
             now.elapsed().as_secs_f32()
         );
     } else {
