@@ -1,0 +1,13 @@
+[package]
+name = "jetty_py"
+version = "0.0.1"
+edition = "2021"
+
+[[bin]]
+name = "jetty"
+path = "src/main.rs"
+
+[dependencies]
+jetty_cli = { path = "../jetty_cli" }
+anyhow = "^1"
+tokio = { version = "1.20.1", features = ["fs", "rt", "macros"] }
