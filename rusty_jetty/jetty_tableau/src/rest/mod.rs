@@ -16,6 +16,7 @@ pub(crate) use cual::{get_tableau_cual, TableauAssetType};
 use anyhow::{bail, Context};
 use async_trait::async_trait;
 use bytes::Bytes;
+use jetty_core::logging::debug;
 use serde::Serialize;
 
 pub(crate) trait Downloadable {
@@ -39,6 +40,7 @@ pub struct TableauRestClient {
 impl TableauRestClient {
     /// Initialize a new TableauRestClient
     pub async fn new(credentials: TableauCredentials) -> Result<Self> {
+        debug!("Rest credentials: {:?}", credentials);
         // Set the global CUAL prefix for tableau
         set_cual_prefix(&credentials.server_name, &credentials.site_name);
         let mut tc = TableauRestClient {
