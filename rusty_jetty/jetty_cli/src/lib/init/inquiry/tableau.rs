@@ -37,6 +37,7 @@ pub(crate) async fn ask_tableau_connector_setup() -> Result<CredentialsMap> {
 
         tableau_password = Password::new("Tableau password:")
             .with_display_toggle_enabled()
+            .without_confirmation()
             .with_display_mode(PasswordDisplayMode::Hidden)
             .with_validator(filled_validator)
             .with_help_message(
