@@ -42,7 +42,7 @@ const columns = [
   {
     name: 'name',
     label: 'User',
-    field: 'name',
+    field: (row: UserWithPaths) => nodeNameAsString(row.node),
     sortable: true,
     align: 'left',
   },

@@ -133,3 +133,7 @@ export function nodeType(node: NodeSummary): string {
     return 'tag';
   }
 }
+
+export function assetShortName(asset: AssetSummary): string {
+  return nodeNameAsString(asset).split('::').pop().split('/').pop();
+}

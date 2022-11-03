@@ -23,16 +23,17 @@ import AssetHeadline from 'src/components/assets/AssetHeadline.vue';
 import JettyBadge from 'src/components/JettyBadge.vue';
 import JettyTable from 'src/components/JettyTable.vue';
 import { AssetSummary } from 'src/components/models';
-import { nodeConnectors, nodeNameAsString } from 'src/util';
+import { assetShortName, nodeConnectors, nodeNameAsString } from 'src/util';
 import { mapNodeSummaryforSearch } from 'src/util/search';
 
 const columns = [
   {
     name: 'name',
     label: 'Asset Name',
-    field: 'name',
     sortable: true,
     align: 'left',
+    // this must be unique, so combining the friendly short name with the unique full name
+    field: (row: AssetSummary) => assetShortName(row) + nodeNameAsString(row),
   },
 ];
 

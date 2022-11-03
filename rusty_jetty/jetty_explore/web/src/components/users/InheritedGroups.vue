@@ -36,7 +36,7 @@ const columns = [
   {
     name: 'name',
     label: 'Group Name',
-    field: 'name',
+    field: (row: GroupWithPaths) => nodeNameAsString(row.node),
     sortable: true,
     align: 'left',
   },

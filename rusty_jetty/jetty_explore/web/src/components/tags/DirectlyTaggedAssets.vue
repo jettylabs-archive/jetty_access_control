@@ -20,7 +20,7 @@
 <script lang="ts" setup>
 import JettyTable from '../JettyTable.vue';
 import { AssetSummary } from '../models';
-import { nodeNameAsString, nodeId } from 'src/util';
+import { nodeNameAsString, nodeId, assetShortName } from 'src/util';
 import AssetHeadline from '../assets/AssetHeadline.vue';
 import { mapNodeSummaryforSearch } from 'src/util/search';
 
@@ -30,7 +30,8 @@ const columns = [
   {
     name: 'name',
     label: 'Asset Name',
-    field: 'name',
+    // this must be unique, so combining the friendly short name with the unique full name
+    field: (row: AssetSummary) => assetShortName(row) + nodeNameAsString(row),
     sortable: true,
     align: 'left',
   },

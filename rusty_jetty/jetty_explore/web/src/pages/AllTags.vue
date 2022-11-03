@@ -29,7 +29,7 @@ const columns = [
   {
     name: 'name',
     label: 'Tag Name',
-    field: 'name',
+    field: (row: TagSummary) => nodeNameAsString(row),
     sortable: true,
     align: 'left',
   },

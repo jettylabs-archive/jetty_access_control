@@ -26,7 +26,12 @@
 import JettyTable from '../JettyTable.vue';
 import JettyBadge from '../JettyBadge.vue';
 import { AssetWithPaths } from 'src/components/models';
-import { getPathAsString, nodeNameAsString, nodeId } from 'src/util';
+import {
+  getPathAsString,
+  nodeNameAsString,
+  nodeId,
+  assetShortName,
+} from 'src/util';
 import NodePath from '../NodePath.vue';
 import AssetHeadline from './AssetHeadline.vue';
 import { mapNodeSummaryforSearch } from 'src/util/search';
@@ -41,7 +46,9 @@ const columns = [
   {
     name: 'name',
     label: 'Asset Name',
-    field: 'name',
+    // this must be unique, so combining the friendly short name with the unique full name
+    field: (row: AssetWithPaths) =>
+      assetShortName(row.node) + nodeNameAsString(row.node),
     sortable: true,
     align: 'left',
   },
