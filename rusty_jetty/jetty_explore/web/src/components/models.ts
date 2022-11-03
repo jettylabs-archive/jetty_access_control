@@ -9,7 +9,7 @@
 //   totalCount: number;
 // }
 
-export type NodePath = (GroupSummary | UserSummary)[];
+export type NodePath = AssetSummary[];
 
 export interface GroupName {
   Group: {
