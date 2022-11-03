@@ -19,9 +19,9 @@ jetty_tableau = { path = "../jetty_tableau" }
 jetty_explore = { path = "../jetty_explore" }
 tokio = { version = "1.20.1", features = ["fs", "rt", "macros"] }
 anyhow = "^1"
-clap = { version = "3.2.22", features = ["derive"] }
+clap = { version = "4.0.18", features = ["derive"] }
 colored = "2"
-inquire = "0.4.0"
+inquire = "0.5.2"
 crossterm = "0.25.0"
 yaml-peg = { version = "1.0.4", features = ["serde"] }
 openssl = { version = "0.10.42", features = ["vendored"] }
