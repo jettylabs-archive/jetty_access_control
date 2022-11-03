@@ -8,7 +8,6 @@ edition = "2021"
 [dependencies]
 anyhow = "^1"
 async-trait = "0.1.57"
-dirs = "4.0.0"
 serde = { version = "1.0.144", features = ["derive"] }
 yaml-peg = { version = "1.0.4", features = ["serde"] }
 graphviz-rust = "0.2.1"
