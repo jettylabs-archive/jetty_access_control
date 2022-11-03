@@ -1,9 +1,0 @@
-version: 0.0.1
-name: jetty_dev
-connectors:
-  snowflake:
-    type: snowflake
-  tableau:
-    type: tableau
-  dbt:
-    type: dbt
