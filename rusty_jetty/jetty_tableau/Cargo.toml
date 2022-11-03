@@ -21,4 +21,6 @@ urlencoding = "2.1.2"
 bytes = "1.2.1"
 zip = "0.6.2"
 uuid = { version = "1.1.2", features = ["v4"] }
+
+[dev-dependencies]
 dirs = "4.0.0"
