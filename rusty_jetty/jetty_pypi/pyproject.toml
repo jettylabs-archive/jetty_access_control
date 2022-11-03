@@ -4,6 +4,11 @@ build-backend = "maturin"
 
 [project]
 name = "jetty-core"
+description = "Data Access Control for the Modern Data Stack"
+readme = "README.md"
+keywords = ["data", "privacy", "access control"]
+authors = [{ name = "Jk Jensen" }, { name = "Isaac Hales" }]
+maintainers = [{ name = "Jk Jensen" }, { name = "Isaac Hales" }]
 requires-python = ">=3.7"
 classifiers = [
     "Programming Language :: Rust",
