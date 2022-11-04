@@ -11,7 +11,7 @@ In this guide, you will learn everything you need to know to get started with Je
 
 :::note
 
-In this walk-through, we will connect to Snowflake, dbt, and Tableau. We will continue to add support for additional data tools, so please [let us know](mailto:support@get-jetty.com) if this stack doesn't meet your needs!
+In this walkthrough, we will connect to Snowflake, dbt, and Tableau. We will continue to add support for additional data tools, so please [let us know](mailto:support@get-jetty.com) if this stack doesn't meet your needs!
 
 :::
 
