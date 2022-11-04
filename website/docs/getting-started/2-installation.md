@@ -8,9 +8,7 @@ slug: './installation'
 Jetty operates via a command-line interface that can be installed with `pip`, the Python package manager.
 
 :::note
-
 To install Jetty on your local computer, make sure that you have Python 3.7+ and pip installed. While not required we also recommend installing Jetty in a virtual environment.
-
 :::
 
 To install Jetty, open your terminal and run
