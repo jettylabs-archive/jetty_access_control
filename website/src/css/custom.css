@@ -4,10 +4,50 @@
  * work well for content-centric websites.
  */
 
-nav.navbar a.navbar__link--active {
-  color: white;
-  font-weight: bold;
+ nav.navbar {
+  background-color: white;
+  height: 87px;
+ }
+
+nav.navbar div.navbar__logo {
+  height: 40px;
+  padding-left: 40px;
 }
+
+nav.navbar a.navbar__link {
+  color: black;
+  font-weight: 500;
+}
+
+
+.footer {
+  background-color: black;
+  border-top: none;
+}
+
+.navbar__inner {
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.pagination-nav__link {
+  background-image: url("../../static/img/gradient-blur-tiny.png");
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position-x: left;
+  background-position-y: top;
+  background-size:1000px 1000px;
+}
+
+nav.navbar a.navbar__link--active {
+  color: black;
+  margin-bottom: -10px;
+  border-bottom: 1px solid #f47124;
+  padding-bottom: 10px;
+    
+}
+
 
 button.navbar__toggle {
   color: white;
@@ -19,12 +59,12 @@ button.navbar__toggle {
     Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
   --ifm-navbar-background-color: #084c61;
   --ifm-navbar-link-color: white;
-  --ifm-color-primary: #4ba178;
+  --ifm-color-primary: #f47124;
   --ifm-color-primary-dark: #348e5a;
   --ifm-color-primary-darker: #247a40;
-  --ifm-color-primary-darkest: #18662a;
-  --ifm-color-primary-light: #7bbdaa;
-  --ifm-color-primary-lighter: #a0cec9;
+  --ifm-color-primary-darkest: #944415;
+  --ifm-color-primary-light: #eda073;
+  --ifm-color-primary-lighter: #edc7b2;
   --ifm-color-primary-lightest: #b5d6d6;
   --ifm-code-font-size: 95%;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
