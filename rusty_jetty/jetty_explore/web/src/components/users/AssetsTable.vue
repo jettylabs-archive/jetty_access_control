@@ -18,24 +18,7 @@
   >
     <q-tr>
       <q-td key="name">
-        <q-item class="q-px-none">
-          <q-item-section>
-            <router-link
-              :to="'/asset/' + nodeId(row.node)"
-              style="text-decoration: none; color: inherit"
-            >
-              <q-item-label> {{ nodeNameAsString(row.node) }}</q-item-label>
-            </router-link>
-
-            <q-item-label caption>
-              <JettyBadge
-                v-for="connector in row.node.Asset.connectors"
-                :key="connector"
-                :name="connector"
-              />
-            </q-item-label>
-          </q-item-section>
-        </q-item>
+        <AssetHeadline :asset="row.node" />
       </q-td>
       <q-td key="privileges" style="padding-right: 0px">
         <q-list separator>
@@ -67,9 +50,9 @@
 
 <script lang="ts" setup>
 import JettyTable from '../JettyTable.vue';
-import JettyBadge from '../JettyBadge.vue';
+import AssetHeadline from '../assets/AssetHeadline.vue';
 import { AssetSummary, EffectivePermission } from '../models';
-import { nodeNameAsString, nodeId } from 'src/util';
+import { nodeNameAsString, nodeId, assetShortName } from 'src/util';
 import { mapNodeSummaryforSearch } from 'src/util/search';
 
 interface AssetWithEffectivePermissions {
@@ -89,7 +72,9 @@ const columns = [
   {
     name: 'name',
     label: 'Asset Name',
-    field: 'name',
+    // this must be unique, so combining the friendly short name with the unique full name
+    field: (row: AssetWithEffectivePermissions) =>
+      assetShortName(row.node) + nodeNameAsString(row.node),
     sortable: true,
     align: 'left',
   },

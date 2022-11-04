@@ -32,7 +32,7 @@ const columns = [
   {
     name: 'name',
     label: 'User',
-    field: 'name',
+    field: (row: UserSummary) => nodeNameAsString(row),
     sortable: true,
     align: 'left',
   },

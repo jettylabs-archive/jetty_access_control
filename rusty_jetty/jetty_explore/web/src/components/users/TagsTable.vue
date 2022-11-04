@@ -58,7 +58,7 @@ const columns = [
   {
     name: 'name',
     label: 'Tag Name',
-    field: 'name',
+    field: (row: TagWithAssets) => nodeNameAsString(row.node),
     sortable: true,
     align: 'left',
   },

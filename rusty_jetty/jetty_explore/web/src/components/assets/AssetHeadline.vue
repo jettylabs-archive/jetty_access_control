@@ -6,7 +6,9 @@
     <q-item class="q-px-none">
       <q-item-section>
         <q-item-label>
-          <span class="q-pr-xs text-weight-medium">{{ assetShortname }} </span>
+          <span class="q-pr-xs text-weight-medium"
+            >{{ assetShortName(asset) }}
+          </span>
           <span class="text-caption"
             >({{ asset.Asset.asset_type }})</span
           ></q-item-label
@@ -27,14 +29,11 @@
 </template>
 
 <script lang="ts" setup>
-import { nodeNameAsString } from 'src/util';
+import { nodeNameAsString, assetShortName } from 'src/util';
 import { AssetSummary } from '../models';
 import JettyBadge from '../JettyBadge.vue';
 import { computed } from 'vue';
 import { nodeId } from 'src/util';
 
 const props = defineProps<{ asset: AssetSummary }>();
-const assetShortname = computed(() =>
-  nodeNameAsString(props.asset).split('::').pop().split('/').pop()
-);
 </script>

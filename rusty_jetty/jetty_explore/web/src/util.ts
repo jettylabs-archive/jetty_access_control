@@ -107,7 +107,14 @@ export function nodeConnectors(node: NodeSummary): string[] {
 }
 
 export const getPathAsString = (path: NodePath): string => {
-  return path.map((g) => nodeNameAsString(g)).join(' ⇨ ');
+  const path_names = path.map((n) => {
+    if ('Asset' in n) {
+      return assetShortName(n);
+    } else {
+      return nodeNameAsString(n);
+    }
+  });
+  return path_names.join(' ⇨ ');
 };
 
 export function nodeId(node: NodeSummary): string {
@@ -132,4 +139,8 @@ export function nodeType(node: NodeSummary): string {
   } else if ('Tag' in node) {
     return 'tag';
   }
+}
+
+export function assetShortName(asset: AssetSummary): string {
+  return nodeNameAsString(asset).split('::').pop().split('/').pop();
 }

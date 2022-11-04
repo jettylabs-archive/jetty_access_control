@@ -32,7 +32,7 @@ const columns = [
   {
     name: 'name',
     label: 'Group Name',
-    field: 'name',
+    field: (row: GroupSummary) => nodeNameAsString(row),
     sortable: true,
     align: 'left',
   },
