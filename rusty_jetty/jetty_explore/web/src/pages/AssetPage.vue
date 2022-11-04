@@ -3,7 +3,7 @@
     <JettyHeader :node="currentNode" :subtitle="nodeNameAsString(currentNode)">
       <template #title>
         <text class="name"
-          >{{ assetShortname }}
+          >{{ assetShortName(currentNode) }}
           <span class="name asset-type">
             ({{ currentNode.Asset.asset_type }})</span
           >
@@ -139,7 +139,7 @@ import JettyHeader from 'src/components/JettyHeader.vue';
 import { useJettyStore } from 'stores/jetty';
 import { useRouter, useRoute } from 'vue-router';
 import JettyBadge from 'src/components/JettyBadge.vue';
-import { fetchJson, nodeId, nodeNameAsString } from 'src/util';
+import { fetchJson, nodeId, nodeNameAsString, assetShortName } from 'src/util';
 import { AssetSummary, TagSummary } from 'src/components/models';
 
 const props = defineProps(['node_id']);
@@ -156,10 +156,6 @@ const currentNode = computed(
 if (!currentNode.value) {
   router.push('/notfound');
 }
-
-const assetShortname = computed(() =>
-  nodeNameAsString(currentNode.value).split('::').pop().split('/').pop()
-);
 
 const tab = ref('users');
 
