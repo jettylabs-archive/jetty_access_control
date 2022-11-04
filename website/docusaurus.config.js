@@ -50,6 +50,10 @@ const config = {
                 theme: {
                     customCss: require.resolve('./src/css/custom.css'),
                 },
+                gtag: {
+                    trackingID: 'GTM-NQ5FTQS',
+                    anonymizeIP: true,
+                },
             }),
         ],
     ],
@@ -101,48 +105,24 @@ const config = {
             },
             footer: {
                 style: 'dark',
-                // links: [
-                //     {
-                //         title: 'Docs',
-                //         items: [
-                //             {
-                //                 label: 'Tutorial',
-                //                 to: '/docs/getting-started/',
-                //             },
-                //         ],
-                //     },
-                //     {
-                //         title: 'Community',
-                //         items: [
-                //             {
-                //                 label: 'Stack Overflow',
-                //                 href: '#',
-                //             },
-                //             {
-                //                 label: 'Discord',
-                //                 href: '#',
-                //             },
-                //             {
-                //                 label: 'Twitter',
-                //                 href: '#',
-                //             },
-                //         ],
-                //     },
-                //     {
-                //         title: 'More',
-                //         items: [
-                //             {
-                //                 label: 'Blog',
-                //                 to: '#',
-                //             },
-                //             {
-                //                 label: 'GitHub (',
-                //                 href: '#',
-                //             },
-                //         ],
-                //     },
-                // ],
-                copyright: `Copyright © ${new Date().getFullYear()} Jetty Labs, Inc.`,
+
+                links: [
+                    {
+                        html: `
+                        <div class="footer__custom_inner">
+                            <div>Copyright © 2022 Jetty Labs, Inc.</div>
+                            <div class="footer__custom_legal_links">
+                                <div class="footer__custom_legal_link">
+                                    <a href="https://www.get-jetty.com/privacy" target="_blank">Privacy Policy</a>
+                                </div>
+                                <div class="footer__custom_legal_link">
+                                    <a href="https://www.get-jetty.com/terms-of-service" target="_blank">Terms of Service</a>
+                                </div>
+                            </div>
+                        </div>
+                        `,
+                    },
+                ],
             },
             prism: {
                 theme: lightCodeTheme,

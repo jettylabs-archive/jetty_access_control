@@ -25,6 +25,49 @@ nav.navbar a.navbar__link {
   border-top: none;
 }
 
+.footer__link-item:hover {
+  color: var(--ifm-navbar-link-color);
+}
+
+.footer__custom_inner {
+  max-width: 1280px;
+  font-size: 14px;
+  margin-left: auto;
+  margin-right: auto;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;  
+  padding-top:15px;
+}
+
+.footer__custom_legal_links {
+  display: flex;
+  flex-direction: row;
+}
+
+.footer__custom_legal_link {
+  padding-left: 15px;
+}
+
+.footer__custom_legal_link a {
+  color: var(--ifm-navbar-link-color);
+}
+
+.footer__custom_legal_link a:link {
+  text-decoration: none;
+}
+.footer__custom_legal_link a:visited {
+  text-decoration: none;
+}
+.footer__custom_legal_link a:hover {
+  text-decoration: none;
+  color: rgba(255, 255, 255, 0.6);
+}
+.footer__custom_legal_link a:active {
+  text-decoration: none;
+}
+
+
 .navbar__inner {
   max-width: 1280px;
   margin-left: auto;
