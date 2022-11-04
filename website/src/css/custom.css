@@ -111,8 +111,6 @@ button.navbar__toggle {
   --ifm-code-font-size: 95%;
   --ifm-navbar-height: 87px;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
-
-  --ifm-navbar-height: 4.25rem;
 }
 
 /* For readability concerns, you should choose a lighter palette in dark mode. */
