@@ -6,7 +6,6 @@
 
  nav.navbar {
   background-color: white;
-  height: 87px;
  }
 
 nav.navbar div.navbar__logo {
@@ -110,6 +109,7 @@ button.navbar__toggle {
   --ifm-color-primary-lighter: #edc7b2;
   --ifm-color-primary-lightest: #b5d6d6;
   --ifm-code-font-size: 95%;
+  --ifm-navbar-height: 87px;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
 
   --ifm-navbar-height: 4.25rem;
