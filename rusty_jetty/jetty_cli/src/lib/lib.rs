@@ -8,12 +8,7 @@ mod init;
 mod project;
 mod tui;
 
-use std::{
-    collections::HashMap,
-    path::{Path, PathBuf},
-    sync::Arc,
-    time::Instant,
-};
+use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Instant};
 
 use anyhow::{anyhow, bail, Context, Result};
 use clap::{Parser, Subcommand};
@@ -23,8 +18,7 @@ use jetty_core::{
     access_graph::AccessGraph,
     connectors::{ConnectorClient, NewConnector},
     fetch_credentials,
-    jetty::ConnectorNamespace,
-    logging::{self, debug, info, warn, LevelFilter},
+    logging::{self, debug, info, LevelFilter},
     Connector, Jetty,
 };
 
@@ -34,7 +28,7 @@ use jetty_core::{
 struct Args {
     #[clap(subcommand)]
     command: JettyCommand,
-    #[clap(short, long)]
+    #[clap(global = true, short = 'v', long)]
     log_level: Option<LevelFilter>,
 }
 
@@ -53,7 +47,7 @@ enum JettyCommand {
     },
     Fetch {
         /// Visualize the graph in an SVG file.
-        #[clap(short, long, value_parser, default_value = "false")]
+        #[clap(long, value_parser, default_value = "false")]
         visualize: bool,
         /// Connectors to collect for.
         #[clap(short, long, use_value_delimiter = true, value_delimiter = ',')]
