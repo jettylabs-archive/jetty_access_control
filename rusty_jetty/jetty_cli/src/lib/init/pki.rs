@@ -14,6 +14,28 @@ pub(crate) struct KeyPair {
 }
 
 impl KeyPair {
+    /// Create a local keypair with a corresponding public key fingerprint.
+    pub(crate) fn new() -> Result<KeyPair> {
+        let rsa = PKey::from_rsa(Rsa::generate(2048)?)?;
+        // Snowflake (and JWT creation) only accept PKCS8.
+        let private = rsa.private_key_to_pem_pkcs8().map(String::from_utf8)??;
+        let public = rsa.public_key_to_pem()?;
+        // Fingerprint must be generated from der format.
+        let public_der = rsa.public_key_to_der()?;
+        let digest = Sha256::digest(public_der).to_vec();
+        let fingerprint = format!("SHA256:{}", base64::encode(digest));
+        Ok(KeyPair {
+            private,
+            fingerprint,
+            public: String::from_utf8(public)?,
+        })
+    }
+
+    /// Load a keypair from the given filepaths.
+    pub(crate) fn from_path(filepath: impl AsRef<Path>) -> Result<KeyPair> {
+        todo!("Isaac will fix this")
+    }
+
     /// Get the public key minus header/footer information. Just the key.
     pub(crate) fn public_inner(&self) -> String {
         let lines = self.public.lines().collect::<Vec<_>>();
@@ -35,9 +57,9 @@ impl KeyPair {
     /// appended for public)
     ///
     /// `dir` is the directory where the files will be created.
-    pub(crate) fn save_to_files(&self, name: &str, dir: impl AsRef<Path>) -> Result<()> {
-        let pub_path = dir.as_ref().join(format!("{}.p8", name));
-        let priv_path = dir.as_ref().join(name);
+    pub(crate) fn save_to_files(&self, filepath: impl AsRef<Path>) -> Result<()> {
+        let pub_path = filepath.as_ref().to_path_buf().with_extension("p8");
+        let priv_path = filepath.as_ref().to_path_buf().with_extension("pub");
         save_to_file(&self.public, &pub_path)?;
         save_to_file(&self.private, &priv_path)?;
         Ok(())
@@ -48,23 +70,6 @@ fn save_to_file(contents: &str, filepath: impl AsRef<Path>) -> Result<()> {
     let mut file = File::create(filepath)?;
     file.write_all(contents.as_bytes())?;
     Ok(())
-}
-
-/// Create a local keypair with a corresponding public key fingerprint.
-pub(crate) fn create_keypair() -> Result<KeyPair> {
-    let rsa = PKey::from_rsa(Rsa::generate(2048)?)?;
-    // Snowflake (and JWT creation) only accept PKCS8.
-    let private = rsa.private_key_to_pem_pkcs8().map(String::from_utf8)??;
-    let public = rsa.public_key_to_pem()?;
-    // Fingerprint must be generated from der format.
-    let public_der = rsa.public_key_to_der()?;
-    let digest = Sha256::digest(public_der).to_vec();
-    let fingerprint = format!("SHA256:{}", base64::encode(digest));
-    Ok(KeyPair {
-        private,
-        fingerprint,
-        public: String::from_utf8(public)?,
-    })
 }
 
 #[cfg(test)]

@@ -51,5 +51,5 @@ pub(crate) fn graph_filename() -> PathBuf {
 }
 
 pub(crate) fn default_keypair_dir_path() -> PathBuf {
-    home_dir().join(".ssh")
+    home_dir().expect("getting home dir").join(".ssh")
 }
