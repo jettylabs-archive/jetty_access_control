@@ -82,7 +82,7 @@ mod tests {
             private,
             public,
             fingerprint: fp,
-        } = create_keypair()?;
+        } = KeyPair::new()?;
         assert!(private.starts_with("-----BEGIN PRIVATE KEY-----"));
         assert!(public.starts_with("-----BEGIN PUBLIC KEY-----"));
         assert!(fp.starts_with("SHA256:"));
