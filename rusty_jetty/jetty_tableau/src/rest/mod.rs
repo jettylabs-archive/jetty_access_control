@@ -40,7 +40,6 @@ pub struct TableauRestClient {
 impl TableauRestClient {
     /// Initialize a new TableauRestClient
     pub async fn new(credentials: TableauCredentials) -> Result<Self> {
-        warn!("Rest credentials: {:?}", credentials);
         // Set the global CUAL prefix for tableau
         set_cual_prefix(&credentials.server_name, &credentials.site_name);
         let mut tc = TableauRestClient {
