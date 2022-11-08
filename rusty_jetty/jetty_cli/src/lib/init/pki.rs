@@ -1,4 +1,4 @@
-
+use std::{fs::File, io::Write, path::Path};
 
 use anyhow::Result;
 use openssl::{pkey::PKey, rsa::Rsa};
@@ -28,6 +28,26 @@ impl KeyPair {
     pub(crate) fn private_key(&self) -> String {
         self.private.to_owned()
     }
+
+    /// Put both public and private keys in files with `name` in `dir`.
+    ///
+    /// `name` is the name of the file (`.p8` appended for private, `.pub`
+    /// appended for public)
+    ///
+    /// `dir` is the directory where the files will be created.
+    pub(crate) fn save_to_files(&self, name: &str, dir: impl AsRef<Path>) -> Result<()> {
+        let pub_path = dir.as_ref().join(format!("{}.p8", name));
+        let priv_path = dir.as_ref().join(name);
+        save_to_file(&self.public, &pub_path)?;
+        save_to_file(&self.private, &priv_path)?;
+        Ok(())
+    }
+}
+
+fn save_to_file(contents: &str, filepath: impl AsRef<Path>) -> Result<()> {
+    let mut file = File::create(filepath)?;
+    file.write_all(contents.as_bytes())?;
+    Ok(())
 }
 
 /// Create a local keypair with a corresponding public key fingerprint.

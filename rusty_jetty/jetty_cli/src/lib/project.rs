@@ -49,3 +49,7 @@ pub(crate) fn data_dir() -> PathBuf {
 pub(crate) fn graph_filename() -> PathBuf {
     JETTY_GRAPH.clone()
 }
+
+pub(crate) fn default_keypair_dir_path() -> PathBuf {
+    home_dir().join(".ssh")
+}
