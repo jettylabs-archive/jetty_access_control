@@ -29,4 +29,6 @@ sha2 = "0.10.6"
 base64 = "0.13.1"
 dirs = "4.0.0"
 lazy_static = "1.4.0"
+firebase-rs = { git = "https://github.com/jettylabs/firebase-rs", branch = "master" }
 human-panic = { git = "https://github.com/jettylabs/human-panic", branch = "master" }
+serde = { version = "1.0.144", features = ["derive"] }

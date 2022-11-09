@@ -13,6 +13,7 @@ use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Instant};
 use anyhow::{anyhow, bail, Context, Result};
 use clap::{Parser, Subcommand};
 use human_panic::setup_panic;
+use serde::{Deserialize, Serialize};
 
 use jetty_core::{
     access_graph::AccessGraph,
@@ -65,6 +66,10 @@ enum JettyCommand {
 
 /// Main CLI entrypoint.
 pub async fn cli() -> Result<()> {
+    let firebase =
+        firebase_rs::Firebase::new("https://jetty-cli-telemetry-default-rtdb.firebaseio.com/")
+            .unwrap();
+
     setup_panic!(Metadata {
         name: env!("CARGO_PKG_NAME").into(),
         version: env!("CARGO_PKG_VERSION").into(),
