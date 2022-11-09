@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::Path};
+use std::collections::HashMap;
 
 use anyhow::Result;
 use colored::Colorize;
@@ -10,7 +10,16 @@ use jetty_core::{
 };
 use jetty_snowflake::SnowflakeConnector;
 
-use crate::init::pki::create_keypair;
+use crate::{
+    init::{
+        inquiry::{
+            autocomplete::FilepathCompleter,
+            validation::{FilepathValidator, FilepathValidatorMode, PathType},
+        },
+        pki::KeyPair,
+    },
+    project::default_keypair_dir_path,
+};
 
 use super::validation::filled_validator;
 
@@ -34,9 +43,36 @@ pub(crate) async fn ask_snowflake_connector_setup(
             .with_help_message("We will use this warehouse for any warehouse-required queries to manage permissions.")
             .prompt()?;
 
-        println!("Generating keypair...");
-        let keypair = create_keypair()?;
-        println!("Keypair generated!");
+        let keypair_answer = Text::new("Input a path to a pkcs8 private key file (`.p8`) to use for authentication or leave blank to create a new keypair.")
+            .with_validator(FilepathValidator::new(
+                None,
+                PathType::File,
+                "File not found.".to_string(),
+                FilepathValidatorMode::AllowDefault{default_value: "".to_owned()},
+            ))
+            .with_autocomplete(FilepathCompleter::default())
+            .prompt()?;
+        let should_create_keypair = keypair_answer.is_empty();
+        let keypair_filepath = if should_create_keypair {
+            default_keypair_dir_path()
+                .join(format!("{}.p8", connector_namespace))
+                .to_string_lossy()
+                .to_string()
+        } else {
+            keypair_answer
+        };
+
+        let keypair = if should_create_keypair {
+            println!("Generating keypair...");
+            let keypair = KeyPair::new()?;
+            println!("Creating files...");
+            keypair.save_to_files(keypair_filepath)?;
+            println!("Keypair generated!");
+            keypair
+        } else {
+            println!("Loading keypair...");
+            KeyPair::from_path(keypair_filepath)?
+        };
 
         println!("Authorize Jetty access to your account by running the following SQL statement in Snowflake.");
         println!(

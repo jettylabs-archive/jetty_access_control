@@ -14,6 +14,7 @@ lazy_static! {
     static ref CONNECTOR_CFG: PathBuf = PathBuf::from("connectors.yaml");
     static ref CONNECTOR_CFG_DIR: PathBuf = PathBuf::from(".jetty");
     static ref JETTY_GRAPH: PathBuf = PathBuf::from("jetty_graph");
+    static ref DEFAULT_KEY_DIR: PathBuf = PathBuf::from(".ssh");
 }
 
 pub(crate) fn tags_cfg_path<P: AsRef<Path>>(project_path: P) -> PathBuf {
@@ -48,4 +49,10 @@ pub(crate) fn data_dir() -> PathBuf {
 
 pub(crate) fn graph_filename() -> PathBuf {
     JETTY_GRAPH.clone()
+}
+
+pub(crate) fn default_keypair_dir_path() -> PathBuf {
+    home_dir()
+        .expect("getting home dir")
+        .join(DEFAULT_KEY_DIR.as_path())
 }

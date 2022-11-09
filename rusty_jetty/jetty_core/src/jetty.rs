@@ -19,6 +19,7 @@ impl Display for ConnectorNamespace {
         write!(f, "{}", self.0)
     }
 }
+
 /// Struct representing the jetty_config.yaml file.
 #[allow(dead_code)]
 #[derive(Deserialize, Serialize, Debug, Default)]
