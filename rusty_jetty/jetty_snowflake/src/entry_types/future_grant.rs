@@ -113,7 +113,7 @@ mod tests {
         assert_eq!(
             p,
             nodes::RawPolicy::new(
-                "snowflake.future.grantee_name.db".to_owned(),
+                "snowflake.future.grant_on.grantee_name.db".to_owned(),
                 HashSet::from(["priv".to_owned()]),
                 HashSet::from([cual_from_snowflake_obj_name("DB")?.uri()]),
                 HashSet::new(),
@@ -138,7 +138,7 @@ mod tests {
         let p: nodes::RawPolicy = g.clone().into_policy(HashSet::from(["priv".to_owned()]));
         let p2: nodes::RawPolicy = g.clone().into_policy(HashSet::from(["priv".to_owned()]));
         let p3: nodes::RawPolicy = g.into_policy(HashSet::from(["priv".to_owned()]));
-        assert_eq!(p.name, "snowflake.future.grantee_name.db");
+        assert_eq!(p.name, "snowflake.future.grant_on.grantee_name.db");
         assert_eq!(p2.name, p.name);
         assert_eq!(p3.name, p2.name);
     }
@@ -154,7 +154,7 @@ mod tests {
         };
         let p: nodes::RawPolicy =
             g.into_policy(HashSet::from(["priv".to_owned(), "priv2".to_owned()]));
-        assert_eq!(p.name, "snowflake.future.grantee_name.db");
+        assert_eq!(p.name, "snowflake.future.grant_on.grantee_name.db");
         assert_eq!(
             p.privileges,
             HashSet::from(["priv".to_owned(), "priv2".to_owned()])
@@ -174,7 +174,7 @@ mod tests {
         assert_eq!(
             p,
             nodes::RawPolicy::new(
-                "snowflake.future.grantee_name.db.schema".to_owned(),
+                "snowflake.future.TABLE.grantee_name.db.schema".to_owned(),
                 HashSet::from(["priv".to_owned()]),
                 HashSet::from([cual_from_snowflake_obj_name("DB.SCHEMA")?.uri()]),
                 HashSet::new(),
