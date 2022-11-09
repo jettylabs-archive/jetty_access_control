@@ -1,8 +1,12 @@
-use std::io::ErrorKind;
+use std::{
+    io::ErrorKind,
+    path::{Path, PathBuf},
+};
 
+use anyhow::Context;
 use inquire::{autocompletion::Replacement, Autocomplete, CustomUserError};
 
-#[derive(Clone, Default)]
+#[derive(Debug, Clone, Default)]
 pub(crate) struct FilepathCompleter {
     input: String,
     paths: Vec<String>,
@@ -15,10 +19,13 @@ impl FilepathCompleter {
             return Ok(());
         }
 
-        self.input = input.to_owned();
         self.paths.clear();
 
-        let input_path = std::path::PathBuf::from(input);
+        let input_path = std::path::PathBuf::from(input)
+            .expand_tilde()
+            .context("can't expand tilde")?;
+
+        self.input = input_path.to_string_lossy().into_owned();
 
         let fallback_parent = input_path
             .parent()
@@ -118,5 +125,57 @@ impl Autocomplete for FilepathCompleter {
                 false => Replacement::Some(self.lcp.clone()),
             },
         })
+    }
+}
+
+trait ExpandTildeExt {
+    fn expand_tilde(&self) -> Option<PathBuf>;
+}
+
+impl<P> ExpandTildeExt for P
+where
+    P: AsRef<Path>,
+{
+    fn expand_tilde(&self) -> Option<PathBuf> {
+        let p = self.as_ref();
+        if !p.starts_with("~") {
+            return Some(p.to_path_buf());
+        }
+        if p == Path::new("~") {
+            return dirs::home_dir();
+        }
+        dirs::home_dir().map(|mut h| {
+            if h == Path::new("/") {
+                // Corner case: `h` root directory;
+                // don't prepend extra `/`, just drop the tilde.
+                p.strip_prefix("~").unwrap().to_path_buf()
+            } else {
+                h.push(p.strip_prefix("~/").unwrap());
+                h
+            }
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use anyhow::Result;
+
+    #[test]
+    fn test_expand_tilde() -> Result<()> {
+        let mut fpc = FilepathCompleter {
+            input: "".to_owned(),
+            paths: vec![],
+            lcp: "".to_owned(),
+        };
+        let res = fpc.update_input("~");
+        println!("res: {:?}", res);
+        println!("fpc: {:?}", fpc);
+
+        let homedir = std::env::var("HOME")?;
+        assert_eq!(fpc.paths, vec![format!("{}/", homedir)]);
+        assert_eq!(fpc.lcp, format!("{}/", homedir));
+        Ok(())
     }
 }
