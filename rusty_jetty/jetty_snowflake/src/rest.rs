@@ -134,7 +134,7 @@ impl SnowflakeRestClient {
         {
             let qualified_username = format![
                 "{}.{}",
-                self.credentials.account.to_uppercase(),
+                self.credentials.account.split('.').collect::<Vec<_>>()[0].to_uppercase(),
                 self.credentials.user.to_uppercase()
             ];
 
