@@ -44,7 +44,6 @@ pub(crate) async fn ask_snowflake_connector_setup(
             .prompt()?;
 
         let keypair_answer = Text::new("Input a path to a pkcs8 private key file (`.p8`) to use for authentication or leave blank to create a new keypair.")
-            .with_default("")
             .with_validator(FilepathValidator::new(
                 None,
                 PathType::File,

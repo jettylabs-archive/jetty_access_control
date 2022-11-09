@@ -21,6 +21,7 @@ Cargo.lock
 # End of https://www.toptal.com/developers/gitignore/api/rust
 
 **/tableau_env.json
+jetty_config.yaml
 
 .vscode/
 

@@ -90,7 +90,7 @@ async fn initialize_project_structure(
     create_dir_ignore_failure(&project_path).await;
     let jetty_config = create_file(project::jetty_cfg_path(&project_path)).await;
     let home_dir = dirs::home_dir().expect("Couldn't find your home directory.");
-    let jetty_config_dir = home_dir.join("./.jetty");
+    let jetty_config_dir = home_dir.join(".jetty");
     create_dir_ignore_failure(jetty_config_dir).await;
 
     let connectors_config = OpenOptions::new()

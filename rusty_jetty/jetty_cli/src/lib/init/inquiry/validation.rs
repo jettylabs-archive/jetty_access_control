@@ -80,7 +80,10 @@ impl StringValidator for FilepathValidator {
         let condition = match (&self.mode, &self.path_type) {
             (FilepathValidatorMode::Strict, PathType::File) => path.is_file(),
             (FilepathValidatorMode::Strict, PathType::Dir) => path.is_dir(),
-            (FilepathValidatorMode::AllowDefault { default_value }, _) => {
+            (FilepathValidatorMode::AllowDefault { default_value }, PathType::File) => {
+                input == default_value || path.is_file()
+            }
+            (FilepathValidatorMode::AllowDefault { default_value }, PathType::Dir) => {
                 input == default_value || path.is_dir()
             }
         };
