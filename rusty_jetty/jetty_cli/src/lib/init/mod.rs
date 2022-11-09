@@ -87,6 +87,7 @@ async fn initialize_project_structure(
     println!("Creating project files...");
 
     let project_path = jt_config.get_name();
+    // TODO: Notify the customer that this has to be a unique path (file or dir)
     create_dir_ignore_failure(&project_path).await;
     let jetty_config = create_file(project::jetty_cfg_path(&project_path)).await;
     let home_dir = dirs::home_dir().expect("Couldn't find your home directory.");

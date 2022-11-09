@@ -15,6 +15,6 @@ pub mod cual;
 pub mod jetty;
 pub mod logging;
 pub mod permissions;
-pub mod telemetry;
+// pub mod telemetry;
 
 mod tag_parser;

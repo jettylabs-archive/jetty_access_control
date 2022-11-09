@@ -66,10 +66,6 @@ enum JettyCommand {
 
 /// Main CLI entrypoint.
 pub async fn cli() -> Result<()> {
-    let firebase =
-        firebase_rs::Firebase::new("https://jetty-cli-telemetry-default-rtdb.firebaseio.com/")
-            .unwrap();
-
     setup_panic!(Metadata {
         name: env!("CARGO_PKG_NAME").into(),
         version: env!("CARGO_PKG_VERSION").into(),
