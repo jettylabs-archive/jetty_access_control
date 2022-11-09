@@ -86,6 +86,7 @@ mod test {
 
     #[test]
     fn proper_model_node_yields_cual() {
+        set_cual_account_name("account");
         let result_cual = (&DbtModelNode {
             name: "db.schema.model".to_owned(),
             materialized_as: AssetType(TABLE.to_owned()),
@@ -101,6 +102,7 @@ mod test {
 
     #[test]
     fn no_quoting_config_yields_no_quotes() {
+        set_cual_account_name("account");
         let source_node = DbtSourceNode {
             name: r#"db.schema.model"#.to_owned(),
         };

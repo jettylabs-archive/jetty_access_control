@@ -7,7 +7,7 @@ use jetty_core::jetty::CredentialsMap;
 
 use crate::init::inquiry::{
     autocomplete::FilepathCompleter,
-    validation::{FilepathValidator, PathType},
+    validation::{FilepathValidator, FilepathValidatorMode, PathType},
 };
 
 use super::validation::filled_validator;
@@ -25,6 +25,7 @@ pub(crate) fn ask_dbt_connector_setup() -> Result<CredentialsMap> {
             Some("dbt_project.yml".to_owned()),
             PathType::File,
             "Please enter a valid dbt project path (with dbt_project.yml)".to_owned(),
+            FilepathValidatorMode::Strict,
         ))
         // Validate that the manifest has been compiled.
         .with_validator(FilepathValidator::new(
@@ -32,6 +33,7 @@ pub(crate) fn ask_dbt_connector_setup() -> Result<CredentialsMap> {
             PathType::File,
             "target/manifest.json not found. Please run 'dbt docs generate' in the directory to generate it and then try again.".to_string()
             ,
+            FilepathValidatorMode::Strict,
         ))
         .with_placeholder("/path/to/dbt/project")
         .with_autocomplete(FilepathCompleter::default())
@@ -49,7 +51,7 @@ pub(crate) fn ask_dbt_connector_setup() -> Result<CredentialsMap> {
 
     // Get the full path to the dbt project directory. Safe to unwrap because the path
     // is validated by the validator above.
-    let mut canonical_dbt_project_dir = PathBuf::from(dbt_project_dir)
+    let canonical_dbt_project_dir = PathBuf::from(dbt_project_dir)
         .canonicalize()
         .unwrap()
         .to_string_lossy()

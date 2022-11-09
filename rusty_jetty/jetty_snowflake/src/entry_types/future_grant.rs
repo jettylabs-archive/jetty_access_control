@@ -58,7 +58,7 @@ impl Grant for FutureGrant {
         nodes::RawPolicy::new(
             // We add the `.future` to differentiate this policy from
             // non-heirarchical ones
-            format!("snowflake.future.{}.{stripped_name}", self.role_name()),
+            format!("snowflake.future.{}.{}.{stripped_name}", self.grant_on, self.grantee_name),
             all_privileges,
             // Unwrap here is fine since we asserted that the set was not empty above.
             HashSet::from([cual.uri()]),
@@ -85,6 +85,8 @@ impl Grant for FutureGrant {
 mod tests {
     use anyhow::Result;
 
+    use crate::cual::set_cual_account_name;
+
     use super::*;
 
     #[test]
@@ -100,6 +102,7 @@ mod tests {
 
     #[test]
     fn grant_into_policy_works() -> Result<()> {
+        set_cual_account_name("account");
         let g = FutureGrant {
             name: "db.<SCHEMA>".to_owned(),
             privilege: "priv".to_owned(),
@@ -110,7 +113,7 @@ mod tests {
         assert_eq!(
             p,
             nodes::RawPolicy::new(
-                "snowflake.future.grantee_name.db".to_owned(),
+                "snowflake.future.grant_on.grantee_name.db".to_owned(),
                 HashSet::from(["priv".to_owned()]),
                 HashSet::from([cual_from_snowflake_obj_name("DB")?.uri()]),
                 HashSet::new(),
@@ -125,6 +128,7 @@ mod tests {
 
     #[test]
     fn future_grant_to_policy_results_in_idempotent_name() {
+        set_cual_account_name("account");
         let g = FutureGrant {
             name: "db.<SCHEMA>".to_owned(),
             privilege: "priv".to_owned(),
@@ -134,13 +138,14 @@ mod tests {
         let p: nodes::RawPolicy = g.clone().into_policy(HashSet::from(["priv".to_owned()]));
         let p2: nodes::RawPolicy = g.clone().into_policy(HashSet::from(["priv".to_owned()]));
         let p3: nodes::RawPolicy = g.into_policy(HashSet::from(["priv".to_owned()]));
-        assert_eq!(p.name, "snowflake.future.grantee_name.db");
+        assert_eq!(p.name, "snowflake.future.grant_on.grantee_name.db");
         assert_eq!(p2.name, p.name);
         assert_eq!(p3.name, p2.name);
     }
 
     #[test]
     fn future_grant_to_policy_with_extra_privileges_works() {
+        set_cual_account_name("account");
         let g = FutureGrant {
             name: "db.<SCHEMA>".to_owned(),
             privilege: "priv".to_owned(),
@@ -149,7 +154,7 @@ mod tests {
         };
         let p: nodes::RawPolicy =
             g.into_policy(HashSet::from(["priv".to_owned(), "priv2".to_owned()]));
-        assert_eq!(p.name, "snowflake.future.grantee_name.db");
+        assert_eq!(p.name, "snowflake.future.grant_on.grantee_name.db");
         assert_eq!(
             p.privileges,
             HashSet::from(["priv".to_owned(), "priv2".to_owned()])
@@ -158,6 +163,7 @@ mod tests {
 
     #[test]
     fn future_grant_table_into_policy_works() -> Result<()> {
+        set_cual_account_name("account");
         let g = FutureGrant {
             name: "db.schema.<TABLE>".to_owned(),
             privilege: "priv".to_owned(),
@@ -168,7 +174,7 @@ mod tests {
         assert_eq!(
             p,
             nodes::RawPolicy::new(
-                "snowflake.future.grantee_name.db.schema".to_owned(),
+                "snowflake.future.TABLE.grantee_name.db.schema".to_owned(),
                 HashSet::from(["priv".to_owned()]),
                 HashSet::from([cual_from_snowflake_obj_name("DB.SCHEMA")?.uri()]),
                 HashSet::new(),

@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use inquire::{
@@ -31,25 +31,40 @@ pub(crate) fn project_dir_does_not_exist_validator(
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) enum PathType {
     File,
     Dir,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
+pub(crate) enum FilepathValidatorMode {
+    /// Only allow existing paths.
+    Strict,
+    /// Allow empty paths to be replaced with a defualt.
+    AllowDefault { default_value: String },
+}
+
+#[derive(Clone, Debug)]
 pub(crate) struct FilepathValidator {
     filename: Option<String>,
     msg: String,
     path_type: PathType,
+    mode: FilepathValidatorMode,
 }
 
 impl FilepathValidator {
-    pub(crate) fn new(filename: Option<String>, path_type: PathType, msg: String) -> Self {
+    pub(crate) fn new(
+        filename: Option<String>,
+        path_type: PathType,
+        msg: String,
+        mode: FilepathValidatorMode,
+    ) -> Self {
         Self {
             filename,
             msg,
             path_type,
+            mode,
         }
     }
 }
@@ -62,9 +77,15 @@ impl StringValidator for FilepathValidator {
             Path::new(input).to_path_buf()
         };
 
-        let condition = match self.path_type {
-            PathType::File => path.is_file(),
-            PathType::Dir => path.is_dir(),
+        let condition = match (&self.mode, &self.path_type) {
+            (FilepathValidatorMode::Strict, PathType::File) => path.is_file(),
+            (FilepathValidatorMode::Strict, PathType::Dir) => path.is_dir(),
+            (FilepathValidatorMode::AllowDefault { default_value }, PathType::File) => {
+                input == default_value || path.is_file()
+            }
+            (FilepathValidatorMode::AllowDefault { default_value }, PathType::Dir) => {
+                input == default_value || path.is_dir()
+            }
         };
 
         if !condition {

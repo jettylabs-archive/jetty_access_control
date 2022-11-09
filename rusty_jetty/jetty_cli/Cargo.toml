@@ -24,10 +24,11 @@ colored = "2"
 inquire = "0.5.2"
 crossterm = "0.25.0"
 yaml-peg = { version = "1.0.4", features = ["serde"] }
-openssl = { version = "0.10.42", features = ["vendored"] }
 sha2 = "0.10.6"
 base64 = "0.13.1"
 dirs = "4.0.0"
 lazy_static = "1.4.0"
 human-panic = { git = "https://github.com/jettylabs/human-panic", branch = "master" }
 serde = { version = "1.0.144", features = ["derive"] }
+rsa = "0.7.1"
+rand = "0.8.5"
