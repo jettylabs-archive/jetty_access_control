@@ -42,7 +42,7 @@ pub(crate) enum FilepathValidatorMode {
     /// Only allow existing paths.
     Strict,
     /// Allow empty paths to be replaced with a defualt.
-    AllowDefault { default_filepath: PathBuf },
+    AllowDefault { default_value: String },
 }
 
 #[derive(Clone, Debug)]
@@ -80,12 +80,8 @@ impl StringValidator for FilepathValidator {
         let condition = match (&self.mode, &self.path_type) {
             (FilepathValidatorMode::Strict, PathType::File) => path.is_file(),
             (FilepathValidatorMode::Strict, PathType::Dir) => path.is_dir(),
-            (FilepathValidatorMode::AllowDefault { default_filepath }, PathType::File) => {
-                println!("input {}", &input);
-                input == default_filepath.to_str().unwrap() || path.is_file()
-            }
-            (FilepathValidatorMode::AllowDefault { default_filepath }, PathType::Dir) => {
-                input == default_filepath.to_str().unwrap() || path.is_dir()
+            (FilepathValidatorMode::AllowDefault { default_value }, _) => {
+                input == default_value || path.is_dir()
             }
         };
 

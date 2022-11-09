@@ -43,24 +43,25 @@ pub(crate) async fn ask_snowflake_connector_setup(
             .with_help_message("We will use this warehouse for any warehouse-required queries to manage permissions.")
             .prompt()?;
 
-        let default_filepath =
-            default_keypair_dir_path().join(format!("{}.p8", connector_namespace));
-        let keypair_answer = Text::new("Input a path to a pkcs8 private key file (`.p8`) to use for authentication or press enter to create a new keypair.")
-            .with_help_message("You can attach two keys to each Snowflake user.")
-            .with_default(&default_filepath.to_str().unwrap())
+        let keypair_answer = Text::new("Input a path to a pkcs8 private key file (`.p8`) to use for authentication or leave blank to create a new keypair.")
+            .with_default("")
             .with_validator(FilepathValidator::new(
                 None,
                 PathType::File,
                 "File not found.".to_string(),
-                FilepathValidatorMode::AllowDefault{default_filepath:default_filepath.clone()},
+                FilepathValidatorMode::AllowDefault{default_value: "".to_owned()},
             ))
             .with_autocomplete(FilepathCompleter::default())
             .prompt()?;
-        let should_create_keypair = keypair_answer == default_filepath.to_str().unwrap();
-        let keypair_filepath = keypair_answer
-            .split(".p8")
-            .next()
-            .expect("Couldn't parse pkcs8 private key filename.");
+        let should_create_keypair = keypair_answer.is_empty();
+        let keypair_filepath = if should_create_keypair {
+            default_keypair_dir_path()
+                .join(format!("{}.p8", connector_namespace))
+                .to_string_lossy()
+                .to_string()
+        } else {
+            keypair_answer
+        };
 
         let keypair = if should_create_keypair {
             println!("Generating keypair...");

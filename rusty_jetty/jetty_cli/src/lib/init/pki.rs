@@ -1,7 +1,15 @@
-use std::{fs::File, io::Write, path::Path};
+use std::{
+    fs::{self, File},
+    io::Write,
+    path::Path,
+};
 
 use anyhow::Result;
-use openssl::{pkey::PKey, rsa::Rsa};
+use rand;
+use rsa::{
+    pkcs8::{DecodePrivateKey, EncodePrivateKey, EncodePublicKey, LineEnding},
+    RsaPrivateKey, RsaPublicKey,
+};
 use sha2::{Digest, Sha256};
 
 /// Simple representation of a public/private key pair and
@@ -16,24 +24,19 @@ pub(crate) struct KeyPair {
 impl KeyPair {
     /// Create a local keypair with a corresponding public key fingerprint.
     pub(crate) fn new() -> Result<KeyPair> {
-        let rsa = PKey::from_rsa(Rsa::generate(2048)?)?;
-        // Snowflake (and JWT creation) only accept PKCS8.
-        let private = rsa.private_key_to_pem_pkcs8().map(String::from_utf8)??;
-        let public = rsa.public_key_to_pem()?;
-        // Fingerprint must be generated from der format.
-        let public_der = rsa.public_key_to_der()?;
-        let digest = Sha256::digest(public_der).to_vec();
-        let fingerprint = format!("SHA256:{}", base64::encode(digest));
-        Ok(KeyPair {
-            private,
-            fingerprint,
-            public: String::from_utf8(public)?,
-        })
+        let mut rng = rand::thread_rng();
+
+        let bits = 2048;
+        let private_key = RsaPrivateKey::new(&mut rng, bits).expect("failed to generate a key");
+
+        key_pair_from_private_key(&private_key)
     }
 
     /// Load a keypair from the given filepaths.
     pub(crate) fn from_path(filepath: impl AsRef<Path>) -> Result<KeyPair> {
-        todo!("Isaac will fix this")
+        let private_key_string = fs::read_to_string(filepath)?;
+        let private_key = RsaPrivateKey::from_pkcs8_pem(private_key_string.as_str())?;
+        key_pair_from_private_key(&private_key)
     }
 
     /// Get the public key minus header/footer information. Just the key.
@@ -58,8 +61,14 @@ impl KeyPair {
     ///
     /// `dir` is the directory where the files will be created.
     pub(crate) fn save_to_files(&self, filepath: impl AsRef<Path>) -> Result<()> {
-        let pub_path = filepath.as_ref().to_path_buf().with_extension("p8");
-        let priv_path = filepath.as_ref().to_path_buf().with_extension("pub");
+        let filepath = filepath.as_ref();
+
+        // Create the parent directories if they don't exist
+        if let Some(p) = filepath.parent() {
+            fs::create_dir_all(p)?;
+        }
+        let priv_path = filepath.to_path_buf();
+        let pub_path = filepath.to_path_buf().with_extension("pub");
         save_to_file(&self.public, &pub_path)?;
         save_to_file(&self.private, &priv_path)?;
         Ok(())
@@ -70,6 +79,23 @@ fn save_to_file(contents: &str, filepath: impl AsRef<Path>) -> Result<()> {
     let mut file = File::create(filepath)?;
     file.write_all(contents.as_bytes())?;
     Ok(())
+}
+
+fn key_pair_from_private_key(private_key: &RsaPrivateKey) -> Result<KeyPair> {
+    let private_as_p8 = private_key.to_pkcs8_pem(LineEnding::default())?.to_string();
+
+    let public_key = private_key.to_public_key();
+    let public_pem = public_key.to_public_key_pem(LineEnding::default())?;
+    let public_der = public_key.to_public_key_der()?;
+
+    let digest = Sha256::digest(public_der).to_vec();
+    let fingerprint = format!("SHA256:{}", base64::encode(digest));
+
+    Ok(KeyPair {
+        private: private_as_p8,
+        fingerprint,
+        public: public_pem,
+    })
 }
 
 #[cfg(test)]
