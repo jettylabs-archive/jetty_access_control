@@ -113,14 +113,13 @@ pub async fn cli() -> Result<()> {
 }
 
 async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()> {
-    let jetty = Jetty::new(project::jetty_cfg_path_local(), project::data_dir()).unwrap();
-    // .map_err(|_| {
-    //     anyhow!(
-    //         "unable to find {} - make sure you are in a \
-    //     Jetty project directory, or create a new project by running `jetty init`",
-    //         project::jetty_cfg_path_local().display()
-    //     )
-    // })?;
+    let jetty = Jetty::new(project::jetty_cfg_path_local(), project::data_dir()).map_err(|_| {
+        anyhow!(
+            "unable to find {} - make sure you are in a \
+        Jetty project directory, or create a new project by running `jetty init`",
+            project::jetty_cfg_path_local().display()
+        )
+    })?;
     let creds = fetch_credentials(project::connector_cfg_path()).map_err(|_| {
         anyhow!(
             "unable to find {} - you can set this up by running `jetty init`",
