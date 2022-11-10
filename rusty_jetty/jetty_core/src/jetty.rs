@@ -30,6 +30,7 @@ pub struct JettyConfig {
     /// All connector configs defined.
     pub connectors: HashMap<ConnectorNamespace, ConnectorConfig>,
     /// Whether the user allows Jetty to collect usage data for analytics.
+    #[serde(default = true)]
     pub allow_usage_statistics: bool,
     /// The project id used for telemetry.
     #[serde(default = "default_project_id")]
@@ -47,6 +48,7 @@ impl JettyConfig {
     pub fn new() -> Self {
         Self {
             version: "0.0.1".to_owned(),
+            allow_usage_statistics: true,
             ..Default::default()
         }
     }

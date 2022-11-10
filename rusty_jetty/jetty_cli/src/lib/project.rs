@@ -74,5 +74,5 @@ pub(crate) fn user_id_file() -> PathBuf {
     home_dir()
         .expect("getting home dir")
         .join(PROFILE_CFG_DIR.as_path())
-        .join("user_id.txt")
+        .join("uid")
 }

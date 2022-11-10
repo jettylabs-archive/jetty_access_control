@@ -44,7 +44,6 @@ pub(crate) async fn inquire_init(
     let mut jetty_config = JettyConfig::new();
     let mut credentials = HashMap::new();
 
-    jetty_config.allow_usage_statistics = ask_usage_stats()?;
     jetty_config.set_name(ask_project_name(overwrite_project_dir, project_name)?);
     let connector_types = ask_select_connectors()?;
 
@@ -152,11 +151,4 @@ fn ask_connector_namespace(name: &str) -> Result<String> {
         .with_help_message("The name Jetty will use to refer to this specific connection. We recommend a single descriptive word.")
         .prompt()?;
     Ok(connector_namespace)
-}
-
-fn ask_usage_stats() -> Result<bool> {
-    Confirm::new("We collect anonymous usage statistics to understand how Jetty is used and help us make it better. Allow?")
-        .with_default(true)
-        .with_help_message("Read more about the specific events we collect at <link>.")
-        .prompt().map_err(anyhow::Error::from)
 }

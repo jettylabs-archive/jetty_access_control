@@ -53,9 +53,9 @@ pub(crate) enum JettyCommand {
 impl Into<UsageEvent> for JettyCommand {
     fn into(self) -> UsageEvent {
         match self {
-            JettyCommand::Init { .. } => UsageEvent::Init,
-            JettyCommand::Fetch { .. } => UsageEvent::Fetch,
-            JettyCommand::Explore { .. } => UsageEvent::Explore,
+            JettyCommand::Init { .. } => UsageEvent::InvokedInit,
+            JettyCommand::Fetch { .. } => UsageEvent::InvokedFetch,
+            JettyCommand::Explore { .. } => UsageEvent::InvokedExplore,
         }
     }
 }

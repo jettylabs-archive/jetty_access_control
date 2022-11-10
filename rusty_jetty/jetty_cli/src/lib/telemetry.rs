@@ -147,23 +147,23 @@ impl Invocation {
 /// An event representing a single invocation of Jetty.
 pub enum UsageEvent {
     /// No args
-    #[serde(rename = "default")]
-    Default,
+    #[serde(rename = "invoked_default")]
+    InvokedDefault,
     /// `jetty init`
-    #[serde(rename = "init")]
-    Init,
+    #[serde(rename = "invoked_init")]
+    InvokedInit,
     /// `jetty fetch`
-    #[serde(rename = "fetch")]
-    Fetch,
+    #[serde(rename = "invoked_fetch")]
+    InvokedFetch,
     /// `jetty explore`
-    #[serde(rename = "explore")]
-    Explore,
+    #[serde(rename = "invoked_explore")]
+    InvokedExplore,
     /// `jetty help` or `jetty --help` or `jetty -h`
-    #[serde(rename = "help")]
-    Help,
+    #[serde(rename = "invoked_help")]
+    InvokedHelp,
     /// Program panicked during execution.
-    #[serde(rename = "panic")]
-    Panic,
+    #[serde(rename = "panicked")]
+    InvokedPanic,
 }
 
 /// Given an event, record its usage to Jetty telemetry.
