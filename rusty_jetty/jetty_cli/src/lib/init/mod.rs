@@ -5,12 +5,7 @@ mod fs;
 mod inquiry;
 mod pki;
 
-use std::{
-    collections::HashMap,
-    fs::OpenOptions,
-    io::Write,
-    path::{Path, PathBuf},
-};
+use std::{collections::HashMap, fs::OpenOptions, io::Write, path::PathBuf};
 
 use anyhow::Result;
 
@@ -66,17 +61,7 @@ pub async fn init(
 /// Connector credentials belong in ~/.jetty/connectors.yaml.
 /// Everything else is local.
 ///
-/// The project structure currently looks like this:
-///
-/// pwd
-///  └── {project_name}
-///       ├── jetty_config.yaml
-///       ├── .data
-///       │    ├── jetty_graph
-///       │    └── {connector}
-///       │         └── {connector-specific data}
-///       └── tags
-///            └── tags.yaml
+/// See the [project] module for a description of project layout.
 async fn initialize_project_structure(
     ProjectStructure {
         jetty_config: jt_config,

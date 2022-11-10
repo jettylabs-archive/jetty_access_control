@@ -1,5 +1,18 @@
 //! Path utilities for project organization.
 //!
+//! The project structure currently looks like this:
+//!
+//! ```text
+//! pwd
+//!  └── {project_name}
+//!       ├── jetty_config.yaml
+//!       ├── .data
+//!       │    ├── jetty_graph
+//!       │    └── {connector}
+//!       │         └── {connector-specific data}
+//!       └── tags
+//!            └── tags.yaml
+//! ```
 
 use std::path::{Path, PathBuf};
 
@@ -12,7 +25,7 @@ lazy_static! {
     static ref TAGS_CFG: PathBuf = PathBuf::from("tags.yaml");
     static ref JETTY_CFG: PathBuf = PathBuf::from("jetty_config.yaml");
     static ref CONNECTOR_CFG: PathBuf = PathBuf::from("connectors.yaml");
-    static ref CONNECTOR_CFG_DIR: PathBuf = PathBuf::from(".jetty");
+    static ref PROFILE_CFG_DIR: PathBuf = PathBuf::from(".jetty");
     static ref JETTY_GRAPH: PathBuf = PathBuf::from("jetty_graph");
     static ref DEFAULT_KEY_DIR: PathBuf = PathBuf::from(".ssh");
 }
@@ -30,7 +43,7 @@ pub(crate) fn tags_cfg_path_local() -> PathBuf {
 pub(crate) fn connector_cfg_path() -> PathBuf {
     home_dir()
         .expect("getting home dir")
-        .join(CONNECTOR_CFG_DIR.as_path())
+        .join(PROFILE_CFG_DIR.as_path())
         .join(CONNECTOR_CFG.as_path())
 }
 
@@ -55,4 +68,11 @@ pub(crate) fn default_keypair_dir_path() -> PathBuf {
     home_dir()
         .expect("getting home dir")
         .join(DEFAULT_KEY_DIR.as_path())
+}
+
+pub(crate) fn user_id_file() -> PathBuf {
+    home_dir()
+        .expect("getting home dir")
+        .join(PROFILE_CFG_DIR.as_path())
+        .join("user_id.txt")
 }
