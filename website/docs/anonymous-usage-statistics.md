@@ -11,17 +11,26 @@ It's pretty simple - we want to build a product you want to use. One of the tool
 
 We collect information including what Jetty CLI commands are run, whether Jetty failed due to an internal error/bug, and basic information such as your operating system and the types of connectors that you use. This information is associated with randomly generated identifiers to help us understand usage patterns over time.
 
-Here's a real example of what we collect:
+Here's an example of what we collect:
 
 ```json
 {
     "environment": "dev",
-    "event": "invoked_fetch",
+    "event": {
+        "name": "invoked_fetch",
+        "properties": {
+            "connector_types": [
+                "dbt",
+                "snowflake",
+                "tableau"
+            ]
+        }
+    }
     "jetty_version": "0.1.0",
     "platform": "mac",
     "project_id": "8c48dc5c-7762-46f3-bc84-524bc85ef5a8",
     "schema_version": "0.0.1",
-    "time": "2022-11-11T00:16:03.399191000Z",
+    "created": "2022-11-11T00:16:03.399191000Z",
     "user_id": "e677e873-2870-49c5-bc28-c1a8be520465"
 }
 ```
