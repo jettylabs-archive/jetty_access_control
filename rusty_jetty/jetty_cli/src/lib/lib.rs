@@ -15,6 +15,7 @@ use std::{collections::HashMap, env, sync::Arc, time::Instant};
 use anyhow::{anyhow, bail, Context, Result};
 
 use clap::Parser;
+use firestore::FirestoreDb;
 use human_panic::setup_panic;
 
 use jetty_core::{
@@ -33,6 +34,10 @@ use crate::{
 
 /// Main CLI entrypoint.
 pub async fn cli() -> Result<()> {
+    // Set up Firestore Connection
+    let firestore_db = FirestoreDb::new("jetty-cli-telemetry").await;
+    usage_stats::FIRESTORE.set(firestore_db).unwrap();
+
     // Setup panic handler
     setup_panic!(Metadata {
         name: env!("CARGO_PKG_NAME").into(),
