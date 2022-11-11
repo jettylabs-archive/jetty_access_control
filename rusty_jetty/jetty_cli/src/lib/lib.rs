@@ -58,7 +58,21 @@ pub async fn cli() -> Result<()> {
     } else {
         let args = JettyArgs::parse();
         // Invoke telemetry
-        record_usage(args.command.clone().into(), &jetty_config)
+        let event = match args.command {
+            JettyCommand::Init { .. } => UsageEvent::InvokedInit,
+            JettyCommand::Fetch { .. } => UsageEvent::InvokedFetch {
+                connector_types: if let Some(c) = &jetty_config {
+                    c.connectors
+                        .iter()
+                        .map(|(_, c)| c.connector_type.to_owned())
+                        .collect()
+                } else {
+                    vec![]
+                },
+            },
+            JettyCommand::Explore { .. } => UsageEvent::InvokedExplore,
+        };
+        record_usage(event, &jetty_config)
             .await
             .unwrap_or_else(|_| debug!("Failed to publish usage."));
         args

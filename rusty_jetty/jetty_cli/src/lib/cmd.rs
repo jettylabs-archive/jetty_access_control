@@ -49,13 +49,3 @@ pub(crate) enum JettyCommand {
         bind: Option<String>,
     },
 }
-
-impl Into<UsageEvent> for JettyCommand {
-    fn into(self) -> UsageEvent {
-        match self {
-            JettyCommand::Init { .. } => UsageEvent::InvokedInit,
-            JettyCommand::Fetch { .. } => UsageEvent::InvokedFetch,
-            JettyCommand::Explore { .. } => UsageEvent::InvokedExplore,
-        }
-    }
-}

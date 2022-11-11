@@ -5,7 +5,6 @@ use std::fs;
 
 use firestore::{self, errors::FirestoreError, FirestoreDb};
 use jetty_core::{jetty::JettyConfig, logging::debug};
-use lazy_static::lazy_static;
 use once_cell::sync::OnceCell;
 
 use anyhow::{anyhow, bail, Context, Result};
@@ -103,7 +102,7 @@ impl JettyUserId {
 
 #[derive(Deserialize, Serialize, Debug)]
 struct Invocation {
-    time: String,
+    created: String,
     user_id: JettyUserId,
     project_id: Option<JettyProjectId>,
     jetty_version: String,
@@ -119,13 +118,13 @@ impl Invocation {
         let project_id = jetty_config
             .as_ref()
             .map(|cfg| JettyProjectId(cfg.project_id.to_owned()));
-        let time = OffsetDateTime::now_utc()
+        let created = OffsetDateTime::now_utc()
             .format(&Iso8601::DEFAULT)
             .unwrap_or_else(|_| Default::default());
         Ok(Invocation {
             user_id,
             project_id,
-            time,
+            created,
             jetty_version: JETTY_VERSION.to_owned(),
             schema_version: SCHEMA_VERSION.to_owned(),
             platform: Platform::get(),
@@ -151,6 +150,7 @@ impl Invocation {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
+#[serde(tag = "name", content = "properties")]
 /// An event representing a single invocation of Jetty.
 pub enum UsageEvent {
     /// No args
@@ -161,7 +161,7 @@ pub enum UsageEvent {
     InvokedInit,
     /// `jetty fetch`
     #[serde(rename = "invoked_fetch")]
-    InvokedFetch,
+    InvokedFetch { connector_types: Vec<String> },
     /// `jetty explore`
     #[serde(rename = "invoked_explore")]
     InvokedExplore,
