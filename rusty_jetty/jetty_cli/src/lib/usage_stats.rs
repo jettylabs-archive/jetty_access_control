@@ -1,4 +1,4 @@
-//! Telemetry utils for tracking usage.
+//! Anonymous usage stats utils for tracking Jetty usage.
 //!
 
 use std::fs;
@@ -166,16 +166,16 @@ pub enum UsageEvent {
     InvokedPanic,
 }
 
-/// Given an event, record its usage to Jetty telemetry.
+/// Given an event, record its usage to Jetty anonymous usage stats.
 pub async fn record_usage(event: UsageEvent, jetty_config: &Option<JettyConfig>) -> Result<()> {
     if let Some(cfg) = jetty_config {
-        if !cfg.allow_usage_statistics {
-            // Telemetry is disabled.
+        if !cfg.allow_anonymous_usage_statistics {
+            // Collection is disabled.
             return Ok(());
         }
     }
     Invocation::new(event, jetty_config)
-        .context("Creating telemetry invocation.")?
+        .context("Creating anonymous usage statistics invocation.")?
         .publish()
         .await
 }

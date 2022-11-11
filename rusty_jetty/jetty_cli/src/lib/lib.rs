@@ -7,10 +7,10 @@ mod ascii;
 mod cmd;
 mod init;
 mod project;
-mod telemetry;
 mod tui;
+mod usage_stats;
 
-use std::{collections::HashMap, sync::Arc, time::Instant};
+use std::{collections::HashMap, env, sync::Arc, time::Instant};
 
 use anyhow::{anyhow, bail, Context, Result};
 
@@ -28,7 +28,7 @@ use jetty_core::{
 
 use crate::{
     cmd::{JettyArgs, JettyCommand},
-    telemetry::record_usage,
+    usage_stats::{record_usage, UsageEvent},
 };
 
 /// Main CLI entrypoint.
@@ -40,13 +40,24 @@ pub async fn cli() -> Result<()> {
         authors: "Jetty Support <support@get-jetty.com>".into(),
         homepage: "get-jetty.com".into(),
     });
-    // Get args
-    let args = JettyArgs::parse();
-    // Setup telemetry
+    // Get Jetty Config
     let jetty_config = JettyConfig::read_from_file(&project::jetty_cfg_path_local()).ok();
-    record_usage(args.command.clone().into(), &jetty_config)
-        .await
-        .unwrap_or_else(|_| eprintln!("Failed to publish usage."));
+    // Get args
+    let args = if env::args().collect::<Vec<_>>().len() == 1 {
+        // Invoke telemetry for empty args. If we executed `JettyArgs::parse()` first,
+        // the program would exit before we got to publish usage.
+        record_usage(UsageEvent::InvokedDefault, &jetty_config)
+            .await
+            .unwrap_or_else(|_| eprintln!("Failed to publish usage."));
+        JettyArgs::parse()
+    } else {
+        let args = JettyArgs::parse();
+        // Invoke telemetry
+        record_usage(args.command.clone().into(), &jetty_config)
+            .await
+            .unwrap_or_else(|_| eprintln!("Failed to publish usage."));
+        args
+    };
     // Setup logging
     logging::setup(args.log_level);
 
