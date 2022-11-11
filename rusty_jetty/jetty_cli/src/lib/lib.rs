@@ -48,14 +48,14 @@ pub async fn cli() -> Result<()> {
         // the program would exit before we got to publish usage.
         record_usage(UsageEvent::InvokedDefault, &jetty_config)
             .await
-            .unwrap_or_else(|_| eprintln!("Failed to publish usage."));
+            .unwrap_or_else(|_| debug!("Failed to publish usage."));
         JettyArgs::parse()
     } else {
         let args = JettyArgs::parse();
         // Invoke telemetry
         record_usage(args.command.clone().into(), &jetty_config)
             .await
-            .unwrap_or_else(|_| eprintln!("Failed to publish usage."));
+            .unwrap_or_else(|_| debug!("Failed to publish usage."));
         args
     };
     // Setup logging
