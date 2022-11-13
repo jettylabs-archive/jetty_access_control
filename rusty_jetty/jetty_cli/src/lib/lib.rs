@@ -23,7 +23,7 @@ use jetty_core::{
     connectors::{ConnectorClient, NewConnector},
     fetch_credentials,
     jetty::JettyConfig,
-    logging::{self, debug, info},
+    logging::{self, debug, info, LevelFilter},
     Connector, Jetty,
 };
 
@@ -34,6 +34,9 @@ use crate::{
 
 /// Main CLI entrypoint.
 pub async fn cli() -> Result<()> {
+    // Setup logging
+    let reload_handle = logging::setup(None);
+
     // Set up Firestore Connection
     let firestore_db = FirestoreDb::new("jetty-cli-telemetry").await;
     usage_stats::FIRESTORE.set(firestore_db).unwrap();
@@ -77,8 +80,8 @@ pub async fn cli() -> Result<()> {
             .unwrap_or_else(|_| debug!("Failed to publish usage."));
         args
     };
-    // Setup logging
-    logging::setup(args.log_level);
+    // Adjust logging levels based on args
+    logging::update_filter_level(reload_handle, args.log_level);
 
     // ...and we're off!
     match &args.command {
