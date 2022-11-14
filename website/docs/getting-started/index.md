@@ -15,6 +15,22 @@ In this walkthrough, we will connect to Snowflake, dbt, and Tableau. We will con
 
 :::
 
+## A use case
+
+Jetty makes it easy to understand who has access to what data, all the way across your data stack.
+
+For example, imagine that you have sensitive business or customer data in your warehouse. This data is transformed via dbt and accessed via Tableau dashboards by executive stakeholders, providing critical insights into the business. Due to the sensitive nature of the data, however, it is critical to understand who has what level of access to this data.
+
+Jetty provides a single platform to help you understand permissions and access across your stack, allowing you to answer questions like:
+
+-   What views have been derived from sensitive data?
+-   What dashboards leverage data derived sensitive tables?
+-   Who has access to dashboards, views, or tables, that have been derived from sensitive data?
+-   Why doesn't a key stakeholder have access to the information they need?
+-   What combination of access rules has resulted in an unauthorized user having access to a sensitive data asset?
+
+In a few minutes you'll be a few mouse clicks away from the answers to these and many other questions!
+
 ## Prerequisites
 
 Below is the information you will need to connect to each connected platform. As a reminder, you don't need to use all of the connectors, but the more connectors you use, the more helpful Jetty can be.
