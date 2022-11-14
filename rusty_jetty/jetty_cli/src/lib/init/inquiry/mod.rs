@@ -17,7 +17,7 @@ use inquire::{
     set_global_render_config,
     ui::{RenderConfig, StyleSheet, Styled},
     validator::Validation,
-    MultiSelect, Text,
+    Confirm, MultiSelect, Text,
 };
 use jetty_core::jetty::{ConnectorConfig, ConnectorNamespace, CredentialsMap, JettyConfig};
 
@@ -139,7 +139,6 @@ fn ask_select_connectors() -> Result<Vec<&'static str>> {
 
     let connectors = MultiSelect::new("Which connectors would you like to use?", options)
         .with_validator(validator)
-        // .with_formatter(formatter)
         .prompt()?;
     Ok(connectors)
 }

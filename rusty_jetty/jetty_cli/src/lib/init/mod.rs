@@ -5,12 +5,7 @@ mod fs;
 mod inquiry;
 mod pki;
 
-use std::{
-    collections::HashMap,
-    fs::OpenOptions,
-    io::Write,
-    path::{Path, PathBuf},
-};
+use std::{collections::HashMap, fs::OpenOptions, io::Write, path::PathBuf};
 
 use anyhow::Result;
 
@@ -66,17 +61,7 @@ pub async fn init(
 /// Connector credentials belong in ~/.jetty/connectors.yaml.
 /// Everything else is local.
 ///
-/// The project structure currently looks like this:
-///
-/// pwd
-///  └── {project_name}
-///       ├── jetty_config.yaml
-///       ├── .data
-///       │    ├── jetty_graph
-///       │    └── {connector}
-///       │         └── {connector-specific data}
-///       └── tags
-///            └── tags.yaml
+/// See the [project] module for a description of project layout.
 async fn initialize_project_structure(
     ProjectStructure {
         jetty_config: jt_config,
@@ -87,6 +72,7 @@ async fn initialize_project_structure(
     println!("Creating project files...");
 
     let project_path = jt_config.get_name();
+    // TODO: Notify the customer that this has to be a unique path (file or dir)
     create_dir_ignore_failure(&project_path).await;
     let jetty_config = create_file(project::jetty_cfg_path(&project_path)).await;
     let home_dir = dirs::home_dir().expect("Couldn't find your home directory.");

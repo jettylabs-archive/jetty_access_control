@@ -16,4 +16,4 @@ url = "2.3.1"
 urlencoding = "2.1.2"
 
 [dev-dependencies]
-tokio = { version = "1.21.0", features = ["macros", "rt"] }
+tokio = { version = "1.21.1", features = ["macros", "rt"] }

@@ -4,76 +4,64 @@
 #![deny(missing_docs)]
 
 mod ascii;
+mod cmd;
 mod init;
 mod project;
 mod tui;
+mod usage_stats;
 
-use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Instant};
+use std::{collections::HashMap, env, sync::Arc, time::Instant};
 
 use anyhow::{anyhow, bail, Context, Result};
-use clap::{Parser, Subcommand};
+
+use clap::Parser;
 use human_panic::setup_panic;
 
 use jetty_core::{
     access_graph::AccessGraph,
     connectors::{ConnectorClient, NewConnector},
     fetch_credentials,
-    logging::{self, debug, info, LevelFilter},
+    jetty::JettyConfig,
+    logging::{self, debug, info},
     Connector, Jetty,
 };
 
-/// Jetty CLI: Open-source data access control for modern teams
-#[derive(Parser, Debug)]
-#[clap(author, version, about, long_about = None, arg_required_else_help = true)]
-struct Args {
-    #[clap(subcommand)]
-    command: JettyCommand,
-    #[clap(global = true, short = 'v', long)]
-    log_level: Option<LevelFilter>,
-}
-
-#[derive(Subcommand, Debug)]
-enum JettyCommand {
-    /// Initialize a Jetty project.
-    Init {
-        /// Project name
-        project_name: Option<String>,
-        /// Initialize from an existing config (as a shortcut).
-        #[clap(short, long, hide = true)]
-        from: Option<PathBuf>,
-        /// Overwrite project directory if it exists
-        #[clap(short, long, value_parser, default_value = "false")]
-        overwrite: bool,
-    },
-    Fetch {
-        /// Visualize the graph in an SVG file.
-        #[clap(long, value_parser, default_value = "false")]
-        visualize: bool,
-        /// Connectors to collect for.
-        #[clap(short, long, use_value_delimiter = true, value_delimiter = ',')]
-        connectors: Option<Vec<String>>,
-    },
-    Explore {
-        #[clap(short, long, value_parser, default_value = "false")]
-        fetch: bool,
-
-        /// Select the ip and port to bind the server to (e.g. 127.0.0.1:3000)
-        #[clap(short, long, value_parser)]
-        bind: Option<String>,
-    },
-}
+use crate::{
+    cmd::{JettyArgs, JettyCommand},
+    usage_stats::{record_usage, UsageEvent},
+};
 
 /// Main CLI entrypoint.
 pub async fn cli() -> Result<()> {
+    // Setup panic handler
     setup_panic!(Metadata {
         name: env!("CARGO_PKG_NAME").into(),
         version: env!("CARGO_PKG_VERSION").into(),
         authors: "Jetty Support <support@get-jetty.com>".into(),
         homepage: "get-jetty.com".into(),
     });
-    let args = Args::parse();
+    // Get Jetty Config
+    let jetty_config = JettyConfig::read_from_file(&project::jetty_cfg_path_local()).ok();
+    // Get args
+    let args = if env::args().collect::<Vec<_>>().len() == 1 {
+        // Invoke telemetry for empty args. If we executed `JettyArgs::parse()` first,
+        // the program would exit before we got to publish usage.
+        record_usage(UsageEvent::InvokedDefault, &jetty_config)
+            .await
+            .unwrap_or_else(|_| debug!("Failed to publish usage."));
+        JettyArgs::parse()
+    } else {
+        let args = JettyArgs::parse();
+        // Invoke telemetry
+        record_usage(args.command.clone().into(), &jetty_config)
+            .await
+            .unwrap_or_else(|_| debug!("Failed to publish usage."));
+        args
+    };
+    // Setup logging
     logging::setup(args.log_level);
 
+    // ...and we're off!
     match &args.command {
         JettyCommand::Init {
             from,

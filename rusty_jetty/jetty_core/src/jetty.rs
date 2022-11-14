@@ -4,14 +4,15 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::{collections::HashMap, fmt::Display};
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 
 use log::debug;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 use yaml_peg::serde as yaml;
 
 /// The user-defined namespace corresponding to the connector.
-#[derive(Deserialize, Debug, Hash, PartialEq, Eq, Clone, Default, PartialOrd, Ord, Serialize)]
+#[derive(Clone, Deserialize, Debug, Hash, PartialEq, Eq, Default, PartialOrd, Ord, Serialize)]
 pub struct ConnectorNamespace(pub String);
 
 impl Display for ConnectorNamespace {
@@ -22,12 +23,29 @@ impl Display for ConnectorNamespace {
 
 /// Struct representing the jetty_config.yaml file.
 #[allow(dead_code)]
-#[derive(Deserialize, Serialize, Debug, Default)]
+#[derive(Deserialize, Serialize, Debug, Default, Clone)]
 pub struct JettyConfig {
     version: String,
     name: String,
     /// All connector configs defined.
     pub connectors: HashMap<ConnectorNamespace, ConnectorConfig>,
+    /// Whether the user allows Jetty to collect usage data for analytics.
+    #[serde(default = "default_allow_usage_stats")]
+    pub allow_anonymous_usage_statistics: bool,
+    /// The project id used for telemetry.
+    #[serde(default = "default_project_id")]
+    pub project_id: String,
+}
+
+/// Default to allow for anonymous usage statistics.
+fn default_allow_usage_stats() -> bool {
+    true
+}
+
+/// Create a new random project id. Should only ever be called once
+/// per project.
+fn default_project_id() -> String {
+    Uuid::new_v4().to_string()
 }
 
 impl JettyConfig {
@@ -35,14 +53,22 @@ impl JettyConfig {
     pub fn new() -> Self {
         Self {
             version: "0.0.1".to_owned(),
+            allow_anonymous_usage_statistics: true,
             ..Default::default()
         }
     }
 
     /// Use the default filepath to ingest the Jetty config.
     pub fn read_from_file<P: AsRef<Path>>(path: P) -> Result<JettyConfig> {
-        let config_raw = fs::read_to_string(path)?;
-        let mut config = yaml::from_str::<JettyConfig>(&config_raw)?;
+        let config_raw = fs::read_to_string(&path).context("Reading file")?;
+        let mut config =
+            yaml::from_str::<JettyConfig>(&config_raw).context("Deserializing config")?;
+        // Rewrite any newly created fields (project_id) to the config file.
+        fs::write(
+            path,
+            yaml::to_string(&config[0]).context("Serializing config")?,
+        )
+        .context("Writing file back")?;
 
         config.pop().ok_or_else(|| anyhow!["failed"])
     }
@@ -65,7 +91,7 @@ impl JettyConfig {
 
 /// Config for all connectors in this project.
 #[allow(dead_code)]
-#[derive(Deserialize, Serialize, Default, Debug)]
+#[derive(Clone, Deserialize, Serialize, Default, Debug)]
 pub struct ConnectorConfig {
     /// The connector type
     #[serde(rename = "type")]
@@ -115,7 +141,8 @@ impl Jetty {
         // load a saved access graph or create an empty one
 
         Ok(Jetty {
-            config: JettyConfig::read_from_file(jetty_config_path)?,
+            config: JettyConfig::read_from_file(jetty_config_path)
+                .context("Reading Jetty Config file")?,
             data_dir,
         })
     }
