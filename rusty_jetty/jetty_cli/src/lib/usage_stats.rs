@@ -3,11 +3,11 @@
 
 use std::fs;
 
-use firebase_rs::Firebase;
+use firestore::{self, errors::FirestoreError, FirestoreDb};
 use jetty_core::{jetty::JettyConfig, logging::debug};
-use lazy_static::lazy_static;
+use once_cell::sync::OnceCell;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use serde::{Deserialize, Serialize};
 use time::{format_description::well_known::Iso8601, OffsetDateTime};
 use uuid::Uuid;
@@ -15,10 +15,7 @@ use uuid::Uuid;
 const SCHEMA_VERSION: &str = "0.0.1";
 const JETTY_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-lazy_static! {
-    static ref FIREBASE: Firebase =
-        Firebase::new("https://jetty-cli-telemetry-default-rtdb.firebaseio.com/").unwrap();
-}
+pub(crate) static FIRESTORE: OnceCell<Result<FirestoreDb, FirestoreError>> = OnceCell::new();
 
 #[derive(Deserialize, Serialize, Debug)]
 enum Platform {
@@ -105,7 +102,7 @@ impl JettyUserId {
 
 #[derive(Deserialize, Serialize, Debug)]
 struct Invocation {
-    time: String,
+    created: String,
     user_id: JettyUserId,
     project_id: Option<JettyProjectId>,
     jetty_version: String,
@@ -121,13 +118,13 @@ impl Invocation {
         let project_id = jetty_config
             .as_ref()
             .map(|cfg| JettyProjectId(cfg.project_id.to_owned()));
-        let time = OffsetDateTime::now_utc()
+        let created = OffsetDateTime::now_utc()
             .format(&Iso8601::DEFAULT)
             .unwrap_or_else(|_| Default::default());
         Ok(Invocation {
             user_id,
             project_id,
-            time,
+            created,
             jetty_version: JETTY_VERSION.to_owned(),
             schema_version: SCHEMA_VERSION.to_owned(),
             platform: Platform::get(),
@@ -137,13 +134,23 @@ impl Invocation {
     }
 
     async fn publish(&self) -> Result<()> {
-        let telemetry_ref = FIREBASE.at("telemetry");
-        telemetry_ref.set(self).await.unwrap();
-        Ok(())
+        FIRESTORE
+            .get()
+            .ok_or(anyhow!("Firestore was not initialized"))?
+            .as_ref()?
+            .fluent()
+            .insert()
+            .into("telemetry_test")
+            .generate_document_id()
+            .object(self)
+            .execute()
+            .await
+            .context("writing telemetry document")
     }
 }
 
 #[derive(Deserialize, Serialize, Debug)]
+#[serde(tag = "name", content = "properties")]
 /// An event representing a single invocation of Jetty.
 pub enum UsageEvent {
     /// No args
@@ -154,7 +161,7 @@ pub enum UsageEvent {
     InvokedInit,
     /// `jetty fetch`
     #[serde(rename = "invoked_fetch")]
-    InvokedFetch,
+    InvokedFetch { connector_types: Vec<String> },
     /// `jetty explore`
     #[serde(rename = "invoked_explore")]
     InvokedExplore,
