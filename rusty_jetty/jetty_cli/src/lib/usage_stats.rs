@@ -140,7 +140,7 @@ impl Invocation {
             .as_ref()?
             .fluent()
             .insert()
-            .into("telemetry_test")
+            .into("jetty_telemetry")
             .generate_document_id()
             .object(self)
             .execute()
