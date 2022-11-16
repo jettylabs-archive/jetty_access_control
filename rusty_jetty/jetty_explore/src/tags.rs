@@ -3,7 +3,7 @@ use std::{collections::HashSet, sync::Arc};
 use axum::{extract::Path, routing::get, Extension, Json, Router};
 use jetty_core::{
     access_graph::{self, graph::typed_indices::AssetIndex},
-    permissions::matrix::{Merge},
+    permissions::matrix::Merge,
 };
 
 use uuid::Uuid;
@@ -91,9 +91,12 @@ async fn users_handler(
             .flat_map(|&a| {
                 ag.get_users_with_access_to_asset(AssetIndex::new(a))
                     .keys()
-                    .map(|&k| ag[k].to_owned().into())
-                    .collect::<Vec<NodeSummary>>()
+                    .map(|k| k.to_owned())
+                    .collect::<HashSet<_>>()
             })
-            .collect(),
+            .collect::<HashSet<_>>()
+            .into_iter()
+            .map(|k| ag[k].to_owned().into())
+            .collect::<Vec<NodeSummary>>(),
     )
 }
