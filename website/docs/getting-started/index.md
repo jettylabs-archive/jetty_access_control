@@ -15,7 +15,7 @@ In this walkthrough, we will connect to Snowflake, dbt, and Tableau. We will con
 
 :::
 
-## A use case
+## Use Case
 
 Jetty makes it easy to understand who has access to what data, all the way across your data stack.
 

@@ -82,6 +82,7 @@ const config = {
                         position: 'right',
                         label: 'Documentation',
                     },
+                    { to: 'blog', label: 'Blog', position: 'right' },
                     {
                         to: 'https://www.get-jetty.com/about',
                         label: 'About',
@@ -100,7 +101,6 @@ const config = {
                         position: 'right',
                         target: '_self',
                     },
-                    // { to: '#', label: 'Blog', position: 'right' },
                 ],
             },
             footer: {
