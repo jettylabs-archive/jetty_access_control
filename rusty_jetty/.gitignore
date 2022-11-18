@@ -23,7 +23,6 @@ Cargo.lock
 **/tableau_env.json
 jetty_config.yaml
 
-.vscode/
 
 jetty_graph
 tags.yaml
