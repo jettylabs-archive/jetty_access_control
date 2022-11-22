@@ -33,7 +33,7 @@ pub struct JettyConfig {
     #[serde(default = "default_allow_usage_stats")]
     pub allow_anonymous_usage_statistics: bool,
     /// The project id used for telemetry.
-    #[serde(default = "default_project_id")]
+    #[serde(default = "new_project_id")]
     pub project_id: String,
 }
 
@@ -44,7 +44,7 @@ fn default_allow_usage_stats() -> bool {
 
 /// Create a new random project id. Should only ever be called once
 /// per project.
-fn default_project_id() -> String {
+pub fn new_project_id() -> String {
     Uuid::new_v4().to_string()
 }
 
