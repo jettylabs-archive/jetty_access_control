@@ -80,6 +80,7 @@ impl JettyUserId {
     fn get() -> Result<Self> {
         // Get the user ID from the local file. Or create one and return it.
         let user_id_file = crate::project::user_id_file();
+        fs::create_dir_all(user_id_file.parent().unwrap())?;
         let user_id = match fs::read_to_string(&user_id_file) {
             Ok(contents) => JettyUserId(contents),
             Err(e) => {
