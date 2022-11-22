@@ -8,8 +8,8 @@ use jetty_core::{jetty::JettyConfig, logging::debug};
 use once_cell::sync::OnceCell;
 
 use anyhow::{anyhow, bail, Context, Result};
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use time::{format_description::well_known::Iso8601, OffsetDateTime};
 use uuid::Uuid;
 
 const SCHEMA_VERSION: &str = "0.0.1";
@@ -102,7 +102,8 @@ impl JettyUserId {
 
 #[derive(Deserialize, Serialize, Debug)]
 struct Invocation {
-    created: String,
+    #[serde(with = "firestore::serialize_as_timestamp")]
+    created: DateTime<Utc>,
     user_id: JettyUserId,
     project_id: Option<JettyProjectId>,
     jetty_version: String,
@@ -118,9 +119,7 @@ impl Invocation {
         let project_id = jetty_config
             .as_ref()
             .map(|cfg| JettyProjectId(cfg.project_id.to_owned()));
-        let created = OffsetDateTime::now_utc()
-            .format(&Iso8601::DEFAULT)
-            .unwrap_or_else(|_| Default::default());
+        let created = Utc::now();
         Ok(Invocation {
             user_id,
             project_id,
