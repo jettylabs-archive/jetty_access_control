@@ -44,6 +44,9 @@ pub(crate) async fn inquire_init(
     let mut jetty_config = JettyConfig::new();
     let mut credentials = HashMap::new();
 
+    // Set project ID
+    jetty_config.project_id = jetty_core::jetty::new_project_id();
+
     jetty_config.set_name(ask_project_name(overwrite_project_dir, project_name)?);
     let connector_types = ask_select_connectors()?;
 

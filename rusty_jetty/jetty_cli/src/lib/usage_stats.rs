@@ -3,11 +3,11 @@
 
 use std::fs;
 
-use firestore::{self, errors::FirestoreError, FirestoreDb};
+use firebase_rs::Firebase;
 use jetty_core::{jetty::JettyConfig, logging::debug};
-use once_cell::sync::OnceCell;
+use lazy_static::lazy_static;
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 use time::{format_description::well_known::Iso8601, OffsetDateTime};
 use uuid::Uuid;
@@ -15,7 +15,10 @@ use uuid::Uuid;
 const SCHEMA_VERSION: &str = "0.0.1";
 const JETTY_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-pub(crate) static FIRESTORE: OnceCell<Result<FirestoreDb, FirestoreError>> = OnceCell::new();
+lazy_static! {
+    static ref FIREBASE: Firebase =
+        Firebase::new("https://jetty-cli-telemetry-default-rtdb.firebaseio.com/").unwrap();
+}
 
 #[derive(Deserialize, Serialize, Debug)]
 enum Platform {
@@ -77,6 +80,7 @@ impl JettyUserId {
     fn get() -> Result<Self> {
         // Get the user ID from the local file. Or create one and return it.
         let user_id_file = crate::project::user_id_file();
+        fs::create_dir_all(user_id_file.parent().unwrap())?;
         let user_id = match fs::read_to_string(&user_id_file) {
             Ok(contents) => JettyUserId(contents),
             Err(e) => {
@@ -134,18 +138,9 @@ impl Invocation {
     }
 
     async fn publish(&self) -> Result<()> {
-        FIRESTORE
-            .get()
-            .ok_or(anyhow!("Firestore was not initialized"))?
-            .as_ref()?
-            .fluent()
-            .insert()
-            .into("jetty_telemetry")
-            .generate_document_id()
-            .object(self)
-            .execute()
-            .await
-            .context("writing telemetry document")
+        let telemetry_ref = FIREBASE.at("telemetry");
+        telemetry_ref.set(self).await.unwrap();
+        Ok(())
     }
 }
 

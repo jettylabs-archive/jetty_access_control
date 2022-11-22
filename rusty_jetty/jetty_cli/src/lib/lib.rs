@@ -37,10 +37,6 @@ pub async fn cli() -> Result<()> {
     // Setup logging
     let reload_handle = logging::setup(None);
 
-    // Set up Firestore Connection
-    let firestore_db = FirestoreDb::new("jetty-cli-telemetry").await;
-    usage_stats::FIRESTORE.set(firestore_db).unwrap();
-
     // Setup panic handler
     setup_panic!(Metadata {
         name: env!("CARGO_PKG_NAME").into(),
