@@ -16,7 +16,7 @@ use async_trait::async_trait;
 use coordinator::Environment;
 use rest::get_cual_prefix;
 pub use rest::TableauRestClient;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use jetty_core::{
@@ -46,24 +46,66 @@ pub type TableauConfig = HashMap<String, String>;
 ///
 /// The user sets these up by following Jetty documentation
 /// and pasting their connection info into their connector config.
-#[derive(Deserialize, Debug, Default)]
+#[derive(Deserialize, Serialize, Debug, Default, Clone)]
 pub struct TableauCredentials {
-    username: String,
-    password: String,
+    #[serde(flatten)]
+    method: LoginMethod,
     /// Tableau server name like 10ay.online.tableau.com *without* the `https://`
     server_name: String,
     site_name: String,
 }
 
+/// Enum representing the different types of tableau login methods and the required information
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(tag = "login_method")]
+#[serde(rename_all = "snake_case")]
+pub enum LoginMethod {
+    /// Log in using username and password
+    UsernameAndPassword {
+        /// Tableau username
+        username: String,
+        /// Tableau password
+        password: String,
+    },
+    /// Log in using personal access token
+    PersonalAccessToken {
+        /// Tableau personal access token name
+        token_name: String,
+        /// Tableau personal access token secret
+        secret: String,
+    },
+}
+
+impl Default for LoginMethod {
+    fn default() -> Self {
+        Self::UsernameAndPassword {
+            username: "name".to_owned(),
+            password: "password".to_owned(),
+        }
+    }
+}
+
 impl TableauCredentials {
     /// Basic constructor.
-    pub fn new(username: String, password: String, server_name: String, site_name: String) -> Self {
+    pub fn new(method: LoginMethod, server_name: String, site_name: String) -> Self {
         Self {
-            username,
-            password,
+            method,
             server_name,
             site_name,
         }
+    }
+
+    /// Given a TableauCredentials object, return a CredentialsMap
+    pub fn to_map(&self) -> CredentialsMap {
+        let string_rep = serde_json::to_string(&self).unwrap();
+        let map: CredentialsMap = serde_json::from_str(&string_rep).unwrap();
+        map
+    }
+
+    /// Given a map of credentials, return a TableauCredentials object.
+    pub(crate) fn from_map(m: &CredentialsMap) -> Result<Self> {
+        let string_rep = serde_json::to_string(m)?;
+        Ok(serde_json::from_str(&string_rep)?)
     }
 }
 
@@ -190,32 +232,7 @@ impl NewConnector for TableauConnector {
         _client: Option<ConnectorClient>,
         data_dir: Option<PathBuf>,
     ) -> Result<Box<Self>> {
-        let mut creds = TableauCredentials::default();
-        let mut required_fields = HashSet::from([
-            "server_name".to_owned(),
-            "site_name".to_owned(),
-            "username".to_owned(),
-            "password".to_owned(),
-        ]);
-
-        for (k, v) in credentials.iter() {
-            match k.as_ref() {
-                "server_name" => creds.server_name = v.to_string(),
-                "site_name" => creds.site_name = v.to_string(),
-                "username" => creds.username = v.to_string(),
-                "password" => creds.password = v.to_string(),
-                _ => (),
-            }
-
-            required_fields.remove(k);
-        }
-
-        if !required_fields.is_empty() {
-            return Err(anyhow![
-                "Snowflake config missing required fields: {:#?}",
-                required_fields
-            ]);
-        }
+        let mut creds = TableauCredentials::from_map(credentials)?;
 
         let tableau_connector = TableauConnector {
             config: config.config.to_owned(),
