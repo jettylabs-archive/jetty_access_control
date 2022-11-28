@@ -236,7 +236,7 @@ impl NewConnector for TableauConnector {
 
         let tableau_connector = TableauConnector {
             config: config.config.to_owned(),
-            coordinator: coordinator::Coordinator::new(creds, data_dir).await,
+            coordinator: coordinator::Coordinator::new(creds, data_dir).await?,
         };
 
         Ok(Box::new(tableau_connector))
