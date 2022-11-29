@@ -38,7 +38,8 @@ Below is the information you will need to connect to each connected platform. As
 <details>
   <summary><strong>Snowflake</strong></summary>
   <div>
-    <p>To read the relevant metadata from Snowflake, Jetty needs to use an account with the <code>SECURITYADMIN</code> role and usage permissions on a warehouse.</p>
+    <p>To read the relevant metadata from Snowflake, Jetty needs to use an account with a role that is able to read account metadata and use a warehouse. You can create a custom role with these permissions - we recommend following DataHub's <a href="https://datahubproject.io/docs/generated/ingestion/sources/snowflake#prerequisites">excellent documentation</a> to set up this role.</p> 
+    <p>While not recommended, you can also use the <code>SECURITYADMIN</code> role (plus usage permissions on a warehouse).</p>
     <p>To make setup easy, be ready with the following:</p>
     <ol>
       <li>Your Snowflake account identifier. This is easiest to get in SQL with <code>SELECT current_account();</code>. This field can be the account locator (like <code>cea29483</code>) or org account name, dash-separated (like <code>MRLDK-ESA98348</code>) See <a href="https://tinyurl.com/snow-account-id">the documentation</a> for more.</li>
@@ -76,7 +77,7 @@ Below is the information you will need to connect to each connected platform. As
 <details>
   <summary><strong>Tableau</strong></summary>
   <div>
-    <p>To read the relevant metadata from Tableau, Jetty needs credentials to an account with account or site admin privileges.</p>
+    <p>To read the relevant metadata from Tableau, Jetty needs credentials to an account with at least Site Administrator Explorer privileges.</p>
     <p>To make setup easy, be ready with the following:</p>
     <ol>
       <li>Your Tableau URL (something like <code>fs.online.tableau.com</code>).</li>
