@@ -232,7 +232,7 @@ impl NewConnector for TableauConnector {
         _client: Option<ConnectorClient>,
         data_dir: Option<PathBuf>,
     ) -> Result<Box<Self>> {
-        let mut creds = TableauCredentials::from_map(credentials)?;
+        let creds = TableauCredentials::from_map(credentials)?;
 
         let tableau_connector = TableauConnector {
             config: config.config.to_owned(),

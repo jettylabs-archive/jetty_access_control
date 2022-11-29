@@ -134,7 +134,7 @@ fn get_source_nodes_from_manifest(
 ) -> impl Iterator<Item = (String, DbtNode)> + '_ {
     json_manifest.sources.values().map(|source| {
         (
-            source.relation_name.clone().unwrap().to_owned(),
+            source.relation_name.clone().unwrap(),
             DbtNode::SourceNode(DbtSourceNode {
                 // All  source nodes should have relation names
                 name: source.relation_name.as_ref().unwrap().to_owned(),
@@ -205,13 +205,13 @@ impl DbtProjectManifest for DbtManifest {
                 .for_each(|(_, parent_children)| {
                     // Remove the connection to the ephemeral node and replace
                     // it with the ephemeral node's children
-                    if parent_children.remove(&ephemeral_dep_name) {
+                    if parent_children.remove(ephemeral_dep_name) {
                         parent_children.extend(children.clone().into_iter());
                     }
                 });
             // Finally, remove the ephemeral node entirely from the dependency
             // map and from the node list.
-            relation_child_map.remove(&ephemeral_dep_name);
+            relation_child_map.remove(ephemeral_dep_name);
             if let RelationName::NodeRelationName(name) = ephemeral_dep_name {
                 self.nodes.remove(name);
             }

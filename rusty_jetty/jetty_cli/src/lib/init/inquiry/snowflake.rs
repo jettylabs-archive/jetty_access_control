@@ -68,7 +68,7 @@ pub(crate) async fn ask_snowflake_connector_setup(
                 FilepathValidatorMode::AllowedValues{allowed_values: vec![SKIP_CMD.to_owned(), "".to_owned()]},
             ))
             .with_autocomplete(FilepathCompleter::default())
-            .with_help_message(&skip_message)
+            .with_help_message(skip_message)
             .prompt()?;
         if keypair_answer == SKIP_CMD {
             bail!("skipped");
