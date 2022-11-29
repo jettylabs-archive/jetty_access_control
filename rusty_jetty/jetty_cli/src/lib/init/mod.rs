@@ -7,9 +7,12 @@ mod pki;
 
 use std::{collections::HashMap, fs::OpenOptions, io::Write, path::PathBuf};
 
-use anyhow::Result;
+use anyhow::{bail, Context, Result};
 
-use jetty_core::{fetch_credentials, jetty::JettyConfig};
+use jetty_core::{
+    fetch_credentials,
+    jetty::{CredentialsMap, JettyConfig},
+};
 use tokio::io::AsyncWriteExt;
 
 use crate::{
@@ -17,7 +20,7 @@ use crate::{
     project::{self, tags_cfg_path},
 };
 
-use self::inquiry::inquire_init;
+use self::inquiry::{inquire_add, inquire_init};
 
 struct ProjectStructure {
     jetty_config: JettyConfig,
@@ -52,7 +55,57 @@ pub async fn init(
         inquire_init(overwrite_project_dir, project_name).await?
     };
 
+    if credentials.len() == 0 {
+        bail!("skipping project initialization - no connectors were configured");
+    }
+
     initialize_project_structure(ProjectStructure::new(jetty_config, credentials)).await?;
+    Ok(())
+}
+
+/// Add connectors to an existing project
+pub async fn add() -> Result<()> {
+    let (jetty_config, credentials) = inquire_add().await?;
+    update_project_configs(jetty_config, credentials).await
+}
+
+async fn update_project_configs(
+    jetty_config: JettyConfig,
+    credentials: HashMap<String, CredentialsMap>,
+) -> Result<()> {
+    // Open in the existing config file
+    let mut config_file = OpenOptions::new()
+        .write(true)
+        .open(project::jetty_cfg_path_local())
+        .context(format!(
+            "Opening Jetty Config file at ({})",
+            project::jetty_cfg_path_local().to_string_lossy()
+        ))?;
+
+    // Read in the existing credentials
+    let mut credentials_file = OpenOptions::new()
+        .write(true)
+        .open(project::connector_cfg_path())
+        .context(format!(
+            "Opening Jetty Connectors file at ({})",
+            project::connector_cfg_path().to_string_lossy()
+        ))?;
+
+    // Convert config to bytes, then write
+    let config_yaml = jetty_config.to_yaml()?;
+    let connectors_yaml = yaml_peg::serde::to_string(&credentials).map_err(anyhow::Error::from)?;
+
+    // truncate the files
+    config_file.set_len(0)?;
+    credentials_file.set_len(0)?;
+
+    config_file.write_all(config_yaml.as_bytes())?;
+    credentials_file.write_all(connectors_yaml.as_bytes())?;
+
+    println!("\n\nSuccessfully added connectors to your project!");
+    println!("To get started, run the following command:\n");
+    println!("\t$ jetty explore --fetch\n\n");
+
     Ok(())
 }
 
