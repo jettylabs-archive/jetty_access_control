@@ -107,8 +107,8 @@ impl DbtProjectManifest for DbtManifest {
             fn inner(&self) -> &str {
                 match self {
                     RelationName::NodeRelationName(name) => name,
-                    RelationName::EphemeralNodeWithoutRelationName(name) => {
-                        panic!("not today sir");
+                    RelationName::EphemeralNodeWithoutRelationName(_) => {
+                        panic!("Tried to get inner value of ephemeral node without relation name");
                     }
                 }
             }
