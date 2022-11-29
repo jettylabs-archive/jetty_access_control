@@ -1,3 +1,4 @@
+mod filtered_asset;
 pub(crate) mod node;
 mod to_asset_type;
 
@@ -12,6 +13,9 @@ use std::fs::read_to_string;
 
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
+
+use crate::manifest::filtered_asset::should_filter;
 
 use self::node::NamePartable;
 
@@ -67,13 +71,19 @@ impl DbtProjectManifest for DbtManifest {
         #[derive(Deserialize, Debug)]
         struct Config {
             enabled: bool,
+            materialized: String,
         }
 
         #[derive(Deserialize, Debug)]
         struct DbtManifestNode {
+            /// Used by Jetty only for ephemeral nodes.
+            unique_id: String,
             relation_name: Option<String>,
             resource_type: String,
             config: Config,
+            fqn: Vec<String>,
+            database: String,
+            schema: String,
         }
 
         #[derive(Deserialize, Debug)]
@@ -88,25 +98,62 @@ impl DbtProjectManifest for DbtManifest {
             child_map: HashMap<String, HashSet<String>>,
         }
 
-        fn get_node_relation_name_from_mani(manifest: &DbtManifestJson, name: &str) -> String {
+        #[derive(Hash, PartialEq, Eq, Clone, Debug)]
+        enum RelationName {
+            NodeRelationName(String),
+            EphemeralNodeWithoutRelationName(String),
+        }
+        impl RelationName {
+            fn inner(&self) -> &str {
+                match self {
+                    RelationName::NodeRelationName(name) => name,
+                    RelationName::EphemeralNodeWithoutRelationName(_) => {
+                        panic!("Tried to get inner value of ephemeral node without relation name");
+                    }
+                }
+            }
+        }
+
+        impl DbtManifestNode {
+            fn get_relation_name(&self) -> RelationName {
+                self.relation_name
+                    .as_ref()
+                    .map(|rn| RelationName::NodeRelationName(rn.clone()))
+                    .or_else(|| {
+                        // No relation name, this is likely an ephemeral node
+                        if self.config.materialized == "ephemeral" {
+                            Some(RelationName::EphemeralNodeWithoutRelationName(
+                                self.unique_id.clone(),
+                            ))
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap_or_else(move || {
+                        RelationName::NodeRelationName(format!(
+                            "{}.{}.{}",
+                            self.database,
+                            self.schema,
+                            self.fqn.clone().pop().unwrap()
+                        ))
+                    })
+            }
+        }
+
+        /// Get the relation name of the given node unique id from the manifest, whether
+        /// it's a source node or a model node.
+        fn get_node_relation_name_from_mani(
+            manifest: &DbtManifestJson,
+            name: &str,
+        ) -> RelationName {
             if name.starts_with("source") {
-                manifest
-                    .sources
-                    .get(name)
-                    .unwrap()
-                    .relation_name
-                    .as_ref()
-                    .unwrap()
-                    .to_owned()
+                RelationName::NodeRelationName({
+                    let node = manifest.sources.get(name).unwrap();
+                    node.relation_name.as_ref().unwrap().to_owned()
+                })
             } else {
-                manifest
-                    .nodes
-                    .get(name)
-                    .unwrap()
-                    .relation_name
-                    .as_ref()
-                    .unwrap_or_else(|| panic!("trying to get {name} from {:#?}", &manifest.nodes))
-                    .to_owned()
+                let node = manifest.nodes.get(name).unwrap();
+                node.get_relation_name()
             }
         }
 
@@ -118,7 +165,7 @@ impl DbtProjectManifest for DbtManifest {
         let manifest_path = file_path.clone().unwrap_or_else(|| self.path());
 
         let file_contents =
-            read_to_string(&manifest_path).context(format!("reading file {file_path:?}"))?;
+            read_to_string(&manifest_path).context(format!("reading file {manifest_path:?}"))?;
         let json_manifest: DbtManifestJson = serde_json::from_str(&file_contents).context(
             format!("deserializing manifest json from {manifest_path:?}"),
         )?;
@@ -126,15 +173,17 @@ impl DbtProjectManifest for DbtManifest {
         for node in json_manifest.nodes.values() {
             let asset_type = node.resource_type.try_to_asset_type()?;
             if let Some(ty) = asset_type {
-                self.nodes.insert(
-                    node.relation_name.clone().unwrap().to_owned(),
-                    DbtNode::ModelNode(DbtModelNode {
-                        // All  model nodes should have relation names
-                        name: node.relation_name.as_ref().unwrap().to_owned(),
-                        enabled: node.config.enabled.to_owned(),
-                        materialized_as: ty,
-                    }),
-                );
+                if node.config.materialized != "ephemeral" {
+                    self.nodes.insert(
+                        node.get_relation_name().inner().to_owned(),
+                        DbtNode::ModelNode(DbtModelNode {
+                            // All model nodes should have relation names
+                            name: node.get_relation_name().inner().to_owned(),
+                            enabled: node.config.enabled.to_owned(),
+                            materialized_as: ty,
+                        }),
+                    );
+                }
             } else {
                 // Asset type not usable.
                 continue;
@@ -153,31 +202,68 @@ impl DbtProjectManifest for DbtManifest {
         // Now we'll record the dependencies between nodes.
         // First we'll transform the child map ("source.x.y" -> "model.x.y")
         // to a relation child map ("db.schema.table" -> "db.schema.view")
-        let relation_child_map = json_manifest
+        let mut relation_child_map = json_manifest
             .child_map
             .iter()
             .filter_map(|(name, new_deps)| {
                 // Filter test nodes.
-                if name.starts_with("test") {
+                if should_filter(name) {
                     None
                 } else {
                     let relation_name = get_node_relation_name_from_mani(&json_manifest, name);
                     let new_relation_deps: HashSet<_> = new_deps
                         .iter()
                         .cloned()
-                        .filter(|d| !d.starts_with("test"))
+                        .filter(|d| !should_filter(d))
                         .map(|dep| get_node_relation_name_from_mani(&json_manifest, &dep))
                         .collect();
                     Some((relation_name, new_relation_deps))
                 }
-            });
+            })
+            .collect::<HashMap<_, _>>();
+
+        // Ephemeral nodes don't have permissions associated with them, so we need to
+        // remove them and join the dependencies around them.
+        // Get all ephemeral relationships
+        let rcm_clone = relation_child_map.clone();
+        let ephemeral_deps = rcm_clone
+            .iter()
+            .filter(|(n, _)| {
+                // only keep ephemeral nodes
+                matches!(n, RelationName::EphemeralNodeWithoutRelationName(_))
+            })
+            .collect::<HashMap<_, _>>();
+        // For each one, connect the parent to the child
+        for ephemeral_dep_name in ephemeral_deps.keys() {
+            // Get the (possibly updated) children of the ephemeral node.
+            let children = relation_child_map.get(ephemeral_dep_name).unwrap().clone();
+            relation_child_map
+                .iter_mut()
+                .for_each(|(p, parent_children)| {
+                    // Remove the connection to the ephemeral node and replace
+                    // it with the ephemeral node's children
+                    if parent_children.remove(&ephemeral_dep_name) {
+                        parent_children.extend(children.clone().into_iter());
+                    }
+                });
+            // Finally, remove the ephemeral node entirely from the dependency
+            // map and from the node list.
+            relation_child_map.remove(&ephemeral_dep_name);
+            if let RelationName::NodeRelationName(name) = ephemeral_dep_name {
+                self.nodes.remove(name);
+            }
+        }
+
         for (name, new_deps) in relation_child_map {
-            if let Some(deps) = self.dependencies.get_mut(&name) {
+            if let Some(deps) = self.dependencies.get_mut(name.inner()) {
                 // Combine the new deps with the existing ones.
-                deps.extend(new_deps);
+                deps.extend(new_deps.iter().map(|d| d.inner().to_owned()));
             } else {
-                // Model not yet in map. Add it.
-                self.dependencies.insert(name, new_deps);
+                // Model not yet in dependency map. Add it.
+                self.dependencies.insert(
+                    name.inner().to_owned(),
+                    new_deps.iter().map(|d| d.inner().to_owned()).collect(),
+                );
             }
         }
 
