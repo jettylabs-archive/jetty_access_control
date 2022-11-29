@@ -6,14 +6,14 @@ use inquire::{Password, PasswordDisplayMode, Select, Text};
 use jetty_core::jetty::CredentialsMap;
 use jetty_tableau::{TableauCredentials, TableauRestClient};
 
-use super::validation::filled_validator;
+use super::{validation::filled_validator, SKIP_CMD};
 
 pub(crate) async fn ask_tableau_connector_setup() -> Result<CredentialsMap> {
     let skip_message = &format!(
         "{}\n\nTo skip {} setup, enter {}. You can add connectors later by running {}.",
         "".yellow(),
         "Tableau",
-        "/skip".italic().yellow(),
+        SKIP_CMD.italic().yellow(),
         "jetty add".italic().yellow()
     );
 
@@ -29,7 +29,7 @@ pub(crate) async fn ask_tableau_connector_setup() -> Result<CredentialsMap> {
                 "This is the server that hosts your Tableau instance.{skip_message}",
             ))
             .prompt()?;
-        if tableau_server_name == "/skip" {
+        if tableau_server_name == SKIP_CMD {
             bail!("skipped");
         }
 
@@ -40,7 +40,7 @@ pub(crate) async fn ask_tableau_connector_setup() -> Result<CredentialsMap> {
                 "This is the site name you want to manage permissions for.{skip_message}",
             ))
             .prompt()?;
-        if tableau_site_name == "/skip" {
+        if tableau_site_name == SKIP_CMD {
             bail!("skipped");
         }
 
@@ -61,7 +61,7 @@ pub(crate) async fn ask_tableau_connector_setup() -> Result<CredentialsMap> {
                     "Your Tableau email username. The associated user must be an account or site admin.{skip_message}"),
                 )
                 .prompt()?;
-                if tableau_username == "/skip" {
+                if tableau_username == SKIP_CMD {
                     bail!("skipped");
                 }
 
@@ -92,7 +92,7 @@ pub(crate) async fn ask_tableau_connector_setup() -> Result<CredentialsMap> {
                     &format!("Read about creating a personal access token here: https://help.tableau.com/current/pro/desktop/en-us/useracct.htm#create-and-revoke-personal-access-tokens.{skip_message}"),
                 )
                 .prompt()?;
-                if token_name == "/skip" {
+                if token_name == SKIP_CMD {
                     bail!("skipped");
                 }
 
@@ -102,7 +102,7 @@ pub(crate) async fn ask_tableau_connector_setup() -> Result<CredentialsMap> {
                     &format!("Read about creating a personal access token here: https://help.tableau.com/current/pro/desktop/en-us/useracct.htm#create-and-revoke-personal-access-tokens.{skip_message}"),
                 )
                 .prompt()?;
-                if token_secret == "/skip" {
+                if token_secret == SKIP_CMD {
                     bail!("skipped");
                 }
 
