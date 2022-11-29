@@ -32,6 +32,7 @@ pub(crate) enum JettyCommand {
         #[clap(short, long, value_parser, default_value = "false")]
         overwrite: bool,
     },
+    /// Fetch metadata using an existing Jetty project
     Fetch {
         /// Visualize the graph in an SVG file.
         #[clap(long, value_parser, default_value = "false")]
@@ -40,6 +41,7 @@ pub(crate) enum JettyCommand {
         #[clap(short, long, use_value_delimiter = true, value_delimiter = ',')]
         connectors: Option<Vec<String>>,
     },
+    /// Launch the permissions exploration UI
     Explore {
         #[clap(short, long, value_parser, default_value = "false")]
         fetch: bool,
@@ -48,5 +50,6 @@ pub(crate) enum JettyCommand {
         #[clap(short, long, value_parser)]
         bind: Option<String>,
     },
+    /// Add connectors to an existing Jetty project
     Add,
 }

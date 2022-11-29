@@ -58,7 +58,7 @@ pub(crate) async fn ask_tableau_connector_setup() -> Result<CredentialsMap> {
                 .with_validator(filled_validator)
                 .with_placeholder("elliot@allsafe.com")
                 .with_help_message(&format!(
-                    "Your Tableau email username. The associated user must be an account or site admin.{skip_message}"),
+                    "Your Tableau email username. Jetty needs credentials to an account with at least Site Administrator Explorer privileges.{skip_message}"),
                 )
                 .prompt()?;
                 if tableau_username == SKIP_CMD {
@@ -89,7 +89,7 @@ pub(crate) async fn ask_tableau_connector_setup() -> Result<CredentialsMap> {
                 .with_validator(filled_validator)
                 .with_placeholder("MY_TOKEN")
                 .with_help_message(
-                    &format!("Read about creating a personal access token here: https://help.tableau.com/current/pro/desktop/en-us/useracct.htm#create-and-revoke-personal-access-tokens.{skip_message}"),
+                    &format!("Jetty needs credentials to an account with at least Site Administrator Explorer privileges. Read about creating a personal access token here: https://help.tableau.com/current/pro/desktop/en-us/useracct.htm#create-and-revoke-personal-access-tokens.{skip_message}"),
                 )
                 .prompt()?;
                 if token_name == SKIP_CMD {
