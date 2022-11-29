@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::pin::Pin;
 use std::{collections::HashMap, fs, io};
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use futures::join;
 use futures::StreamExt;
@@ -109,17 +109,34 @@ pub(crate) struct Coordinator {
 impl Coordinator {
     /// Create a new Coordinator object with data read from a saved
     /// environment (if available) and a new rest client.
-    pub(crate) async fn new(creds: TableauCredentials, data_dir: Option<PathBuf>) -> Self {
+    pub(crate) async fn new(creds: TableauCredentials, data_dir: Option<PathBuf>) -> Result<Self> {
         let env = if let Some(dir) = data_dir.clone() {
             read_environment_assets(dir).unwrap_or_default()
         } else {
             Default::default()
         };
-        Coordinator {
+
+        // Create a rest client. This tests the authentication.
+        let rest_client = rest::TableauRestClient::new(creds).await;
+        let rest_client = match rest_client {
+            Ok(c) => c,
+            Err(e) => {
+                if e.to_string()
+                    .contains("The personal access token you provided is invalid.")
+                {
+                    bail!("The personal access token you provided for Tableau is invalid. Valid tokens expire after 15 days without use. Please update the token in ~/.jetty/connectors.yaml");
+                } else if e.to_string().contains("Signin Error") {
+                    bail!("Tableau was unable to sign in. Please check the credentials in ~/.jetty/connectors.yaml.");
+                }
+                bail!(e);
+            }
+        };
+
+        Ok(Coordinator {
             env,
-            rest_client: rest::TableauRestClient::new(creds).await.unwrap(),
+            rest_client,
             data_dir,
-        }
+        })
     }
 
     /// Create a dummy coordinator without a working rest client. The environment will be read from
