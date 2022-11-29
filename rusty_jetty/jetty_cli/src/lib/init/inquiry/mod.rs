@@ -51,39 +51,7 @@ pub(crate) async fn inquire_init(
     jetty_config.set_name(ask_project_name(overwrite_project_dir, project_name)?);
     let connector_types = ask_select_connectors(false)?;
 
-    for connector in connector_types {
-        println!(
-            "{}",
-            format!("{} connector configuration", connector.color(JETTY_ORANGE)).underline()
-        );
-        let connector_namespace_user_input = ask_connector_namespace(connector)?;
-        let connector_namespace = ConnectorNamespace(connector_namespace_user_input.clone());
-
-        let mut credentials_map = match connector {
-            "dbt" => ask_dbt_connector_setup(),
-            "snowflake" => ask_snowflake_connector_setup(connector_namespace.clone()).await,
-            "tableau" => ask_tableau_connector_setup().await,
-            &_ => panic!("Unrecognized input"),
-        };
-        let mut credentials_map = match credentials_map {
-            Ok(c) => c,
-            Err(e) => {
-                if e.to_string().contains("skipped") {
-                    continue;
-                } else {
-                    return Err(e);
-                }
-            }
-        };
-
-        jetty_config.connectors.insert(
-            connector_namespace,
-            ConnectorConfig::new(connector.to_owned(), Default::default()),
-        );
-
-        credentials_map.insert("type".to_owned(), connector.to_owned());
-        credentials.insert(connector_namespace_user_input.to_owned(), credentials_map);
-    }
+    update_connector_info(connector_types, &mut jetty_config, &mut credentials).await?;
 
     // Leave the alternate screen.
     alt_screen_context.end();
@@ -193,7 +161,20 @@ pub(crate) async fn inquire_add() -> Result<(JettyConfig, HashMap<String, Creden
 
     let connector_types = ask_select_connectors(true)?;
 
-    for connector in connector_types {
+    update_connector_info(connector_types, &mut jetty_config, &mut credentials).await?;
+
+    // Leave the alternate screen.
+    alt_screen_context.end();
+    Ok((jetty_config, credentials))
+}
+
+/// Given a list of requested connectors and a config and credentials object, fetch and update the config and credentials.
+async fn update_connector_info(
+    connectors: Vec<&str>,
+    config: &mut JettyConfig,
+    credentials: &mut HashMap<String, CredentialsMap>,
+) -> Result<()> {
+    for connector in connectors {
         println!(
             "{}",
             format!("{} connector configuration", connector.color(JETTY_ORANGE)).underline()
@@ -218,7 +199,7 @@ pub(crate) async fn inquire_add() -> Result<(JettyConfig, HashMap<String, Creden
             }
         };
 
-        jetty_config.connectors.insert(
+        config.connectors.insert(
             connector_namespace,
             ConnectorConfig::new(connector.to_owned(), Default::default()),
         );
@@ -226,8 +207,5 @@ pub(crate) async fn inquire_add() -> Result<(JettyConfig, HashMap<String, Creden
         credentials_map.insert("type".to_owned(), connector.to_owned());
         credentials.insert(connector_namespace_user_input.to_owned(), credentials_map);
     }
-
-    // Leave the alternate screen.
-    alt_screen_context.end();
-    Ok((jetty_config, credentials))
+    Ok(())
 }
