@@ -4,7 +4,7 @@ authors:
   - jk
 tags: []
 description: Hello Jetty
-image: https://i.imgur.com/mErPwqL.png
+image: https://docs.get-jetty.com/img/logo.png
 hide_table_of_contents: true
 ---
 
