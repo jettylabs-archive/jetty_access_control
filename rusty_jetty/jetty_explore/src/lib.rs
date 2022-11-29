@@ -98,7 +98,7 @@ pub async fn explore_web_ui(ag: Arc<access_graph::AccessGraph>, user_bind: &Opti
                 &open_url, err
             ),
         }
-        let bind_addr = SocketAddr::from_str(&binding).unwrap();
+        let bind_addr = SocketAddr::from_str(binding).unwrap();
         axum::Server::bind(&bind_addr)
             .serve(app_service.to_owned())
             .await

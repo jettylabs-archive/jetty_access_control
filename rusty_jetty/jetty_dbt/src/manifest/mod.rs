@@ -225,12 +225,12 @@ impl DbtProjectManifest for DbtManifest {
                 .for_each(|(p, parent_children)| {
                     // Remove the connection to the ephemeral node and replace
                     // it with the ephemeral node's children
-                    if parent_children.remove(&ephemeral_dep_name) {
+                    if parent_children.remove(ephemeral_dep_name) {
                         println!("adding {:?} to {:?}", children, p);
                         parent_children.extend(children.clone().into_iter());
                     }
                 });
-            relation_child_map.remove(&ephemeral_dep_name);
+            relation_child_map.remove(ephemeral_dep_name);
         }
 
         for (name, new_deps) in relation_child_map {

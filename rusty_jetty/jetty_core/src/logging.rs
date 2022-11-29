@@ -57,7 +57,7 @@ pub fn update_filter_level(
     });
 
     let res =
-        reload_handle.modify(|filter| *filter = tracing_subscriber::EnvFilter::new(env.to_owned()));
+        reload_handle.modify(|filter| *filter = tracing_subscriber::EnvFilter::new(&env));
 
     match res {
         Ok(_) => debug!("logging filter set to: {}", &env),

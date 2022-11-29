@@ -357,7 +357,7 @@ fn get_matching_assets<'a>(
         .collect::<Vec<_>>();
 
     // if there are no matches, try again, but without case sensitivity
-    if exact_end_match.len() == 0 {
+    if exact_end_match.is_empty() {
         exact_end_match = asset_list
         .iter()
         .filter(|(_, n)| {

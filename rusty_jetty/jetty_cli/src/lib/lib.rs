@@ -45,7 +45,7 @@ pub async fn cli() -> Result<()> {
         homepage: "get-jetty.com".into(),
     });
     // Get Jetty Config
-    let jetty_config = JettyConfig::read_from_file(&project::jetty_cfg_path_local()).ok();
+    let jetty_config = JettyConfig::read_from_file(project::jetty_cfg_path_local()).ok();
     // Get args
     let args = if env::args().collect::<Vec<_>>().len() == 1 {
         // Invoke telemetry for empty args. If we executed `JettyArgs::parse()` first,
@@ -61,9 +61,7 @@ pub async fn cli() -> Result<()> {
             JettyCommand::Init { .. } => UsageEvent::InvokedInit,
             JettyCommand::Fetch { .. } => UsageEvent::InvokedFetch {
                 connector_types: if let Some(c) = &jetty_config {
-                    c.connectors
-                        .iter()
-                        .map(|(_, c)| c.connector_type.to_owned())
+                    c.connectors.values().map(|c| c.connector_type.to_owned())
                         .collect()
                 } else {
                     vec![]
@@ -158,9 +156,9 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
 
     let mut data_from_connectors = vec![];
 
-    let selected_connectors;
+    
 
-    selected_connectors = if let Some(conns) = connectors {
+    let selected_connectors = if let Some(conns) = connectors {
         jetty
             .config
             .connectors
