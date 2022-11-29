@@ -150,7 +150,7 @@ impl DbtProjectManifest for DbtManifest {
         let manifest_path = file_path.clone().unwrap_or_else(|| self.path());
 
         let file_contents =
-            read_to_string(&manifest_path).context(format!("reading file {file_path:?}"))?;
+            read_to_string(&manifest_path).context(format!("reading file {manifest_path:?}"))?;
         let json_manifest: DbtManifestJson = serde_json::from_str(&file_contents).context(
             format!("deserializing manifest json from {manifest_path:?}"),
         )?;
@@ -226,7 +226,6 @@ impl DbtProjectManifest for DbtManifest {
                     // Remove the connection to the ephemeral node and replace
                     // it with the ephemeral node's children
                     if parent_children.remove(&ephemeral_dep_name) {
-                        println!("adding {:?} to {:?}", children, p);
                         parent_children.extend(children.clone().into_iter());
                     }
                 });
