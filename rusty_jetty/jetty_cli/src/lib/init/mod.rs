@@ -55,7 +55,7 @@ pub async fn init(
         inquire_init(overwrite_project_dir, project_name).await?
     };
 
-    if credentials.len() == 0 {
+    if credentials.is_empty() {
         bail!("skipping project initialization - no connectors were configured");
     }
 

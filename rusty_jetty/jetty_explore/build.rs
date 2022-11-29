@@ -7,9 +7,9 @@ pub const NPM: &'static str = "npm.cmd";
 pub const NPX: &'static str = "npx.cmd";
 
 #[cfg(not(windows))]
-pub const NPM: &'static str = "npm";
+pub const NPM: &str = "npm";
 #[cfg(not(windows))]
-pub const NPX: &'static str = "npx";
+pub const NPX: &str = "npx";
 
 fn main() {
     let project_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();

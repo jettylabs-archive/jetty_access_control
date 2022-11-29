@@ -5,10 +5,10 @@ use std::{
 };
 
 use anyhow::Result;
-use rand;
+
 use rsa::{
     pkcs8::{DecodePrivateKey, EncodePrivateKey, EncodePublicKey, LineEnding},
-    RsaPrivateKey, RsaPublicKey,
+    RsaPrivateKey,
 };
 use sha2::{Digest, Sha256};
 
@@ -69,8 +69,8 @@ impl KeyPair {
         }
         let priv_path = filepath.to_path_buf();
         let pub_path = filepath.to_path_buf().with_extension("pub");
-        save_to_file(&self.public, &pub_path)?;
-        save_to_file(&self.private, &priv_path)?;
+        save_to_file(&self.public, pub_path)?;
+        save_to_file(&self.private, priv_path)?;
         Ok(())
     }
 }

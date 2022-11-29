@@ -17,8 +17,7 @@ use inquire::{
     list_option::ListOption,
     set_global_render_config,
     ui::{RenderConfig, StyleSheet, Styled},
-    validator::Validation,
-    Confirm, MultiSelect, Text,
+    validator::Validation, MultiSelect, Text,
 };
 use jetty_core::jetty::{ConnectorConfig, ConnectorNamespace, CredentialsMap, JettyConfig};
 
@@ -184,7 +183,7 @@ async fn update_connector_info(
         let connector_namespace_user_input = ask_connector_namespace(connector)?;
         let connector_namespace = ConnectorNamespace(connector_namespace_user_input.clone());
 
-        let mut credentials_map = match connector {
+        let credentials_map = match connector {
             "dbt" => ask_dbt_connector_setup(),
             "snowflake" => ask_snowflake_connector_setup(connector_namespace.clone()).await,
             "tableau" => ask_tableau_connector_setup().await,
