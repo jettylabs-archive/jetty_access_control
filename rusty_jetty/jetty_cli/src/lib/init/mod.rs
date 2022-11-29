@@ -73,18 +73,20 @@ async fn update_project_configs(
     jetty_config: JettyConfig,
     credentials: HashMap<String, CredentialsMap>,
 ) -> Result<()> {
-    // Open in the existing config file
+    // Open in the existing config file.
     let mut config_file = OpenOptions::new()
         .write(true)
+        //Use open rather than create to avoid truncating the file before we're sure if both files are open-able.
         .open(project::jetty_cfg_path_local())
         .context(format!(
             "Opening Jetty Config file at ({})",
             project::jetty_cfg_path_local().to_string_lossy()
         ))?;
 
-    // Read in the existing credentials
+    // Read in the existing credentials.
     let mut credentials_file = OpenOptions::new()
         .write(true)
+        //Use open rather than create to avoid truncating the file before we're sure if both files are open-able.
         .open(project::connector_cfg_path())
         .context(format!(
             "Opening Jetty Connectors file at ({})",
@@ -95,7 +97,8 @@ async fn update_project_configs(
     let config_yaml = jetty_config.to_yaml()?;
     let connectors_yaml = yaml_peg::serde::to_string(&credentials).map_err(anyhow::Error::from)?;
 
-    // truncate the files
+    // truncate the files - At this point we were able to open both files and serialize the config properly.
+    // If things go south beyond this point, we risk deleting existing configurations.
     config_file.set_len(0)?;
     credentials_file.set_len(0)?;
 

@@ -28,6 +28,8 @@ mod snowflake;
 mod tableau;
 mod validation;
 
+const SKIP_CMD: &str = "/skip";
+
 /// Ask the user to respond to a series of questions to create the Jetty
 /// config and the connectors config, producing both.
 pub(crate) async fn inquire_init(

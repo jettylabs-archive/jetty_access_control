@@ -21,7 +21,7 @@ use crate::{
     project::default_keypair_dir_path,
 };
 
-use super::validation::filled_validator;
+use super::{validation::filled_validator, SKIP_CMD};
 
 pub(crate) async fn ask_snowflake_connector_setup(
     connector_namespace: ConnectorNamespace,
@@ -29,8 +29,8 @@ pub(crate) async fn ask_snowflake_connector_setup(
     let skip_message = &format!(
         "{}\n\nTo skip {} setup, enter {}. You can add connectors later by running {}.",
         "".yellow(),
-        "dbt",
-        "/skip".italic().yellow(),
+        "Snowflake",
+        SKIP_CMD.italic().yellow(),
         "jetty add".italic().yellow()
     );
 
@@ -41,7 +41,7 @@ pub(crate) async fn ask_snowflake_connector_setup(
             .with_placeholder("org-account_name")
             .with_help_message(&format!("This field can be the account locator (like 'cea29483' or 'cea29483.us-east-1') or org account name, dash-separated (like 'MRLDK-ESA98348') See https://tinyurl.com/snow-account-id for more.{skip_message}"))
             .prompt()?;
-        if snowflake_account_id == "/skip" {
+        if snowflake_account_id == SKIP_CMD {
             bail!("skipped");
         }
 
@@ -49,14 +49,14 @@ pub(crate) async fn ask_snowflake_connector_setup(
             .with_default("jetty")
             .with_help_message(&format!("We will use this user to authenticate Jetty runs. To see all permissions across your account, the Jetty user needs the SECURITYADMIN role or equivalent.{skip_message}"))
             .prompt()?;
-        if admin_username == "/skip" {
+        if admin_username == SKIP_CMD {
             bail!("skipped");
         }
 
         let warehouse = Text::new("Warehouse to query with:")
             .with_help_message(&format!("We will use this warehouse for any warehouse-required queries to manage permissions.{skip_message}"))
             .prompt()?;
-        if warehouse == "/skip" {
+        if warehouse == SKIP_CMD {
             bail!("skipped");
         }
 
@@ -65,12 +65,12 @@ pub(crate) async fn ask_snowflake_connector_setup(
                 None,
                 PathType::File,
                 "File not found.".to_string(),
-                FilepathValidatorMode::AllowedValues{allowed_values: vec!["/skip".to_owned(), "".to_owned()]},
+                FilepathValidatorMode::AllowedValues{allowed_values: vec![SKIP_CMD.to_owned(), "".to_owned()]},
             ))
             .with_autocomplete(FilepathCompleter::default())
             .with_help_message(&skip_message)
             .prompt()?;
-        if keypair_answer == "/skip" {
+        if keypair_answer == SKIP_CMD {
             bail!("skipped");
         }
         let should_create_keypair = keypair_answer.is_empty();

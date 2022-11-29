@@ -8,6 +8,7 @@ use jetty_core::jetty::CredentialsMap;
 use crate::init::inquiry::{
     autocomplete::FilepathCompleter,
     validation::{FilepathValidator, FilepathValidatorMode, PathType},
+    SKIP_CMD,
 };
 
 use super::validation::filled_validator;
@@ -17,7 +18,7 @@ pub(crate) fn ask_dbt_connector_setup() -> Result<CredentialsMap> {
         "{}\n\nTo skip {} setup, enter {}. You can add connectors later by running {}.",
         "".yellow(),
         "dbt",
-        "/skip".italic().yellow(),
+        SKIP_CMD.italic().yellow(),
         "jetty add".italic().yellow()
     );
 
@@ -33,7 +34,7 @@ pub(crate) fn ask_dbt_connector_setup() -> Result<CredentialsMap> {
             Some("dbt_project.yml".to_owned()),
             PathType::File,
             "Please enter a valid dbt project path (with dbt_project.yml)".to_owned(),
-            FilepathValidatorMode::AllowedValues { allowed_values: vec!["/skip".to_owned()] },
+            FilepathValidatorMode::AllowedValues { allowed_values: vec![SKIP_CMD.to_owned()] },
         ))
         // Validate that the manifest has been compiled.
         .with_validator(FilepathValidator::new(
@@ -41,7 +42,7 @@ pub(crate) fn ask_dbt_connector_setup() -> Result<CredentialsMap> {
             PathType::File,
             "target/manifest.json not found. Please run 'dbt docs generate' in the directory to generate it and then try again.".to_string()
             ,
-            FilepathValidatorMode::AllowedValues { allowed_values: vec!["/skip".to_owned()] },
+            FilepathValidatorMode::AllowedValues { allowed_values: vec![SKIP_CMD.to_owned()] },
         ))
         .with_placeholder("/path/to/dbt/project")
         .with_autocomplete(FilepathCompleter::default())
@@ -51,7 +52,7 @@ pub(crate) fn ask_dbt_connector_setup() -> Result<CredentialsMap> {
         ))
         .prompt()?;
 
-    if dbt_project_dir == "/skip" {
+    if dbt_project_dir == SKIP_CMD {
         bail!("skipped");
     }
 
@@ -61,7 +62,7 @@ pub(crate) fn ask_dbt_connector_setup() -> Result<CredentialsMap> {
         .with_help_message(&format!("This field can be the account locator (like 'cea29483' or 'cea29483.us-east-1') or org account name, dash-separated (like 'MRLDK-ESA98348') See https://tinyurl.com/snow-account-id for more.{skip_message}"))
         .prompt()?;
 
-    if snowflake_account_id == "/skip" {
+    if snowflake_account_id == SKIP_CMD {
         bail!("skipped");
     }
 
