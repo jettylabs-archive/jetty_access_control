@@ -68,6 +68,7 @@ pub async fn cli() -> Result<()> {
                 },
             },
             JettyCommand::Explore { .. } => UsageEvent::InvokedExplore,
+            JettyCommand::Add => UsageEvent::InvokedAdd,
         };
         record_usage(event, &jetty_config)
             .await
@@ -133,6 +134,9 @@ pub async fn cli() -> Result<()> {
                     e
                 ),
             }
+        }
+        JettyCommand::Add => {
+            init::add().await?;
         }
     }
 

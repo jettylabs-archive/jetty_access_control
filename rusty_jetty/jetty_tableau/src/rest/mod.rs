@@ -110,15 +110,26 @@ impl TableauRestClient {
     /// Make a request to fetch Tableau Site's token and site_id
     async fn fetch_token_and_site_id(&mut self) -> Result<()> {
         // Set up the request body to get a request token
-        let request_body = json!({
-            "credentials": {
-                "name" : &self.credentials.username,
-                "password": &self.credentials.password,
-                "site": {
-                    "contentUrl": &self.credentials.site_name,
+        let request_body = match &self.credentials.method {
+            LoginMethod::UsernameAndPassword { username, password } => json!({
+                "credentials": {
+                    "name" : username,
+                    "password": password,
+                    "site": {
+                        "contentUrl": &self.credentials.site_name,
+                    }
                 }
-            }
-        });
+            }),
+            LoginMethod::PersonalAccessToken { token_name, secret } => json!({
+                "credentials": {
+                    "personalAccessTokenName" : token_name,
+                    "personalAccessTokenSecret": secret,
+                    "site": {
+                        "contentUrl": &self.credentials.site_name,
+                    }
+                }
+            }),
+        };
 
         let resp = reqwest::Client::new()
             .post(format![

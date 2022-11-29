@@ -154,6 +154,9 @@ pub enum UsageEvent {
     /// `jetty init`
     #[serde(rename = "invoked_init")]
     InvokedInit,
+    /// `jetty add`
+    #[serde(rename = "invoked_add")]
+    InvokedAdd,
     /// `jetty fetch`
     #[serde(rename = "invoked_fetch")]
     InvokedFetch { connector_types: Vec<String> },
