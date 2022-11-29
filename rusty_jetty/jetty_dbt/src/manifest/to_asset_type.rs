@@ -4,7 +4,7 @@ use jetty_core::connectors::AssetType;
 
 use crate::consts::{TABLE, VIEW};
 
-/// Convert a string to a
+/// Convert a resouce_type manifest string to an asset type.
 pub(crate) trait ToAssetType {
     fn try_to_asset_type(&self) -> Result<Option<AssetType>>;
 }
