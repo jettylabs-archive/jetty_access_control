@@ -48,4 +48,5 @@ pub(crate) enum JettyCommand {
         #[clap(short, long, value_parser)]
         bind: Option<String>,
     },
+    Add,
 }
