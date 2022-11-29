@@ -47,7 +47,7 @@ pub(crate) async fn ask_snowflake_connector_setup(
 
         let admin_username = Text::new("Jetty admin username:")
             .with_default("jetty")
-            .with_help_message(&format!("We will use this user to authenticate Jetty runs. To see all permissions across your account, the Jetty user needs the SECURITYADMIN role or equivalent.{skip_message}"))
+            .with_help_message(&format!("We will use this user to authenticate Jetty runs. To see all permissions across your account, the Jetty user needs a role that can read the accounts metadata. Read here for more information: https://docs.get-jetty.com/getting-started/#prerequisites.{skip_message}"))
             .prompt()?;
         if admin_username == SKIP_CMD {
             bail!("skipped");
