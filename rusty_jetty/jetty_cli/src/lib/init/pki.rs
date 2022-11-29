@@ -8,7 +8,7 @@ use anyhow::Result;
 use rand;
 use rsa::{
     pkcs8::{DecodePrivateKey, EncodePrivateKey, EncodePublicKey, LineEnding},
-    RsaPrivateKey, RsaPublicKey,
+    RsaPrivateKey,
 };
 use sha2::{Digest, Sha256};
 

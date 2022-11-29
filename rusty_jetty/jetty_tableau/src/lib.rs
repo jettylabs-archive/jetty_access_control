@@ -36,7 +36,7 @@ use permissions::PermissionManager;
 
 use std::{
     collections::{HashMap, HashSet},
-    path::{Path, PathBuf},
+    path::{PathBuf},
 };
 
 /// Map wrapper for config values.

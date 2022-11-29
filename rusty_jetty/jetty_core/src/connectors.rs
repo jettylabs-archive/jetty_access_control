@@ -4,7 +4,7 @@
 pub mod nodes;
 pub mod processed_nodes;
 
-use std::path::{Path, PathBuf};
+use std::path::{PathBuf};
 
 use anyhow::Result;
 use async_trait::async_trait;

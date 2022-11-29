@@ -1,7 +1,7 @@
 //! Logging utilities for Jetty-wide output to stdout.
 //!
 
-use std::ops::Deref;
+
 
 // Re-exports for convenience
 pub use tracing::metadata::LevelFilter;

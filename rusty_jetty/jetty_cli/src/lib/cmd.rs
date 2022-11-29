@@ -7,7 +7,7 @@ use clap::{self, Parser, Subcommand};
 
 use jetty_core::logging::LevelFilter;
 
-use crate::usage_stats::UsageEvent;
+
 
 /// Jetty CLI: Open-source data access control for modern teams
 #[derive(Parser, Debug)]

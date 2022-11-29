@@ -15,7 +15,7 @@ use std::{collections::HashMap, env, sync::Arc, time::Instant};
 use anyhow::{anyhow, bail, Context, Result};
 
 use clap::Parser;
-use firestore::FirestoreDb;
+
 use human_panic::setup_panic;
 
 use jetty_core::{
@@ -23,7 +23,7 @@ use jetty_core::{
     connectors::{ConnectorClient, NewConnector},
     fetch_credentials,
     jetty::JettyConfig,
-    logging::{self, debug, info, LevelFilter},
+    logging::{self, debug, info},
     Connector, Jetty,
 };
 

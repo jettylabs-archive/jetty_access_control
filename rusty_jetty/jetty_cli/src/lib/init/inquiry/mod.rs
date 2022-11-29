@@ -16,8 +16,7 @@ use inquire::{
     list_option::ListOption,
     set_global_render_config,
     ui::{RenderConfig, StyleSheet, Styled},
-    validator::Validation,
-    Confirm, MultiSelect, Text,
+    validator::Validation, MultiSelect, Text,
 };
 use jetty_core::jetty::{ConnectorConfig, ConnectorNamespace, CredentialsMap, JettyConfig};
 

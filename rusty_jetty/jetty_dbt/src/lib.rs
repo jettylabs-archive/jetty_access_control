@@ -120,12 +120,12 @@ impl Connector for DbtConnector {
 mod tests {
     use crate::{
         consts::VIEW,
-        manifest::node::{DbtModelNode, DbtSourceNode},
+        manifest::node::{DbtModelNode},
     };
 
     use super::*;
     use jetty_core::{
-        connectors::{nodes::RawAsset, AssetType, ConnectorClient},
+        connectors::{AssetType, ConnectorClient},
         cual::Cual,
     };
     use manifest::{node::DbtNode, MockDbtProjectManifest};

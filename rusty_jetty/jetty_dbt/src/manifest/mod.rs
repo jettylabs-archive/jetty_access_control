@@ -12,7 +12,7 @@ use std::fs::read_to_string;
 
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+
 
 use self::node::NamePartable;
 
@@ -101,7 +101,7 @@ impl DbtProjectManifest for DbtManifest {
             fn inner(&self) -> &str {
                 match self {
                     RelationName::NodeRelationName(name) => name,
-                    RelationName::EphemeralNodeWithoutRelationName(name) => panic!("not today sir"),
+                    RelationName::EphemeralNodeWithoutRelationName(_name) => panic!("not today sir"),
                 }
             }
         }
