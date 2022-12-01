@@ -2,7 +2,7 @@
 // Note: type annotations allow type checking and IDEs autocompletion
 
 const lightCodeTheme = require('prism-react-renderer/themes/github');
-const darkCodeTheme = require('prism-react-renderer/themes/dracula');
+const darkCodeTheme = require('prism-react-renderer/themes/paleNight');
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
@@ -76,7 +76,7 @@ const config = {
             metadata: [{ name: 'robots', content: 'noindex' }],
             colorMode: {
                 defaultMode: 'light',
-                disableSwitch: true,
+                disableSwitch: false,
             },
             navbar: {
                 // title: 'Jetty Labs',
