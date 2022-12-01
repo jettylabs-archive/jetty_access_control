@@ -90,6 +90,15 @@ nav.navbar a.navbar__link--active {
     
 }
 
+.custom-announcement {
+  font-size: 13pt;
+  font-weight: 500;
+}
+.custom-announcement-subtitle {
+  font-size: 11pt;
+  font-weight: normal;
+}
+
 
 button.navbar__toggle {
   color: black;
@@ -111,6 +120,7 @@ button.navbar__toggle {
   --ifm-code-font-size: 95%;
   --ifm-navbar-height: 87px;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+  --docusaurus-announcement-bar-height: auto !important;
 }
 
 /* For readability concerns, you should choose a lighter palette in dark mode. */

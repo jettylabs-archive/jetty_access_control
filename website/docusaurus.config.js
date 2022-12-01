@@ -35,7 +35,6 @@ const config = {
             },
         ],
     ],
-
     presets: [
         [
             'classic',
@@ -67,6 +66,13 @@ const config = {
         /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
 
         ({
+            announcementBar: {
+                id: 'support_us',
+                content: `<span class="custom-announcement"> If any of this looks interesting, we'd love to hear your thoughts!!<span class="custom-announcement-subtitle"><br><a target='_blank' rel='noopener noreferrer' id="survey-link" href='https://forms.gle/NHtvVYREAsV3gJsC9'>Let us know what you think</a> and enter to win an Amazon gift card 🎉🎉</span></span>`,
+                backgroundColor: '#f47124',
+                textColor: 'white',
+                isCloseable: true,
+            },
             metadata: [{ name: 'robots', content: 'noindex' }],
             colorMode: {
                 defaultMode: 'light',
