@@ -27,6 +27,15 @@ const config = {
         locales: ['en'],
     },
 
+    plugins: [
+        [
+            require.resolve('docusaurus-gtm-plugin'),
+            {
+                id: 'GTM-NQ5FTQS', // GTM Container ID
+            },
+        ],
+    ],
+
     presets: [
         [
             'classic',
@@ -49,10 +58,6 @@ const config = {
                 },
                 theme: {
                     customCss: require.resolve('./src/css/custom.css'),
-                },
-                gtag: {
-                    trackingID: 'GTM-NQ5FTQS',
-                    anonymizeIP: true,
                 },
             }),
         ],

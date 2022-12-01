@@ -92,14 +92,14 @@ nav.navbar a.navbar__link--active {
 
 
 button.navbar__toggle {
-  color: white;
+  color: black;
 }
 /* You can override the default Infima variables here. */
 :root {
   --ifm-font-family-base: Roboto, system-ui, -apple-system, Segoe UI, Ubuntu,
     Cantarell, Noto Sans, sans-serif, BlinkMacSystemFont, "Segoe UI", Helvetica,
     Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-  --ifm-navbar-background-color: #084c61;
+  --ifm-navbar-background-color: white;
   --ifm-navbar-link-color: white;
   --ifm-color-primary: #f47124;
   --ifm-color-primary-dark: #348e5a;
