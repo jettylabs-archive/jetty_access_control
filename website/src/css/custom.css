@@ -89,7 +89,7 @@ nav.navbar a.navbar__link--active {
 
 
 button.navbar__toggle {
-  color: white;
+  color: black;
 }
 /* You can override the default Infima variables here. */
 :root {

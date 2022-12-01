@@ -27,6 +27,14 @@ const config = {
     locales: ['en'],
   },
 
+  plugins: [
+    [
+      require.resolve('docusaurus-gtm-plugin'),
+      {
+        id: 'GTM-NQ5FTQS', // GTM Container ID
+      },
+    ],
+  ],
   presets: [
     [
       'classic',
@@ -50,10 +58,6 @@ const config = {
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
         },
-        gtag: {
-          trackingID: 'GTM-NQ5FTQS',
-          anonymizeIP: true,
-        },
       }),
     ],
   ],
@@ -65,7 +69,7 @@ const config = {
       announcementBar: {
         id: 'support_us',
         content:
-          'Help us shape the future of access control! <a target="_blank" rel="noopener noreferrer" href="#">Sign up to meet with us.</a>',
+          "If any of this looks interesting, we'd love to hear your thoughts!! <a target='_blank' rel='noopener noreferrer' href='https://forms.gle/NHtvVYREAsV3gJsC9'>Let us know what you think</a> and enter to win an Amazon gift card 🎉🎉",
         backgroundColor: '#f47124',
         textColor: 'white',
         isCloseable: false,
