@@ -1,8 +1,6 @@
 //! Logging utilities for Jetty-wide output to stdout.
 //!
 
-
-
 // Re-exports for convenience
 pub use tracing::metadata::LevelFilter;
 pub use tracing::{debug, error, info, warn};
@@ -23,9 +21,8 @@ pub fn setup(
 ) -> reload::Handle<tracing_subscriber::EnvFilter, tracing_subscriber::Registry> {
     let level_filter = level.unwrap_or(LevelFilter::INFO);
 
-    let env = std::env::var("RUST_LOG").unwrap_or_else(|_| {
-        format!("{level_filter},tower_http=info,hyper=info,reqwest=info,firestore=off")
-    });
+    let env = std::env::var("RUST_LOG")
+        .unwrap_or_else(|_| format!("{level_filter},tower_http=info,hyper=info,reqwest=info"));
 
     let (filter, reload_handle) = reload::Layer::new(tracing_subscriber::EnvFilter::new(env));
     tracing_subscriber::registry()
@@ -52,12 +49,10 @@ pub fn update_filter_level(
 ) {
     let level_filter = level.unwrap_or(LevelFilter::INFO);
 
-    let env = std::env::var("RUST_LOG").unwrap_or_else(|_| {
-        format!("{level_filter},tower_http=info,hyper=info,reqwest=info,firestore=off")
-    });
+    let env = std::env::var("RUST_LOG")
+        .unwrap_or_else(|_| format!("{level_filter},tower_http=info,hyper=info,reqwest=info"));
 
-    let res =
-        reload_handle.modify(|filter| *filter = tracing_subscriber::EnvFilter::new(&env));
+    let res = reload_handle.modify(|filter| *filter = tracing_subscriber::EnvFilter::new(&env));
 
     match res {
         Ok(_) => debug!("logging filter set to: {}", &env),

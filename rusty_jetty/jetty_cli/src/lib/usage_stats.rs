@@ -3,21 +3,20 @@
 
 use std::fs;
 
-use firebase_rs::Firebase;
 use jetty_core::{jetty::JettyConfig, logging::debug};
 use lazy_static::lazy_static;
 
 use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
-use time::{format_description::well_known::Iso8601, OffsetDateTime};
+use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 use uuid::Uuid;
 
 const SCHEMA_VERSION: &str = "0.0.1";
 const JETTY_VERSION: &str = env!("CARGO_PKG_VERSION");
+const FIRESTORE_URL: &str = "https://firestore.googleapis.com/v1/projects/jetty-cli-telemetry/databases/(default)/documents/";
 
 lazy_static! {
-    static ref FIREBASE: Firebase =
-        Firebase::new("https://jetty-cli-telemetry-default-rtdb.firebaseio.com/").unwrap();
+    static ref CLIENT: reqwest::Client = reqwest::Client::new();
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -123,7 +122,7 @@ impl Invocation {
             .as_ref()
             .map(|cfg| JettyProjectId(cfg.project_id.to_owned()));
         let created = OffsetDateTime::now_utc()
-            .format(&Iso8601::DEFAULT)
+            .format(&Rfc3339)
             .unwrap_or_else(|_| Default::default());
         Ok(Invocation {
             user_id,
@@ -138,8 +137,21 @@ impl Invocation {
     }
 
     async fn publish(&self) -> Result<()> {
-        let telemetry_ref = FIREBASE.at("telemetry");
-        telemetry_ref.set(self).await.unwrap();
+        // publish to dev or prod collection
+        let collection = match RuntimeEnvironment::get() {
+            RuntimeEnvironment::Prod => "jetty_telemetry",
+            _ => "jetty_dev_telemetry",
+        };
+
+        let firestore_document =
+            firestore_serializer::to_document(firestore_serializer::to_string(self)?);
+
+        let _res = CLIENT
+            .post(format!("{}{}/", FIRESTORE_URL, collection))
+            .body(firestore_document)
+            .header("Content-Type", "application/json")
+            .send()
+            .await?;
         Ok(())
     }
 }
