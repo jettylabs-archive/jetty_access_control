@@ -17,6 +17,7 @@ jetty_snowflake = { path = "../jetty_snowflake" }
 jetty_dbt = { path = "../jetty_dbt" }
 jetty_tableau = { path = "../jetty_tableau" }
 jetty_explore = { path = "../jetty_explore" }
+firestore_serializer = { path = "../firestore_serializer" }
 tokio = { version = "1.20.1", features = ["fs", "rt", "macros"] }
 anyhow = "^1"
 clap = { version = "4.0.18", features = ["derive"] }
@@ -33,10 +34,9 @@ serde = { version = "1.0.144", features = ["derive"] }
 rsa = "0.7.1"
 rand = "0.8.5"
 uuid = { version = "1.2.1", features = ["v5", "serde"] }
-firestore = "0.15.1"
 once_cell = "1.16.0"
-firebase-rs = "2.0.5"
 time = "0.3.17"
+reqwest = "0.11.13"
 
 
 [target.'cfg(linux)'.dependencies]

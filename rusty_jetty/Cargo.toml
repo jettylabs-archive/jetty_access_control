@@ -8,6 +8,7 @@ members = [
     "jetty_sql",
     "jetty_explore",
     "jetty_pypi",
+    "firestore_serializer",
 ]
 
 default-members = [
@@ -18,4 +19,5 @@ default-members = [
     "jetty_dbt",
     "jetty_sql",
     "jetty_explore",
+    "firestore_serializer",
 ]
