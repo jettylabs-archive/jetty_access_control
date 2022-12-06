@@ -15,5 +15,4 @@ pub mod cual;
 pub mod jetty;
 pub mod logging;
 pub mod permissions;
-
-mod tag_parser;
+pub mod write;

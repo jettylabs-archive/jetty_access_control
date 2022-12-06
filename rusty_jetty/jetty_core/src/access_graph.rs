@@ -17,7 +17,7 @@ use crate::cual::Cual;
 use crate::connectors::AssetType;
 use crate::jetty::ConnectorNamespace;
 use crate::logging::debug;
-use crate::tag_parser::{parse_tags, tags_to_jetty_node_helpers};
+use crate::write::tag_parser::{parse_tags, tags_to_jetty_node_helpers};
 
 use self::graph::typed_indices::{AssetIndex, GroupIndex, PolicyIndex, TagIndex, UserIndex};
 use self::helpers::NodeHelper;
