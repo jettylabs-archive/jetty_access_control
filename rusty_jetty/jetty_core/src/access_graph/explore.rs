@@ -44,10 +44,10 @@ impl AccessGraph {
     /// Get a node path as a string
     pub fn path_as_string(&self, path: &NodePath) -> String {
         path.0
-                .iter()
-                .map(|idx| self[*idx].get_string_name())
-                .collect::<Vec<_>>()
-                .join(" ⇨ ")
+            .iter()
+            .map(|idx| self[*idx].get_string_name())
+            .collect::<Vec<_>>()
+            .join(" ⇨ ")
     }
 
     /// Get a node path as a vector of JettyNodes
@@ -90,7 +90,7 @@ mod tests {
                         name: "policy".to_owned(),
                         origin: Default::default(),
                     },
-                    EdgeType::GrantedBy,
+                    EdgeType::GrantedFrom,
                 ),
                 (
                     NodeName::Policy {

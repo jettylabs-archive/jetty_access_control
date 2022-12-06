@@ -8,10 +8,12 @@ use petgraph::stable_graph::NodeIndex;
 use serde::Deserialize;
 
 use crate::{
-    access_graph::{AccessGraph, EdgeType, JettyNode, NodeName},
+    access_graph::{AccessGraph, EdgeType, JettyNode, NodeName, PolicyAttributes},
     jetty::ConnectorNamespace,
     Jetty,
 };
+
+use super::policies;
 
 /// group configuration, as represented in the yaml
 #[derive(Deserialize, Debug)]
@@ -61,18 +63,18 @@ struct Diff {
 
 enum DiffDetails {
     AddGroup {
-        users: Vec<NodeName>,
-        groups: Vec<NodeName>,
+        members: GroupMemberChanges,
     },
     RemoveGroup,
-    AddMembers {
-        users: Vec<NodeName>,
-        groups: Vec<NodeName>,
+    ModifyGroup {
+        add: GroupMemberChanges,
+        remove: GroupMemberChanges,
     },
-    RemoveMembers {
-        users: Vec<NodeName>,
-        groups: Vec<NodeName>,
-    },
+}
+
+struct GroupMemberChanges {
+    users: Vec<NodeName>,
+    groups: Vec<NodeName>,
 }
 
 /// Validate group config by making sure that users, groups, and listed connectors exist. Returns a vec of errors. If the vec is empty, there were no errors.
@@ -132,7 +134,8 @@ fn generate_diff(
     groups: &HashMap<String, GroupConfig>,
     ag: AccessGraph,
 ) -> HashMap<NodeName, Diff> {
-    let mut diffs = HashMap::new();
+    let mut group_diffs = HashMap::new();
+    let mut policy_diffs = Vec::new();
 
     let mut ag_groups = ag.graph.nodes.groups.clone();
 
@@ -187,42 +190,39 @@ fn generate_diff(
 
             let group_changes = diff_node_names(&old, &new);
 
-            // Collect the changes into a vec of diffs
-
-            let mut diff_details: Vec<DiffDetails> = Vec::new();
-
-            if !user_changes.add.is_empty() || !group_changes.add.is_empty() {
-                diff_details.push(DiffDetails::AddMembers {
-                    users: user_changes.add,
-                    groups: group_changes.add,
-                });
-            };
-
-            if !user_changes.remove.is_empty() || !group_changes.remove.is_empty() {
-                diff_details.push(DiffDetails::RemoveMembers {
-                    users: user_changes.remove,
-                    groups: group_changes.remove,
-                });
-            }
-
-            if !diff_details.is_empty() {
-                diffs.insert(
+            if !user_changes.add.is_empty()
+                || !group_changes.add.is_empty()
+                || !user_changes.remove.is_empty()
+                || !group_changes.remove.is_empty()
+            {
+                group_diffs.insert(
                     node_name.clone(),
                     Diff {
                         group_name: node_name.clone(),
-                        details: diff_details,
+                        details: vec![DiffDetails::ModifyGroup {
+                            add: GroupMemberChanges {
+                                users: user_changes.add,
+                                groups: group_changes.add,
+                            },
+                            remove: GroupMemberChanges {
+                                users: user_changes.remove,
+                                groups: group_changes.remove,
+                            },
+                        }],
                     },
                 );
             };
         } else {
             // if it doesn't exist, add a new group diff, with all the appropriate users
-            diffs.insert(
+            group_diffs.insert(
                 node_name.clone(),
                 Diff {
                     group_name: node_name.clone(),
                     details: vec![DiffDetails::AddGroup {
-                        users: users_to_node_names(&group.members.users),
-                        groups: groups_to_node_names(&group.members.groups),
+                        members: GroupMemberChanges {
+                            users: users_to_node_names(&group.members.users),
+                            groups: groups_to_node_names(&group.members.groups),
+                        },
                     }],
                 },
             );
@@ -230,19 +230,51 @@ fn generate_diff(
     }
 
     // now iterate through all of the groups and drop any that don't exist
-    for (k, _v) in ag_groups {
-        diffs.insert(
+    for (k, v) in ag_groups {
+        group_diffs.insert(
             k.clone(),
             Diff {
-                group_name: k,
+                group_name: k.clone(),
                 details: vec![DiffDetails::RemoveGroup],
             },
         );
+
+        // Get all related policies and remove them as well
+        let remove_policies = ag.get_matching_children(
+            v,
+            |e| matches!(e, EdgeType::GrantedFrom),
+            |_| false,
+            |n| matches!(n, JettyNode::Policy(_)),
+            None,
+            Some(1),
+        );
+
+        for policy_index in remove_policies {
+            let policy = match TryInto::<PolicyAttributes>::try_into(ag[policy_index].clone()) {
+                Ok(p) => p,
+                Err(_) => continue,
+            };
+
+            let policy_targets = ag.get_matching_children(
+                policy_index,
+                |e| matches!(e, EdgeType::Governs),
+                |_| false,
+                |n| matches!(n, JettyNode::Asset(_)),
+                None,
+                Some(1),
+            );
+
+            for target in policy_targets {
+                policy_diffs.push(policies::Diff {
+                    asset: ag[target].get_node_name(),
+                    agent: k.clone(),
+                    details: vec![policies::DiffDetails::RemovePolicy],
+                });
+            }
+        }
     }
 
-    // TODO: also drop related policies
-
-    diffs
+    group_diffs
 }
 
 fn users_to_node_names(users: &Option<Vec<MemberUser>>) -> Vec<NodeName> {
@@ -294,5 +326,3 @@ fn diff_node_names(old: &Vec<NodeName>, new: &Vec<NodeName>) -> NodeNameListDiff
 
     NodeNameListDiff { add, remove }
 }
-
-// Send diff to connectors

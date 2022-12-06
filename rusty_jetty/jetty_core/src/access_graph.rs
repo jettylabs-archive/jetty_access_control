@@ -479,7 +479,7 @@ pub enum EdgeType {
     /// group -> includes, as members -> user|group
     Includes,
     /// group|user -> has permission granted by -> policy
-    GrantedBy,
+    GrantedFrom,
     /// asset -> hierarchical child of -> asset
     ChildOf,
     /// asset -> hierarchical parent of -> asset
@@ -511,8 +511,8 @@ fn get_edge_type_pair(edge_type: &EdgeType) -> EdgeType {
     match edge_type {
         EdgeType::MemberOf => EdgeType::Includes,
         EdgeType::Includes => EdgeType::MemberOf,
-        EdgeType::GrantedBy => EdgeType::GrantedTo,
-        EdgeType::GrantedTo => EdgeType::GrantedBy,
+        EdgeType::GrantedFrom => EdgeType::GrantedTo,
+        EdgeType::GrantedTo => EdgeType::GrantedFrom,
         EdgeType::ChildOf => EdgeType::ParentOf,
         EdgeType::ParentOf => EdgeType::ChildOf,
         EdgeType::DerivedFrom => EdgeType::DerivedTo,
@@ -1101,7 +1101,7 @@ mod tests {
                     name: "Policy 1".to_string(),
                     origin: Default::default(),
                 },
-                edge_type: EdgeType::GrantedBy,
+                edge_type: EdgeType::GrantedFrom,
             },
             JettyEdge {
                 from: NodeName::Policy {

@@ -248,7 +248,7 @@ impl NodeHelper for ProcessedGroup {
                 &mut hs,
                 self.name.to_owned(),
                 v.to_owned(),
-                EdgeType::GrantedBy,
+                EdgeType::GrantedFrom,
             );
         }
         hs
@@ -283,7 +283,7 @@ impl NodeHelper for ProcessedUser {
                 &mut hs,
                 self.name.to_owned(),
                 v.to_owned(),
-                EdgeType::GrantedBy,
+                EdgeType::GrantedFrom,
             );
         }
         hs
