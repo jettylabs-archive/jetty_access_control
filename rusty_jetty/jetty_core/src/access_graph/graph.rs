@@ -38,7 +38,7 @@ pub(crate) struct Graph {
 pub(crate) struct NodeMap {
     assets: HashMap<NodeName, typed_indices::AssetIndex>,
     users: HashMap<NodeName, typed_indices::UserIndex>,
-    groups: HashMap<NodeName, typed_indices::GroupIndex>,
+    pub(crate) groups: HashMap<NodeName, typed_indices::GroupIndex>,
     tags: HashMap<NodeName, typed_indices::TagIndex>,
     policies: HashMap<NodeName, typed_indices::PolicyIndex>,
 }
@@ -187,11 +187,12 @@ impl Graph {
             .map(|n| NodeIndex::from(n.to_owned()))
         {
             Some(idx)
-        } else { self
-            .node_ids
-            .tags
-            .get(node)
-            .map(|n| NodeIndex::from(n.to_owned())) }
+        } else {
+            self.node_ids
+                .tags
+                .get(node)
+                .map(|n| NodeIndex::from(n.to_owned()))
+        }
     }
 
     /// Check whether a given node already exists in the graph, and, if so, return a typed index

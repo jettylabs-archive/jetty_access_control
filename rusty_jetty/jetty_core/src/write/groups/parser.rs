@@ -54,7 +54,7 @@ pub(crate) fn parse_groups(config: &String) -> Result<HashMap<String, GroupConfi
                     result_vec.push(ConnectorName {
                         connector: ConnectorNamespace(k.as_str().map_err(|_| anyhow!("improperly formatted groups file: names field for {group_name} should be a map of namespace: string \
                         - please refer to the documentation for more information"))?.to_owned()),
-                        group_name: v.as_str().map_err(|_| anyhow!("improperly formatted groups file: names field for {group_name} should be a map of namespace: string \
+                        alias: v.as_str().map_err(|_| anyhow!("improperly formatted groups file: names field for {group_name} should be a map of namespace: string \
                         - please refer to the documentation for more information"))?.to_owned(),
                         pos: k.pos(),
                     })

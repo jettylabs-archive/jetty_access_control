@@ -449,7 +449,7 @@ impl JettyNode {
 
     /// Given a node, return the NodeName. This will return the name field
     /// wrapped in the appropriate enum.
-    fn get_node_name(&self) -> NodeName {
+    pub(crate) fn get_node_name(&self) -> NodeName {
         match &self {
             JettyNode::Asset(a) => a.name.to_owned(),
             JettyNode::Group(a) => a.name.to_owned(),
