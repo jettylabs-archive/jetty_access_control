@@ -21,7 +21,7 @@ use jetty_core::{
     access_graph::AccessGraph,
     connectors::{ConnectorClient, NewConnector},
     fetch_credentials,
-    jetty::JettyConfig,
+    jetty::{ConnectorNamespace, CredentialsMap, JettyConfig},
     logging::{self, debug, info},
     project, Connector, Jetty,
 };
@@ -104,11 +104,17 @@ pub async fn cli() -> Result<()> {
                 info!("Fetching all data first.");
                 fetch(&None, &false).await?;
             }
-            let mut jetty = Jetty::new(project::jetty_cfg_path_local(), project::data_dir())?;
-            jetty.load_access_graph()?;
+            let mut jetty = new_jetty_with_connectors().await.map_err(|_| {
+                anyhow!(
+                    "unable to find {} - make sure you are in a \
+                Jetty project directory, or create a new project by running `jetty init`",
+                    project::jetty_cfg_path_local().display()
+                )
+            })?;
+
             match jetty.access_graph {
                 Some(ag) => jetty_explore::explore_web_ui(Arc::new(ag), bind).await,
-                None => bail!("unable to load access graph"),
+                None => bail!("it looks like you haven't successfully run `jetty fetch` before."),
             }
         }
         JettyCommand::Add => {
@@ -120,17 +126,11 @@ pub async fn cli() -> Result<()> {
 }
 
 async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()> {
-    let jetty = Jetty::new(project::jetty_cfg_path_local(), project::data_dir()).map_err(|_| {
+    let mut jetty = new_jetty_with_connectors().await.map_err(|_| {
         anyhow!(
             "unable to find {} - make sure you are in a \
         Jetty project directory, or create a new project by running `jetty init`",
             project::jetty_cfg_path_local().display()
-        )
-    })?;
-    let creds = fetch_credentials(project::connector_cfg_path()).map_err(|_| {
-        anyhow!(
-            "unable to find {} - you can set this up by running `jetty init`",
-            project::connector_cfg_path().display()
         )
     })?;
 
@@ -148,92 +148,17 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
         jetty.config.connectors
     };
 
-    for (namespace, config) in &selected_connectors {
-        match config.connector_type.as_str() {
-            "dbt" => {
-                let mut dbt = jetty_dbt::DbtConnector::new(
-                    &selected_connectors[namespace],
-                    &creds
-                        .get(namespace.to_string().as_str())
-                        .ok_or(anyhow!(
-                            "unable to find a connector called {} in {}",
-                            namespace,
-                            project::connector_cfg_path().display()
-                        ))?
-                        .to_owned(),
-                    Some(ConnectorClient::Core),
-                    Some(project::data_dir().join(namespace.to_string())),
-                )
-                .await?;
-
-                info!("getting {} data", namespace);
-                let now = Instant::now();
-                let dbt_data = dbt.get_data().await;
-                let dbt_pcd = (dbt_data, namespace.to_owned());
-                info!(
-                    "{} data took {:.1} seconds",
-                    namespace,
-                    now.elapsed().as_secs_f32()
-                );
-                data_from_connectors.push(dbt_pcd);
-            }
-            "snowflake" => {
-                let mut snow = jetty_snowflake::SnowflakeConnector::new(
-                    &selected_connectors[namespace],
-                    &creds
-                        .get(namespace.to_string().as_str())
-                        .ok_or(anyhow!(
-                            "unable to find a connector called {} in {}",
-                            namespace,
-                            project::connector_cfg_path().display()
-                        ))?
-                        .to_owned(),
-                    Some(ConnectorClient::Core),
-                    Some(project::data_dir().join(namespace.to_string())),
-                )
-                .await?;
-
-                info!("getting {} data", namespace);
-                let now = Instant::now();
-                let snow_data = snow.get_data().await;
-                let snow_pcd = (snow_data, namespace.to_owned());
-                info!(
-                    "{} data took {:.1} seconds",
-                    namespace,
-                    now.elapsed().as_secs_f32()
-                );
-                data_from_connectors.push(snow_pcd);
-            }
-            "tableau" => {
-                let mut tab = jetty_tableau::TableauConnector::new(
-                    &selected_connectors[namespace],
-                    &creds
-                        .get(namespace.to_string().as_str())
-                        .ok_or(anyhow!(
-                            "unable to find a connector called {} in {}",
-                            namespace,
-                            project::connector_cfg_path().display()
-                        ))?
-                        .to_owned(),
-                    Some(ConnectorClient::Core),
-                    Some(project::data_dir().join(namespace.to_string())),
-                )
-                .await?;
-
-                info!("getting {} data", namespace);
-                let now = Instant::now();
-                tab.setup().await?;
-                let tab_data = tab.get_data().await;
-                let tab_pcd = (tab_data, namespace.to_owned());
-                info!(
-                    "{} data took {:.1} seconds",
-                    namespace,
-                    now.elapsed().as_secs_f32()
-                );
-                data_from_connectors.push(tab_pcd);
-            }
-            o => bail!("unknown connector type: {o}"),
-        }
+    for (namespace, mut conn) in jetty.connectors {
+        info!("getting {} data", namespace);
+        let now = Instant::now();
+        let data = conn.get_data().await;
+        let pcd = (data, namespace.to_owned());
+        info!(
+            "{} data took {:.1} seconds",
+            namespace,
+            now.elapsed().as_secs_f32()
+        );
+        data_from_connectors.push(pcd);
     }
 
     info!("creating access graph");
@@ -263,25 +188,87 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
     Ok(())
 }
 
-/// Not the most elegant way to handle this, but it keeps jetty_core from having dependencies on any of the connectors
-fn update_connector_manifests(jetty: &mut Jetty) -> Result<()> {
-    let mut manifests = HashMap::new();
+async fn get_connectors(
+    creds: &HashMap<String, CredentialsMap>,
+    selected_connectors: &HashMap<ConnectorNamespace, jetty_core::jetty::ConnectorConfig>,
+) -> Result<HashMap<ConnectorNamespace, Box<dyn Connector>>> {
+    let mut connector_map: HashMap<ConnectorNamespace, Box<dyn Connector>> = HashMap::new();
 
-    for (namespace, config) in &jetty.config.connectors {
-        manifests.insert(
+    for (namespace, config) in selected_connectors {
+        connector_map.insert(
             namespace.to_owned(),
             match config.connector_type.as_str() {
-                "dbt" => jetty_dbt::DbtConnector::get_manifest(),
-                "snowflake" => jetty_snowflake::SnowflakeConnector::get_manifest(),
-                "tableau" => jetty_tableau::TableauConnector::get_manifest(),
-                _ => bail!(
+                "dbt" => {
+                    jetty_dbt::DbtConnector::new(
+                        &selected_connectors[namespace],
+                        &creds
+                            .get(namespace.to_string().as_str())
+                            .ok_or(anyhow!(
+                                "unable to find a connector called {} in {}",
+                                namespace,
+                                project::connector_cfg_path().display()
+                            ))?
+                            .to_owned(),
+                        Some(ConnectorClient::Core),
+                        Some(project::data_dir().join(namespace.to_string())),
+                    )
+                    .await?
+                }
+                "snowflake" => {
+                    jetty_snowflake::SnowflakeConnector::new(
+                        &selected_connectors[namespace],
+                        &creds
+                            .get(namespace.to_string().as_str())
+                            .ok_or(anyhow!(
+                                "unable to find a connector called {} in {}",
+                                namespace,
+                                project::connector_cfg_path().display()
+                            ))?
+                            .to_owned(),
+                        Some(ConnectorClient::Core),
+                        Some(project::data_dir().join(namespace.to_string())),
+                    )
+                    .await?
+                }
+                "tableau" => {
+                    jetty_tableau::TableauConnector::new(
+                        &selected_connectors[namespace],
+                        &creds
+                            .get(namespace.to_string().as_str())
+                            .ok_or(anyhow!(
+                                "unable to find a connector called {} in {}",
+                                namespace,
+                                project::connector_cfg_path().display()
+                            ))?
+                            .to_owned(),
+                        Some(ConnectorClient::Core),
+                        Some(project::data_dir().join(namespace.to_string())),
+                    )
+                    .await?
+                }
+                _ => panic!(
                     "unknown connector type: {}",
                     config.connector_type.to_owned()
                 ),
             },
         );
     }
+    Ok(connector_map)
+}
 
-    jetty.set_connector_manifests(manifests)?;
-    Ok(())
+/// Create a new Jetty struct with all the connectors place
+pub async fn new_jetty_with_connectors() -> Result<Jetty> {
+    let config = JettyConfig::read_from_file(project::jetty_cfg_path_local())
+        .context("Reading Jetty Config file")?;
+
+    let creds = fetch_credentials(project::connector_cfg_path()).map_err(|_| {
+        anyhow!(
+            "unable to find {} - you can set this up by running `jetty init`",
+            project::connector_cfg_path().display()
+        )
+    })?;
+
+    let connectors = get_connectors(&creds, &config.connectors).await?;
+
+    Jetty::new_with_config(config, project::data_dir(), connectors)
 }

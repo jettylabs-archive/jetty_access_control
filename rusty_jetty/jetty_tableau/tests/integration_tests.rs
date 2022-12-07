@@ -1,4 +1,4 @@
-use std::path::{Path};
+use std::path::Path;
 
 use dirs::home_dir;
 use jetty_core::{
@@ -13,7 +13,11 @@ use anyhow::Result;
 
 #[tokio::test]
 async fn test_fetch_data_works() -> Result<()> {
-    let jetty = Jetty::new("jetty_config.yaml", Path::new("data").into())?;
+    let jetty = Jetty::new(
+        "jetty_config.yaml",
+        Path::new("data").into(),
+        Default::default(),
+    )?;
     let creds = fetch_credentials(home_dir().unwrap().join(".jetty/connectors.yaml"))?;
     let mut tab = jetty_tableau::TableauConnector::new(
         &jetty.config.connectors[&ConnectorNamespace("tableau".to_owned())],

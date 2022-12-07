@@ -24,7 +24,7 @@ use super::{EdgeType, JettyNode, NodeName};
 use crate::logging::warn;
 
 /// The main graph wrapper
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Default)]
 pub(crate) struct Graph {
     pub(crate) graph: StableDiGraph<JettyNode, EdgeType>,
     /// A map of node identifiers to indices

@@ -34,6 +34,8 @@ pub trait Connector {
     async fn check(&self) -> bool;
     /// Get all data in one container for the connector to supply to the graph.
     async fn get_data(&mut self) -> ConnectorData;
+    /// Get the capabilities of a given connector. These can include
+    fn get_manifest(&self) -> ConnectorManifest;
 }
 
 /// The trait all connectors are expected to implement.
@@ -47,9 +49,6 @@ pub trait NewConnector {
         // A connector is allowed to create and write to this directory.
         data_dir: Option<PathBuf>,
     ) -> Result<Box<Self>>;
-
-    /// Get the capabilities of a given connector. These can include
-    fn get_manifest() -> ConnectorManifest;
 }
 
 /// The capabilities of a connector

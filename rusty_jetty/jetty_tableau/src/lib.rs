@@ -241,20 +241,6 @@ impl NewConnector for TableauConnector {
 
         Ok(Box::new(tableau_connector))
     }
-
-    fn get_manifest() -> ConnectorManifest {
-        ConnectorManifest {
-            capabilities: ConnectorCapabilities {
-                read: HashSet::from([
-                    ReadCapabilities::Assets,
-                    ReadCapabilities::Groups,
-                    ReadCapabilities::Policies,
-                    ReadCapabilities::Users,
-                ]),
-                write: HashSet::from([WriteCapabilities::Groups, WriteCapabilities::Policies]),
-            },
-        }
-    }
 }
 
 #[async_trait]
@@ -282,5 +268,19 @@ impl Connector for TableauConnector {
                     .to_owned(),
             ),
         )
+    }
+
+    fn get_manifest(&self) -> ConnectorManifest {
+        ConnectorManifest {
+            capabilities: ConnectorCapabilities {
+                read: HashSet::from([
+                    ReadCapabilities::Assets,
+                    ReadCapabilities::Groups,
+                    ReadCapabilities::Policies,
+                    ReadCapabilities::Users,
+                ]),
+                write: HashSet::from([WriteCapabilities::Groups, WriteCapabilities::Policies]),
+            },
+        }
     }
 }

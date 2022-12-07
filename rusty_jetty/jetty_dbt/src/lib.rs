@@ -70,15 +70,6 @@ impl NewConnector for DbtConnector {
             .context("creating dbt manifest object")?;
         Self::new_with_manifest(manifest)
     }
-
-    fn get_manifest() -> ConnectorManifest {
-        ConnectorManifest {
-            capabilities: ConnectorCapabilities {
-                read: HashSet::from([ReadCapabilities::AssetLineage]),
-                write: HashSet::from([]),
-            },
-        }
-    }
 }
 
 #[async_trait]
@@ -121,6 +112,15 @@ impl Connector for DbtConnector {
             effective_permissions: HashMap::new(),
             // Because dbt doesn't own any assets, it doesn't have a cual prefix
             cual_prefix: None,
+        }
+    }
+
+    fn get_manifest(&self) -> ConnectorManifest {
+        ConnectorManifest {
+            capabilities: ConnectorCapabilities {
+                read: HashSet::from([ReadCapabilities::AssetLineage]),
+                write: HashSet::from([]),
+            },
         }
     }
 }

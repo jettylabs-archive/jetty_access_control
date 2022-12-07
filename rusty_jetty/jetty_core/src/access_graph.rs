@@ -657,13 +657,13 @@ impl JettyEdge {
 }
 
 /// Representation of data access state
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct AccessGraph {
     /// The graph itself
     pub(crate) graph: graph::Graph,
     edge_cache: HashSet<JettyEdge>,
     /// Unix timestamp of when the graph was built
-    last_modified: OffsetDateTime,
+    last_modified: Option<OffsetDateTime>,
     /// The merged effective permissions from all connectors
     effective_permissions: SparseMatrix<UserIndex, AssetIndex, HashSet<EffectivePermission>>,
 }
@@ -694,7 +694,7 @@ impl AccessGraph {
                 node_ids: Default::default(),
             },
             edge_cache: HashSet::new(),
-            last_modified: OffsetDateTime::now_utc(),
+            last_modified: Some(OffsetDateTime::now_utc()),
             effective_permissions: Default::default(),
         };
         // Create all nodes first, then create edges.
@@ -820,13 +820,13 @@ impl AccessGraph {
         AccessGraph {
             graph: new_graph_with(nodes, edges).unwrap(),
             edge_cache: HashSet::new(),
-            last_modified: OffsetDateTime::now_utc(),
+            last_modified: Default::default(),
             effective_permissions: Default::default(),
         }
     }
 
     /// Get last modified date for access graph
-    pub fn get_last_modified(&self) -> OffsetDateTime {
+    pub fn get_last_modified(&self) -> Option<OffsetDateTime> {
         self.last_modified
     }
 

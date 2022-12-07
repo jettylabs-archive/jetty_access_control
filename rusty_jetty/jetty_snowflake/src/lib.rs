@@ -121,20 +121,6 @@ impl NewConnector for SnowflakeConnector {
             }))
         }
     }
-
-    fn get_manifest() -> ConnectorManifest {
-        ConnectorManifest {
-            capabilities: ConnectorCapabilities {
-                read: HashSet::from([
-                    ReadCapabilities::Assets,
-                    ReadCapabilities::Groups,
-                    ReadCapabilities::Policies,
-                    ReadCapabilities::Users,
-                ]),
-                write: HashSet::from([WriteCapabilities::Groups, WriteCapabilities::Policies]),
-            },
-        }
-    }
 }
 
 /// Main connector implementation.
@@ -161,6 +147,20 @@ impl Connector for SnowflakeConnector {
         // Fetch Snowflake Environment
         let mut c = coordinator::Coordinator::new(self);
         c.get_data().await
+    }
+
+    fn get_manifest(&self) -> ConnectorManifest {
+        ConnectorManifest {
+            capabilities: ConnectorCapabilities {
+                read: HashSet::from([
+                    ReadCapabilities::Assets,
+                    ReadCapabilities::Groups,
+                    ReadCapabilities::Policies,
+                    ReadCapabilities::Users,
+                ]),
+                write: HashSet::from([WriteCapabilities::Groups, WriteCapabilities::Policies]),
+            },
+        }
     }
 }
 
