@@ -238,7 +238,12 @@ impl Coordinator {
             .await;
 
         // get group membership
-        self.get_groups_users(&mut new_env.groups, &new_env.users)
+        let group_membership_futures =
+            self.get_groups_users(&mut new_env.groups, &new_env_clone.users);
+
+        futures::stream::iter(group_membership_futures)
+            .buffer_unordered(CONCURRENT_METADATA_FETCHES)
+            .collect::<Vec<_>>()
             .await;
 
         // update self.env
@@ -257,19 +262,16 @@ impl Coordinator {
 
     /// Get all the users for a map of groups. Returns a Vec of results that
     /// can be checked to know if any group membership was not fetched successfully
-    async fn get_groups_users(
-        &self,
-        groups: &mut HashMap<String, nodes::Group>,
-        users: &HashMap<String, nodes::User>,
-    ) -> Vec<Result<(), anyhow::Error>> {
-        futures::stream::iter(
-            groups
-                .iter_mut()
-                .map(|(_, v)| v.update_users(&self.rest_client, users)),
-        )
-        .buffer_unordered(CONCURRENT_METADATA_FETCHES)
-        .collect::<Vec<_>>()
-        .await
+    fn get_groups_users<'b>(
+        &'b self,
+        groups: &'b mut HashMap<String, nodes::Group>,
+        users: &'b HashMap<String, nodes::User>,
+    ) -> Vec<impl futures::Future<Output = Result<()>> + 'b> {
+        let fetches = groups
+            .values_mut()
+            .map(|d| d.update_users(&self.rest_client, users))
+            .collect::<Vec<_>>();
+        fetches
     }
 
     /// Return a Vec of futures (sort of - look at return type) that will fetch futures from

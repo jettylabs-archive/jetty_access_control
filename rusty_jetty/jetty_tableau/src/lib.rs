@@ -264,6 +264,7 @@ impl Connector for TableauConnector {
     }
 
     async fn get_data(&mut self) -> ConnectorData {
+        self.setup().await;
         let (groups, users, assets, tags, policies) = self.env_to_jetty_all();
         let effective_permissions = self.get_effective_permissions();
         ConnectorData::new(
