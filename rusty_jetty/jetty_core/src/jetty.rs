@@ -12,6 +12,7 @@ use uuid::Uuid;
 use yaml_peg::serde as yaml;
 
 use crate::access_graph::AccessGraph;
+use crate::connectors::ConnectorCapabilities;
 use crate::project;
 
 /// The user-defined namespace corresponding to the connector.
@@ -114,6 +115,12 @@ impl ConnectorConfig {
     }
 }
 
+/// A struct representing the built-in characteristics of a connector.
+pub struct ConnectorManifest {
+    /// The capabilities of the connector.
+    pub capabilities: ConnectorCapabilities,
+}
+
 /// Alias for HashMap to hold credentials information.
 pub type CredentialsMap = HashMap<String, String>;
 
@@ -136,20 +143,24 @@ pub struct Jetty {
     /// The directory where data (such as the materialized graph) should be stored
     data_dir: PathBuf,
     /// The access graph, if it exists
-    access_graph: Option<AccessGraph>,
+    pub access_graph: Option<AccessGraph>,
+    /// The connector manifests. This gives information about the capabilities of each connector. It's like
+    /// the config, but not user-configurable. It also provides a great source for a list of all available connectors.
+    connector_manifests: Option<HashMap<ConnectorNamespace, ConnectorManifest>>,
 }
 
 impl Jetty {
     /// Convenience method for struct creation. Uses the default location for
     /// config files.
     pub fn new<P: AsRef<Path>>(jetty_config_path: P, data_dir: PathBuf) -> Result<Self> {
-        // load a saved access graph or create an empty one
+        let config =
+            JettyConfig::read_from_file(jetty_config_path).context("Reading Jetty Config file")?;
 
         Ok(Jetty {
-            config: JettyConfig::read_from_file(jetty_config_path)
-                .context("Reading Jetty Config file")?,
+            config,
             data_dir,
             access_graph: None,
+            connector_manifests: None,
         })
     }
 
@@ -189,5 +200,19 @@ impl Jetty {
                 Err(e)
             }
         }
+    }
+
+    /// Setter for the connector manifests
+    pub fn set_connector_manifests(
+        &mut self,
+        manifests: HashMap<ConnectorNamespace, ConnectorManifest>,
+    ) -> Result<()> {
+        self.connector_manifests = Some(manifests);
+        Ok(())
+    }
+
+    /// Getter for a reference to the connector manifests.
+    pub fn connector_manifests(&self) -> &Option<HashMap<ConnectorNamespace, ConnectorManifest>> {
+        &self.connector_manifests
     }
 }

@@ -31,6 +31,7 @@ pub use entry_types::{
 use jetty_core::connectors::{
     ConnectorCapabilities, NewConnector, ReadCapabilities, WriteCapabilities,
 };
+use jetty_core::jetty::ConnectorManifest;
 use jetty_core::logging::error;
 use rest::{SnowflakeRequestConfig, SnowflakeRestClient, SnowflakeRestConfig};
 use serde::de::value::MapDeserializer;
@@ -121,15 +122,17 @@ impl NewConnector for SnowflakeConnector {
         }
     }
 
-    fn get_capabilities() -> ConnectorCapabilities {
-        ConnectorCapabilities {
-            read: HashSet::from([
-                ReadCapabilities::Assets,
-                ReadCapabilities::Groups,
-                ReadCapabilities::Policies,
-                ReadCapabilities::Users,
-            ]),
-            write: HashSet::from([WriteCapabilities::Groups, WriteCapabilities::Policies]),
+    fn get_manifest() -> ConnectorManifest {
+        ConnectorManifest {
+            capabilities: ConnectorCapabilities {
+                read: HashSet::from([
+                    ReadCapabilities::Assets,
+                    ReadCapabilities::Groups,
+                    ReadCapabilities::Policies,
+                    ReadCapabilities::Users,
+                ]),
+                write: HashSet::from([WriteCapabilities::Groups, WriteCapabilities::Policies]),
+            },
         }
     }
 }

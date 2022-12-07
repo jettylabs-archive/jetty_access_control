@@ -104,36 +104,11 @@ pub async fn cli() -> Result<()> {
                 info!("Fetching all data first.");
                 fetch(&None, &false).await?;
             }
-            match AccessGraph::deserialize_graph(
-                project::data_dir().join(project::graph_filename()),
-            ) {
-                Ok(mut ag) => {
-                    let tags_path = project::tags_cfg_path_local();
-                    if tags_path.exists() {
-                        debug!("Getting tags from config.");
-                        let tag_config = std::fs::read_to_string(&tags_path);
-                        match tag_config {
-                            Ok(c) => {
-                                ag.add_tags(&c)?;
-                            }
-                            Err(e) => {
-                                bail!(
-                                    "found, but was unable to read {:?}\nerror: {}",
-                                    tags_path,
-                                    e
-                                )
-                            }
-                        }
-                    } else {
-                        debug!("No tags file found. Skipping ingestion.")
-                    }
-
-                    jetty_explore::explore_web_ui(Arc::new(ag), bind).await;
-                }
-                Err(e) => info!(
-                    "Unable to find saved graph. Try running `jetty fetch`\nError: {}",
-                    e
-                ),
+            let mut jetty = Jetty::new(project::jetty_cfg_path_local(), project::data_dir())?;
+            jetty.load_access_graph()?;
+            match jetty.access_graph {
+                Some(ag) => jetty_explore::explore_web_ui(Arc::new(ag), bind).await,
+                None => bail!("unable to load access graph"),
             }
         }
         JettyCommand::Add => {
@@ -285,5 +260,25 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
         info!("Skipping visualization.")
     };
 
+    Ok(())
+}
+
+/// Not the most elegant way to handle this, but it keeps jetty_core from having dependencies on any of the connectors
+fn update_connector_manifests(jetty: &mut Jetty) -> Result<()> {
+    let manifests = HashMap::new();
+
+    for (namespace, config) in jetty.connectors {
+        manifests.insert(
+            namespace.to_owned(),
+            match config.connector_type.as_str() {
+                "dbt" => jetty_dbt::DbtConnector::get_manifest(),
+                "snowflake" => jetty_snowflake::SnowflakeConnector::get_manifest(),
+                "tableau" => jetty_tableau::TableauConnector::get_manifest(),
+                _ => bail!("unknown connector type: {}", config.connector_type),
+            },
+        )
+    }
+
+    jetty.set_connector_manifests(manifests);
     Ok(())
 }

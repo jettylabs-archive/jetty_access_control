@@ -25,7 +25,7 @@ use jetty_core::{
         nodes::{ConnectorData, RawAssetReference as JettyAssetReference},
         ConnectorCapabilities, NewConnector, ReadCapabilities,
     },
-    jetty::{ConnectorConfig, CredentialsMap},
+    jetty::{ConnectorConfig, ConnectorManifest, CredentialsMap},
     Connector,
 };
 
@@ -71,10 +71,12 @@ impl NewConnector for DbtConnector {
         Self::new_with_manifest(manifest)
     }
 
-    fn get_capabilities() -> ConnectorCapabilities {
-        ConnectorCapabilities {
-            read: HashSet::from([ReadCapabilities::AssetLineage]),
-            write: HashSet::from([]),
+    fn get_manifest() -> ConnectorManifest {
+        ConnectorManifest {
+            capabilities: ConnectorCapabilities {
+                read: HashSet::from([ReadCapabilities::AssetLineage]),
+                write: HashSet::from([]),
+            },
         }
     }
 }

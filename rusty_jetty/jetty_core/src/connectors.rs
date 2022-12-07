@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     connectors::nodes::ConnectorData,
-    jetty::{ConnectorConfig, CredentialsMap},
+    jetty::{ConnectorConfig, ConnectorManifest, CredentialsMap},
 };
 
 /// Client using the connector
@@ -49,7 +49,7 @@ pub trait NewConnector {
     ) -> Result<Box<Self>>;
 
     /// Get the capabilities of a given connector. These can include
-    fn get_capabilities() -> ConnectorCapabilities;
+    fn get_manifest() -> ConnectorManifest;
 }
 
 /// The capabilities of a connector
