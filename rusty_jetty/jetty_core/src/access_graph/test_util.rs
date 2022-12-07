@@ -4,8 +4,6 @@
 
 use anyhow::Result;
 
-
-
 use super::{graph::Graph, EdgeType, JettyEdge, JettyNode, NodeName};
 
 /// Abstract some of the boilerplate and make it easy to spin up a new graph

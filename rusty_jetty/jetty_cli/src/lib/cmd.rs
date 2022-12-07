@@ -7,8 +7,6 @@ use clap::{self, Parser, Subcommand};
 
 use jetty_core::logging::LevelFilter;
 
-
-
 /// Jetty CLI: Open-source data access control for modern teams
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None, arg_required_else_help = true)]

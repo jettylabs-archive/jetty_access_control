@@ -86,8 +86,12 @@ pub(crate) fn get_tableau_cual(
                             .expect("getting parent view for metric")
                             .to_owned(),
                     )
-                    .unwrap_or_else(|| panic!("Getting parent view {:#?} for metric {:#?}",
-                        immediate_parent_id, name));
+                    .unwrap_or_else(|| {
+                        panic!(
+                            "Getting parent view {:#?} for metric {:#?}",
+                            immediate_parent_id, name
+                        )
+                    });
                 let grandparent_workbook = env
                     .workbooks
                     .get(&parent_view.workbook_id)

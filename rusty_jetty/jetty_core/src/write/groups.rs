@@ -4,12 +4,12 @@ mod parser;
 
 use std::collections::{HashMap, HashSet};
 
-use anyhow::{bail, Result};
-use petgraph::stable_graph::NodeIndex;
+use anyhow::{anyhow, bail, Result};
 use serde::Deserialize;
 
 use crate::{
     access_graph::{AccessGraph, EdgeType, JettyNode, NodeName, PolicyAttributes},
+    connectors::WriteCapabilities,
     jetty::ConnectorNamespace,
     Jetty,
 };
@@ -132,40 +132,39 @@ fn validate_group_config(
 // Diff with existing graph
 fn generate_diff(
     groups: &HashMap<String, GroupConfig>,
-    ag: AccessGraph,
+    jetty: Jetty,
 ) -> Result<HashMap<NodeName, Diff>> {
     let mut group_diffs = HashMap::new();
     let mut policy_diffs = Vec::new();
 
+    let ag = jetty.access_graph.as_ref().ok_or_else(|| {
+        anyhow!("jetty initialized without an access graph; try running `jetty fetch` first")
+    })?;
+
     let mut ag_groups = ag.graph.nodes.groups.clone();
 
-    for (_, group) in groups {
-        // TODO: NodeName will depend on the settings in the config. If it's a single-connector group, that's easy. If it's a jetty group, we'll have to iterate
-        // over all connectors and see if there's a match.
+    // Writing groups is limited to the connectors that have the notion of a groups
+    let jetty_connector_names: HashSet<ConnectorNamespace> = jetty
+        .connector_manifests()
+        .into_iter()
+        .filter_map(|(n, m)| {
+            if m.capabilities.write.contains(&WriteCapabilities::Groups) {
+                Some(n.to_owned())
+            } else {
+                None
+            }
+        })
+        .collect();
+    let all_config_group_names = get_all_group_names(&groups, &jetty_connector_names)?;
 
-        // This should specifically be all the connectors that have the notion of a groups
-        let connector_names: HashSet<ConnectorNamespace> = HashSet::new();
+    for (group_name, group) in groups {
+        // get all the node names for the given group
+        let binding = all_config_group_names.clone();
+        let node_names = binding
+            .get(group_name)
+            .ok_or(anyhow!("group {} not found in config", group_name))?;
 
-        // build the NodeNames that we're working on -> give a connector, NodeName pair
-        let node_names = if let Some(prefix) = group
-            .name
-            .split("::")
-            .next()
-            .map(|p| ConnectorNamespace(p.to_string()))
-        {
-            if !connector_names.contains(&prefix) {
-                bail!("looking for connector with name `{}`, but there is no connector with that name", prefix);
-            };
-            vec![(NodeName::Group {
-                name: group.name.to_owned(),
-                origin: prefix.to_owned(),
-            }, prefix)]
-        } else {
-            // TODO: Get all the node names for the groups that will be generated across all connectors.
-            vec![]
-        };
-
-        for (node_name, origin)  in &node_names {
+        for (origin, node_name) in node_names {
             // check if the group exists, removing the key if it does
             if let Some(group_index) = ag_groups.remove(&node_name) {
                 // get all the users in the existing group and diff them
@@ -184,8 +183,17 @@ fn generate_diff(
                     .collect::<Vec<_>>();
 
                 let new = users_to_node_names(&group.members.users);
-                let new = new.into_iter().filter(|u| ag.get_node(u).unwrap().get_node_connectors().contains(origin)).collect();
 
+                // filter down to the relevant users
+                let new = new
+                    .into_iter()
+                    .filter(|u| {
+                        ag.get_node(u)
+                            .unwrap()
+                            .get_node_connectors()
+                            .contains(origin)
+                    })
+                    .collect();
 
                 let user_changes = diff_node_names(&old, &new);
 
@@ -204,8 +212,19 @@ fn generate_diff(
                     .map(|id| ag[*id].get_node_name())
                     .collect::<Vec<_>>();
 
-                let new = groups_to_node_names(&group.members.groups);
-                let new = new.into_iter().filter(|u| ag.get_node(u).unwrap().get_node_connectors().contains(origin)).collect();
+                let new =
+                    groups_to_node_names(&group.members.groups, &all_config_group_names, origin);
+
+                // filter and transform to the groups that match the config
+                let new = new
+                    .into_iter()
+                    .filter(|u| {
+                        ag.get_node(u)
+                            .unwrap()
+                            .get_node_connectors()
+                            .contains(origin)
+                    })
+                    .collect();
 
                 let group_changes = diff_node_names(&old, &new);
 
@@ -231,7 +250,7 @@ fn generate_diff(
                             connectors: match node_name {
                                 NodeName::Group {origin, .. } => HashSet::from([origin.to_owned()]),
                                 _ => bail!("internal error; expected to find a group, but found something else"),
-                            }, 
+                            },
                         },
                     );
                 };
@@ -244,13 +263,13 @@ fn generate_diff(
                         details: DiffDetails::AddGroup {
                             members: GroupMemberChanges {
                                 users: users_to_node_names(&group.members.users),
-                                groups: groups_to_node_names(&group.members.groups),
+                                groups: groups_to_node_names(&group.members.groups, &all_config_group_names, origin),
                             },
                         },
                         connectors: match node_name {
                             NodeName::Group {origin, .. } => HashSet::from([origin.to_owned()]),
                             _ => bail!("internal error; expected to find a group, but found something else"),
-                        }, 
+                        },
                     },
                 );
             }
@@ -264,9 +283,11 @@ fn generate_diff(
             Diff {
                 group_name: k.clone(),
                 details: DiffDetails::RemoveGroup,
-                connectors:  match k {
-                    NodeName::Group {ref origin, .. } => HashSet::from([origin.to_owned()]),
-                    _ => bail!("internal error; expected to find a group, but found something else"),
+                connectors: match k {
+                    NodeName::Group { ref origin, .. } => HashSet::from([origin.to_owned()]),
+                    _ => {
+                        bail!("internal error; expected to find a group, but found something else")
+                    }
                 },
             },
         );
@@ -322,17 +343,21 @@ fn users_to_node_names(users: &Option<Vec<MemberUser>>) -> Vec<NodeName> {
     }
 }
 
-fn groups_to_node_names(groups: &Option<Vec<MemberGroup>>) -> Vec<NodeName> {
+fn groups_to_node_names(
+    groups: &Option<Vec<MemberGroup>>,
+    all_groups: &HashMap<String, HashMap<ConnectorNamespace, NodeName>>,
+    origin: &ConnectorNamespace,
+) -> Vec<NodeName> {
     match groups {
         Some(groups) => groups
             .iter()
-            .map(|g| NodeName::Group {
-                name: g.name.to_owned(),
-                origin: ConnectorNamespace(if let Some(prefix) = g.name.split("::").next() {
-                    prefix.to_string()
-                } else {
-                    "Jetty".to_string()
-                }),
+            .map(|g| {
+                all_groups
+                    .get(&g.name)
+                    .unwrap()
+                    .get(origin)
+                    .unwrap()
+                    .to_owned()
             })
             .collect::<Vec<_>>(),
         None => Vec::new(),
@@ -360,4 +385,65 @@ fn diff_node_names(old: &Vec<NodeName>, new: &Vec<NodeName>) -> NodeNameListDiff
         .collect();
 
     NodeNameListDiff { add, remove }
+}
+
+/// Given a config, get all the final, connector-scoped node names for the groups.
+fn get_all_group_names(
+    groups: &HashMap<String, GroupConfig>,
+    jetty_connector_names: &HashSet<ConnectorNamespace>,
+) -> Result<HashMap<String, HashMap<ConnectorNamespace, NodeName>>> {
+    let mut res = HashMap::new();
+
+    for (group_name, group_config) in groups {
+        if let Some(prefix) = group_name
+            .split("::")
+            .next()
+            .map(|p| ConnectorNamespace(p.to_string()))
+        {
+            if !jetty_connector_names.contains(&prefix) {
+                bail!("looking for connector with name `{}`, but there is no connector with that name", prefix);
+            };
+            res.insert(
+                group_name.to_owned(),
+                HashMap::from([(
+                    prefix.to_owned(),
+                    NodeName::Group {
+                        name: group_name.to_owned(),
+                        origin: prefix.to_owned(),
+                    },
+                )]),
+            );
+        } else {
+            let mut inner_map = HashMap::new();
+
+            // Iterate through the Jetty connectors
+            for n in jetty_connector_names {
+                // set the default group name
+                let mut group_name = NodeName::Group {
+                    name: group_name.to_owned(),
+                    origin: n.to_owned(),
+                };
+                // are there custom names in the config?
+                if let Some(custom_names) = &group_config.connector_names {
+                    // look for a match
+                    if let Some(g) = custom_names.iter().find_map(|f| {
+                        if f.connector == *n {
+                            Some(NodeName::Group {
+                                name: f.alias.to_owned(),
+                                origin: n.to_owned(),
+                            })
+                        } else {
+                            None
+                        }
+                    }) {
+                        // If there is a match, update group_name
+                        group_name = g;
+                    };
+                };
+                inner_map.insert(n.to_owned(), group_name);
+            }
+            res.insert(group_name.to_owned(), inner_map);
+        };
+    }
+    Ok(res)
 }

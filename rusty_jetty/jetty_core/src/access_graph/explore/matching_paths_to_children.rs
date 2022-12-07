@@ -125,9 +125,7 @@ impl AccessGraph {
 #[cfg(test)]
 mod tests {
 
-    use crate::access_graph::{
-        GroupAttributes, NodeName, UserAttributes,
-    };
+    use crate::access_graph::{GroupAttributes, NodeName, UserAttributes};
 
     use anyhow::{anyhow, Result};
 
