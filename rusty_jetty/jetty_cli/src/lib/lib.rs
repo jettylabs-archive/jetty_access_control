@@ -6,7 +6,6 @@
 mod ascii;
 mod cmd;
 mod init;
-mod project;
 mod tui;
 mod usage_stats;
 
@@ -24,7 +23,7 @@ use jetty_core::{
     fetch_credentials,
     jetty::JettyConfig,
     logging::{self, debug, info},
-    Connector, Jetty,
+    project, Connector, Jetty,
 };
 
 use crate::{
@@ -61,7 +60,9 @@ pub async fn cli() -> Result<()> {
             JettyCommand::Init { .. } => UsageEvent::InvokedInit,
             JettyCommand::Fetch { .. } => UsageEvent::InvokedFetch {
                 connector_types: if let Some(c) = &jetty_config {
-                    c.connectors.values().map(|c| c.connector_type.to_owned())
+                    c.connectors
+                        .values()
+                        .map(|c| c.connector_type.to_owned())
                         .collect()
                 } else {
                     vec![]
@@ -160,8 +161,7 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
 
     let mut data_from_connectors = vec![];
 
-    
-
+    // Handle optionally fetching for only a few connectors
     let selected_connectors = if let Some(conns) = connectors {
         jetty
             .config

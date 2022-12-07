@@ -12,13 +12,11 @@ use anyhow::{bail, Context, Result};
 use jetty_core::{
     fetch_credentials,
     jetty::{CredentialsMap, JettyConfig},
+    project::{self, tags_cfg_path},
 };
 use tokio::io::AsyncWriteExt;
 
-use crate::{
-    init::fs::{create_dir_ignore_failure, create_file},
-    project::{self, tags_cfg_path},
-};
+use crate::init::fs::{create_dir_ignore_failure, create_file};
 
 use self::inquiry::{inquire_add, inquire_init};
 

@@ -4,12 +4,15 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::{collections::HashMap, fmt::Display};
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 
-use log::debug;
+use log::{debug, info};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use yaml_peg::serde as yaml;
+
+use crate::access_graph::AccessGraph;
+use crate::project;
 
 /// The user-defined namespace corresponding to the connector.
 #[derive(Clone, Deserialize, Debug, Hash, PartialEq, Eq, Default, PartialOrd, Ord, Serialize)]
@@ -132,6 +135,8 @@ pub struct Jetty {
     // connector_config: HashMap<String, ConnectorCredentials>,
     /// The directory where data (such as the materialized graph) should be stored
     data_dir: PathBuf,
+    /// The access graph, if it exists
+    access_graph: Option<AccessGraph>,
 }
 
 impl Jetty {
@@ -144,6 +149,45 @@ impl Jetty {
             config: JettyConfig::read_from_file(jetty_config_path)
                 .context("Reading Jetty Config file")?,
             data_dir,
+            access_graph: None,
         })
+    }
+
+    /// Load access graph from a file
+    pub fn load_access_graph(&mut self) -> Result<()> {
+        // try to load the graph
+        match AccessGraph::deserialize_graph(project::data_dir().join(project::graph_filename())) {
+            Ok(mut ag) => {
+                // add the tags to the graph
+                let tags_path = project::tags_cfg_path_local();
+                if tags_path.exists() {
+                    debug!("Getting tags from config.");
+                    let tag_config = std::fs::read_to_string(&tags_path);
+                    match tag_config {
+                        Ok(c) => {
+                            ag.add_tags(&c)?;
+                        }
+                        Err(e) => {
+                            bail!(
+                                "found, but was unable to read {:?}\nerror: {}",
+                                tags_path,
+                                e
+                            )
+                        }
+                    };
+                } else {
+                    debug!("No tags file found. Skipping ingestion.")
+                };
+                self.access_graph = Some(ag);
+                Ok(())
+            }
+            Err(e) => {
+                info!(
+                    "Unable to find saved graph. Try running `jetty fetch`\nError: {}",
+                    e
+                );
+                Err(e)
+            }
+        }
     }
 }

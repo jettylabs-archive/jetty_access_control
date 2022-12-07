@@ -5,9 +5,9 @@ use crate::{
         dbt::ask_dbt_connector_setup, snowflake::ask_snowflake_connector_setup,
         tableau::ask_tableau_connector_setup,
     },
-    project,
     tui::AltScreenContext,
 };
+use jetty_core::project;
 
 use std::{collections::HashMap, path::Path};
 
@@ -17,7 +17,8 @@ use inquire::{
     list_option::ListOption,
     set_global_render_config,
     ui::{RenderConfig, StyleSheet, Styled},
-    validator::Validation, MultiSelect, Text,
+    validator::Validation,
+    MultiSelect, Text,
 };
 use jetty_core::jetty::{ConnectorConfig, ConnectorNamespace, CredentialsMap, JettyConfig};
 

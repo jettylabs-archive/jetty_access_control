@@ -23,7 +23,7 @@ use jetty_core::{
     connectors::{
         nodes::ConnectorData,
         nodes::{self as jetty_nodes, EffectivePermission, SparseMatrix},
-        ConnectorClient, NewConnector,
+        ConnectorCapabilities, ConnectorClient, NewConnector, ReadCapabilities, WriteCapabilities,
     },
     cual::Cual,
     jetty::{ConnectorConfig, CredentialsMap},
@@ -36,7 +36,7 @@ use permissions::PermissionManager;
 
 use std::{
     collections::{HashMap, HashSet},
-    path::{PathBuf},
+    path::PathBuf,
 };
 
 /// Map wrapper for config values.
@@ -240,6 +240,18 @@ impl NewConnector for TableauConnector {
         };
 
         Ok(Box::new(tableau_connector))
+    }
+
+    fn get_capabilities() -> ConnectorCapabilities {
+        ConnectorCapabilities {
+            read: HashSet::from([
+                ReadCapabilities::Assets,
+                ReadCapabilities::Groups,
+                ReadCapabilities::Policies,
+                ReadCapabilities::Users,
+            ]),
+            write: HashSet::from([WriteCapabilities::Groups, WriteCapabilities::Policies]),
+        }
     }
 }
 

@@ -14,7 +14,7 @@ mod cual;
 mod manifest;
 
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     path::{Path, PathBuf},
 };
 
@@ -23,7 +23,7 @@ use jetty_core::{
     connectors::{
         self,
         nodes::{ConnectorData, RawAssetReference as JettyAssetReference},
-        NewConnector,
+        ConnectorCapabilities, NewConnector, ReadCapabilities,
     },
     jetty::{ConnectorConfig, CredentialsMap},
     Connector,
@@ -69,6 +69,13 @@ impl NewConnector for DbtConnector {
         let manifest = DbtManifest::new(&credentials["project_dir"])
             .context("creating dbt manifest object")?;
         Self::new_with_manifest(manifest)
+    }
+
+    fn get_capabilities() -> ConnectorCapabilities {
+        ConnectorCapabilities {
+            read: HashSet::from([ReadCapabilities::AssetLineage]),
+            write: HashSet::from([]),
+        }
     }
 }
 
@@ -118,10 +125,7 @@ impl Connector for DbtConnector {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        consts::VIEW,
-        manifest::node::{DbtModelNode},
-    };
+    use crate::{consts::VIEW, manifest::node::DbtModelNode};
 
     use super::*;
     use jetty_core::{

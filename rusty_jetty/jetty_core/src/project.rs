@@ -30,47 +30,53 @@ lazy_static! {
     static ref DEFAULT_KEY_DIR: PathBuf = PathBuf::from(".ssh");
 }
 
-pub(crate) fn tags_cfg_path<P: AsRef<Path>>(project_path: P) -> PathBuf {
+/// The path to tag configuration files
+pub fn tags_cfg_path<P: AsRef<Path>>(project_path: P) -> PathBuf {
     project_path.as_ref().join(tags_cfg_path_local())
 }
 
 /// Local path for the tags config.
-pub(crate) fn tags_cfg_path_local() -> PathBuf {
+pub fn tags_cfg_path_local() -> PathBuf {
     TAGS_DIR.as_path().join(TAGS_CFG.as_path())
 }
 
 /// Path for the connector config.
-pub(crate) fn connector_cfg_path() -> PathBuf {
+pub fn connector_cfg_path() -> PathBuf {
     home_dir()
         .expect("getting home dir")
         .join(PROFILE_CFG_DIR.as_path())
         .join(CONNECTOR_CFG.as_path())
 }
 
-pub(crate) fn jetty_cfg_path<P: AsRef<Path>>(project_path: P) -> PathBuf {
+/// Path for the jetty config.
+pub fn jetty_cfg_path<P: AsRef<Path>>(project_path: P) -> PathBuf {
     project_path.as_ref().join(JETTY_CFG.as_path())
 }
 
 /// Local path for the jetty config.
-pub(crate) fn jetty_cfg_path_local() -> PathBuf {
+pub fn jetty_cfg_path_local() -> PathBuf {
     JETTY_CFG.clone()
 }
 
-pub(crate) fn data_dir() -> PathBuf {
+/// Path for the data directory
+pub fn data_dir() -> PathBuf {
     DATA_DIR.clone()
 }
 
-pub(crate) fn graph_filename() -> PathBuf {
+/// Filename for the serialized access graph
+pub fn graph_filename() -> PathBuf {
     JETTY_GRAPH.clone()
 }
 
-pub(crate) fn default_keypair_dir_path() -> PathBuf {
+/// Path for the default key directory
+pub fn default_keypair_dir_path() -> PathBuf {
     home_dir()
         .expect("getting home dir")
         .join(DEFAULT_KEY_DIR.as_path())
 }
 
-pub(crate) fn user_id_file() -> PathBuf {
+/// Path to the user_id file
+pub fn user_id_file() -> PathBuf {
     home_dir()
         .expect("getting home dir")
         .join(PROFILE_CFG_DIR.as_path())

@@ -28,7 +28,9 @@ pub use entry_types::{
     Asset, Database, Entry, FutureGrant, Grant, GrantOf, GrantType, Object, Role, RoleName, Schema,
     StandardGrant, Table, User, View, Warehouse,
 };
-use jetty_core::connectors::NewConnector;
+use jetty_core::connectors::{
+    ConnectorCapabilities, NewConnector, ReadCapabilities, WriteCapabilities,
+};
 use jetty_core::logging::error;
 use rest::{SnowflakeRequestConfig, SnowflakeRestClient, SnowflakeRestConfig};
 use serde::de::value::MapDeserializer;
@@ -116,6 +118,18 @@ impl NewConnector for SnowflakeConnector {
                 client,
                 rest_client: SnowflakeRestClient::new(conn, SnowflakeRestConfig { retry: true })?,
             }))
+        }
+    }
+
+    fn get_capabilities() -> ConnectorCapabilities {
+        ConnectorCapabilities {
+            read: HashSet::from([
+                ReadCapabilities::Assets,
+                ReadCapabilities::Groups,
+                ReadCapabilities::Policies,
+                ReadCapabilities::Users,
+            ]),
+            write: HashSet::from([WriteCapabilities::Groups, WriteCapabilities::Policies]),
         }
     }
 }

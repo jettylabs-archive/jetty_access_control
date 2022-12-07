@@ -4,7 +4,7 @@
 pub mod nodes;
 pub mod processed_nodes;
 
-use std::path::{PathBuf};
+use std::{collections::HashSet, path::PathBuf};
 
 use anyhow::Result;
 use async_trait::async_trait;
@@ -47,6 +47,43 @@ pub trait NewConnector {
         // A connector is allowed to create and write to this directory.
         data_dir: Option<PathBuf>,
     ) -> Result<Box<Self>>;
+
+    /// Get the capabilities of a given connector. These can include
+    fn get_capabilities() -> ConnectorCapabilities;
+}
+
+/// The capabilities of a connector
+pub struct ConnectorCapabilities {
+    /// The write capabilities of the connector. Right now these can include:
+    /// groups, policies
+    pub write: HashSet<WriteCapabilities>,
+    /// The read capabilities of the connector. These could include:
+    /// asset_lineage, assets, groups, users, policies
+    pub read: HashSet<ReadCapabilities>,
+}
+
+#[derive(Hash, PartialEq, Eq, Clone, Debug)]
+/// Available read capabilities for connectors
+pub enum ReadCapabilities {
+    /// Read asset lineage
+    AssetLineage,
+    /// Read assets
+    Assets,
+    /// Read groups
+    Groups,
+    /// Read users
+    Users,
+    /// Read policies
+    Policies,
+}
+
+#[derive(Hash, PartialEq, Eq, Clone, Debug)]
+/// Available write capabilities for connectors
+pub enum WriteCapabilities {
+    /// Write Groups
+    Groups,
+    /// Write Policies
+    Policies,
 }
 
 /// Enum of identifiers used to resolve user identities
