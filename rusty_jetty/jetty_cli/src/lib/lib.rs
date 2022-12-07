@@ -265,20 +265,23 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
 
 /// Not the most elegant way to handle this, but it keeps jetty_core from having dependencies on any of the connectors
 fn update_connector_manifests(jetty: &mut Jetty) -> Result<()> {
-    let manifests = HashMap::new();
+    let mut manifests = HashMap::new();
 
-    for (namespace, config) in jetty.connectors {
+    for (namespace, config) in &jetty.config.connectors {
         manifests.insert(
             namespace.to_owned(),
             match config.connector_type.as_str() {
                 "dbt" => jetty_dbt::DbtConnector::get_manifest(),
                 "snowflake" => jetty_snowflake::SnowflakeConnector::get_manifest(),
                 "tableau" => jetty_tableau::TableauConnector::get_manifest(),
-                _ => bail!("unknown connector type: {}", config.connector_type),
+                _ => bail!(
+                    "unknown connector type: {}",
+                    config.connector_type.to_owned()
+                ),
             },
-        )
+        );
     }
 
-    jetty.set_connector_manifests(manifests);
+    jetty.set_connector_manifests(manifests)?;
     Ok(())
 }
