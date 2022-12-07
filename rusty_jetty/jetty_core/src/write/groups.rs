@@ -2,8 +2,9 @@
 
 mod parser;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
+use anyhow::{bail, Result};
 use petgraph::stable_graph::NodeIndex;
 use serde::Deserialize;
 
@@ -19,7 +20,6 @@ use super::policies;
 #[derive(Deserialize, Debug)]
 pub(crate) struct GroupConfig {
     name: String,
-    // This is nice to have, but ignore it for now
     connector_names: Option<Vec<ConnectorName>>,
     members: GroupMembers,
     pos: u64,
@@ -57,8 +57,8 @@ struct GroupConfigError {
 
 struct Diff {
     group_name: NodeName,
-    // This is a vec because you might both add and remove users
-    details: Vec<DiffDetails>,
+    details: DiffDetails,
+    connectors: HashSet<ConnectorNamespace>,
 }
 
 enum DiffDetails {
@@ -133,99 +133,127 @@ fn validate_group_config(
 fn generate_diff(
     groups: &HashMap<String, GroupConfig>,
     ag: AccessGraph,
-) -> HashMap<NodeName, Diff> {
+) -> Result<HashMap<NodeName, Diff>> {
     let mut group_diffs = HashMap::new();
     let mut policy_diffs = Vec::new();
 
     let mut ag_groups = ag.graph.nodes.groups.clone();
 
     for (_, group) in groups {
-        // build the NodeName
-        let node_name = NodeName::Group {
-            name: group.name.to_owned(),
-            origin: ConnectorNamespace(if let Some(prefix) = group.name.split("::").next() {
-                prefix.to_string()
-            } else {
-                "Jetty".to_string()
-            }),
+        // TODO: NodeName will depend on the settings in the config. If it's a single-connector group, that's easy. If it's a jetty group, we'll have to iterate
+        // over all connectors and see if there's a match.
+
+        // This should specifically be all the connectors that have the notion of a groups
+        let connector_names: HashSet<ConnectorNamespace> = HashSet::new();
+
+        // build the NodeNames that we're working on -> give a connector, NodeName pair
+        let node_names = if let Some(prefix) = group
+            .name
+            .split("::")
+            .next()
+            .map(|p| ConnectorNamespace(p.to_string()))
+        {
+            if !connector_names.contains(&prefix) {
+                bail!("looking for connector with name `{}`, but there is no connector with that name", prefix);
+            };
+            vec![(NodeName::Group {
+                name: group.name.to_owned(),
+                origin: prefix.to_owned(),
+            }, prefix)]
+        } else {
+            // TODO: Get all the node names for the groups that will be generated across all connectors.
+            vec![]
         };
 
-        // check if the group exists, removing the key if it does
-        if let Some(group_index) = ag_groups.remove(&node_name) {
-            // get all the users in the existing group and diff them
-            let ag_member_users = ag.get_matching_children(
-                group_index,
-                |e| matches!(e, EdgeType::Includes),
-                |_| false,
-                |n| matches!(n, JettyNode::User(_)),
-                None,
-                None,
-            );
+        for (node_name, origin)  in &node_names {
+            // check if the group exists, removing the key if it does
+            if let Some(group_index) = ag_groups.remove(&node_name) {
+                // get all the users in the existing group and diff them
+                let ag_member_users = ag.get_matching_children(
+                    group_index,
+                    |e| matches!(e, EdgeType::Includes),
+                    |_| false,
+                    |n| matches!(n, JettyNode::User(_)),
+                    None,
+                    None,
+                );
 
-            let old = ag_member_users
-                .iter()
-                .map(|id| ag[*id].get_node_name())
-                .collect::<Vec<_>>();
+                let old = ag_member_users
+                    .iter()
+                    .map(|id| ag[*id].get_node_name())
+                    .collect::<Vec<_>>();
 
-            let new = users_to_node_names(&group.members.users);
+                let new = users_to_node_names(&group.members.users);
+                let new = new.into_iter().filter(|u| ag.get_node(u).unwrap().get_node_connectors().contains(origin)).collect();
 
-            let user_changes = diff_node_names(&old, &new);
 
-            // get all the groups in the existing group and diff them
-            let ag_member_groups = ag.get_matching_children(
-                group_index,
-                |e| matches!(e, EdgeType::Includes),
-                |_| false,
-                |n| matches!(n, JettyNode::Group(_)),
-                None,
-                None,
-            );
+                let user_changes = diff_node_names(&old, &new);
 
-            let old = ag_member_groups
-                .iter()
-                .map(|id| ag[*id].get_node_name())
-                .collect::<Vec<_>>();
+                // get all the groups in the existing group and diff them
+                let ag_member_groups = ag.get_matching_children(
+                    group_index,
+                    |e| matches!(e, EdgeType::Includes),
+                    |_| false,
+                    |n| matches!(n, JettyNode::Group(_)),
+                    None,
+                    None,
+                );
 
-            let new = groups_to_node_names(&group.members.groups);
+                let old = ag_member_groups
+                    .iter()
+                    .map(|id| ag[*id].get_node_name())
+                    .collect::<Vec<_>>();
 
-            let group_changes = diff_node_names(&old, &new);
+                let new = groups_to_node_names(&group.members.groups);
+                let new = new.into_iter().filter(|u| ag.get_node(u).unwrap().get_node_connectors().contains(origin)).collect();
 
-            if !user_changes.add.is_empty()
-                || !group_changes.add.is_empty()
-                || !user_changes.remove.is_empty()
-                || !group_changes.remove.is_empty()
-            {
+                let group_changes = diff_node_names(&old, &new);
+
+                if !user_changes.add.is_empty()
+                    || !group_changes.add.is_empty()
+                    || !user_changes.remove.is_empty()
+                    || !group_changes.remove.is_empty()
+                {
+                    group_diffs.insert(
+                        node_name.clone(),
+                        Diff {
+                            group_name: node_name.clone(),
+                            details: DiffDetails::ModifyGroup {
+                                add: GroupMemberChanges {
+                                    users: user_changes.add,
+                                    groups: group_changes.add,
+                                },
+                                remove: GroupMemberChanges {
+                                    users: user_changes.remove,
+                                    groups: group_changes.remove,
+                                },
+                            },
+                            connectors: match node_name {
+                                NodeName::Group {origin, .. } => HashSet::from([origin.to_owned()]),
+                                _ => bail!("internal error; expected to find a group, but found something else"),
+                            }, 
+                        },
+                    );
+                };
+            } else {
+                // if it doesn't exist, add a new group diff, with all the appropriate users
                 group_diffs.insert(
                     node_name.clone(),
                     Diff {
                         group_name: node_name.clone(),
-                        details: vec![DiffDetails::ModifyGroup {
-                            add: GroupMemberChanges {
-                                users: user_changes.add,
-                                groups: group_changes.add,
+                        details: DiffDetails::AddGroup {
+                            members: GroupMemberChanges {
+                                users: users_to_node_names(&group.members.users),
+                                groups: groups_to_node_names(&group.members.groups),
                             },
-                            remove: GroupMemberChanges {
-                                users: user_changes.remove,
-                                groups: group_changes.remove,
-                            },
-                        }],
+                        },
+                        connectors: match node_name {
+                            NodeName::Group {origin, .. } => HashSet::from([origin.to_owned()]),
+                            _ => bail!("internal error; expected to find a group, but found something else"),
+                        }, 
                     },
                 );
-            };
-        } else {
-            // if it doesn't exist, add a new group diff, with all the appropriate users
-            group_diffs.insert(
-                node_name.clone(),
-                Diff {
-                    group_name: node_name.clone(),
-                    details: vec![DiffDetails::AddGroup {
-                        members: GroupMemberChanges {
-                            users: users_to_node_names(&group.members.users),
-                            groups: groups_to_node_names(&group.members.groups),
-                        },
-                    }],
-                },
-            );
+            }
         }
     }
 
@@ -235,7 +263,11 @@ fn generate_diff(
             k.clone(),
             Diff {
                 group_name: k.clone(),
-                details: vec![DiffDetails::RemoveGroup],
+                details: DiffDetails::RemoveGroup,
+                connectors:  match k {
+                    NodeName::Group {ref origin, .. } => HashSet::from([origin.to_owned()]),
+                    _ => bail!("internal error; expected to find a group, but found something else"),
+                },
             },
         );
 
@@ -249,6 +281,7 @@ fn generate_diff(
             Some(1),
         );
 
+        // Iterate over the policies that we need to remove
         for policy_index in remove_policies {
             let policy = match TryInto::<PolicyAttributes>::try_into(ag[policy_index].clone()) {
                 Ok(p) => p,
@@ -264,17 +297,19 @@ fn generate_diff(
                 Some(1),
             );
 
+            // iterate over the policy targets to build the diff structs
             for target in policy_targets {
                 policy_diffs.push(policies::Diff {
                     asset: ag[target].get_node_name(),
                     agent: k.clone(),
                     details: vec![policies::DiffDetails::RemovePolicy],
+                    connectors: policy.connectors.to_owned(),
                 });
             }
         }
     }
 
-    group_diffs
+    Ok(group_diffs)
 }
 
 fn users_to_node_names(users: &Option<Vec<MemberUser>>) -> Vec<NodeName> {
