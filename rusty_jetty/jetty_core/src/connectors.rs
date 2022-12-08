@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     connectors::nodes::ConnectorData,
     jetty::{ConnectorConfig, ConnectorManifest, CredentialsMap},
+    write,
 };
 
 /// Client using the connector
@@ -36,6 +37,9 @@ pub trait Connector {
     async fn get_data(&mut self) -> ConnectorData;
     /// Get the capabilities of a given connector. These can include
     fn get_manifest(&self) -> ConnectorManifest;
+    /// Plan changes, based on a set of diffs. Can have a todo!() implementation if a connector doesn't have
+    /// write capabilities
+    fn plan_changes(&self, diffs: write::Diffs) -> Vec<String>;
 }
 
 /// The trait all connectors are expected to implement.

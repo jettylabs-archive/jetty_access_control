@@ -26,6 +26,7 @@ use jetty_core::{
         ConnectorCapabilities, NewConnector, ReadCapabilities,
     },
     jetty::{ConnectorConfig, ConnectorManifest, CredentialsMap},
+    write::Diffs,
     Connector,
 };
 
@@ -122,6 +123,10 @@ impl Connector for DbtConnector {
                 write: HashSet::from([]),
             },
         }
+    }
+
+    fn plan_changes(&self, _: Diffs) -> Vec<std::string::String> {
+        todo!()
     }
 }
 

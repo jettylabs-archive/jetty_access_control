@@ -789,6 +789,10 @@ mod tests {
                 },
             }
         }
+
+        fn plan_changes(&self, diffs: crate::write::Diffs) -> Vec<String> {
+            todo!()
+        }
     }
 
     pub(crate) fn get_jetty() -> Jetty {

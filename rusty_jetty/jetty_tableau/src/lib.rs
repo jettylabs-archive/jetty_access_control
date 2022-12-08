@@ -28,6 +28,7 @@ use jetty_core::{
     cual::Cual,
     jetty::{ConnectorConfig, ConnectorManifest, CredentialsMap},
     permissions::matrix::Merge,
+    write::Diffs,
     Connector,
 };
 
@@ -285,5 +286,9 @@ impl Connector for TableauConnector {
                 ]),
             },
         }
+    }
+
+    fn plan_changes(&self, _: Diffs) -> Vec<std::string::String> {
+        todo!()
     }
 }

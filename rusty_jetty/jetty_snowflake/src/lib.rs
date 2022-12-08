@@ -33,6 +33,7 @@ use jetty_core::connectors::{
 };
 use jetty_core::jetty::ConnectorManifest;
 use jetty_core::logging::error;
+use jetty_core::write::Diffs;
 use rest::{SnowflakeRequestConfig, SnowflakeRestClient, SnowflakeRestConfig};
 use serde::de::value::MapDeserializer;
 
@@ -164,6 +165,9 @@ impl Connector for SnowflakeConnector {
                 ]),
             },
         }
+    }
+    fn plan_changes(&self, _: Diffs) -> Vec<std::string::String> {
+        todo!()
     }
 }
 
