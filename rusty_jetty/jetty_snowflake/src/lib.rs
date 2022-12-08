@@ -158,7 +158,10 @@ impl Connector for SnowflakeConnector {
                     ReadCapabilities::Policies,
                     ReadCapabilities::Users,
                 ]),
-                write: HashSet::from([WriteCapabilities::Groups, WriteCapabilities::Policies]),
+                write: HashSet::from([
+                    WriteCapabilities::Groups { nested: true },
+                    WriteCapabilities::Policies,
+                ]),
             },
         }
     }

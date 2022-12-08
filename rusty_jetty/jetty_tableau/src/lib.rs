@@ -279,7 +279,10 @@ impl Connector for TableauConnector {
                     ReadCapabilities::Policies,
                     ReadCapabilities::Users,
                 ]),
-                write: HashSet::from([WriteCapabilities::Groups, WriteCapabilities::Policies]),
+                write: HashSet::from([
+                    WriteCapabilities::Groups { nested: false },
+                    WriteCapabilities::Policies,
+                ]),
             },
         }
     }

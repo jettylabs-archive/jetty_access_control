@@ -146,19 +146,31 @@ fn generate_diff(
 
     let mut ag_groups = ag.graph.nodes.groups.clone();
 
-    // Writing groups is limited to the connectors that have the notion of a groups
-    let jetty_connector_names: HashSet<ConnectorNamespace> = jetty
+    // Writing groups is limited to the connectors that have the notion of a groups, and we keep information about whether
+    // nested groups are allowed
+    let jetty_connector_names: HashMap<ConnectorNamespace, bool> = jetty
         .connector_manifests()
         .into_iter()
         .filter_map(|(n, m)| {
-            if m.capabilities.write.contains(&WriteCapabilities::Groups) {
-                Some(n.to_owned())
+            if m.capabilities
+                .write
+                .contains(&WriteCapabilities::Groups { nested: true })
+            {
+                Some((n.to_owned(), true))
+            } else if m
+                .capabilities
+                .write
+                .contains(&WriteCapabilities::Groups { nested: false })
+            {
+                Some((n.to_owned(), false))
             } else {
                 None
             }
         })
         .collect();
-    let all_config_group_names = get_all_group_names(&groups, &jetty_connector_names)?;
+
+    let all_config_group_names =
+        get_all_group_names(&groups, jetty_connector_names.keys().collect())?;
 
     for (group_name, group) in groups {
         // get all the node names for the given group
@@ -185,7 +197,14 @@ fn generate_diff(
                     .map(|id| ag[*id].get_node_name())
                     .collect::<Vec<_>>();
 
-                let new = users_to_node_names(&group.members.users);
+                // Depends on whether nested groups are allowed
+                let new = if jetty_connector_names[origin] {
+                    users_to_node_names(&group.members.users)
+                } else {
+                    get_all_inherited_users(&groups, group_name)
+                        .into_iter()
+                        .collect()
+                };
 
                 // filter down to the relevant users
                 let new = new
@@ -215,8 +234,12 @@ fn generate_diff(
                     .map(|id| ag[*id].get_node_name())
                     .collect::<Vec<_>>();
 
-                let new =
-                    groups_to_node_names(&group.members.groups, &all_config_group_names, origin);
+                // depends on whether nested groups are allowed
+                let new = if jetty_connector_names[origin] {
+                    groups_to_node_names(&group.members.groups, &all_config_group_names, origin)
+                } else {
+                    Vec::new()
+                };
 
                 // filter and transform to the groups that match the config
                 let new = new
@@ -399,7 +422,7 @@ fn diff_node_names(old: &Vec<NodeName>, new: &Vec<NodeName>) -> NodeNameListDiff
 /// Given a config, get all the final, connector-scoped node names for the groups.
 fn get_all_group_names(
     groups: &HashMap<String, GroupConfig>,
-    jetty_connector_names: &HashSet<ConnectorNamespace>,
+    jetty_connector_names: HashSet<&ConnectorNamespace>,
 ) -> Result<HashMap<String, HashMap<ConnectorNamespace, NodeName>>> {
     let mut res = HashMap::new();
 
@@ -425,7 +448,7 @@ fn get_all_group_names(
             let mut inner_map = HashMap::new();
 
             // Iterate through the Jetty connectors
-            for n in jetty_connector_names {
+            for &n in &jetty_connector_names {
                 // set the default group name
                 let mut group_name = NodeName::Group {
                     name: group_name.to_owned(),
@@ -454,6 +477,27 @@ fn get_all_group_names(
         };
     }
     Ok(res)
+}
+
+/// Return all of the users of a given group, including from nested groups
+fn get_all_inherited_users(
+    groups: &HashMap<String, GroupConfig>,
+    target_group_name: &String,
+) -> HashSet<NodeName> {
+    let mut res = HashSet::new();
+    // get the target groups
+    let target_group = &groups[target_group_name];
+    // Add the explicit users to the list
+    if let Some(group_users) = &target_group.members.users {
+        res.extend(group_users.iter().map(|u| NodeName::User(u.name.clone())));
+    }
+    // Add the groups users to the list
+    if let Some(group_groups) = &target_group.members.groups {
+        for g in group_groups {
+            res.extend(get_all_inherited_users(groups, &g.name));
+        }
+    }
+    res
 }
 
 #[cfg(test)]
@@ -589,7 +633,9 @@ mod tests {
         )
     }
 
-    struct DummyConn {}
+    struct DummyConn {
+        nested: bool,
+    }
     impl Connector for DummyConn {
         fn check<'life0, 'async_trait>(
             &'life0 self,
@@ -622,7 +668,9 @@ mod tests {
         fn get_manifest(&self) -> crate::jetty::ConnectorManifest {
             crate::jetty::ConnectorManifest {
                 capabilities: ConnectorCapabilities {
-                    write: HashSet::from([WriteCapabilities::Groups]),
+                    write: HashSet::from([WriteCapabilities::Groups {
+                        nested: self.nested,
+                    }]),
                     read: HashSet::new(),
                 },
             }
@@ -631,8 +679,14 @@ mod tests {
 
     fn get_jetty() -> Jetty {
         let mut connectors: HashMap<ConnectorNamespace, Box<dyn Connector>> = HashMap::new();
-        connectors.insert(ConnectorNamespace("c1".to_string()), Box::new(DummyConn {}));
-        connectors.insert(ConnectorNamespace("c2".to_string()), Box::new(DummyConn {}));
+        connectors.insert(
+            ConnectorNamespace("c1".to_string()),
+            Box::new(DummyConn { nested: true }),
+        );
+        connectors.insert(
+            ConnectorNamespace("c2".to_string()),
+            Box::new(DummyConn { nested: true }),
+        );
         let mut jetty =
             Jetty::new_with_config(Default::default(), PathBuf::default(), connectors).unwrap();
         jetty.access_graph = Some(get_test_graph());
@@ -696,6 +750,53 @@ g3:
         dbg!(errors);
         let diff = generate_diff(&parsed_config, &jetty);
         assert_eq!(diff?.len(), 0);
+        Ok(())
+    }
+
+    #[test]
+    fn inherited_users_works() -> Result<()> {
+        let jetty = get_jetty();
+        let group_config = r#"
+c1::g1:
+    members:
+        users:
+            - u1
+            - u2
+c2::g2:
+    members:
+        users:
+            - u3
+            - u2
+        groups:
+            - g3
+g3:
+    members:
+        users:
+            - u1
+            - u3
+"#;
+        let parsed_config = parse_groups(&group_config.to_owned())?;
+
+        let errors = validate_group_config(&parsed_config, &jetty);
+        dbg!(errors);
+
+        assert_eq!(
+            get_all_inherited_users(&parsed_config, &"c2::g2".to_owned()),
+            HashSet::from([
+                NodeName::User("u1".to_owned()),
+                NodeName::User("u2".to_owned()),
+                NodeName::User("u3".to_owned())
+            ])
+        );
+
+        assert_eq!(
+            get_all_inherited_users(&parsed_config, &"g3".to_owned()),
+            HashSet::from([
+                NodeName::User("u1".to_owned()),
+                NodeName::User("u3".to_owned())
+            ])
+        );
+
         Ok(())
     }
 }

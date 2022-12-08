@@ -79,8 +79,11 @@ pub enum ReadCapabilities {
 #[derive(Hash, PartialEq, Eq, Clone, Debug)]
 /// Available write capabilities for connectors
 pub enum WriteCapabilities {
-    /// Write Groups
-    Groups,
+    /// Write groups, and whether groups can be nested inside groups
+    Groups {
+        /// Whether other groups can be nested in groups
+        nested: bool,
+    },
     /// Write Policies
     Policies,
 }
