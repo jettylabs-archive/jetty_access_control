@@ -3,15 +3,22 @@
 pub(crate) mod bootstrap;
 mod parser;
 
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fmt::Display,
+    fs,
+};
 
 use anyhow::{anyhow, bail, Result};
+use colored::Colorize;
 use serde::Deserialize;
 
 use crate::{
     access_graph::{AccessGraph, EdgeType, JettyNode, NodeName, PolicyAttributes},
     connectors::WriteCapabilities,
     jetty::ConnectorNamespace,
+    project,
+    write::parser_common::indicated_msg,
     Jetty,
 };
 
@@ -58,10 +65,10 @@ struct GroupConfigError {
 }
 
 #[derive(Debug)]
-struct Diff {
+pub struct Diff {
     group_name: NodeName,
     details: DiffDetails,
-    connectors: HashSet<ConnectorNamespace>,
+    connector: ConnectorNamespace,
 }
 
 #[derive(Debug)]
@@ -87,10 +94,77 @@ struct NodeNameListDiff {
     remove: Vec<NodeName>,
 }
 
+impl Display for Diff {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut text = "".to_owned();
+        match &self.details {
+            DiffDetails::AddGroup { members } => {
+                text += format!(
+                    "{}{}\n",
+                    "+ group: ".green(),
+                    self.group_name.to_string().green()
+                )
+                .as_str();
+                if !members.users.is_empty() {
+                    text += "    users:\n"
+                };
+                for user in &members.users {
+                    text +=
+                        format!("{}{}\n", "      + ".green(), user.to_string().green()).as_str();
+                }
+                if !members.groups.is_empty() {
+                    text += "    groups:\n"
+                };
+                for group in &members.groups {
+                    text +=
+                        format!("{}{}\n", "      + ".green(), group.to_string().green()).as_str();
+                }
+            }
+            DiffDetails::RemoveGroup => {
+                text += format!(
+                    "{}{}\n",
+                    "- group: ".red(),
+                    self.group_name.to_string().red()
+                )
+                .as_str();
+            }
+            DiffDetails::ModifyGroup { add, remove } => {
+                text += format!(
+                    "{}{}\n",
+                    "~ group: ".yellow(),
+                    self.group_name.to_string().yellow()
+                )
+                .as_str();
+                if !add.users.is_empty() || !remove.users.is_empty() {
+                    text += "    users:\n"
+                };
+                for user in &add.users {
+                    text +=
+                        format!("{}{}\n", "      + ".green(), user.to_string().green()).as_str();
+                }
+                for user in &remove.users {
+                    text += format!("{}{}\n", "      - ".red(), user.to_string().red()).as_str();
+                }
+                if !add.groups.is_empty() || !remove.groups.is_empty() {
+                    text += "    groups:\n"
+                };
+                for group in &add.groups {
+                    text +=
+                        format!("{}{}\n", "      + ".green(), group.to_string().green()).as_str();
+                }
+                for group in &remove.groups {
+                    text += format!("{}{}\n", "      - ".red(), group.to_string().red()).as_str();
+                }
+            }
+        }
+        write!(f, "{text}")
+    }
+}
+
 /// Validate group config by making sure that users, groups, and listed connectors exist. Returns a vec of errors. If the vec is empty, there were no errors.
 /// This allows all errors to be displayed at once.
 fn validate_group_config(
-    groups: &HashMap<String, GroupConfig>,
+    groups: &BTreeMap<String, GroupConfig>,
     jetty: &Jetty,
 ) -> Vec<GroupConfigError> {
     let mut errors: Vec<GroupConfigError> = Vec::new();
@@ -119,7 +193,7 @@ fn validate_group_config(
         // Check that the connectors exist
         if let Some(connector_names) = &config.connector_names {
             for n in connector_names {
-                if !jetty.config.connectors.contains_key(&n.connector) {
+                if !jetty.connectors.contains_key(&n.connector) {
                     errors.push(GroupConfigError { message:format!("configuration refers to a connector called `{}`, but there is no connector with that name in the project", &n.connector), pos: n.pos })
                 }
             }
@@ -140,10 +214,10 @@ fn validate_group_config(
 
 // Diff with existing graph
 fn generate_diff(
-    groups: &HashMap<String, GroupConfig>,
+    groups: &BTreeMap<String, GroupConfig>,
     jetty: &Jetty,
-) -> Result<HashMap<NodeName, Diff>> {
-    let mut group_diffs = HashMap::new();
+) -> Result<BTreeMap<NodeName, Diff>> {
+    let mut group_diffs = BTreeMap::new();
     let mut policy_diffs = Vec::new();
 
     let ag = jetty.access_graph.as_ref().ok_or_else(|| {
@@ -154,7 +228,7 @@ fn generate_diff(
 
     // Writing groups is limited to the connectors that have the notion of a groups, and we keep information about whether
     // nested groups are allowed
-    let jetty_connector_names: HashMap<ConnectorNamespace, bool> = jetty
+    let jetty_connector_names: BTreeMap<ConnectorNamespace, bool> = jetty
         .connector_manifests()
         .into_iter()
         .filter_map(|(n, m)| {
@@ -285,8 +359,8 @@ fn generate_diff(
                                     groups: group_changes.remove,
                                 },
                             },
-                            connectors: match node_name {
-                                NodeName::Group {origin, .. } => HashSet::from([origin.to_owned()]),
+                            connector: match node_name {
+                                NodeName::Group {origin, .. } => origin.to_owned(),
                                 _ => bail!("internal error; expected to find a group, but found something else"),
                             },
                         },
@@ -304,8 +378,8 @@ fn generate_diff(
                                 groups: groups_to_node_names(&group.members.groups, &all_config_group_names, origin),
                             },
                         },
-                        connectors: match node_name {
-                            NodeName::Group {origin, .. } => HashSet::from([origin.to_owned()]),
+                        connector: match node_name {
+                            NodeName::Group {origin, .. } => origin.to_owned(),
                             _ => bail!("internal error; expected to find a group, but found something else"),
                         },
                     },
@@ -321,8 +395,8 @@ fn generate_diff(
             Diff {
                 group_name: k.clone(),
                 details: DiffDetails::RemoveGroup,
-                connectors: match k {
-                    NodeName::Group { ref origin, .. } => HashSet::from([origin.to_owned()]),
+                connector: match k {
+                    NodeName::Group { ref origin, .. } => origin.to_owned(),
                     _ => {
                         bail!("internal error; expected to find a group, but found something else")
                     }
@@ -383,7 +457,7 @@ fn users_to_node_names(users: &Option<Vec<MemberUser>>) -> Vec<NodeName> {
 
 fn groups_to_node_names(
     groups: &Option<Vec<MemberGroup>>,
-    all_groups: &HashMap<String, HashMap<ConnectorNamespace, NodeName>>,
+    all_groups: &BTreeMap<String, BTreeMap<ConnectorNamespace, NodeName>>,
     origin: &ConnectorNamespace,
 ) -> Vec<NodeName> {
     match groups {
@@ -422,10 +496,10 @@ fn diff_node_names(old: &Vec<NodeName>, new: &Vec<NodeName>) -> NodeNameListDiff
 
 /// Given a config, get all the final, connector-scoped node names for the groups.
 fn get_all_group_names(
-    groups: &HashMap<String, GroupConfig>,
-    jetty_connector_names: HashSet<&ConnectorNamespace>,
-) -> Result<HashMap<String, HashMap<ConnectorNamespace, NodeName>>> {
-    let mut res = HashMap::new();
+    groups: &BTreeMap<String, GroupConfig>,
+    jetty_connector_names: BTreeSet<&ConnectorNamespace>,
+) -> Result<BTreeMap<String, BTreeMap<ConnectorNamespace, NodeName>>> {
+    let mut res = BTreeMap::new();
 
     for (group_name, group_config) in groups {
         if let Some((prefix, suffix)) = group_name
@@ -437,7 +511,7 @@ fn get_all_group_names(
             };
             res.insert(
                 group_name.to_owned(),
-                HashMap::from([(
+                BTreeMap::from([(
                     prefix.to_owned(),
                     NodeName::Group {
                         name: suffix,
@@ -446,7 +520,7 @@ fn get_all_group_names(
                 )]),
             );
         } else {
-            let mut inner_map = HashMap::new();
+            let mut inner_map = BTreeMap::new();
 
             // Iterate through the Jetty connectors
             for &n in &jetty_connector_names {
@@ -482,10 +556,10 @@ fn get_all_group_names(
 
 /// Return all of the users of a given group, including from nested groups
 fn get_all_inherited_users(
-    groups: &HashMap<String, GroupConfig>,
+    groups: &BTreeMap<String, GroupConfig>,
     target_group_name: &String,
-) -> HashSet<NodeName> {
-    let mut res = HashSet::new();
+) -> BTreeSet<NodeName> {
+    let mut res = BTreeSet::new();
     // get the target groups
     let target_group = &groups[target_group_name];
     // Add the explicit users to the list
@@ -501,10 +575,49 @@ fn get_all_inherited_users(
     res
 }
 
+/// Return the diff between the configuration and current state
+pub fn get_group_diff(jetty: &Jetty) -> Result<Vec<Diff>> {
+    // first, read the config files
+    let group_config = fs::read_to_string(project::groups_cfg_path_local())?;
+    // parse
+    let parsed_config = parser::parse_groups(&group_config)?;
+    // validate
+    let validation_errors = validate_group_config(&parsed_config, jetty);
+
+    if !validation_errors.is_empty() {
+        let error_message = validation_errors
+            .iter()
+            .map(|e| {
+                format!(
+                    "error at {}\n{}\n",
+                    indicated_msg(group_config.as_bytes(), e.pos, 2),
+                    e.message
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n\n");
+        bail!(error_message);
+    };
+
+    let mut diff_vec = generate_diff(&parsed_config, jetty)?
+        .into_values()
+        .collect::<Vec<_>>();
+    diff_vec.sort_by(|a, b| {
+        a.group_name
+            .to_string()
+            .partial_cmp(&b.group_name.to_string())
+            .unwrap()
+    });
+    Ok(diff_vec)
+}
+
 #[cfg(test)]
 mod tests {
 
-    use std::path::PathBuf;
+    use std::{
+        collections::{HashMap, HashSet},
+        path::PathBuf,
+    };
 
     use crate::{
         access_graph::{
@@ -713,13 +826,21 @@ Sales Analysts:
         users:
             - u1
             - u2
+c1::g1:
+    members:
+        users:
+            - u1
 "#;
 
         let parsed_config = parse_groups(&group_config.to_owned())?;
 
         let errors = validate_group_config(&parsed_config, &jetty);
         dbg!(errors);
-        dbg!(generate_diff(&parsed_config, &jetty));
+        let diff_map = generate_diff(&parsed_config, &jetty)?;
+        for diff in diff_map.values() {
+            println!("{diff}");
+        }
+
         Ok(())
     }
 
@@ -783,7 +904,7 @@ g3:
 
         assert_eq!(
             get_all_inherited_users(&parsed_config, &"c2::g2".to_owned()),
-            HashSet::from([
+            BTreeSet::from([
                 NodeName::User("u1".to_owned()),
                 NodeName::User("u2".to_owned()),
                 NodeName::User("u3".to_owned())
@@ -792,7 +913,7 @@ g3:
 
         assert_eq!(
             get_all_inherited_users(&parsed_config, &"g3".to_owned()),
-            HashSet::from([
+            BTreeSet::from([
                 NodeName::User("u1".to_owned()),
                 NodeName::User("u3".to_owned())
             ])

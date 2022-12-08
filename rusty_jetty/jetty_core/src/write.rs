@@ -4,3 +4,5 @@ mod groups;
 mod parser_common;
 mod policies;
 pub(crate) mod tag_parser;
+
+pub use groups::get_group_diff;

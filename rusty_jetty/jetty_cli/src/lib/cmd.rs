@@ -41,6 +41,7 @@ pub(crate) enum JettyCommand {
     },
     /// Launch the permissions exploration UI
     Explore {
+        /// Fetch the current configuration before launching the UI
         #[clap(short, long, value_parser, default_value = "false")]
         fetch: bool,
 
@@ -50,4 +51,19 @@ pub(crate) enum JettyCommand {
     },
     /// Add connectors to an existing Jetty project
     Add,
+    /// Build out initial configuration files for a project
+    Bootstrap {
+        /// Fetch the current configuration before generating the configuration files
+        #[clap(short, long, value_parser, default_value = "false")]
+        no_fetch: bool,
+        /// Overwrite files if they exists
+        #[clap(short, long, value_parser, default_value = "false")]
+        overwrite: bool,
+    },
+    /// Diff the configuration with the current state of your infrastructure
+    Diff {
+        /// Fetch the current configurations before generating the diff
+        #[clap(short, long, value_parser, default_value = "false")]
+        fetch: bool,
+    },
 }

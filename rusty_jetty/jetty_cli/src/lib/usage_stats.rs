@@ -181,6 +181,12 @@ pub enum UsageEvent {
     /// Program panicked during execution.
     #[serde(rename = "panicked")]
     InvokedPanic,
+    /// `jetty bootstrap`
+    #[serde(rename = "invoked_bootstrap")]
+    InvokedBootstrap { no_fetch: bool, overwrite: bool },
+    /// `jetty diff`
+    #[serde(rename = "invoked_diff")]
+    InvokedDiff { fetch: bool },
 }
 
 /// Given an event, record its usage to Jetty anonymous usage stats.

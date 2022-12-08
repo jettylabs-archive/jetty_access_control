@@ -12,13 +12,16 @@ use crate::{
 
 #[derive(Serialize, Debug)]
 struct YamlGroup {
+    #[serde(skip_serializing_if = "Option::is_none")]
     names: Option<BTreeMap<String, String>>,
     members: YamlGroupMembers,
 }
 
 #[derive(Serialize, Debug)]
 pub(crate) struct YamlGroupMembers {
+    #[serde(skip_serializing_if = "Option::is_none")]
     groups: Option<BTreeSet<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     users: Option<BTreeSet<String>>,
 }
 
@@ -79,6 +82,12 @@ impl Jetty {
         }
 
         Ok(res)
+    }
+
+    /// Generate the YAML for a bootstrapped group configuration
+    pub fn build_bootstrapped_group_yaml(&self) -> Result<String> {
+        let config = self.build_bootstrapped_group_config()?;
+        Ok(yaml_peg::serde::to_string(&config)?)
     }
 }
 

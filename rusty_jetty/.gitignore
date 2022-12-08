@@ -26,6 +26,7 @@ jetty_config.yaml
 
 jetty_graph
 tags.yaml
+groups.yaml
 # Staging area for dev projects
 jetty_project/
 

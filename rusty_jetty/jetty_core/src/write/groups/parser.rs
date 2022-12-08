@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use anyhow::{anyhow, bail, Context, Result};
 use serde::Deserialize;
@@ -11,12 +11,12 @@ use crate::{
 
 use super::{ConnectorName, GroupConfig, GroupMembers, MemberGroup, MemberUser};
 
-/// Parse a string tag config into a hashmap of tag configuration objects
-pub(crate) fn parse_groups(config: &String) -> Result<HashMap<String, GroupConfig>> {
+/// Parse a string tag config into a map of tag configuration objects
+pub(crate) fn parse_groups(config: &String) -> Result<BTreeMap<String, GroupConfig>> {
     // Parse into Node representation and selecting the first element in the Vec
     let root = &parse::<RcRepr>(config).context("unable to parse tags file - invalid yaml")?[0];
 
-    // Return an empty HashMap if there are no tags
+    // Return an empty BTreeMap if there are no tags
     if root.is_null() {
         return Ok(Default::default());
     }
@@ -25,7 +25,7 @@ pub(crate) fn parse_groups(config: &String) -> Result<HashMap<String, GroupConfi
         .map_err(|_| anyhow!("improperly formatted groups file: should be a dictionary of group names and configurations \
         - please refer to the documentation for more information"))?;
 
-    let mut groups = HashMap::new();
+    let mut groups = BTreeMap::new();
 
     // iterate over each item in the map
     for (k, v) in mapped_root {

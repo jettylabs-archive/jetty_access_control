@@ -25,3 +25,4 @@ bimap = "0.6.2"
 uuid = { version = "1.2.1", features = ["v5", "v4", "serde"] }
 dirs = "4.0.0"
 lazy_static = "1.4.0"
+colored = "2.0.0"

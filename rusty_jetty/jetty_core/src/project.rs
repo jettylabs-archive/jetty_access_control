@@ -10,8 +10,11 @@
 //!       │    ├── jetty_graph
 //!       │    └── {connector}
 //!       │         └── {connector-specific data}
+//!       ├── groups
+//!       │    └── groups.yaml
 //!       └── tags
 //!            └── tags.yaml
+//!     
 //! ```
 
 use std::path::{Path, PathBuf};
@@ -23,6 +26,8 @@ lazy_static! {
     static ref TAGS_DIR: PathBuf = PathBuf::from("tags");
     static ref DATA_DIR: PathBuf = PathBuf::from(".data");
     static ref TAGS_CFG: PathBuf = PathBuf::from("tags.yaml");
+    static ref GROUPS_DIR: PathBuf = PathBuf::from("groups");
+    static ref GROUPS_CFG: PathBuf = PathBuf::from("groups.yaml");
     static ref JETTY_CFG: PathBuf = PathBuf::from("jetty_config.yaml");
     static ref CONNECTOR_CFG: PathBuf = PathBuf::from("connectors.yaml");
     static ref PROFILE_CFG_DIR: PathBuf = PathBuf::from(".jetty");
@@ -38,6 +43,16 @@ pub fn tags_cfg_path<P: AsRef<Path>>(project_path: P) -> PathBuf {
 /// Local path for the tags config.
 pub fn tags_cfg_path_local() -> PathBuf {
     TAGS_DIR.as_path().join(TAGS_CFG.as_path())
+}
+
+/// The path to group configuration files
+pub fn groups_cfg_path<P: AsRef<Path>>(project_path: P) -> PathBuf {
+    project_path.as_ref().join(groups_cfg_path_local())
+}
+
+/// Local path for the groups config.
+pub fn groups_cfg_path_local() -> PathBuf {
+    GROUPS_DIR.as_path().join(GROUPS_CFG.as_path())
 }
 
 /// Path for the connector config.
