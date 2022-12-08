@@ -90,6 +90,8 @@ pub enum WriteCapabilities {
     },
     /// Write Policies
     Policies,
+    /// Add Users
+    Users,
 }
 
 /// Enum of identifiers used to resolve user identities
