@@ -81,6 +81,11 @@ struct GroupMemberChanges {
     groups: Vec<NodeName>,
 }
 
+struct NodeNameListDiff {
+    add: Vec<NodeName>,
+    remove: Vec<NodeName>,
+}
+
 /// Validate group config by making sure that users, groups, and listed connectors exist. Returns a vec of errors. If the vec is empty, there were no errors.
 /// This allows all errors to be displayed at once.
 fn validate_group_config(
@@ -394,11 +399,6 @@ fn groups_to_node_names(
             .collect::<Vec<_>>(),
         None => Vec::new(),
     }
-}
-
-struct NodeNameListDiff {
-    add: Vec<NodeName>,
-    remove: Vec<NodeName>,
 }
 
 fn diff_node_names(old: &Vec<NodeName>, new: &Vec<NodeName>) -> NodeNameListDiff {
