@@ -1,5 +1,6 @@
 //! Parse and manage user-configured groups
 
+pub(crate) mod bootstrap;
 mod parser;
 
 use std::collections::{HashMap, HashSet};
@@ -677,7 +678,7 @@ mod tests {
         }
     }
 
-    fn get_jetty() -> Jetty {
+    pub(crate) fn get_jetty() -> Jetty {
         let mut connectors: HashMap<ConnectorNamespace, Box<dyn Connector>> = HashMap::new();
         connectors.insert(
             ConnectorNamespace("c1".to_string()),
