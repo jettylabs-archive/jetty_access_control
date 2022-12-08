@@ -65,33 +65,49 @@ struct GroupConfigError {
 }
 
 #[derive(Debug)]
+/// A Diff for groups
 pub struct Diff {
-    group_name: NodeName,
-    details: DiffDetails,
+    /// the group being diffed
+    pub group_name: NodeName,
+    /// The specifics of the diff
+    pub details: DiffDetails,
     connector: ConnectorNamespace,
 }
 
 #[derive(Debug)]
-enum DiffDetails {
+/// Outlines the diff type needed
+pub enum DiffDetails {
+    /// Add a group
     AddGroup {
+        /// the members of the group
         members: GroupMemberChanges,
     },
+    /// Remove a group
     RemoveGroup,
+    /// Update a group
     ModifyGroup {
+        /// members that are added
         add: GroupMemberChanges,
+        /// members that are removed
         remove: GroupMemberChanges,
     },
 }
 
 #[derive(Debug)]
-struct GroupMemberChanges {
-    users: Vec<NodeName>,
-    groups: Vec<NodeName>,
+/// Structure showing changes within group members
+pub struct GroupMemberChanges {
+    /// users
+    pub users: Vec<NodeName>,
+    /// groups
+    pub groups: Vec<NodeName>,
 }
 
+/// Structure showing how group membership is changing
 struct NodeNameListDiff {
-    add: Vec<NodeName>,
-    remove: Vec<NodeName>,
+    /// members being added
+    pub add: Vec<NodeName>,
+    /// members being dropped
+    pub remove: Vec<NodeName>,
 }
 
 impl Display for Diff {

@@ -1,6 +1,8 @@
 //! Types and functionality to translate between connectors' local representation
 //! and Jetty's global representation
 
+mod diffs;
+
 use std::collections::{HashMap, HashSet};
 
 use super::NodeName;
@@ -16,9 +18,10 @@ use crate::{
         },
         UserIdentifier,
     },
-    cual::Cual,
+    cual::{self, Cual},
     jetty::ConnectorNamespace,
     permissions::matrix::{DoubleInsert, InsertOrMerge},
+    write::Diffs,
 };
 
 use anyhow::{Context, Result};
@@ -447,4 +450,26 @@ impl Translator {
             path: cual.asset_path(),
         })
     }
+
+    pub(crate) fn translate_node_name_to_local(
+        &self,
+        node_name: &NodeName,
+        connector: &ConnectorNamespace,
+    ) -> String {
+        match &node_name {
+            NodeName::User(n) => self.global_to_local.users[&connector][&node_name].to_owned(),
+            // There may be groups that don't exist yet, so we'll just use the group name without the origin
+            NodeName::Group { name, .. } => name.to_owned(),
+            NodeName::Asset { .. } => {
+                todo!()
+            }
+            NodeName::Policy { .. } => {
+                self.global_to_local.policies[&connector][&node_name].to_owned()
+            }
+            NodeName::Tag(t) => t.to_owned(),
+        }
+    }
+
+    /// Convert diffs to a connector-specific collection of diffs
+    fn translate_diffs_to_local(&self, diffs: Diffs) {}
 }

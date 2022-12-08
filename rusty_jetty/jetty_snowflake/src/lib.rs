@@ -33,6 +33,7 @@ use jetty_core::connectors::{
 };
 use jetty_core::jetty::ConnectorManifest;
 use jetty_core::logging::error;
+use jetty_core::write::groups::DiffDetails;
 use jetty_core::write::Diffs;
 use rest::{SnowflakeRequestConfig, SnowflakeRestClient, SnowflakeRestConfig};
 use serde::de::value::MapDeserializer;
@@ -393,5 +394,27 @@ impl SnowflakeConnector {
                 Some(final_grant.into_policy(privileges))
             })
             .collect::<Vec<_>>()
+    }
+}
+
+fn generate_diff_queries(diffs: &Diffs) {
+    // start with groups
+    let mut first_queries: Vec<String> = vec![];
+    let mut second_queries: Vec<String> = vec![];
+    for diff in &diffs.groups {
+        match &diff.details {
+            // Drop roles. This will transfer all ownership to the Jetty role. If there are grants that are owned by the role that is dropped, those grants are dropped too.
+            // because of this, it may be necessary to run a double-apply.
+            DiffDetails::RemoveGroup => {
+                first_queries.push(format!("DROP ROLE \"{}\";", diff.group_name.to_string()))
+            }
+            DiffDetails::AddGroup { members } => {
+                for user in &members.users {
+                    todo!()
+                }
+                first_queries.push(format!("CREATE ROLE \"{}\";", diff.group_name.to_string()));
+            }
+            _ => todo!(),
+        }
     }
 }
