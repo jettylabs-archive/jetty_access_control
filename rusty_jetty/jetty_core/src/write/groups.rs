@@ -64,17 +64,18 @@ struct GroupConfigError {
     pos: u64,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// A Diff for groups
 pub struct Diff {
     /// the group being diffed
     pub group_name: NodeName,
     /// The specifics of the diff
     pub details: DiffDetails,
-    connector: ConnectorNamespace,
+    /// The connector the diff should be applied to
+    pub connector: ConnectorNamespace,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// Outlines the diff type needed
 pub enum DiffDetails {
     /// Add a group
@@ -93,7 +94,7 @@ pub enum DiffDetails {
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// Structure showing changes within group members
 pub struct GroupMemberChanges {
     /// users
@@ -637,8 +638,8 @@ mod tests {
 
     use crate::{
         access_graph::{
-            cual_to_asset_name_test, AssetAttributes, GroupAttributes, NodeName, TagAttributes,
-            UserAttributes,
+            cual_to_asset_name_test, translate::diffs::LocalDiffs, AssetAttributes,
+            GroupAttributes, NodeName, TagAttributes, UserAttributes,
         },
         connectors::ConnectorCapabilities,
         cual::Cual,
@@ -806,7 +807,7 @@ mod tests {
             }
         }
 
-        fn plan_changes(&self, diffs: crate::write::Diffs) -> Vec<String> {
+        fn plan_changes(&self, diffs: &LocalDiffs) -> Vec<String> {
             todo!()
         }
     }

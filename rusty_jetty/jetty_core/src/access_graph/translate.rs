@@ -1,7 +1,7 @@
 //! Types and functionality to translate between connectors' local representation
 //! and Jetty's global representation
 
-mod diffs;
+pub mod diffs;
 
 use std::collections::{HashMap, HashSet};
 
@@ -26,24 +26,25 @@ use crate::{
 
 use anyhow::{Context, Result};
 use bimap;
+use serde::{Deserialize, Serialize};
 
 /// Struct to translate local data to global data and back again
 /// Eventually, this will need to be persisted with the graph to enable the write path
-#[derive(Default)]
+#[derive(Default, Serialize, Deserialize)]
 pub struct Translator {
     global_to_local: GlobalToLocalIdentifiers,
     local_to_global: LocalToGlobalIdentifiers,
     cual_prefix_to_namespace: bimap::BiHashMap<Option<String>, ConnectorNamespace>,
 }
 
-#[derive(Default)]
+#[derive(Default, Serialize, Deserialize)]
 pub(crate) struct GlobalToLocalIdentifiers {
     users: SparseMatrix<ConnectorNamespace, NodeName, String>,
     groups: SparseMatrix<ConnectorNamespace, NodeName, String>,
     policies: SparseMatrix<ConnectorNamespace, NodeName, String>,
 }
 
-#[derive(Default)]
+#[derive(Default, Serialize, Deserialize)]
 pub(crate) struct LocalToGlobalIdentifiers {
     users: SparseMatrix<ConnectorNamespace, String, NodeName>,
     groups: SparseMatrix<ConnectorNamespace, String, NodeName>,
@@ -469,7 +470,4 @@ impl Translator {
             NodeName::Tag(t) => t.to_owned(),
         }
     }
-
-    /// Convert diffs to a connector-specific collection of diffs
-    fn translate_diffs_to_local(&self, diffs: Diffs) {}
 }

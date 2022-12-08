@@ -20,6 +20,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use jetty_core::{
+    access_graph::translate::diffs::LocalDiffs,
     connectors::{
         nodes::ConnectorData,
         nodes::{self as jetty_nodes, EffectivePermission, SparseMatrix},
@@ -288,7 +289,7 @@ impl Connector for TableauConnector {
         }
     }
 
-    fn plan_changes(&self, _: Diffs) -> Vec<std::string::String> {
+    fn plan_changes(&self, _: &LocalDiffs) -> Vec<std::string::String> {
         todo!()
     }
 }

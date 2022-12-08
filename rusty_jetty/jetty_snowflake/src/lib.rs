@@ -28,13 +28,13 @@ pub use entry_types::{
     Asset, Database, Entry, FutureGrant, Grant, GrantOf, GrantType, Object, Role, RoleName, Schema,
     StandardGrant, Table, User, View, Warehouse,
 };
+use jetty_core::access_graph::translate::diffs::{groups, LocalDiffs};
 use jetty_core::connectors::{
     ConnectorCapabilities, NewConnector, ReadCapabilities, WriteCapabilities,
 };
 use jetty_core::jetty::ConnectorManifest;
 use jetty_core::logging::error;
 use jetty_core::write::groups::DiffDetails;
-use jetty_core::write::Diffs;
 use rest::{SnowflakeRequestConfig, SnowflakeRestClient, SnowflakeRestConfig};
 use serde::de::value::MapDeserializer;
 
@@ -167,8 +167,8 @@ impl Connector for SnowflakeConnector {
             },
         }
     }
-    fn plan_changes(&self, _: Diffs) -> Vec<std::string::String> {
-        todo!()
+    fn plan_changes(&self, diffs: &LocalDiffs) -> Vec<std::string::String> {
+        generate_diff_queries(diffs).into_iter().flatten().collect()
     }
 }
 
@@ -397,24 +397,49 @@ impl SnowflakeConnector {
     }
 }
 
-fn generate_diff_queries(diffs: &Diffs) {
-    // start with groups
+fn generate_diff_queries(diffs: &LocalDiffs) -> Vec<Vec<String>> {
     let mut first_queries: Vec<String> = vec![];
     let mut second_queries: Vec<String> = vec![];
+    // start with groups
     for diff in &diffs.groups {
         match &diff.details {
             // Drop roles. This will transfer all ownership to the Jetty role. If there are grants that are owned by the role that is dropped, those grants are dropped too.
             // because of this, it may be necessary to run a double-apply.
-            DiffDetails::RemoveGroup => {
-                first_queries.push(format!("DROP ROLE \"{}\";", diff.group_name.to_string()))
+            groups::LocalDiffDetails::RemoveGroup => {
+                first_queries.push(format!("DROP ROLE \"{}\";", diff.group_name))
             }
-            DiffDetails::AddGroup { members } => {
+            groups::LocalDiffDetails::AddGroup { members } => {
+                first_queries.push(format!("CREATE ROLE \"{}\";", diff.group_name));
                 for user in &members.users {
-                    todo!()
+                    second_queries.push(format!("GRANT ROLE {} TO USER {};", diff.group_name, user))
                 }
-                first_queries.push(format!("CREATE ROLE \"{}\";", diff.group_name.to_string()));
+                for group in &members.groups {
+                    second_queries
+                        .push(format!("GRANT ROLE {} TO ROLE {};", diff.group_name, group))
+                }
             }
-            _ => todo!(),
+            groups::LocalDiffDetails::ModifyGroup { add, remove } => {
+                for user in &add.users {
+                    second_queries.push(format!("GRANT ROLE {} TO USER {};", diff.group_name, user))
+                }
+                for group in &add.groups {
+                    second_queries
+                        .push(format!("GRANT ROLE {} TO ROLE {};", diff.group_name, group))
+                }
+                for user in &remove.users {
+                    second_queries.push(format!(
+                        "REVOKE ROLE {} FROM USER {};",
+                        diff.group_name, user
+                    ))
+                }
+                for group in &remove.groups {
+                    second_queries.push(format!(
+                        "REVOKE ROLE {} FROM ROLE {};",
+                        diff.group_name, group
+                    ))
+                }
+            }
         }
     }
+    vec![first_queries, second_queries]
 }

@@ -1,10 +1,17 @@
 //! Types and functionality to convert diffs to a state that can be processed by connectors
 
+use crate::write::Diffs;
+
+use super::Translator;
+
+/// Diffs in the namespace of the connectors
 pub struct LocalDiffs {
-    groups: Vec<groups::LocalDiff>,
+    /// The group-specific diffs
+    pub groups: Vec<groups::LocalDiff>,
 }
 
-mod groups {
+/// Group-specific diff functionality
+pub mod groups {
     use crate::{
         access_graph::translate::Translator,
         jetty::ConnectorNamespace,
@@ -13,6 +20,7 @@ mod groups {
     use anyhow::Result;
     use std::collections::HashSet;
 
+    /// A group-specific local diff
     pub struct LocalDiff {
         /// the group being diffed
         pub group_name: String,
@@ -39,6 +47,7 @@ mod groups {
         },
     }
 
+    /// The specific changes within a diff
     #[derive(Debug)]
     pub struct LocalGroupMemberChanges {
         /// users
@@ -48,27 +57,35 @@ mod groups {
     }
 
     impl Translator {
-        fn translate_group_diff_to_local(
+        pub(super) fn translate_group_diff_to_local(
             &self,
             global_diff: &groups::Diff,
-            connector: &ConnectorNamespace,
-        ) -> Result<LocalDiff> {
-            Ok(LocalDiff {
-                group_name: self.translate_node_name_to_local(&global_diff.group_name, &connector),
+        ) -> LocalDiff {
+            LocalDiff {
+                group_name: self
+                    .translate_node_name_to_local(&global_diff.group_name, &global_diff.connector),
                 details: match &global_diff.details {
                     groups::DiffDetails::AddGroup { members } => LocalDiffDetails::AddGroup {
-                        members: self.translate_group_member_changes_to_local(&members, connector),
+                        members: self.translate_group_member_changes_to_local(
+                            &members,
+                            &global_diff.connector,
+                        ),
                     },
                     groups::DiffDetails::RemoveGroup => LocalDiffDetails::RemoveGroup,
                     groups::DiffDetails::ModifyGroup { add, remove } => {
                         LocalDiffDetails::ModifyGroup {
-                            add: self.translate_group_member_changes_to_local(&add, connector),
-                            remove: self
-                                .translate_group_member_changes_to_local(&remove, connector),
+                            add: self.translate_group_member_changes_to_local(
+                                &add,
+                                &global_diff.connector,
+                            ),
+                            remove: self.translate_group_member_changes_to_local(
+                                &remove,
+                                &global_diff.connector,
+                            ),
                         }
                     }
                 },
-            })
+            }
         }
 
         fn translate_group_member_changes_to_local(
@@ -88,6 +105,19 @@ mod groups {
                     .map(|user| self.translate_node_name_to_local(&user, &connector))
                     .collect(),
             }
+        }
+    }
+}
+
+impl Translator {
+    /// Convert diffs to a connector-specific collection of diffs
+    pub fn translate_diffs_to_local(&self, diffs: &Diffs) -> LocalDiffs {
+        LocalDiffs {
+            groups: diffs
+                .groups
+                .iter()
+                .map(|g| self.translate_group_diff_to_local(g))
+                .collect(),
         }
     }
 }

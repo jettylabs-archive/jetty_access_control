@@ -20,13 +20,13 @@ use std::{
 
 use cual::set_cual_account_name;
 use jetty_core::{
+    access_graph::translate::diffs::LocalDiffs,
     connectors::{
         self,
         nodes::{ConnectorData, RawAssetReference as JettyAssetReference},
         ConnectorCapabilities, NewConnector, ReadCapabilities,
     },
     jetty::{ConnectorConfig, ConnectorManifest, CredentialsMap},
-    write::Diffs,
     Connector,
 };
 
@@ -125,7 +125,7 @@ impl Connector for DbtConnector {
         }
     }
 
-    fn plan_changes(&self, _: Diffs) -> Vec<std::string::String> {
+    fn plan_changes(&self, _: &LocalDiffs) -> Vec<std::string::String> {
         todo!()
     }
 }

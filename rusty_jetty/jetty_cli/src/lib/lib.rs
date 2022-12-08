@@ -24,6 +24,7 @@ use jetty_core::{
     jetty::{ConnectorNamespace, CredentialsMap, JettyConfig},
     logging::{self, debug, info},
     project::{self, groups_cfg_path_local},
+    write::Diffs,
     Connector, Jetty,
 };
 
@@ -79,6 +80,7 @@ pub async fn cli() -> Result<()> {
                 overwrite,
             },
             JettyCommand::Diff { fetch } => UsageEvent::InvokedDiff { fetch },
+            JettyCommand::Plan { fetch } => UsageEvent::InvokedPlan { fetch },
         };
         record_usage(event, &jetty_config)
             .await
@@ -113,7 +115,7 @@ pub async fn cli() -> Result<()> {
                 info!("Fetching all data first.");
                 fetch(&None, &false).await?;
             }
-            let mut jetty = new_jetty_with_connectors().await.map_err(|_| {
+            let jetty = new_jetty_with_connectors().await.map_err(|_| {
                 anyhow!(
                     "unable to find {} - make sure you are in a \
                 Jetty project directory, or create a new project by running `jetty init`",
@@ -121,7 +123,7 @@ pub async fn cli() -> Result<()> {
                 )
             })?;
 
-            let ag = jetty.try_access_graph()?;
+            jetty.try_access_graph()?;
             jetty_explore::explore_web_ui(Arc::from(jetty.access_graph.unwrap()), bind).await;
         }
         JettyCommand::Add => {
@@ -144,13 +146,20 @@ pub async fn cli() -> Result<()> {
             };
             diff().await?;
         }
+        JettyCommand::Plan { fetch: fetch_first } => {
+            if *fetch_first {
+                info!("Fetching data before bootstrap");
+                fetch(&None, &false).await?;
+            };
+            plan().await?;
+        }
     }
 
     Ok(())
 }
 
 async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()> {
-    let mut jetty = new_jetty_with_connectors().await.map_err(|_| {
+    let jetty = new_jetty_with_connectors().await.map_err(|_| {
         anyhow!(
             "unable to find {} - make sure you are in a \
         Jetty project directory, or create a new project by running `jetty init`",
@@ -163,16 +172,15 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
     // Handle optionally fetching for only a few connectors
     let selected_connectors = if let Some(conns) = connectors {
         jetty
-            .config
             .connectors
             .into_iter()
             .filter(|(name, _config)| conns.contains(&name.to_string()))
             .collect::<HashMap<_, _>>()
     } else {
-        jetty.config.connectors
+        jetty.connectors
     };
 
-    for (namespace, mut conn) in jetty.connectors {
+    for (namespace, mut conn) in selected_connectors {
         info!("getting {} data", namespace);
         let now = Instant::now();
         let data = conn.get_data().await;
@@ -266,6 +274,7 @@ async fn diff() -> Result<()> {
     // make sure there's an existing access graph
     jetty.try_access_graph()?;
 
+    // For now, we're just looking at group diffs
     let group_diff = jetty_core::write::get_group_diff(&jetty)?;
     if !group_diff.is_empty() {
         group_diff.iter().for_each(|diff| println!("{diff}"));
@@ -273,6 +282,44 @@ async fn diff() -> Result<()> {
         println!("No changes found");
     };
 
+    Ok(())
+}
+
+async fn plan() -> Result<()> {
+    let mut jetty = new_jetty_with_connectors().await.map_err(|_| {
+        anyhow!(
+            "unable to find {} - make sure you are in a \
+        Jetty project directory, or create a new project by running `jetty init`",
+            project::jetty_cfg_path_local().display()
+        )
+    })?;
+
+    // make sure there's an existing access graph
+    let ag = jetty.try_access_graph()?;
+
+    let diffs = Diffs {
+        groups: jetty_core::write::get_group_diff(&jetty)?,
+    };
+
+    let connector_specific_diffs = diffs.split_by_connector();
+
+    let tr = ag.translator();
+
+    let local_diffs = connector_specific_diffs
+        .iter()
+        .map(|(k, v)| (k.to_owned(), tr.translate_diffs_to_local(v)))
+        .collect::<HashMap<_, _>>();
+
+    let plans: HashMap<_, _> = local_diffs
+        .iter()
+        .map(|(k, v)| (k.to_owned(), jetty.connectors[k].plan_changes(v)))
+        .collect();
+
+    for (c, plan) in plans {
+        println!("{c}:");
+        plan.iter().for_each(|s| println!("  {s}"));
+        println!("\n")
+    }
     Ok(())
 }
 

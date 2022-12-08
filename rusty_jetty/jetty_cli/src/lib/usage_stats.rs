@@ -187,6 +187,9 @@ pub enum UsageEvent {
     /// `jetty diff`
     #[serde(rename = "invoked_diff")]
     InvokedDiff { fetch: bool },
+    /// `jetty plan`
+    #[serde(rename = "invoked_plan")]
+    InvokedPlan { fetch: bool },
 }
 
 /// Given an event, record its usage to Jetty anonymous usage stats.

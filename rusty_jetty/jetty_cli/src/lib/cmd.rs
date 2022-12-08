@@ -60,8 +60,16 @@ pub(crate) enum JettyCommand {
         #[clap(short, long, value_parser, default_value = "false")]
         overwrite: bool,
     },
+
     /// Diff the configuration with the current state of your infrastructure
     Diff {
+        /// Fetch the current configurations before generating the diff
+        #[clap(short, long, value_parser, default_value = "false")]
+        fetch: bool,
+    },
+
+    /// Plan the changes needed to update the infra based on the diff
+    Plan {
         /// Fetch the current configurations before generating the diff
         #[clap(short, long, value_parser, default_value = "false")]
         fetch: bool,
