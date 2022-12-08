@@ -50,17 +50,20 @@ pub(crate) struct MemberUser {
     pos: u64,
 }
 
+#[derive(Debug)]
 struct GroupConfigError {
     message: String,
     pos: u64,
 }
 
+#[derive(Debug)]
 struct Diff {
     group_name: NodeName,
     details: DiffDetails,
     connectors: HashSet<ConnectorNamespace>,
 }
 
+#[derive(Debug)]
 enum DiffDetails {
     AddGroup {
         members: GroupMemberChanges,
@@ -72,6 +75,7 @@ enum DiffDetails {
     },
 }
 
+#[derive(Debug)]
 struct GroupMemberChanges {
     users: Vec<NodeName>,
     groups: Vec<NodeName>,
@@ -81,20 +85,19 @@ struct GroupMemberChanges {
 /// This allows all errors to be displayed at once.
 fn validate_group_config(
     groups: &HashMap<String, GroupConfig>,
-    jetty: Jetty,
-    ag: AccessGraph,
+    jetty: &Jetty,
 ) -> Vec<GroupConfigError> {
     let mut errors: Vec<GroupConfigError> = Vec::new();
+    let ag = jetty.access_graph.as_ref().unwrap();
 
     for (name, config) in groups {
         // check to see if there's a connector prefix and if it's allowed
-        if let Some(prefix) = name.split("::").next() {
+        if let Some((prefix, suffix)) = name.split_once("::").map(|p| (p.0, p.1)) {
             if !jetty
-                .config
                 .connectors
                 .contains_key(&ConnectorNamespace(prefix.to_owned()))
             {
-                errors.push(GroupConfigError { message:format!("configuration specifies a group `{name}` with the prefix `{prefix}` but there is no connector `{prefix}` in the project"), pos: config.pos })
+                errors.push(GroupConfigError { message:format!("configuration specifies a group `{suffix}` with the prefix `{prefix}` but there is no connector `{prefix}` in the project"), pos: config.pos })
             }
         }
 
@@ -132,7 +135,7 @@ fn validate_group_config(
 // Diff with existing graph
 fn generate_diff(
     groups: &HashMap<String, GroupConfig>,
-    jetty: Jetty,
+    jetty: &Jetty,
 ) -> Result<HashMap<NodeName, Diff>> {
     let mut group_diffs = HashMap::new();
     let mut policy_diffs = Vec::new();
@@ -219,10 +222,16 @@ fn generate_diff(
                 let new = new
                     .into_iter()
                     .filter(|u| {
-                        ag.get_node(u)
-                            .unwrap()
-                            .get_node_connectors()
-                            .contains(origin)
+                        let node_name = ag.get_node(u).unwrap().get_node_name();
+
+                        if let NodeName::Group {
+                            origin: ag_origin, ..
+                        } = node_name
+                        {
+                            &ag_origin == origin
+                        } else {
+                            false
+                        }
                     })
                     .collect();
 
@@ -395,10 +404,9 @@ fn get_all_group_names(
     let mut res = HashMap::new();
 
     for (group_name, group_config) in groups {
-        if let Some(prefix) = group_name
-            .split("::")
-            .next()
-            .map(|p| ConnectorNamespace(p.to_string()))
+        if let Some((prefix, suffix)) = group_name
+            .split_once("::")
+            .map(|p| (ConnectorNamespace(p.0.to_string()), p.1.to_owned()))
         {
             if !jetty_connector_names.contains(&prefix) {
                 bail!("looking for connector with name `{}`, but there is no connector with that name", prefix);
@@ -408,7 +416,7 @@ fn get_all_group_names(
                 HashMap::from([(
                     prefix.to_owned(),
                     NodeName::Group {
-                        name: group_name.to_owned(),
+                        name: suffix,
                         origin: prefix.to_owned(),
                     },
                 )]),
@@ -446,4 +454,248 @@ fn get_all_group_names(
         };
     }
     Ok(res)
+}
+
+#[cfg(test)]
+mod tests {
+
+    use std::path::PathBuf;
+
+    use crate::{
+        access_graph::{
+            cual_to_asset_name_test, AssetAttributes, GroupAttributes, NodeName, TagAttributes,
+            UserAttributes,
+        },
+        connectors::ConnectorCapabilities,
+        cual::Cual,
+        Connector,
+    };
+
+    use anyhow::Result;
+
+    use super::{parser::parse_groups, *};
+
+    fn get_test_graph() -> AccessGraph {
+        AccessGraph::new_dummy(
+            &[
+                &JettyNode::Group(GroupAttributes {
+                    name: NodeName::Group {
+                        name: "g1".to_string(),
+                        origin: ConnectorNamespace("c1".to_string()),
+                    },
+                    ..Default::default()
+                }),
+                &JettyNode::Group(GroupAttributes {
+                    name: NodeName::Group {
+                        name: "g2".to_string(),
+                        origin: ConnectorNamespace("c2".to_string()),
+                    },
+                    ..Default::default()
+                }),
+                &JettyNode::Group(GroupAttributes {
+                    name: NodeName::Group {
+                        name: "g3".to_string(),
+                        origin: ConnectorNamespace("c2".to_string()),
+                    },
+                    ..Default::default()
+                }),
+                &JettyNode::Group(GroupAttributes {
+                    name: NodeName::Group {
+                        name: "g3".to_string(),
+                        origin: ConnectorNamespace("c1".to_string()),
+                    },
+                    ..Default::default()
+                }),
+                &JettyNode::User(UserAttributes {
+                    name: NodeName::User("u1".to_owned()),
+                    connectors: HashSet::from([
+                        ConnectorNamespace("c1".to_string()),
+                        ConnectorNamespace("c2".to_string()),
+                    ]),
+                    ..Default::default()
+                }),
+                &JettyNode::User(UserAttributes {
+                    name: NodeName::User("u2".to_owned()),
+                    connectors: HashSet::from([ConnectorNamespace("c1".to_string())]),
+                    ..Default::default()
+                }),
+                &JettyNode::User(UserAttributes {
+                    name: NodeName::User("u3".to_owned()),
+                    connectors: HashSet::from([ConnectorNamespace("c2".to_string())]),
+                    ..Default::default()
+                }),
+            ],
+            &[
+                (
+                    NodeName::Group {
+                        name: "g1".to_string(),
+                        origin: ConnectorNamespace("c1".to_string()),
+                    },
+                    NodeName::User("u1".to_owned()),
+                    EdgeType::Includes,
+                ),
+                (
+                    NodeName::Group {
+                        name: "g1".to_string(),
+                        origin: ConnectorNamespace("c1".to_string()),
+                    },
+                    NodeName::User("u2".to_owned()),
+                    EdgeType::Includes,
+                ),
+                (
+                    NodeName::Group {
+                        name: "g2".to_string(),
+                        origin: ConnectorNamespace("c2".to_string()),
+                    },
+                    NodeName::User("u3".to_owned()),
+                    EdgeType::Includes,
+                ),
+                (
+                    NodeName::Group {
+                        name: "g2".to_string(),
+                        origin: ConnectorNamespace("c2".to_string()),
+                    },
+                    NodeName::Group {
+                        name: "g3".to_string(),
+                        origin: ConnectorNamespace("c2".to_string()),
+                    },
+                    EdgeType::Includes,
+                ),
+                (
+                    NodeName::Group {
+                        name: "g3".to_string(),
+                        origin: ConnectorNamespace("c2".to_string()),
+                    },
+                    NodeName::User("u3".to_owned()),
+                    EdgeType::Includes,
+                ),
+                (
+                    NodeName::Group {
+                        name: "g3".to_string(),
+                        origin: ConnectorNamespace("c2".to_string()),
+                    },
+                    NodeName::User("u1".to_owned()),
+                    EdgeType::Includes,
+                ),
+                (
+                    NodeName::Group {
+                        name: "g3".to_string(),
+                        origin: ConnectorNamespace("c1".to_string()),
+                    },
+                    NodeName::User("u1".to_owned()),
+                    EdgeType::Includes,
+                ),
+            ],
+        )
+    }
+
+    struct DummyConn {}
+    impl Connector for DummyConn {
+        fn check<'life0, 'async_trait>(
+            &'life0 self,
+        ) -> core::pin::Pin<
+            Box<dyn core::future::Future<Output = bool> + core::marker::Send + 'async_trait>,
+        >
+        where
+            'life0: 'async_trait,
+            Self: 'async_trait,
+        {
+            todo!()
+        }
+
+        fn get_data<'life0, 'async_trait>(
+            &'life0 mut self,
+        ) -> core::pin::Pin<
+            Box<
+                dyn core::future::Future<Output = crate::connectors::nodes::ConnectorData>
+                    + core::marker::Send
+                    + 'async_trait,
+            >,
+        >
+        where
+            'life0: 'async_trait,
+            Self: 'async_trait,
+        {
+            todo!()
+        }
+
+        fn get_manifest(&self) -> crate::jetty::ConnectorManifest {
+            crate::jetty::ConnectorManifest {
+                capabilities: ConnectorCapabilities {
+                    write: HashSet::from([WriteCapabilities::Groups]),
+                    read: HashSet::new(),
+                },
+            }
+        }
+    }
+
+    fn get_jetty() -> Jetty {
+        let mut connectors: HashMap<ConnectorNamespace, Box<dyn Connector>> = HashMap::new();
+        connectors.insert(ConnectorNamespace("c1".to_string()), Box::new(DummyConn {}));
+        connectors.insert(ConnectorNamespace("c2".to_string()), Box::new(DummyConn {}));
+        let mut jetty =
+            Jetty::new_with_config(Default::default(), PathBuf::default(), connectors).unwrap();
+        jetty.access_graph = Some(get_test_graph());
+        jetty
+    }
+
+    #[test]
+    fn try_anything() -> Result<()> {
+        let jetty = get_jetty();
+        let group_config = r#"
+All Analysts:
+    names:
+        c1: ANALYSTS
+    members:
+        groups:
+            - Sales Analysts
+        users:
+            - u1
+            - u2
+
+Sales Analysts:
+    members:
+        users:
+            - u1
+            - u2
+"#;
+
+        let parsed_config = parse_groups(&group_config.to_owned())?;
+
+        let errors = validate_group_config(&parsed_config, &jetty);
+        dbg!(errors);
+        dbg!(generate_diff(&parsed_config, &jetty));
+        Ok(())
+    }
+
+    #[test]
+    fn no_change_no_diff() -> Result<()> {
+        let jetty = get_jetty();
+        let group_config = r#"
+c1::g1:
+    members:
+        users:
+            - u1
+            - u2
+c2::g2:
+    members:
+        users:
+            - u3
+        groups:
+            - g3
+g3:
+    members:
+        users:
+            - u1
+            - u3
+"#;
+
+        let parsed_config = parse_groups(&group_config.to_owned())?;
+
+        let errors = validate_group_config(&parsed_config, &jetty);
+        dbg!(errors);
+        let diff = generate_diff(&parsed_config, &jetty);
+        assert_eq!(diff?.len(), 0);
+        Ok(())
+    }
 }

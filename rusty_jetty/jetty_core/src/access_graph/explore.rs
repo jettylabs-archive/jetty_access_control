@@ -125,7 +125,7 @@ mod tests {
             None,
             None,
         );
-        assert_eq!(a.len(), 2);
+        assert_eq!(a.len(), 3);
 
         // Test target matching
         let a = ag.get_matching_children(

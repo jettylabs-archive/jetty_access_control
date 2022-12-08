@@ -237,7 +237,7 @@ mod tests {
                 .for_each(|q| crate::logging::debug!("{}", ag.path_as_string(q)))
         });
         assert_eq!(a.len(), 1);
-        assert_eq!(a.values().next().map(|v| v.len()), Some(2));
+        assert_eq!(a.values().next().map(|v| v.len()), Some(6));
 
         Ok(())
     }

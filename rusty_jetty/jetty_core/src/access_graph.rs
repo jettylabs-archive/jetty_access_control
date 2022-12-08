@@ -46,7 +46,7 @@ use uuid::Uuid;
 use crate::permissions::matrix::InsertOrMerge;
 
 /// Attributes associated with a User node
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct UserAttributes {
     /// User name
     pub name: NodeName,
