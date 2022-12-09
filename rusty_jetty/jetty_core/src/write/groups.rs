@@ -270,13 +270,44 @@ fn generate_diff(
         get_all_group_names(&groups, jetty_connector_names.keys().collect())?;
 
     for (group_name, group) in groups {
-        // get all the node names for the given group
+        // get all the node names for the given group. These would be the local names of the groups that need to be created
         let binding = all_config_group_names.clone();
         let node_names = binding
             .get(group_name)
             .ok_or(anyhow!("group {} not found in config", group_name))?;
 
         for (origin, node_name) in node_names {
+            // get all the legal groups and users for the node
+
+            // first, get all the users, depending on whether nested groups are allowed
+            let legal_users = if jetty_connector_names[origin] {
+                users_to_node_names(&group.members.users)
+            } else {
+                get_all_inherited_users(&groups, group_name)
+                    .into_iter()
+                    .collect()
+            };
+
+            // now filter down to the relevant users (those with the right connector)
+            let legal_users = legal_users
+                .into_iter()
+                .filter(|u| {
+                    ag.get_node(u)
+                        .unwrap()
+                        .get_node_connectors()
+                        .contains(origin)
+                })
+                .collect();
+
+            // now get all the legal groups
+            // depends on whether nested groups are allowed
+            let legal_groups = if jetty_connector_names[origin] {
+                // This function already filters out ineligible groups, based on connector
+                groups_to_node_names(&group.members.groups, &all_config_group_names, origin)
+            } else {
+                Vec::new()
+            };
+
             // check if the group exists, removing the key if it does
             if let Some(group_index) = ag_groups.remove(&node_name) {
                 // get all the users in the existing group and diff them
@@ -294,27 +325,7 @@ fn generate_diff(
                     .map(|id| ag[*id].get_node_name())
                     .collect::<Vec<_>>();
 
-                // Depends on whether nested groups are allowed
-                let new = if jetty_connector_names[origin] {
-                    users_to_node_names(&group.members.users)
-                } else {
-                    get_all_inherited_users(&groups, group_name)
-                        .into_iter()
-                        .collect()
-                };
-
-                // filter down to the relevant users
-                let new = new
-                    .into_iter()
-                    .filter(|u| {
-                        ag.get_node(u)
-                            .unwrap()
-                            .get_node_connectors()
-                            .contains(origin)
-                    })
-                    .collect();
-
-                let user_changes = diff_node_names(&old, &new);
+                let user_changes = diff_node_names(&old, &legal_users);
 
                 // get all the groups in the existing group and diff them
                 let ag_member_groups = ag.get_matching_children(
@@ -331,31 +342,7 @@ fn generate_diff(
                     .map(|id| ag[*id].get_node_name())
                     .collect::<Vec<_>>();
 
-                // depends on whether nested groups are allowed
-                let new = if jetty_connector_names[origin] {
-                    groups_to_node_names(&group.members.groups, &all_config_group_names, origin)
-                } else {
-                    Vec::new()
-                };
-
-                // filter and transform to the groups that match the config
-                let new = new
-                    .into_iter()
-                    .filter(|u| {
-                        let node_name = ag.get_node(u).unwrap().get_node_name();
-
-                        if let NodeName::Group {
-                            origin: ag_origin, ..
-                        } = node_name
-                        {
-                            &ag_origin == origin
-                        } else {
-                            false
-                        }
-                    })
-                    .collect();
-
-                let group_changes = diff_node_names(&old, &new);
+                let group_changes = diff_node_names(&old, &legal_groups);
 
                 if !user_changes.add.is_empty()
                     || !group_changes.add.is_empty()
@@ -391,8 +378,8 @@ fn generate_diff(
                         group_name: node_name.clone(),
                         details: DiffDetails::AddGroup {
                             members: GroupMemberChanges {
-                                users: users_to_node_names(&group.members.users),
-                                groups: groups_to_node_names(&group.members.groups, &all_config_group_names, origin),
+                                users: legal_users,
+                                groups: legal_groups,
                             },
                         },
                         connector: match node_name {
@@ -472,6 +459,7 @@ fn users_to_node_names(users: &Option<Vec<MemberUser>>) -> Vec<NodeName> {
     }
 }
 
+/// This turns group names into node names, filtering out those don't exist on the relevant connector
 fn groups_to_node_names(
     groups: &Option<Vec<MemberGroup>>,
     all_groups: &BTreeMap<String, BTreeMap<ConnectorNamespace, NodeName>>,
@@ -480,13 +468,14 @@ fn groups_to_node_names(
     match groups {
         Some(groups) => groups
             .iter()
-            .map(|g| {
+            // Using a filter_map because there are some cases where a group doesn't
+            // (and shouldn't exit) for a connector, but it will still look for it
+            .filter_map(|g| {
                 all_groups
                     .get(&g.name)
                     .unwrap()
                     .get(origin)
-                    .unwrap()
-                    .to_owned()
+                    .map(|n| n.to_owned())
             })
             .collect::<Vec<_>>(),
         None => Vec::new(),
