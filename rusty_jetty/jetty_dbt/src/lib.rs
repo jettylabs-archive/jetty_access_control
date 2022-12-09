@@ -125,7 +125,11 @@ impl Connector for DbtConnector {
         }
     }
 
-    fn plan_changes(&self, _: &LocalDiffs) -> Vec<std::string::String> {
+    fn plan_changes(&self, _: &LocalDiffs) -> Vec<String> {
+        todo!()
+    }
+
+    async fn apply_changes(&self, _: &LocalDiffs) -> Result<String> {
         todo!()
     }
 }

@@ -41,6 +41,9 @@ pub trait Connector {
     /// Plan changes, based on a set of diffs. Can have a todo!() implementation if a connector doesn't have
     /// write capabilities
     fn plan_changes(&self, diffs: &LocalDiffs) -> Vec<String>;
+    /// Apply changes, based on a set of diffs. Can have a todo!() implementation if a connector doesn't have
+    /// write capabilities
+    async fn apply_changes(&self, diffs: &LocalDiffs) -> Result<String>;
 }
 
 /// The trait all connectors are expected to implement.

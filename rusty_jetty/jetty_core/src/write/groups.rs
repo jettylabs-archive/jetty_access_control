@@ -810,6 +810,24 @@ mod tests {
         fn plan_changes(&self, diffs: &LocalDiffs) -> Vec<String> {
             todo!()
         }
+
+        fn apply_changes<'life0, 'life1, 'async_trait>(
+            &'life0 self,
+            diffs: &'life1 LocalDiffs,
+        ) -> core::pin::Pin<
+            Box<
+                dyn core::future::Future<Output = Result<String>>
+                    + core::marker::Send
+                    + 'async_trait,
+            >,
+        >
+        where
+            'life0: 'async_trait,
+            'life1: 'async_trait,
+            Self: 'async_trait,
+        {
+            todo!()
+        }
     }
 
     pub(crate) fn get_jetty() -> Jetty {

@@ -22,7 +22,7 @@ use jetty_core::{
     connectors::{ConnectorClient, NewConnector},
     fetch_credentials,
     jetty::{ConnectorNamespace, CredentialsMap, JettyConfig},
-    logging::{self, debug, info},
+    logging::{self, debug, error, info},
     project::{self, groups_cfg_path_local},
     write::Diffs,
     Connector, Jetty,
@@ -81,6 +81,7 @@ pub async fn cli() -> Result<()> {
             },
             JettyCommand::Diff { fetch } => UsageEvent::InvokedDiff { fetch },
             JettyCommand::Plan { fetch } => UsageEvent::InvokedPlan { fetch },
+            JettyCommand::Apply { no_fetch } => UsageEvent::InvokedApply { no_fetch },
         };
         record_usage(event, &jetty_config)
             .await
@@ -152,6 +153,13 @@ pub async fn cli() -> Result<()> {
                 fetch(&None, &false).await?;
             };
             plan().await?;
+        }
+        JettyCommand::Apply { no_fetch } => {
+            if !*no_fetch {
+                info!("Fetching data before bootstrap");
+                fetch(&None, &false).await?;
+            };
+            apply().await?;
         }
     }
 
@@ -320,6 +328,64 @@ async fn plan() -> Result<()> {
         plan.iter().for_each(|s| println!("  {s}"));
         println!("\n")
     }
+    Ok(())
+}
+
+async fn apply() -> Result<()> {
+    let mut jetty = new_jetty_with_connectors().await.map_err(|_| {
+        anyhow!(
+            "unable to find {} - make sure you are in a \
+        Jetty project directory, or create a new project by running `jetty init`",
+            project::jetty_cfg_path_local().display()
+        )
+    })?;
+
+    // make sure there's an existing access graph
+    let ag = jetty.try_access_graph()?;
+
+    let diffs = Diffs {
+        groups: jetty_core::write::get_group_diff(&jetty)?,
+    };
+
+    let connector_specific_diffs = diffs.split_by_connector();
+
+    let tr = ag.translator();
+
+    let local_diffs = connector_specific_diffs
+        .iter()
+        .map(|(k, v)| (k.to_owned(), tr.translate_diffs_to_local(v)))
+        .collect::<HashMap<_, _>>();
+
+    let mut results: HashMap<_, _> = HashMap::new();
+
+    for (conn, diff) in local_diffs {
+        results.insert(
+            conn.to_owned(),
+            jetty.connectors[&conn].apply_changes(&diff).await?,
+        );
+    }
+    println!("Fetching updated access information");
+    match fetch(&None, &false).await {
+        Ok(_) => {
+            println!("In some cases, applied changes may have side effects. Here is the current diff based on your configuration:");
+            // For now, we're just looking at group diffs
+            let group_diff = jetty_core::write::get_group_diff(&jetty)?;
+            if !group_diff.is_empty() {
+                group_diff.iter().for_each(|diff| println!("{diff}"));
+            } else {
+                println!("No changes found");
+            };
+        }
+        Err(_) => {
+            error!("unable to perform fetch");
+            println!("In some cases, applied changes may have side effects. We recommend running `jetty diff -f` to see if you should run apply again");
+        }
+    };
+
+    for (c, result) in results {
+        println!("{c}:\n{result}\n");
+    }
+
     Ok(())
 }
 

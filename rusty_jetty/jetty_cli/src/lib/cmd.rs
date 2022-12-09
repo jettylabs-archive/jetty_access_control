@@ -53,7 +53,7 @@ pub(crate) enum JettyCommand {
     Add,
     /// Build out initial configuration files for a project
     Bootstrap {
-        /// Fetch the current configuration before generating the configuration files
+        /// Don't fetch the current configuration before generating the configuration files
         #[clap(short, long, value_parser, default_value = "false")]
         no_fetch: bool,
         /// Overwrite files if they exists
@@ -73,5 +73,12 @@ pub(crate) enum JettyCommand {
         /// Fetch the current configurations before generating the diff
         #[clap(short, long, value_parser, default_value = "false")]
         fetch: bool,
+    },
+
+    /// Apply the planned changes
+    Apply {
+        /// Don't fetch the current configurations before applying the changes
+        #[clap(short, long, value_parser, default_value = "true")]
+        no_fetch: bool,
     },
 }
