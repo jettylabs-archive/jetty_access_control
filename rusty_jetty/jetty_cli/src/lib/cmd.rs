@@ -78,7 +78,7 @@ pub(crate) enum JettyCommand {
     /// Apply the planned changes
     Apply {
         /// Don't fetch the current configurations before applying the changes
-        #[clap(short, long, value_parser, default_value = "true")]
+        #[clap(short, long, value_parser, default_value = "false")]
         no_fetch: bool,
     },
 }

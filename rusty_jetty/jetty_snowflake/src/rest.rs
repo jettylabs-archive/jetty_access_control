@@ -161,6 +161,11 @@ impl SnowflakeRestClient {
             .map_err(anyhow::Error::from)
         }
     }
+
+    /// Get the snowflake user used for queries
+    pub(crate) fn get_snowflake_role(&self) -> String {
+        self.credentials.role.to_owned()
+    }
 }
 
 #[cfg(test)]

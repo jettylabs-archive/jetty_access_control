@@ -38,6 +38,7 @@ once_cell = "1.16.0"
 time = "0.3.17"
 reqwest = "0.11.13"
 textwrap = "0.16.0"
+indicatif = "0.17.2"
 
 
 [target.'cfg(linux)'.dependencies]

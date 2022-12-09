@@ -20,7 +20,7 @@ use crate::TableauCredentials;
 /// Number of assets to download concurrently
 const CONCURRENT_ASSET_DOWNLOADS: usize = 25;
 /// Number of metadata request to run currently (e.g. permissions)
-const CONCURRENT_METADATA_FETCHES: usize = 100;
+pub(crate) const CONCURRENT_METADATA_FETCHES: usize = 100;
 /// Path to serialized version of the Tableau Env
 const SERIALIZED_ENV_FILENAME: &str = "tableau_env.json";
 

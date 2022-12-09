@@ -9,13 +9,18 @@ mod init;
 mod tui;
 mod usage_stats;
 
-use std::{collections::HashMap, env, fs, sync::Arc, time::Instant};
+use std::{
+    collections::HashMap,
+    env, fs,
+    sync::Arc,
+    thread,
+    time::{self, Instant},
+};
 
 use anyhow::{anyhow, bail, Context, Result};
-
 use clap::Parser;
-
 use human_panic::setup_panic;
+use indicatif::{ProgressBar, ProgressStyle};
 
 use jetty_core::{
     access_graph::AccessGraph,
@@ -142,21 +147,25 @@ pub async fn cli() -> Result<()> {
         }
         JettyCommand::Diff { fetch: fetch_first } => {
             if *fetch_first {
-                info!("Fetching data before bootstrap");
+                info!("Fetching data before diff");
                 fetch(&None, &false).await?;
+            } else {
+                println!("Generating diff based off existing data. Run `jetty diff -f` to fetch before generating the diff.")
             };
             diff().await?;
         }
         JettyCommand::Plan { fetch: fetch_first } => {
             if *fetch_first {
-                info!("Fetching data before bootstrap");
+                info!("Fetching data before plan");
                 fetch(&None, &false).await?;
+            } else {
+                println!("Generating plan based off existing data. Run `jetty plan -f` to fetch before generating the plan.")
             };
             plan().await?;
         }
         JettyCommand::Apply { no_fetch } => {
             if !*no_fetch {
-                info!("Fetching data before bootstrap");
+                info!("Fetching data before apply. You can run `jetty apply -n` to run apply based on a previous fetch.");
                 fetch(&None, &false).await?;
             };
             apply().await?;
@@ -189,28 +198,31 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
     };
 
     for (namespace, mut conn) in selected_connectors {
-        info!("getting {} data", namespace);
+        let pb = basic_progress_bar(format!("Fetching {} data", namespace).as_str());
+
         let now = Instant::now();
         let data = conn.get_data().await;
         let pcd = (data, namespace.to_owned());
-        info!(
-            "{} data took {:.1} seconds",
+
+        data_from_connectors.push(pcd);
+
+        pb.finish_with_message(format!(
+            "Fetching {} data took {:.1} seconds",
             namespace,
             now.elapsed().as_secs_f32()
-        );
-        data_from_connectors.push(pcd);
+        ));
     }
 
-    info!("creating access graph");
+    let pb = basic_progress_bar("Creating access graph");
     let now = Instant::now();
 
     let ag = AccessGraph::new_from_connector_data(data_from_connectors)?;
-
-    info!(
-        "access graph creation took {:.1} seconds",
-        now.elapsed().as_secs_f32()
-    );
     ag.serialize_graph(project::data_dir().join(project::graph_filename()))?;
+
+    pb.finish_with_message(format!(
+        "Access graph created in data took {:.1} seconds",
+        now.elapsed().as_secs_f32()
+    ));
 
     if visualize {
         info!("visualizing access graph");
@@ -218,11 +230,11 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
         ag.visualize("/tmp/graph.svg")
             .context("failed to visualize")?;
         info!(
-            "access graph creation took {:.1} seconds",
+            "Access graph visualized at \"/tmp/graph.svg\" (took {:.1} seconds)",
             now.elapsed().as_secs_f32()
         );
     } else {
-        info!("Skipping visualization.")
+        debug!("Skipping visualization.")
     };
 
     Ok(())
@@ -375,21 +387,44 @@ async fn apply() -> Result<()> {
             jetty.connectors[&conn].apply_changes(&diff).await?,
         );
     }
-    println!("Fetching updated access information");
+
+    // Look at the updated data to see if the apply was successful
+    println!("Waiting 5 seconds then fetching updated access information");
+    timmer_with_spinner(
+        5,
+        "Giving your tools a chance to update",
+        "Done - beginning fetch",
+    );
+
     match fetch(&None, &false).await {
         Ok(_) => {
-            println!("In some cases, applied changes may have side effects. Here is the current diff based on your configuration:");
+            /// reload jetty to get the latest fetch
+            let jetty = new_jetty_with_connectors().await.map_err(|_| {
+                anyhow!(
+                    "unable to find {} - make sure you are in a \
+                Jetty project directory, or create a new project by running `jetty init`",
+                    project::jetty_cfg_path_local().display()
+                )
+            })?;
+
+            println!("Here is the current diff based on your configuration:");
             // For now, we're just looking at group diffs
             let group_diff = jetty_core::write::get_group_diff(&jetty)?;
             if !group_diff.is_empty() {
                 group_diff.iter().for_each(|diff| println!("{diff}"));
+                println!(
+                    r#"You might see outstanding changes for a couple of reasons:
+    1. The underlying system is still updating (this is often the case with Tableau)
+    2. The changes had side-effects. This is expected for some changes.
+       You can run `jetty apply` again to make the necessary updates"#
+                )
             } else {
                 println!("No changes found");
             };
         }
         Err(_) => {
             error!("unable to perform fetch");
-            println!("In some cases, applied changes may have side effects. We recommend running `jetty diff -f` to see if you should run apply again");
+            println!("We recommend running `jetty diff -f` to see if you should run apply again to correct any side-effects of your changes");
         }
     };
 
@@ -483,4 +518,51 @@ pub async fn new_jetty_with_connectors() -> Result<Jetty> {
     let connectors = get_connectors(&creds, &config.connectors).await?;
 
     Jetty::new_with_config(config, project::data_dir(), connectors)
+}
+
+fn timmer_with_spinner(secs: u64, msg: &str, completion_msg: &str) {
+    let pb = ProgressBar::new_spinner();
+    pb.enable_steady_tick(time::Duration::from_millis(120));
+
+    pb.set_style(
+        ProgressStyle::with_template("{spinner:.green} {msg}")
+            .unwrap()
+            // For more spinners check out the cli-spinners project:
+            // https://github.com/sindresorhus/cli-spinners/blob/master/spinners.json
+            .tick_strings(&[
+                "▹▹▹▹▹",
+                "▸▹▹▹▹",
+                "▹▸▹▹▹",
+                "▹▹▸▹▹",
+                "▹▹▹▸▹",
+                "▹▹▹▹▸",
+                "▪▪▪▪▪",
+            ]),
+    );
+    pb.set_message(msg.to_owned());
+    thread::sleep(time::Duration::from_secs(secs));
+    pb.finish_with_message(completion_msg.to_owned());
+}
+
+fn basic_progress_bar(msg: &str) -> ProgressBar {
+    let pb = ProgressBar::new_spinner();
+    pb.enable_steady_tick(time::Duration::from_millis(120));
+
+    pb.set_style(
+        ProgressStyle::with_template("{spinner:.green} {msg}")
+            .unwrap()
+            // For more spinners check out the cli-spinners project:
+            // https://github.com/sindresorhus/cli-spinners/blob/master/spinners.json
+            .tick_strings(&[
+                "▹▹▹▹▹",
+                "▸▹▹▹▹",
+                "▹▸▹▹▹",
+                "▹▹▸▹▹",
+                "▹▹▹▸▹",
+                "▹▹▹▹▸",
+                "▪▪▪▪▪",
+            ]),
+    );
+    pb.set_message(msg.to_owned());
+    pb
 }
