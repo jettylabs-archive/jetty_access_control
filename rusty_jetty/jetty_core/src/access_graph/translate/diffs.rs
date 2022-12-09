@@ -20,6 +20,7 @@ pub mod groups {
     use anyhow::Result;
     use std::collections::HashSet;
 
+    #[derive(Debug)]
     /// A group-specific local diff
     pub struct LocalDiff {
         /// the group being diffed

@@ -52,6 +52,17 @@ impl Environment {
         }
         res
     }
+
+    /// given a group name, return the group id
+    pub(crate) fn get_group_id_by_name(&self, group_name: &String) -> Option<String> {
+        self.groups.iter().find_map(|(id, g)| {
+            if &g.name == group_name {
+                Some(id.to_owned())
+            } else {
+                None
+            }
+        })
+    }
 }
 
 /// Implemented for asset types that have sources embedded in them: Workbooks, Flows, and Datasources

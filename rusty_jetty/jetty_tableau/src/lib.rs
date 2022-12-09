@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use jetty_core::{
-    access_graph::translate::diffs::LocalDiffs,
+    access_graph::translate::diffs::{groups, LocalDiffs},
     connectors::{
         nodes::ConnectorData,
         nodes::{self as jetty_nodes, EffectivePermission, SparseMatrix},
@@ -28,8 +28,8 @@ use jetty_core::{
     },
     cual::Cual,
     jetty::{ConnectorConfig, ConnectorManifest, CredentialsMap},
+    logging::error,
     permissions::matrix::Merge,
-    write::Diffs,
     Connector,
 };
 
@@ -53,8 +53,8 @@ pub struct TableauCredentials {
     #[serde(flatten)]
     method: LoginMethod,
     /// Tableau server name like 10ay.online.tableau.com *without* the `https://`
-    server_name: String,
-    site_name: String,
+    pub(crate) server_name: String,
+    pub(crate) site_name: String,
 }
 
 /// Enum representing the different types of tableau login methods and the required information
@@ -219,6 +219,194 @@ impl TableauConnector {
             .map(|x| J::from(x.clone(), env))
             .collect()
     }
+
+    fn generate_request_plan(&self, diffs: &LocalDiffs) -> Result<Vec<Vec<String>>> {
+        let mut batch1 = Vec::new();
+        let mut batch2 = Vec::new();
+
+        let base_url = format![
+            "https://{}/api/{}/sites/{}/",
+            self.coordinator.rest_client.get_server_name(),
+            self.coordinator.rest_client.get_api_version(),
+            self.coordinator.rest_client.get_site_id()?,
+        ];
+        // Starting with groups
+        let group_diffs = &diffs.groups;
+        for diff in group_diffs {
+            match &diff.details {
+                groups::LocalDiffDetails::AddGroup { members } => {
+                    // Request to create the group
+
+                    batch1.push(format!(
+                        r#"POST {base_url}groups
+body:
+  {{
+    "group": {{
+      "name": {},
+    }}
+  }}"#,
+                        diff.group_name
+                    ));
+
+                    // Requests to add users
+                    for user in &members.users {
+                        batch1.push(format!(
+                            r#"POST {base_url}groups/<new group_id for {}>/users
+body:
+  {{
+    "user": {{
+      "id": {user},
+    }}
+  }}"#,
+                            diff.group_name
+                        ));
+                    }
+                }
+                groups::LocalDiffDetails::RemoveGroup => {
+                    // get the group_id
+                    let group_id = self
+                        .coordinator
+                        .env
+                        .get_group_id_by_name(&diff.group_name)
+                        .ok_or(anyhow!(
+                            "can't delete group {}: group doesn't exist",
+                            &diff.group_name
+                        ))?;
+
+                    batch1.push(format!(
+                        "DELETE {base_url}groups/{group_id}\n## {group_id} is the id for {}\n",
+                        diff.group_name
+                    ));
+                }
+                groups::LocalDiffDetails::ModifyGroup { add, remove } => {
+                    // get the group_id
+                    let group_id = self
+                        .coordinator
+                        .env
+                        .get_group_id_by_name(&diff.group_name)
+                        .ok_or(anyhow!(
+                            "can't delete group {}: group doesn't exist",
+                            &diff.group_name
+                        ))?;
+
+                    // Add users
+                    for user in &add.users {
+                        batch2.push(format!(
+                            r#"POST {base_url}groups/{group_id}/users
+body:
+  {{
+    "user": {{
+      "id": {user},
+    }}
+  }}"#
+                        ));
+                    }
+
+                    // Remove users
+                    for user in &remove.users {
+                        batch2.push(format!(
+                            r#"DELETE {base_url}groups/{group_id}/users/{user}"#
+                        ));
+                    }
+                }
+            }
+        }
+        Ok(vec![batch1, batch2])
+    }
+
+    fn plan_futures(&self, diffs: &LocalDiffs) -> Result<Vec<Vec<String>>> {
+        let mut batch1 = Vec::new();
+        let mut batch2 = Vec::new();
+
+        let base_url = format![
+            "https://{}/api/{}/sites/{}/",
+            self.coordinator.rest_client.get_server_name(),
+            self.coordinator.rest_client.get_api_version(),
+            self.coordinator.rest_client.get_site_id()?,
+        ];
+        // Starting with groups
+        let group_diffs = &diffs.groups;
+        for diff in group_diffs {
+            match &diff.details {
+                groups::LocalDiffDetails::AddGroup { members } => {
+                    // Request to create the group
+
+                    batch1.push(format!(
+                        r#"POST {base_url}groups
+body:
+  {{
+    "group": {{
+      "name": {},
+    }}
+  }}"#,
+                        diff.group_name
+                    ));
+
+                    // Requests to add users
+                    for user in &members.users {
+                        batch1.push(format!(
+                            r#"POST {base_url}groups/<new group_id for {}>/users
+body:
+  {{
+    "user": {{
+      "id": {user},
+    }}
+  }}"#,
+                            diff.group_name
+                        ));
+                    }
+                }
+                groups::LocalDiffDetails::RemoveGroup => {
+                    // get the group_id
+                    let group_id = self
+                        .coordinator
+                        .env
+                        .get_group_id_by_name(&diff.group_name)
+                        .ok_or(anyhow!(
+                            "can't delete group {}: group doesn't exist",
+                            &diff.group_name
+                        ))?;
+
+                    batch1.push(format!(
+                        "DELETE {base_url}groups/{group_id}\n## {group_id} is the id for {}\n",
+                        diff.group_name
+                    ));
+                }
+                groups::LocalDiffDetails::ModifyGroup { add, remove } => {
+                    // get the group_id
+                    let group_id = self
+                        .coordinator
+                        .env
+                        .get_group_id_by_name(&diff.group_name)
+                        .ok_or(anyhow!(
+                            "can't delete group {}: group doesn't exist",
+                            &diff.group_name
+                        ))?;
+
+                    // Add users
+                    for user in &add.users {
+                        batch2.push(format!(
+                            r#"POST {base_url}groups/{group_id}/users
+body:
+  {{
+    "user": {{
+      "id": {user},
+    }}
+  }}"#
+                        ));
+                    }
+
+                    // Remove users
+                    for user in &remove.users {
+                        batch2.push(format!(
+                            r#"DELETE {base_url}groups/{group_id}/users/{user}"#
+                        ));
+                    }
+                }
+            }
+        }
+        Ok(vec![batch1, batch2])
+    }
 }
 
 #[async_trait]
@@ -289,8 +477,14 @@ impl Connector for TableauConnector {
         }
     }
 
-    fn plan_changes(&self, _: &LocalDiffs) -> Vec<String> {
-        todo!()
+    fn plan_changes(&self, diffs: &LocalDiffs) -> Vec<String> {
+        match self.generate_request_plan(diffs) {
+            Ok(plan) => plan.into_iter().flatten().collect(),
+            Err(err) => {
+                error!("Unable to generate plan for Tableau: {err}");
+                vec![]
+            }
+        }
     }
 
     async fn apply_changes(&self, diffs: &LocalDiffs) -> Result<String> {

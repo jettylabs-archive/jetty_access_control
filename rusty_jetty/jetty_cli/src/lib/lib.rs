@@ -318,6 +318,12 @@ async fn plan() -> Result<()> {
         .map(|(k, v)| (k.to_owned(), tr.translate_diffs_to_local(v)))
         .collect::<HashMap<_, _>>();
 
+    // Exit early if there haven't been any changes
+    if local_diffs.is_empty() {
+        println!("No changes found");
+        return Ok(());
+    }
+
     let plans: HashMap<_, _> = local_diffs
         .iter()
         .map(|(k, v)| (k.to_owned(), jetty.connectors[k].plan_changes(v)))
@@ -325,8 +331,13 @@ async fn plan() -> Result<()> {
 
     for (c, plan) in plans {
         println!("{c}:");
-        plan.iter().for_each(|s| println!("  {s}"));
-        println!("\n")
+        if !plan.is_empty() {
+            plan.iter()
+                .for_each(|s| println!("{}\n", textwrap::indent(s, "  ")));
+            println!("\n")
+        } else {
+            println!("  No changes planned\n");
+        }
     }
     Ok(())
 }
