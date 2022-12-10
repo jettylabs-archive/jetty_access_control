@@ -21,5 +21,8 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 url = { version = "2.3.1", features = ["serde"] }
 urlencoding = "2.1.2"
-bimap = "0.6.2"
-uuid = { version = "1.2.1", features = ["v5", "serde"] }
+bimap = { version = "0.6.2", features = ["serde"] }
+uuid = { version = "1.2.1", features = ["v5", "v4", "serde"] }
+dirs = "4.0.0"
+lazy_static = "1.4.0"
+colored = "2.0.0"

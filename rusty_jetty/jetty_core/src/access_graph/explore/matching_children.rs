@@ -18,12 +18,12 @@ impl AccessGraph {
     /// - `min_depth` is the minimum depth at which a target may be found
     /// - `max_depth` is how deep to search for children. If None, will continue until it runs out of children to visit.
 
-    pub fn get_matching_children<T: Into<NodeIndex>>(
+    pub fn get_matching_children<T: Into<NodeIndex>, X: FnOnce(&JettyNode) -> bool + Copy>(
         &self,
         from: T,
         edge_matcher: fn(&EdgeType) -> bool,
         passthrough_matcher: fn(&JettyNode) -> bool,
-        target_matcher: fn(&JettyNode) -> bool,
+        target_matcher: X,
         min_depth: Option<usize>,
         max_depth: Option<usize>,
     ) -> Vec<NodeIndex> {
@@ -58,12 +58,12 @@ impl AccessGraph {
 
     /// Start with a node, then get all of its children. If they're the target type, add them to the result.
     /// If not the target, keep going.
-    fn get_matching_children_recursive(
+    fn get_matching_children_recursive<X: FnOnce(&JettyNode) -> bool + Copy>(
         &self,
         idx: NodeIndex,
         edge_matcher: fn(&EdgeType) -> bool,
         passthrough_matcher: fn(&JettyNode) -> bool,
-        target_matcher: fn(&JettyNode) -> bool,
+        mut target_matcher: X,
         min_depth: usize,
         max_depth: usize,
         current_depth: usize,

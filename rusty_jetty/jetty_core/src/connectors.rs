@@ -4,15 +4,17 @@
 pub mod nodes;
 pub mod processed_nodes;
 
-use std::path::{PathBuf};
+use std::{collections::HashSet, path::PathBuf};
 
 use anyhow::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    access_graph::translate::diffs::LocalDiffs,
     connectors::nodes::ConnectorData,
-    jetty::{ConnectorConfig, CredentialsMap},
+    jetty::{ConnectorConfig, ConnectorManifest, CredentialsMap},
+    write,
 };
 
 /// Client using the connector
@@ -34,6 +36,14 @@ pub trait Connector {
     async fn check(&self) -> bool;
     /// Get all data in one container for the connector to supply to the graph.
     async fn get_data(&mut self) -> ConnectorData;
+    /// Get the capabilities of a given connector. These can include
+    fn get_manifest(&self) -> ConnectorManifest;
+    /// Plan changes, based on a set of diffs. Can have a todo!() implementation if a connector doesn't have
+    /// write capabilities
+    fn plan_changes(&self, diffs: &LocalDiffs) -> Vec<String>;
+    /// Apply changes, based on a set of diffs. Can have a todo!() implementation if a connector doesn't have
+    /// write capabilities
+    async fn apply_changes(&self, diffs: &LocalDiffs) -> Result<String>;
 }
 
 /// The trait all connectors are expected to implement.
@@ -47,6 +57,45 @@ pub trait NewConnector {
         // A connector is allowed to create and write to this directory.
         data_dir: Option<PathBuf>,
     ) -> Result<Box<Self>>;
+}
+
+/// The capabilities of a connector
+pub struct ConnectorCapabilities {
+    /// The write capabilities of the connector. Right now these can include:
+    /// groups, policies
+    pub write: HashSet<WriteCapabilities>,
+    /// The read capabilities of the connector. These could include:
+    /// asset_lineage, assets, groups, users, policies
+    pub read: HashSet<ReadCapabilities>,
+}
+
+#[derive(Hash, PartialEq, Eq, Clone, Debug)]
+/// Available read capabilities for connectors
+pub enum ReadCapabilities {
+    /// Read asset lineage
+    AssetLineage,
+    /// Read assets
+    Assets,
+    /// Read groups
+    Groups,
+    /// Read users
+    Users,
+    /// Read policies
+    Policies,
+}
+
+#[derive(Hash, PartialEq, Eq, Clone, Debug)]
+/// Available write capabilities for connectors
+pub enum WriteCapabilities {
+    /// Write groups, and whether groups can be nested inside groups
+    Groups {
+        /// Whether other groups can be nested in groups
+        nested: bool,
+    },
+    /// Write Policies
+    Policies,
+    /// Add Users
+    Users,
 }
 
 /// Enum of identifiers used to resolve user identities

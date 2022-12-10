@@ -1,5 +1,7 @@
 use serde::Deserialize;
 
+use crate::strip_quotes_and_deserialize;
+
 use super::RoleName;
 
 /// Snowflake entry for a grant to a role.

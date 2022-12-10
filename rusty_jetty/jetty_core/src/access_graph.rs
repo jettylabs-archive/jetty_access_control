@@ -17,7 +17,7 @@ use crate::cual::Cual;
 use crate::connectors::AssetType;
 use crate::jetty::ConnectorNamespace;
 use crate::logging::debug;
-use crate::tag_parser::{parse_tags, tags_to_jetty_node_helpers};
+use crate::write::tag_parser::{parse_tags, tags_to_jetty_node_helpers};
 
 use self::graph::typed_indices::{AssetIndex, GroupIndex, PolicyIndex, TagIndex, UserIndex};
 use self::helpers::NodeHelper;
@@ -46,7 +46,7 @@ use uuid::Uuid;
 use crate::permissions::matrix::InsertOrMerge;
 
 /// Attributes associated with a User node
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct UserAttributes {
     /// User name
     pub name: NodeName,
@@ -449,7 +449,7 @@ impl JettyNode {
 
     /// Given a node, return the NodeName. This will return the name field
     /// wrapped in the appropriate enum.
-    fn get_node_name(&self) -> NodeName {
+    pub(crate) fn get_node_name(&self) -> NodeName {
         match &self {
             JettyNode::Asset(a) => a.name.to_owned(),
             JettyNode::Group(a) => a.name.to_owned(),
@@ -479,7 +479,7 @@ pub enum EdgeType {
     /// group -> includes, as members -> user|group
     Includes,
     /// group|user -> has permission granted by -> policy
-    GrantedBy,
+    GrantedFrom,
     /// asset -> hierarchical child of -> asset
     ChildOf,
     /// asset -> hierarchical parent of -> asset
@@ -511,8 +511,8 @@ fn get_edge_type_pair(edge_type: &EdgeType) -> EdgeType {
     match edge_type {
         EdgeType::MemberOf => EdgeType::Includes,
         EdgeType::Includes => EdgeType::MemberOf,
-        EdgeType::GrantedBy => EdgeType::GrantedTo,
-        EdgeType::GrantedTo => EdgeType::GrantedBy,
+        EdgeType::GrantedFrom => EdgeType::GrantedTo,
+        EdgeType::GrantedTo => EdgeType::GrantedFrom,
         EdgeType::ChildOf => EdgeType::ParentOf,
         EdgeType::ParentOf => EdgeType::ChildOf,
         EdgeType::DerivedFrom => EdgeType::DerivedTo,
@@ -657,15 +657,17 @@ impl JettyEdge {
 }
 
 /// Representation of data access state
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct AccessGraph {
     /// The graph itself
     pub(crate) graph: graph::Graph,
     edge_cache: HashSet<JettyEdge>,
     /// Unix timestamp of when the graph was built
-    last_modified: OffsetDateTime,
+    last_modified: Option<OffsetDateTime>,
     /// The merged effective permissions from all connectors
     effective_permissions: SparseMatrix<UserIndex, AssetIndex, HashSet<EffectivePermission>>,
+    /// The translator between local and global namespaces
+    translator: Translator,
 }
 
 impl<T: Into<NodeIndex>> Index<T> for AccessGraph {
@@ -686,7 +688,10 @@ impl<T: Into<NodeIndex>> IndexMut<T> for AccessGraph {
 
 impl AccessGraph {
     /// New graph
-    pub fn new(connector_data: ProcessedConnectorData) -> Result<Self> {
+    pub fn new(
+        connector_data: ProcessedConnectorData,
+        translator: Option<Translator>,
+    ) -> Result<Self> {
         let mut ag = AccessGraph {
             graph: graph::Graph {
                 graph: petgraph::stable_graph::StableDiGraph::new(),
@@ -694,8 +699,13 @@ impl AccessGraph {
                 node_ids: Default::default(),
             },
             edge_cache: HashSet::new(),
-            last_modified: OffsetDateTime::now_utc(),
+            last_modified: Some(OffsetDateTime::now_utc()),
             effective_permissions: Default::default(),
+            translator: if let Some(t) = translator {
+                t
+            } else {
+                Default::default()
+            },
         };
         // Create all nodes first, then create edges.
         ag.add_nodes(&connector_data)?;
@@ -718,12 +728,17 @@ impl AccessGraph {
         let tr = Translator::new(&connector_data);
         // Process the connector data
         let pcd = tr.local_to_processed_connector_data(connector_data);
-        let ag_res = AccessGraph::new(pcd.to_owned());
+        let ag_res = AccessGraph::new(pcd.to_owned(), Some(tr));
         ag_res.map(|mut ag| {
             ag.effective_permissions =
                 ag.translate_effective_permissions_to_global_indices(pcd.effective_permissions);
             ag
         })
+    }
+
+    /// Return the translator
+    pub fn translator(&self) -> &Translator {
+        &self.translator
     }
 
     /// This translate effective permissions from using node names for indices to using
@@ -820,13 +835,14 @@ impl AccessGraph {
         AccessGraph {
             graph: new_graph_with(nodes, edges).unwrap(),
             edge_cache: HashSet::new(),
-            last_modified: OffsetDateTime::now_utc(),
+            last_modified: Default::default(),
             effective_permissions: Default::default(),
+            translator: Default::default(),
         }
     }
 
     /// Get last modified date for access graph
-    pub fn get_last_modified(&self) -> OffsetDateTime {
+    pub fn get_last_modified(&self) -> Option<OffsetDateTime> {
         self.last_modified
     }
 
@@ -1007,7 +1023,7 @@ mod tests {
             ..Default::default()
         }];
 
-        let mut ag = AccessGraph::new(Default::default())?;
+        let mut ag = AccessGraph::new(Default::default(), None)?;
 
         let output_edges = HashSet::from([
             JettyEdge {
@@ -1101,7 +1117,7 @@ mod tests {
                     name: "Policy 1".to_string(),
                     origin: Default::default(),
                 },
-                edge_type: EdgeType::GrantedBy,
+                edge_type: EdgeType::GrantedFrom,
             },
             JettyEdge {
                 from: NodeName::Policy {

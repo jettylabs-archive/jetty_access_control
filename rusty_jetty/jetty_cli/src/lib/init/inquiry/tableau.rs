@@ -1,5 +1,3 @@
-
-
 use anyhow::{bail, Result};
 use colored::Colorize;
 use inquire::{Password, PasswordDisplayMode, Select, Text};

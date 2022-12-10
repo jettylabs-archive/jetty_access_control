@@ -4,7 +4,7 @@ use jetty_core::connectors::nodes;
 
 use serde::{Deserialize, Serialize};
 
-use crate::cual::cual_from_snowflake_obj_name;
+use crate::{cual::cual_from_snowflake_obj_name, strip_quotes_and_deserialize};
 
 use super::grant::Grant;
 
@@ -58,7 +58,10 @@ impl Grant for FutureGrant {
         nodes::RawPolicy::new(
             // We add the `.future` to differentiate this policy from
             // non-heirarchical ones
-            format!("snowflake.future.{}.{}.{stripped_name}", self.grant_on, self.grantee_name),
+            format!(
+                "snowflake.future.{}.{}.{stripped_name}",
+                self.grant_on, self.grantee_name
+            ),
             all_privileges,
             // Unwrap here is fine since we asserted that the set was not empty above.
             HashSet::from([cual.uri()]),

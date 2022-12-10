@@ -14,18 +14,19 @@ mod cual;
 mod manifest;
 
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     path::{Path, PathBuf},
 };
 
 use cual::set_cual_account_name;
 use jetty_core::{
+    access_graph::translate::diffs::LocalDiffs,
     connectors::{
         self,
         nodes::{ConnectorData, RawAssetReference as JettyAssetReference},
-        NewConnector,
+        ConnectorCapabilities, NewConnector, ReadCapabilities,
     },
-    jetty::{ConnectorConfig, CredentialsMap},
+    jetty::{ConnectorConfig, ConnectorManifest, CredentialsMap},
     Connector,
 };
 
@@ -114,14 +115,28 @@ impl Connector for DbtConnector {
             cual_prefix: None,
         }
     }
+
+    fn get_manifest(&self) -> ConnectorManifest {
+        ConnectorManifest {
+            capabilities: ConnectorCapabilities {
+                read: HashSet::from([ReadCapabilities::AssetLineage]),
+                write: HashSet::from([]),
+            },
+        }
+    }
+
+    fn plan_changes(&self, _: &LocalDiffs) -> Vec<String> {
+        todo!()
+    }
+
+    async fn apply_changes(&self, _: &LocalDiffs) -> Result<String> {
+        todo!()
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        consts::VIEW,
-        manifest::node::{DbtModelNode},
-    };
+    use crate::{consts::VIEW, manifest::node::DbtModelNode};
 
     use super::*;
     use jetty_core::{

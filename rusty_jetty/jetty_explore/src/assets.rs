@@ -17,7 +17,8 @@ use serde::Serialize;
 use uuid::Uuid;
 
 use crate::{
-    node_summaries::NodeSummary, NodeSummaryWithPaths, NodeSummaryWithPrivileges, SummaryWithAssociatedSummaries,
+    node_summaries::NodeSummary, NodeSummaryWithPaths, NodeSummaryWithPrivileges,
+    SummaryWithAssociatedSummaries,
 };
 
 /// Return a router to handle all asset-related requests

@@ -14,19 +14,23 @@ use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
 
 use coordinator::Environment;
+use futures::{future::BoxFuture, Future, StreamExt, TryFutureExt};
+use reqwest::RequestBuilder;
 use rest::get_cual_prefix;
 pub use rest::TableauRestClient;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use jetty_core::{
+    access_graph::translate::diffs::{groups, LocalDiffs},
     connectors::{
         nodes::ConnectorData,
         nodes::{self as jetty_nodes, EffectivePermission, SparseMatrix},
-        ConnectorClient, NewConnector,
+        ConnectorCapabilities, ConnectorClient, NewConnector, ReadCapabilities, WriteCapabilities,
     },
     cual::Cual,
-    jetty::{ConnectorConfig, CredentialsMap},
+    jetty::{ConnectorConfig, ConnectorManifest, CredentialsMap},
+    logging::error,
     permissions::matrix::Merge,
     Connector,
 };
@@ -36,7 +40,9 @@ use permissions::PermissionManager;
 
 use std::{
     collections::{HashMap, HashSet},
-    path::{PathBuf},
+    path::PathBuf,
+    pin::Pin,
+    sync::{Arc, Mutex},
 };
 
 /// Map wrapper for config values.
@@ -51,8 +57,8 @@ pub struct TableauCredentials {
     #[serde(flatten)]
     method: LoginMethod,
     /// Tableau server name like 10ay.online.tableau.com *without* the `https://`
-    server_name: String,
-    site_name: String,
+    pub(crate) server_name: String,
+    pub(crate) site_name: String,
 }
 
 /// Enum representing the different types of tableau login methods and the required information
@@ -217,6 +223,242 @@ impl TableauConnector {
             .map(|x| J::from(x.clone(), env))
             .collect()
     }
+
+    fn generate_request_plan(&self, diffs: &LocalDiffs) -> Result<Vec<Vec<String>>> {
+        let mut batch1 = Vec::new();
+        let mut batch2 = Vec::new();
+
+        let base_url = format![
+            "https://{}/api/{}/sites/{}/",
+            self.coordinator.rest_client.get_server_name(),
+            self.coordinator.rest_client.get_api_version(),
+            self.coordinator.rest_client.get_site_id()?,
+        ];
+        // Starting with groups
+        let group_diffs = &diffs.groups;
+        for diff in group_diffs {
+            match &diff.details {
+                groups::LocalDiffDetails::AddGroup { members } => {
+                    // Request to create the group
+
+                    batch1.push(format!(
+                        r#"POST {base_url}groups
+body:
+  {{
+    "group": {{
+      "name": {},
+    }}
+  }}"#,
+                        diff.group_name
+                    ));
+
+                    // Requests to add users
+                    for user in &members.users {
+                        batch1.push(format!(
+                            r#"POST {base_url}groups/<new group_id for {}>/users
+body:
+  {{
+    "user": {{
+      "id": {user},
+    }}
+  }}"#,
+                            diff.group_name
+                        ));
+                    }
+                }
+                groups::LocalDiffDetails::RemoveGroup => {
+                    // get the group_id
+                    let group_id = self
+                        .coordinator
+                        .env
+                        .get_group_id_by_name(&diff.group_name)
+                        .ok_or(anyhow!(
+                            "can't delete group {}: group doesn't exist",
+                            &diff.group_name
+                        ))?;
+
+                    batch1.push(format!(
+                        "DELETE {base_url}groups/{group_id}\n## {group_id} is the id for {}\n",
+                        diff.group_name
+                    ));
+                }
+                groups::LocalDiffDetails::ModifyGroup { add, remove } => {
+                    // get the group_id
+                    let group_id = self
+                        .coordinator
+                        .env
+                        .get_group_id_by_name(&diff.group_name)
+                        .ok_or(anyhow!(
+                            "can't delete group {}: group doesn't exist",
+                            &diff.group_name
+                        ))?;
+
+                    // Add users
+                    for user in &add.users {
+                        batch2.push(format!(
+                            r#"POST {base_url}groups/{group_id}/users
+body:
+  {{
+    "user": {{
+      "id": {user},
+    }}
+  }}"#
+                        ));
+                    }
+
+                    // Remove users
+                    for user in &remove.users {
+                        batch2.push(format!(
+                            r#"DELETE {base_url}groups/{group_id}/users/{user}"#
+                        ));
+                    }
+                }
+            }
+        }
+        Ok(vec![batch1, batch2])
+    }
+
+    fn generate_plan_futures<'a>(
+        &'a self,
+        diffs: &'a LocalDiffs,
+    ) -> Result<Vec<Vec<Pin<Box<dyn Future<Output = Result<()>> + '_ + Send>>>>> {
+        let mut batch1: Vec<BoxFuture<_>> = Vec::new();
+        let mut batch2: Vec<BoxFuture<_>> = Vec::new();
+
+        let group_map: HashMap<String, String> = self
+            .coordinator
+            .env
+            .groups
+            .iter()
+            .map(|(name, g)| (g.name.to_owned(), g.id.to_owned()))
+            .collect();
+
+        let group_map_mutex = Arc::new(Mutex::new(group_map));
+
+        // Starting with groups
+        let group_diffs = &diffs.groups;
+        for diff in group_diffs {
+            match &diff.details {
+                groups::LocalDiffDetails::AddGroup { members } => {
+                    // start by creating the group
+                    batch1.push(Box::pin(self.create_group_and_add_to_env(
+                        &diff.group_name,
+                        group_map_mutex.clone(),
+                    )));
+                    for user in &members.users {
+                        batch2.push(Box::pin(self.add_user_to_group(
+                            user,
+                            &diff.group_name,
+                            Arc::clone(&group_map_mutex),
+                        )))
+                    }
+                }
+                groups::LocalDiffDetails::RemoveGroup => {
+                    // get the group_id
+                    let temp_group_map = group_map_mutex.lock().unwrap();
+                    let group_id = temp_group_map
+                        .get(&diff.group_name)
+                        .ok_or(anyhow!("Unable to find group id for {}", &diff.group_name))?;
+
+                    let req = self.coordinator.rest_client.build_request(
+                        format!("groups/{group_id}"),
+                        None,
+                        reqwest::Method::DELETE,
+                    )?;
+                    batch1.push(Box::pin(request_builder_to_unit_result(req)))
+                }
+                groups::LocalDiffDetails::ModifyGroup { add, remove } => {
+                    // Add users
+                    for user in &add.users {
+                        batch2.push(Box::pin(self.add_user_to_group(
+                            user,
+                            &diff.group_name,
+                            group_map_mutex.clone(),
+                        )))
+                    }
+                    // Remove users
+                    // get the group_id
+                    let temp_group_map = group_map_mutex.lock().unwrap();
+                    let group_id = temp_group_map
+                        .get(&diff.group_name)
+                        .ok_or(anyhow!("Unable to find group id for {}", &diff.group_name))?;
+
+                    for user in &remove.users {
+                        let req = self.coordinator.rest_client.build_request(
+                            format!("groups/{group_id}/users/{user}"),
+                            None,
+                            reqwest::Method::DELETE,
+                        )?;
+                        batch1.push(Box::pin(request_builder_to_unit_result(req)))
+                    }
+                }
+            }
+        }
+        Ok(vec![batch1, batch2])
+    }
+
+    async fn create_group_and_add_to_env(
+        &self,
+        group_name: &String,
+        group_map: Arc<Mutex<HashMap<String, String>>>,
+    ) -> Result<()> {
+        let req_body = json!({"group": { "name": group_name }});
+        let req = self.coordinator.rest_client.build_request(
+            format!("groups/"),
+            Some(req_body),
+            reqwest::Method::POST,
+        )?;
+        let resp = req.send().await?.json::<serde_json::Value>().await?;
+
+        let group_id = rest::get_json_from_path(&resp, &vec!["group".to_owned(), "id".to_owned()])?
+            .as_str()
+            .ok_or_else(|| anyhow!["unable to get new id for {group_name}"])?
+            .to_string();
+
+        // update the environment so that when users look for this group in the future, they are able to find it!
+        let mut locked_group_map = group_map.lock().unwrap();
+        locked_group_map.insert(group_name.to_owned(), group_id.to_owned());
+        Ok(())
+    }
+
+    /// Function to add users to a group, deferring the group lookup until it's needed. This
+    /// allows it to work for new groups
+    async fn add_user_to_group(
+        &self,
+        user: &String,
+        group_name: &String,
+        group_map: Arc<Mutex<HashMap<String, String>>>,
+    ) -> Result<()> {
+        // get the group_id
+        let mut group_id = "".to_owned();
+        {
+            let temp_group_map = group_map.lock().unwrap();
+            group_id = temp_group_map
+                .get(group_name)
+                .ok_or(anyhow!("Unable to find group id for {}", group_name))?
+                .to_owned();
+        }
+
+        // Add the user
+        let req_body = json!({"user": {"id": user}});
+        let _ = self
+            .coordinator
+            .rest_client
+            .build_request(
+                format!("groups/{group_id}/users"),
+                Some(req_body),
+                reqwest::Method::POST,
+            )?
+            .send()
+            .await?;
+
+        Ok(())
+    }
+}
+
+async fn request_builder_to_unit_result(req: RequestBuilder) -> Result<()> {
+    req.send().await?;
+    Ok(())
 }
 
 #[async_trait]
@@ -250,6 +492,7 @@ impl Connector for TableauConnector {
     }
 
     async fn get_data(&mut self) -> ConnectorData {
+        self.setup().await;
         let (groups, users, assets, tags, policies) = self.env_to_jetty_all();
         let effective_permissions = self.get_effective_permissions();
         ConnectorData::new(
@@ -267,5 +510,60 @@ impl Connector for TableauConnector {
                     .to_owned(),
             ),
         )
+    }
+
+    fn get_manifest(&self) -> ConnectorManifest {
+        ConnectorManifest {
+            capabilities: ConnectorCapabilities {
+                read: HashSet::from([
+                    ReadCapabilities::Assets,
+                    ReadCapabilities::Groups,
+                    ReadCapabilities::Policies,
+                    ReadCapabilities::Users,
+                ]),
+                write: HashSet::from([
+                    WriteCapabilities::Groups { nested: false },
+                    WriteCapabilities::Policies,
+                ]),
+            },
+        }
+    }
+
+    fn plan_changes(&self, diffs: &LocalDiffs) -> Vec<String> {
+        match self.generate_request_plan(diffs) {
+            Ok(plan) => plan.into_iter().flatten().collect(),
+            Err(err) => {
+                error!("Unable to generate plan for Tableau: {err}");
+                vec![]
+            }
+        }
+    }
+
+    async fn apply_changes(&self, diffs: &LocalDiffs) -> Result<String> {
+        let mut success_counter = 0;
+        let mut failure_counter = 0;
+        // This is designed in such a way that each query_set may be run concurrently.
+        for request_set in self.generate_plan_futures(diffs)? {
+            let results = futures::stream::iter(request_set)
+                .buffered(coordinator::CONCURRENT_METADATA_FETCHES)
+                .collect::<Vec<_>>()
+                .await;
+
+            for result in results {
+                match result {
+                    Err(e) => {
+                        error!("{:?}", e);
+                        failure_counter += 1;
+                    }
+                    Ok(_) => {
+                        success_counter += 1;
+                    }
+                }
+            }
+        }
+        Ok(format!(
+            "{} successful requests\n{} failed requests",
+            success_counter, failure_counter
+        ))
     }
 }

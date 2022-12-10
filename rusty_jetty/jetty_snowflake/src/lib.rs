@@ -21,20 +21,27 @@ mod cual;
 mod efperm;
 mod entry_types;
 mod rest;
+mod write;
 
 use cual::set_cual_account_name;
 pub use entry_types::{
     Asset, Database, Entry, FutureGrant, Grant, GrantOf, GrantType, Object, Role, RoleName, Schema,
     StandardGrant, Table, User, View, Warehouse,
 };
-use jetty_core::connectors::NewConnector;
+use futures::{StreamExt, TryStreamExt};
+use jetty_core::access_graph::translate::diffs::{groups, LocalDiffs};
+use jetty_core::connectors::{
+    ConnectorCapabilities, NewConnector, ReadCapabilities, WriteCapabilities,
+};
+use jetty_core::jetty::ConnectorManifest;
 use jetty_core::logging::error;
+use jetty_core::write::groups::DiffDetails;
 use rest::{SnowflakeRequestConfig, SnowflakeRestClient, SnowflakeRestConfig};
 use serde::de::value::MapDeserializer;
 
 use std::collections::{HashMap, HashSet};
 use std::iter::zip;
-use std::path::{PathBuf};
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use jetty_core::{
@@ -45,8 +52,10 @@ use jetty_core::{
 
 use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
 use serde_json::Value as JsonValue;
+
+const CONCURRENT_WAREHOUSE_QUERIES: usize = 5;
 
 /// The main Snowflake Connector struct.
 ///
@@ -144,6 +153,70 @@ impl Connector for SnowflakeConnector {
         let mut c = coordinator::Coordinator::new(self);
         c.get_data().await
     }
+
+    fn get_manifest(&self) -> ConnectorManifest {
+        ConnectorManifest {
+            capabilities: ConnectorCapabilities {
+                read: HashSet::from([
+                    ReadCapabilities::Assets,
+                    ReadCapabilities::Groups,
+                    ReadCapabilities::Policies,
+                    ReadCapabilities::Users,
+                ]),
+                write: HashSet::from([
+                    WriteCapabilities::Groups { nested: true },
+                    WriteCapabilities::Policies,
+                ]),
+            },
+        }
+    }
+    fn plan_changes(&self, diffs: &LocalDiffs) -> Vec<std::string::String> {
+        self.generate_diff_queries(diffs)
+            .into_iter()
+            .flatten()
+            .collect()
+    }
+
+    async fn apply_changes(&self, diffs: &LocalDiffs) -> Result<String> {
+        let mut success_counter = 0;
+        let mut failure_counter = 0;
+        // This is designed in such a way that each query_set may be run concurrently.
+        for query_set in self.generate_diff_queries(diffs) {
+            let query_set_configs = query_set
+                .iter()
+                .map(|q| SnowflakeRequestConfig {
+                    sql: q.to_owned(),
+                    use_jwt: true,
+                })
+                .collect::<Vec<_>>();
+
+            let query_futures = query_set_configs
+                .iter()
+                .map(|q| self.rest_client.execute(q))
+                .collect::<Vec<_>>();
+
+            let results = futures::stream::iter(query_futures)
+                .buffered(CONCURRENT_WAREHOUSE_QUERIES)
+                .collect::<Vec<_>>()
+                .await;
+
+            for result in results {
+                match result {
+                    Err(e) => {
+                        error!("{:?}", e);
+                        failure_counter += 1;
+                    }
+                    Ok(_) => {
+                        success_counter += 1;
+                    }
+                }
+            }
+        }
+        Ok(format!(
+            "{} successful queries\n{} failed queries",
+            success_counter, failure_counter
+        ))
+    }
 }
 
 impl SnowflakeConnector {
@@ -155,9 +228,9 @@ impl SnowflakeConnector {
     ) -> Result<()> {
         let RoleName(role_name) = &role.name;
         let res = self
-            .query_to_obj::<StandardGrant>(&format!("SHOW GRANTS TO ROLE {}", &role_name))
+            .query_to_obj::<StandardGrant>(&format!("SHOW GRANTS TO ROLE \"{}\"", &role_name))
             .await
-            .context("failed to get grants to role")?;
+            .context(format!("failed to get grants to role {role_name}"))?;
 
         let mut target = target.lock().unwrap();
         target.extend(res);
@@ -172,9 +245,9 @@ impl SnowflakeConnector {
     ) -> Result<()> {
         let RoleName(role_name) = &role.name;
         let res = self
-            .query_to_obj::<GrantOf>(&format!("SHOW GRANTS OF ROLE {}", &role_name))
+            .query_to_obj::<GrantOf>(&format!("SHOW GRANTS OF ROLE \"{}\"", &role_name))
             .await
-            .context("failed to get grants of role")?;
+            .context(format!("failed to get grants of role {role_name}"))?;
 
         let mut target = target.lock().unwrap();
         target.extend(res);
@@ -211,7 +284,7 @@ impl SnowflakeConnector {
     ) -> Result<()> {
         let res = self
             .query_to_obj::<FutureGrant>(&format!(
-                "SHOW FUTURE GRANTS IN DATABASE {}",
+                "SHOW FUTURE GRANTS IN DATABASE \"{}\"",
                 &database.name
             ))
             .await
@@ -275,7 +348,7 @@ impl SnowflakeConnector {
         target: Arc<Mutex<&mut Vec<Object>>>,
     ) -> Result<()> {
         let query = format!(
-            "SHOW OBJECTS IN SCHEMA {}.{}",
+            "SHOW OBJECTS IN SCHEMA \"{}\".\"{}\"",
             &schema.database_name, &schema.name
         );
         let res = self
@@ -369,4 +442,89 @@ impl SnowflakeConnector {
             })
             .collect::<Vec<_>>()
     }
+
+    fn generate_diff_queries(&self, diffs: &LocalDiffs) -> Vec<Vec<String>> {
+        let mut first_queries: Vec<String> = vec![];
+        let mut second_queries: Vec<String> = vec![];
+        let mut third_queries: Vec<String> = vec![];
+        // start with groups
+        for diff in &diffs.groups {
+            match &diff.details {
+                // Drop roles. This will transfer all ownership to the Jetty role. If there are grants that are owned by the role that is dropped, those grants are dropped too.
+                // because of this, it may be necessary to run a double-apply.
+                groups::LocalDiffDetails::RemoveGroup => {
+                    first_queries.push(format!("GRANT OWNERSHIP ON ROLE \"{}\" TO {}; --Only the owner of a role can drop it", diff.group_name, self.rest_client.get_snowflake_role()));
+                    second_queries.push(format!("DROP ROLE \"{}\";", diff.group_name))
+                }
+                groups::LocalDiffDetails::AddGroup { members } => {
+                    second_queries.push(format!("CREATE ROLE \"{}\";", diff.group_name));
+                    for user in &members.users {
+                        third_queries.push(format!(
+                            "GRANT ROLE \"{}\" TO USER \"{}\";",
+                            diff.group_name, user
+                        ))
+                    }
+                    for group in &members.groups {
+                        third_queries.push(format!(
+                            "GRANT ROLE \"{}\" TO ROLE \"{}\";",
+                            diff.group_name, group
+                        ))
+                    }
+                }
+                groups::LocalDiffDetails::ModifyGroup { add, remove } => {
+                    for user in &add.users {
+                        third_queries.push(format!(
+                            "GRANT ROLE \"{}\" TO USER \"{}\";",
+                            diff.group_name, user
+                        ))
+                    }
+                    for group in &add.groups {
+                        third_queries.push(format!(
+                            "GRANT ROLE \"{}\" TO ROLE \"{}\";",
+                            diff.group_name, group
+                        ))
+                    }
+                    for user in &remove.users {
+                        third_queries.push(format!(
+                            "REVOKE ROLE \"{}\" FROM USER \"{}\";",
+                            diff.group_name, user
+                        ))
+                    }
+                    for group in &remove.groups {
+                        third_queries.push(format!(
+                            "REVOKE ROLE {} FROM ROLE {};",
+                            diff.group_name, group
+                        ))
+                    }
+                }
+            }
+        }
+        vec![first_queries, second_queries, third_queries]
+    }
+}
+
+pub(crate) fn strip_snowflake_quotes(object: String, capitalize: bool) -> String {
+    if object.starts_with("\"\"\"") {
+        object.replace("\"\"\"", "\"")
+    } else if object.starts_with('"') {
+        // Remove the quotes and return the contained part as-is.
+        object.trim_matches('"').to_owned()
+    } else {
+        // Not quoted – we can just capitalize it (only for
+        // Snowflake).
+        if capitalize {
+            object.to_uppercase()
+        } else {
+            // In some cases, like when it is a value from Snowflake, we don't need to capitalize it. We just leave it as is.
+            object
+        }
+    }
+}
+
+pub(crate) fn strip_quotes_and_deserialize<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let buf = String::deserialize(deserializer)?;
+    Ok(strip_snowflake_quotes(buf, false))
 }

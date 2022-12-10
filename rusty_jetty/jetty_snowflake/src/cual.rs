@@ -82,18 +82,7 @@ pub(crate) use cual;
 pub(crate) fn cual_from_snowflake_obj_name(name: &str) -> Result<Cual> {
     let parts: Vec<_> = name
         .split('.')
-        .map(|p| {
-            if p.starts_with("\"\"\"") {
-                p.replace("\"\"\"", "\"")
-            } else if p.starts_with('"') {
-                // Remove the quotes and return the contained part as-is.
-                p.trim_matches('"').to_owned()
-            } else {
-                // Not quoted – we can just capitalize it (only for
-                // Snowflake).
-                p.to_uppercase()
-            }
-        })
+        .map(|p| crate::strip_snowflake_quotes(p.to_owned(), true))
         .collect();
 
     if let (Some(db), Some(schema), Some(obj_name)) = (parts.get(0), parts.get(1), parts.get(2)) {

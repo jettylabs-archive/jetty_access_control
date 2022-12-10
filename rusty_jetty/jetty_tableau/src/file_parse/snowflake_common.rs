@@ -1,8 +1,5 @@
 use anyhow::{anyhow, bail, Context, Result};
-use jetty_core::{
-    cual::Cual,
-    logging::{error},
-};
+use jetty_core::{cual::Cual, logging::error};
 
 #[derive(Debug, Clone)]
 pub(crate) struct SnowflakeConnectionInfo {

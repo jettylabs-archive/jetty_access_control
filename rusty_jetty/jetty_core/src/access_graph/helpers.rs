@@ -2,11 +2,7 @@
 
 use std::collections::HashSet;
 
-
-
-use super::{
-    EdgeType, JettyEdge, JettyNode, NodeName,
-};
+use super::{EdgeType, JettyEdge, JettyNode, NodeName};
 
 /// All helper types implement NodeHelpers.
 pub(crate) trait NodeHelper {

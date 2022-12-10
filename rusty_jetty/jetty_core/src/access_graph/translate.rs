@@ -1,6 +1,8 @@
 //! Types and functionality to translate between connectors' local representation
 //! and Jetty's global representation
 
+pub mod diffs;
+
 use std::collections::{HashMap, HashSet};
 
 use super::NodeName;
@@ -16,31 +18,33 @@ use crate::{
         },
         UserIdentifier,
     },
-    cual::Cual,
+    cual::{self, Cual},
     jetty::ConnectorNamespace,
     permissions::matrix::{DoubleInsert, InsertOrMerge},
+    write::Diffs,
 };
 
 use anyhow::{Context, Result};
 use bimap;
+use serde::{Deserialize, Serialize};
 
 /// Struct to translate local data to global data and back again
 /// Eventually, this will need to be persisted with the graph to enable the write path
-#[derive(Default)]
+#[derive(Default, Serialize, Deserialize)]
 pub struct Translator {
     global_to_local: GlobalToLocalIdentifiers,
     local_to_global: LocalToGlobalIdentifiers,
     cual_prefix_to_namespace: bimap::BiHashMap<Option<String>, ConnectorNamespace>,
 }
 
-#[derive(Default)]
+#[derive(Default, Serialize, Deserialize)]
 pub(crate) struct GlobalToLocalIdentifiers {
     users: SparseMatrix<ConnectorNamespace, NodeName, String>,
     groups: SparseMatrix<ConnectorNamespace, NodeName, String>,
     policies: SparseMatrix<ConnectorNamespace, NodeName, String>,
 }
 
-#[derive(Default)]
+#[derive(Default, Serialize, Deserialize)]
 pub(crate) struct LocalToGlobalIdentifiers {
     users: SparseMatrix<ConnectorNamespace, String, NodeName>,
     groups: SparseMatrix<ConnectorNamespace, String, NodeName>,
@@ -446,5 +450,24 @@ impl Translator {
             asset_type: cual.asset_type(),
             path: cual.asset_path(),
         })
+    }
+
+    pub(crate) fn translate_node_name_to_local(
+        &self,
+        node_name: &NodeName,
+        connector: &ConnectorNamespace,
+    ) -> String {
+        match &node_name {
+            NodeName::User(n) => self.global_to_local.users[&connector][&node_name].to_owned(),
+            // There may be groups that don't exist yet, so we'll just use the group name without the origin
+            NodeName::Group { name, .. } => name.to_owned(),
+            NodeName::Asset { .. } => {
+                todo!()
+            }
+            NodeName::Policy { .. } => {
+                self.global_to_local.policies[&connector][&node_name].to_owned()
+            }
+            NodeName::Tag(t) => t.to_owned(),
+        }
     }
 }

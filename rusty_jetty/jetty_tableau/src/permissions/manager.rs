@@ -324,7 +324,6 @@ impl<'x> PermissionManager<'x> {
 
 #[cfg(test)]
 mod tests {
-    
 
     use crate::{
         coordinator::Environment,

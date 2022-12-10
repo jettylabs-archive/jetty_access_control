@@ -7,8 +7,6 @@ use clap::{self, Parser, Subcommand};
 
 use jetty_core::logging::LevelFilter;
 
-
-
 /// Jetty CLI: Open-source data access control for modern teams
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None, arg_required_else_help = true)]
@@ -43,6 +41,7 @@ pub(crate) enum JettyCommand {
     },
     /// Launch the permissions exploration UI
     Explore {
+        /// Fetch the current configuration before launching the UI
         #[clap(short, long, value_parser, default_value = "false")]
         fetch: bool,
 
@@ -52,4 +51,34 @@ pub(crate) enum JettyCommand {
     },
     /// Add connectors to an existing Jetty project
     Add,
+    /// Build out initial configuration files for a project
+    Bootstrap {
+        /// Don't fetch the current configuration before generating the configuration files
+        #[clap(short, long, value_parser, default_value = "false")]
+        no_fetch: bool,
+        /// Overwrite files if they exists
+        #[clap(short, long, value_parser, default_value = "false")]
+        overwrite: bool,
+    },
+
+    /// Diff the configuration with the current state of your infrastructure
+    Diff {
+        /// Fetch the current configurations before generating the diff
+        #[clap(short, long, value_parser, default_value = "false")]
+        fetch: bool,
+    },
+
+    /// Plan the changes needed to update the infra based on the diff
+    Plan {
+        /// Fetch the current configurations before generating the diff
+        #[clap(short, long, value_parser, default_value = "false")]
+        fetch: bool,
+    },
+
+    /// Apply the planned changes
+    Apply {
+        /// Don't fetch the current configurations before applying the changes
+        #[clap(short, long, value_parser, default_value = "false")]
+        no_fetch: bool,
+    },
 }

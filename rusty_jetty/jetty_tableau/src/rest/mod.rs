@@ -29,8 +29,8 @@ pub(crate) trait Downloadable {
 /// Wrapper struct for http functionality
 #[derive(Default)]
 pub struct TableauRestClient {
-    /// The credentials used to authenticate into Snowflake.
-    credentials: TableauCredentials,
+    /// The credentials used to authenticate into Tableau.
+    pub(crate) credentials: TableauCredentials,
     http_client: reqwest::Client,
     token: Option<String>,
     site_id: Option<String>,
@@ -90,12 +90,22 @@ impl TableauRestClient {
     }
 
     /// Get site_id token from the TableauRestClient.
-    fn get_site_id(&self) -> Result<String> {
+    pub(crate) fn get_site_id(&self) -> Result<String> {
         Ok(self
             .site_id
             .as_ref()
             .ok_or_else(|| anyhow!["unable to find site_id"])?
             .to_owned())
+    }
+
+    /// Get api version from the TableauRestClient.
+    pub(crate) fn get_api_version(&self) -> String {
+        self.api_version.to_owned()
+    }
+
+    /// Get server name from the TableauRestClient.
+    pub(crate) fn get_server_name(&self) -> String {
+        self.credentials.server_name.to_owned()
     }
 
     /// Get authentication token from the TableauRestClient.

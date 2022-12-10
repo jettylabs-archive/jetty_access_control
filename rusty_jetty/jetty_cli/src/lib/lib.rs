@@ -6,24 +6,30 @@
 mod ascii;
 mod cmd;
 mod init;
-mod project;
 mod tui;
 mod usage_stats;
 
-use std::{collections::HashMap, env, sync::Arc, time::Instant};
+use std::{
+    collections::HashMap,
+    env, fs,
+    sync::Arc,
+    thread,
+    time::{self, Instant},
+};
 
 use anyhow::{anyhow, bail, Context, Result};
-
 use clap::Parser;
-
 use human_panic::setup_panic;
+use indicatif::{ProgressBar, ProgressStyle};
 
 use jetty_core::{
     access_graph::AccessGraph,
     connectors::{ConnectorClient, NewConnector},
     fetch_credentials,
-    jetty::JettyConfig,
-    logging::{self, debug, info},
+    jetty::{ConnectorNamespace, CredentialsMap, JettyConfig},
+    logging::{self, debug, error, info},
+    project::{self, groups_cfg_path_local},
+    write::Diffs,
     Connector, Jetty,
 };
 
@@ -61,7 +67,9 @@ pub async fn cli() -> Result<()> {
             JettyCommand::Init { .. } => UsageEvent::InvokedInit,
             JettyCommand::Fetch { .. } => UsageEvent::InvokedFetch {
                 connector_types: if let Some(c) = &jetty_config {
-                    c.connectors.values().map(|c| c.connector_type.to_owned())
+                    c.connectors
+                        .values()
+                        .map(|c| c.connector_type.to_owned())
                         .collect()
                 } else {
                     vec![]
@@ -69,6 +77,16 @@ pub async fn cli() -> Result<()> {
             },
             JettyCommand::Explore { .. } => UsageEvent::InvokedExplore,
             JettyCommand::Add => UsageEvent::InvokedAdd,
+            JettyCommand::Bootstrap {
+                no_fetch,
+                overwrite,
+            } => UsageEvent::InvokedBootstrap {
+                no_fetch,
+                overwrite,
+            },
+            JettyCommand::Diff { fetch } => UsageEvent::InvokedDiff { fetch },
+            JettyCommand::Plan { fetch } => UsageEvent::InvokedPlan { fetch },
+            JettyCommand::Apply { no_fetch } => UsageEvent::InvokedApply { no_fetch },
         };
         record_usage(event, &jetty_config)
             .await
@@ -103,40 +121,54 @@ pub async fn cli() -> Result<()> {
                 info!("Fetching all data first.");
                 fetch(&None, &false).await?;
             }
-            match AccessGraph::deserialize_graph(
-                project::data_dir().join(project::graph_filename()),
-            ) {
-                Ok(mut ag) => {
-                    let tags_path = project::tags_cfg_path_local();
-                    if tags_path.exists() {
-                        debug!("Getting tags from config.");
-                        let tag_config = std::fs::read_to_string(&tags_path);
-                        match tag_config {
-                            Ok(c) => {
-                                ag.add_tags(&c)?;
-                            }
-                            Err(e) => {
-                                bail!(
-                                    "found, but was unable to read {:?}\nerror: {}",
-                                    tags_path,
-                                    e
-                                )
-                            }
-                        }
-                    } else {
-                        debug!("No tags file found. Skipping ingestion.")
-                    }
+            let jetty = new_jetty_with_connectors().await.map_err(|_| {
+                anyhow!(
+                    "unable to find {} - make sure you are in a \
+                Jetty project directory, or create a new project by running `jetty init`",
+                    project::jetty_cfg_path_local().display()
+                )
+            })?;
 
-                    jetty_explore::explore_web_ui(Arc::new(ag), bind).await;
-                }
-                Err(e) => info!(
-                    "Unable to find saved graph. Try running `jetty fetch`\nError: {}",
-                    e
-                ),
-            }
+            jetty.try_access_graph()?;
+            jetty_explore::explore_web_ui(Arc::from(jetty.access_graph.unwrap()), bind).await;
         }
         JettyCommand::Add => {
             init::add().await?;
+        }
+        JettyCommand::Bootstrap {
+            no_fetch,
+            overwrite,
+        } => {
+            if !*no_fetch {
+                info!("Fetching data before bootstrap");
+                fetch(&None, &false).await?;
+            };
+            bootstrap(*overwrite).await?;
+        }
+        JettyCommand::Diff { fetch: fetch_first } => {
+            if *fetch_first {
+                info!("Fetching data before diff");
+                fetch(&None, &false).await?;
+            } else {
+                println!("Generating diff based off existing data. Run `jetty diff -f` to fetch before generating the diff.")
+            };
+            diff().await?;
+        }
+        JettyCommand::Plan { fetch: fetch_first } => {
+            if *fetch_first {
+                info!("Fetching data before plan");
+                fetch(&None, &false).await?;
+            } else {
+                println!("Generating plan based off existing data. Run `jetty plan -f` to fetch before generating the plan.")
+            };
+            plan().await?;
+        }
+        JettyCommand::Apply { no_fetch } => {
+            if !*no_fetch {
+                info!("Fetching data before apply. You can run `jetty apply -n` to run apply based on a previous fetch.");
+                fetch(&None, &false).await?;
+            };
+            apply().await?;
         }
     }
 
@@ -144,133 +176,53 @@ pub async fn cli() -> Result<()> {
 }
 
 async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()> {
-    let jetty = Jetty::new(project::jetty_cfg_path_local(), project::data_dir()).map_err(|_| {
+    let jetty = new_jetty_with_connectors().await.map_err(|_| {
         anyhow!(
             "unable to find {} - make sure you are in a \
         Jetty project directory, or create a new project by running `jetty init`",
             project::jetty_cfg_path_local().display()
         )
     })?;
-    let creds = fetch_credentials(project::connector_cfg_path()).map_err(|_| {
-        anyhow!(
-            "unable to find {} - you can set this up by running `jetty init`",
-            project::connector_cfg_path().display()
-        )
-    })?;
 
     let mut data_from_connectors = vec![];
 
-    
-
+    // Handle optionally fetching for only a few connectors
     let selected_connectors = if let Some(conns) = connectors {
         jetty
-            .config
             .connectors
             .into_iter()
             .filter(|(name, _config)| conns.contains(&name.to_string()))
             .collect::<HashMap<_, _>>()
     } else {
-        jetty.config.connectors
+        jetty.connectors
     };
 
-    for (namespace, config) in &selected_connectors {
-        match config.connector_type.as_str() {
-            "dbt" => {
-                let mut dbt = jetty_dbt::DbtConnector::new(
-                    &selected_connectors[namespace],
-                    &creds
-                        .get(namespace.to_string().as_str())
-                        .ok_or(anyhow!(
-                            "unable to find a connector called {} in {}",
-                            namespace,
-                            project::connector_cfg_path().display()
-                        ))?
-                        .to_owned(),
-                    Some(ConnectorClient::Core),
-                    Some(project::data_dir().join(namespace.to_string())),
-                )
-                .await?;
+    for (namespace, mut conn) in selected_connectors {
+        let pb = basic_progress_bar(format!("Fetching {} data", namespace).as_str());
 
-                info!("getting {} data", namespace);
-                let now = Instant::now();
-                let dbt_data = dbt.get_data().await;
-                let dbt_pcd = (dbt_data, namespace.to_owned());
-                info!(
-                    "{} data took {:.1} seconds",
-                    namespace,
-                    now.elapsed().as_secs_f32()
-                );
-                data_from_connectors.push(dbt_pcd);
-            }
-            "snowflake" => {
-                let mut snow = jetty_snowflake::SnowflakeConnector::new(
-                    &selected_connectors[namespace],
-                    &creds
-                        .get(namespace.to_string().as_str())
-                        .ok_or(anyhow!(
-                            "unable to find a connector called {} in {}",
-                            namespace,
-                            project::connector_cfg_path().display()
-                        ))?
-                        .to_owned(),
-                    Some(ConnectorClient::Core),
-                    Some(project::data_dir().join(namespace.to_string())),
-                )
-                .await?;
+        let now = Instant::now();
+        let data = conn.get_data().await;
+        let pcd = (data, namespace.to_owned());
 
-                info!("getting {} data", namespace);
-                let now = Instant::now();
-                let snow_data = snow.get_data().await;
-                let snow_pcd = (snow_data, namespace.to_owned());
-                info!(
-                    "{} data took {:.1} seconds",
-                    namespace,
-                    now.elapsed().as_secs_f32()
-                );
-                data_from_connectors.push(snow_pcd);
-            }
-            "tableau" => {
-                let mut tab = jetty_tableau::TableauConnector::new(
-                    &selected_connectors[namespace],
-                    &creds
-                        .get(namespace.to_string().as_str())
-                        .ok_or(anyhow!(
-                            "unable to find a connector called {} in {}",
-                            namespace,
-                            project::connector_cfg_path().display()
-                        ))?
-                        .to_owned(),
-                    Some(ConnectorClient::Core),
-                    Some(project::data_dir().join(namespace.to_string())),
-                )
-                .await?;
+        data_from_connectors.push(pcd);
 
-                info!("getting {} data", namespace);
-                let now = Instant::now();
-                tab.setup().await?;
-                let tab_data = tab.get_data().await;
-                let tab_pcd = (tab_data, namespace.to_owned());
-                info!(
-                    "{} data took {:.1} seconds",
-                    namespace,
-                    now.elapsed().as_secs_f32()
-                );
-                data_from_connectors.push(tab_pcd);
-            }
-            o => bail!("unknown connector type: {o}"),
-        }
+        pb.finish_with_message(format!(
+            "Fetching {} data took {:.1} seconds",
+            namespace,
+            now.elapsed().as_secs_f32()
+        ));
     }
 
-    info!("creating access graph");
+    let pb = basic_progress_bar("Creating access graph");
     let now = Instant::now();
 
     let ag = AccessGraph::new_from_connector_data(data_from_connectors)?;
-
-    info!(
-        "access graph creation took {:.1} seconds",
-        now.elapsed().as_secs_f32()
-    );
     ag.serialize_graph(project::data_dir().join(project::graph_filename()))?;
+
+    pb.finish_with_message(format!(
+        "Access graph created in data took {:.1} seconds",
+        now.elapsed().as_secs_f32()
+    ));
 
     if visualize {
         info!("visualizing access graph");
@@ -278,12 +230,345 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
         ag.visualize("/tmp/graph.svg")
             .context("failed to visualize")?;
         info!(
-            "access graph creation took {:.1} seconds",
+            "Access graph visualized at \"/tmp/graph.svg\" (took {:.1} seconds)",
             now.elapsed().as_secs_f32()
         );
     } else {
-        info!("Skipping visualization.")
+        debug!("Skipping visualization.")
     };
 
     Ok(())
+}
+
+async fn bootstrap(overwrite: bool) -> Result<()> {
+    let mut jetty = new_jetty_with_connectors().await.map_err(|_| {
+        anyhow!(
+            "unable to find {} - make sure you are in a \
+        Jetty project directory, or create a new project by running `jetty init`",
+            project::jetty_cfg_path_local().display()
+        )
+    })?;
+
+    // make sure there's an existing access graph
+    jetty.try_access_graph()?;
+
+    // Build all the yaml first
+    let group_yaml = jetty.build_bootstrapped_group_yaml()?;
+    // TODO: Add Policy yaml
+
+    // Now check for all the files
+    if !overwrite {
+        if groups_cfg_path_local().exists() {
+            bail!("{} already exists; run `jetty bootstrap --overwrite` to overwrite the existing configuration", groups_cfg_path_local().to_string_lossy())
+        }
+    }
+
+    // Now write the yaml files
+
+    // groups
+    fs::create_dir_all(groups_cfg_path_local().parent().unwrap()).unwrap(); // Create the parent dir, if needed
+    fs::write(groups_cfg_path_local(), group_yaml)?; // write the contents
+                                                     // sanity check - the diff should be empty at this point
+    if jetty_core::write::get_group_diff(&jetty)
+        .context("checking the generated group configuration")?
+        .len()
+        != 0
+    {
+        bail!("something went wrong - the configuration generated doesn't fully match the true state; please contact support: support@get-jetty.com")
+    }
+
+    // TODO: Policies
+
+    Ok(())
+}
+
+async fn diff() -> Result<()> {
+    let mut jetty = new_jetty_with_connectors().await.map_err(|_| {
+        anyhow!(
+            "unable to find {} - make sure you are in a \
+        Jetty project directory, or create a new project by running `jetty init`",
+            project::jetty_cfg_path_local().display()
+        )
+    })?;
+
+    // make sure there's an existing access graph
+    jetty.try_access_graph()?;
+
+    // For now, we're just looking at group diffs
+    let group_diff = jetty_core::write::get_group_diff(&jetty)?;
+    if !group_diff.is_empty() {
+        group_diff.iter().for_each(|diff| println!("{diff}"));
+    } else {
+        println!("No changes found");
+    };
+
+    Ok(())
+}
+
+async fn plan() -> Result<()> {
+    let mut jetty = new_jetty_with_connectors().await.map_err(|_| {
+        anyhow!(
+            "unable to find {} - make sure you are in a \
+        Jetty project directory, or create a new project by running `jetty init`",
+            project::jetty_cfg_path_local().display()
+        )
+    })?;
+
+    // make sure there's an existing access graph
+    let ag = jetty.try_access_graph()?;
+
+    let diffs = Diffs {
+        groups: jetty_core::write::get_group_diff(&jetty)?,
+    };
+
+    let connector_specific_diffs = diffs.split_by_connector();
+
+    let tr = ag.translator();
+
+    let local_diffs = connector_specific_diffs
+        .iter()
+        .map(|(k, v)| (k.to_owned(), tr.translate_diffs_to_local(v)))
+        .collect::<HashMap<_, _>>();
+
+    // Exit early if there haven't been any changes
+    if local_diffs.is_empty() {
+        println!("No changes found");
+        return Ok(());
+    }
+
+    let plans: HashMap<_, _> = local_diffs
+        .iter()
+        .map(|(k, v)| (k.to_owned(), jetty.connectors[k].plan_changes(v)))
+        .collect();
+
+    for (c, plan) in plans {
+        println!("{c}:");
+        if !plan.is_empty() {
+            plan.iter()
+                .for_each(|s| println!("{}\n", textwrap::indent(s, "  ")));
+            println!("\n")
+        } else {
+            println!("  No changes planned\n");
+        }
+    }
+    Ok(())
+}
+
+async fn apply() -> Result<()> {
+    let mut jetty = new_jetty_with_connectors().await.map_err(|_| {
+        anyhow!(
+            "unable to find {} - make sure you are in a \
+        Jetty project directory, or create a new project by running `jetty init`",
+            project::jetty_cfg_path_local().display()
+        )
+    })?;
+
+    // make sure there's an existing access graph
+    let ag = jetty.try_access_graph()?;
+
+    let diffs = Diffs {
+        groups: jetty_core::write::get_group_diff(&jetty)?,
+    };
+
+    let connector_specific_diffs = diffs.split_by_connector();
+
+    let tr = ag.translator();
+
+    let local_diffs = connector_specific_diffs
+        .iter()
+        .map(|(k, v)| (k.to_owned(), tr.translate_diffs_to_local(v)))
+        .collect::<HashMap<_, _>>();
+
+    let mut results: HashMap<_, _> = HashMap::new();
+
+    let pb = basic_progress_bar("Applying changes");
+    let now = Instant::now();
+    for (conn, diff) in local_diffs {
+        results.insert(
+            conn.to_owned(),
+            jetty.connectors[&conn].apply_changes(&diff).await?,
+        );
+    }
+    pb.finish_with_message(format!(
+        "Changes applied in {:.1} seconds",
+        now.elapsed().as_secs_f32()
+    ));
+
+    // Look at the updated data to see if the apply was successful
+    println!("Waiting 5 seconds then fetching updated access information");
+    timer_with_spinner(
+        5,
+        "Giving your tools a chance to update",
+        "Done - beginning fetch",
+    );
+
+    match fetch(&None, &false).await {
+        Ok(_) => {
+            // reload jetty to get the latest fetch
+            let jetty = new_jetty_with_connectors().await.map_err(|_| {
+                anyhow!(
+                    "unable to find {} - make sure you are in a \
+                Jetty project directory, or create a new project by running `jetty init`",
+                    project::jetty_cfg_path_local().display()
+                )
+            })?;
+
+            println!("Here is the current diff based on your configuration:");
+            // For now, we're just looking at group diffs
+            let group_diff = jetty_core::write::get_group_diff(&jetty)?;
+            if !group_diff.is_empty() {
+                group_diff.iter().for_each(|diff| println!("{diff}"));
+                println!(
+                    r#"You might see outstanding changes for a couple of reasons:
+    1. The underlying system is still updating (this is often the case with Tableau)
+    2. The changes had side-effects. This is expected for some changes.
+       You can run `jetty apply` again to make the necessary updates"#
+                )
+            } else {
+                println!("No changes found");
+            };
+        }
+        Err(_) => {
+            error!("unable to perform fetch");
+            println!("We recommend running `jetty diff -f` to see if you should run apply again to correct any side-effects of your changes");
+        }
+    };
+
+    for (c, result) in results {
+        println!("{c}:\n{result}\n");
+    }
+
+    Ok(())
+}
+
+async fn get_connectors(
+    creds: &HashMap<String, CredentialsMap>,
+    selected_connectors: &HashMap<ConnectorNamespace, jetty_core::jetty::ConnectorConfig>,
+) -> Result<HashMap<ConnectorNamespace, Box<dyn Connector>>> {
+    let mut connector_map: HashMap<ConnectorNamespace, Box<dyn Connector>> = HashMap::new();
+
+    for (namespace, config) in selected_connectors {
+        connector_map.insert(
+            namespace.to_owned(),
+            match config.connector_type.as_str() {
+                "dbt" => {
+                    jetty_dbt::DbtConnector::new(
+                        &selected_connectors[namespace],
+                        &creds
+                            .get(namespace.to_string().as_str())
+                            .ok_or(anyhow!(
+                                "unable to find a connector called {} in {}",
+                                namespace,
+                                project::connector_cfg_path().display()
+                            ))?
+                            .to_owned(),
+                        Some(ConnectorClient::Core),
+                        Some(project::data_dir().join(namespace.to_string())),
+                    )
+                    .await?
+                }
+                "snowflake" => {
+                    jetty_snowflake::SnowflakeConnector::new(
+                        &selected_connectors[namespace],
+                        &creds
+                            .get(namespace.to_string().as_str())
+                            .ok_or(anyhow!(
+                                "unable to find a connector called {} in {}",
+                                namespace,
+                                project::connector_cfg_path().display()
+                            ))?
+                            .to_owned(),
+                        Some(ConnectorClient::Core),
+                        Some(project::data_dir().join(namespace.to_string())),
+                    )
+                    .await?
+                }
+                "tableau" => {
+                    jetty_tableau::TableauConnector::new(
+                        &selected_connectors[namespace],
+                        &creds
+                            .get(namespace.to_string().as_str())
+                            .ok_or(anyhow!(
+                                "unable to find a connector called {} in {}",
+                                namespace,
+                                project::connector_cfg_path().display()
+                            ))?
+                            .to_owned(),
+                        Some(ConnectorClient::Core),
+                        Some(project::data_dir().join(namespace.to_string())),
+                    )
+                    .await?
+                }
+                _ => panic!(
+                    "unknown connector type: {}",
+                    config.connector_type.to_owned()
+                ),
+            },
+        );
+    }
+    Ok(connector_map)
+}
+
+/// Create a new Jetty struct with all the connectors. Uses default locations for everything
+pub async fn new_jetty_with_connectors() -> Result<Jetty> {
+    let config = JettyConfig::read_from_file(project::jetty_cfg_path_local())
+        .context("Reading Jetty Config file")?;
+
+    let creds = fetch_credentials(project::connector_cfg_path()).map_err(|_| {
+        anyhow!(
+            "unable to find {} - you can set this up by running `jetty init`",
+            project::connector_cfg_path().display()
+        )
+    })?;
+
+    let connectors = get_connectors(&creds, &config.connectors).await?;
+
+    Jetty::new_with_config(config, project::data_dir(), connectors)
+}
+
+fn timer_with_spinner(secs: u64, msg: &str, completion_msg: &str) {
+    let pb = ProgressBar::new_spinner();
+    pb.enable_steady_tick(time::Duration::from_millis(120));
+
+    pb.set_style(
+        ProgressStyle::with_template("{spinner:.green} {msg}")
+            .unwrap()
+            // For more spinners check out the cli-spinners project:
+            // https://github.com/sindresorhus/cli-spinners/blob/master/spinners.json
+            .tick_strings(&[
+                "▹▹▹▹▹",
+                "▸▹▹▹▹",
+                "▹▸▹▹▹",
+                "▹▹▸▹▹",
+                "▹▹▹▸▹",
+                "▹▹▹▹▸",
+                "▪▪▪▪▪",
+            ]),
+    );
+    pb.set_message(msg.to_owned());
+    thread::sleep(time::Duration::from_secs(secs));
+    pb.finish_with_message(completion_msg.to_owned());
+}
+
+fn basic_progress_bar(msg: &str) -> ProgressBar {
+    let pb = ProgressBar::new_spinner();
+    pb.enable_steady_tick(time::Duration::from_millis(120));
+
+    pb.set_style(
+        ProgressStyle::with_template("{spinner:.green} {msg}")
+            .unwrap()
+            // For more spinners check out the cli-spinners project:
+            // https://github.com/sindresorhus/cli-spinners/blob/master/spinners.json
+            .tick_strings(&[
+                "▹▹▹▹▹",
+                "▸▹▹▹▹",
+                "▹▸▹▹▹",
+                "▹▹▸▹▹",
+                "▹▹▹▸▹",
+                "▹▹▹▹▸",
+                "▪▪▪▪▪",
+            ]),
+    );
+    pb.set_message(msg.to_owned());
+    pb
 }

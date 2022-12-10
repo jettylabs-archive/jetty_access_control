@@ -6,19 +6,17 @@ use inquire::{Confirm, Text};
 use jetty_core::{
     connectors::NewConnector,
     jetty::{ConnectorConfig, ConnectorNamespace, CredentialsMap},
+    project::default_keypair_dir_path,
     Connector,
 };
 use jetty_snowflake::SnowflakeConnector;
 
-use crate::{
-    init::{
-        inquiry::{
-            autocomplete::FilepathCompleter,
-            validation::{FilepathValidator, FilepathValidatorMode, PathType},
-        },
-        pki::KeyPair,
+use crate::init::{
+    inquiry::{
+        autocomplete::FilepathCompleter,
+        validation::{FilepathValidator, FilepathValidatorMode, PathType},
     },
-    project::default_keypair_dir_path,
+    pki::KeyPair,
 };
 
 use super::{validation::filled_validator, SKIP_CMD};

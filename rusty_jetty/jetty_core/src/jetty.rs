@@ -4,12 +4,16 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::{collections::HashMap, fmt::Display};
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 
-use log::debug;
+use log::{debug, info};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use yaml_peg::serde as yaml;
+
+use crate::access_graph::AccessGraph;
+use crate::connectors::ConnectorCapabilities;
+use crate::{project, Connector};
 
 /// The user-defined namespace corresponding to the connector.
 #[derive(Clone, Deserialize, Debug, Hash, PartialEq, Eq, Default, PartialOrd, Ord, Serialize)]
@@ -111,6 +115,12 @@ impl ConnectorConfig {
     }
 }
 
+/// A struct representing the built-in characteristics of a connector.
+pub struct ConnectorManifest {
+    /// The capabilities of the connector.
+    pub capabilities: ConnectorCapabilities,
+}
+
 /// Alias for HashMap to hold credentials information.
 pub type CredentialsMap = HashMap<String, String>;
 
@@ -132,18 +142,93 @@ pub struct Jetty {
     // connector_config: HashMap<String, ConnectorCredentials>,
     /// The directory where data (such as the materialized graph) should be stored
     data_dir: PathBuf,
+    /// The access graph, if it exists
+    pub access_graph: Option<AccessGraph>,
+    /// The connectors
+    pub connectors: HashMap<ConnectorNamespace, Box<dyn Connector>>,
 }
 
 impl Jetty {
     /// Convenience method for struct creation. Uses the default location for
     /// config files.
-    pub fn new<P: AsRef<Path>>(jetty_config_path: P, data_dir: PathBuf) -> Result<Self> {
-        // load a saved access graph or create an empty one
+    pub fn new<P: AsRef<Path>>(
+        jetty_config_path: P,
+        data_dir: PathBuf,
+        connectors: HashMap<ConnectorNamespace, Box<dyn Connector>>,
+    ) -> Result<Self> {
+        let config =
+            JettyConfig::read_from_file(jetty_config_path).context("Reading Jetty Config file")?;
+
+        let ag = load_access_graph()?;
 
         Ok(Jetty {
-            config: JettyConfig::read_from_file(jetty_config_path)
-                .context("Reading Jetty Config file")?,
+            config,
             data_dir,
+            access_graph: ag,
+            connectors,
         })
+    }
+
+    /// Convenience method for struct creation. Uses the default location for
+    /// config files.
+    pub fn new_with_config(
+        config: JettyConfig,
+        data_dir: PathBuf,
+        connectors: HashMap<ConnectorNamespace, Box<dyn Connector>>,
+    ) -> Result<Self> {
+        let ag = load_access_graph()?;
+
+        Ok(Jetty {
+            config,
+            data_dir,
+            access_graph: ag,
+            connectors,
+        })
+    }
+
+    /// Getter for a reference to the connector manifests.
+    pub fn connector_manifests(&self) -> HashMap<ConnectorNamespace, ConnectorManifest> {
+        self.connectors
+            .iter()
+            .map(|(n, c)| (n.to_owned(), c.get_manifest()))
+            .collect()
+    }
+
+    /// Getter for a reference to the access graph. Returns an error if no access graph has been created
+    pub fn try_access_graph(&self) -> Result<&AccessGraph> {
+        self.access_graph.as_ref().ok_or(anyhow!(
+            "unable to find an existing access graph; try running `jetty fetch`"
+        ))
+    }
+}
+
+/// Load access graph from a file
+fn load_access_graph() -> Result<Option<AccessGraph>> {
+    // try to load the graph
+    match AccessGraph::deserialize_graph(project::data_dir().join(project::graph_filename())) {
+        Ok(mut ag) => {
+            // add the tags to the graph
+            let tags_path = project::tags_cfg_path_local();
+            if tags_path.exists() {
+                debug!("Getting tags from config.");
+                let tag_config = std::fs::read_to_string(&tags_path);
+                match tag_config {
+                    Ok(c) => {
+                        ag.add_tags(&c)?;
+                    }
+                    Err(e) => {
+                        bail!(
+                            "found, but was unable to read {:?}\nerror: {}",
+                            tags_path,
+                            e
+                        )
+                    }
+                };
+            } else {
+                debug!("No tags file found. Skipping ingestion.")
+            };
+            Ok(Some(ag))
+        }
+        Err(e) => Ok(None),
     }
 }
