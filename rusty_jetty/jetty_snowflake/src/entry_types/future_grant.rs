@@ -4,7 +4,7 @@ use jetty_core::connectors::nodes;
 
 use serde::{Deserialize, Serialize};
 
-use crate::cual::cual_from_snowflake_obj_name;
+use crate::{cual::cual_from_snowflake_obj_name, strip_quotes_and_deserialize};
 
 use super::grant::Grant;
 

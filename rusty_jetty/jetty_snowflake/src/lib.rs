@@ -52,7 +52,7 @@ use jetty_core::{
 
 use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
 use serde_json::Value as JsonValue;
 
 const CONCURRENT_WAREHOUSE_QUERIES: usize = 5;
@@ -228,9 +228,9 @@ impl SnowflakeConnector {
     ) -> Result<()> {
         let RoleName(role_name) = &role.name;
         let res = self
-            .query_to_obj::<StandardGrant>(&format!("SHOW GRANTS TO ROLE {}", &role_name))
+            .query_to_obj::<StandardGrant>(&format!("SHOW GRANTS TO ROLE \"{}\"", &role_name))
             .await
-            .context("failed to get grants to role")?;
+            .context(format!("failed to get grants to role {role_name}"))?;
 
         let mut target = target.lock().unwrap();
         target.extend(res);
@@ -245,9 +245,9 @@ impl SnowflakeConnector {
     ) -> Result<()> {
         let RoleName(role_name) = &role.name;
         let res = self
-            .query_to_obj::<GrantOf>(&format!("SHOW GRANTS OF ROLE {}", &role_name))
+            .query_to_obj::<GrantOf>(&format!("SHOW GRANTS OF ROLE \"{}\"", &role_name))
             .await
-            .context("failed to get grants of role")?;
+            .context(format!("failed to get grants of role {role_name}"))?;
 
         let mut target = target.lock().unwrap();
         target.extend(res);
@@ -284,7 +284,7 @@ impl SnowflakeConnector {
     ) -> Result<()> {
         let res = self
             .query_to_obj::<FutureGrant>(&format!(
-                "SHOW FUTURE GRANTS IN DATABASE {}",
+                "SHOW FUTURE GRANTS IN DATABASE \"{}\"",
                 &database.name
             ))
             .await
@@ -348,7 +348,7 @@ impl SnowflakeConnector {
         target: Arc<Mutex<&mut Vec<Object>>>,
     ) -> Result<()> {
         let query = format!(
-            "SHOW OBJECTS IN SCHEMA {}.{}",
+            "SHOW OBJECTS IN SCHEMA \"{}\".\"{}\"",
             &schema.database_name, &schema.name
         );
         let res = self
@@ -501,4 +501,30 @@ impl SnowflakeConnector {
         }
         vec![first_queries, second_queries, third_queries]
     }
+}
+
+pub(crate) fn strip_snowflake_quotes(object: String, capitalize: bool) -> String {
+    if object.starts_with("\"\"\"") {
+        object.replace("\"\"\"", "\"")
+    } else if object.starts_with('"') {
+        // Remove the quotes and return the contained part as-is.
+        object.trim_matches('"').to_owned()
+    } else {
+        // Not quoted – we can just capitalize it (only for
+        // Snowflake).
+        if capitalize {
+            object.to_uppercase()
+        } else {
+            // In some cases, like when it is a value from Snowflake, we don't need to capitalize it. We just leave it as is.
+            object
+        }
+    }
+}
+
+pub(crate) fn strip_quotes_and_deserialize<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let buf = String::deserialize(deserializer)?;
+    Ok(strip_snowflake_quotes(buf, false))
 }
