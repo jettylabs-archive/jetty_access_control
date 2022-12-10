@@ -381,16 +381,22 @@ async fn apply() -> Result<()> {
 
     let mut results: HashMap<_, _> = HashMap::new();
 
+    let pb = basic_progress_bar("Applying changes");
+    let now = Instant::now();
     for (conn, diff) in local_diffs {
         results.insert(
             conn.to_owned(),
             jetty.connectors[&conn].apply_changes(&diff).await?,
         );
     }
+    pb.finish_with_message(format!(
+        "Changes applied in {:.1} seconds",
+        now.elapsed().as_secs_f32()
+    ));
 
     // Look at the updated data to see if the apply was successful
     println!("Waiting 5 seconds then fetching updated access information");
-    timmer_with_spinner(
+    timer_with_spinner(
         5,
         "Giving your tools a chance to update",
         "Done - beginning fetch",
@@ -398,7 +404,7 @@ async fn apply() -> Result<()> {
 
     match fetch(&None, &false).await {
         Ok(_) => {
-            /// reload jetty to get the latest fetch
+            // reload jetty to get the latest fetch
             let jetty = new_jetty_with_connectors().await.map_err(|_| {
                 anyhow!(
                     "unable to find {} - make sure you are in a \
@@ -520,7 +526,7 @@ pub async fn new_jetty_with_connectors() -> Result<Jetty> {
     Jetty::new_with_config(config, project::data_dir(), connectors)
 }
 
-fn timmer_with_spinner(secs: u64, msg: &str, completion_msg: &str) {
+fn timer_with_spinner(secs: u64, msg: &str, completion_msg: &str) {
     let pb = ProgressBar::new_spinner();
     pb.enable_steady_tick(time::Duration::from_millis(120));
 
