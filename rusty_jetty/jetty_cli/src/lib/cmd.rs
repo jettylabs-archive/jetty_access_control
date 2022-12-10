@@ -81,4 +81,14 @@ pub(crate) enum JettyCommand {
         #[clap(short, long, value_parser, default_value = "false")]
         no_fetch: bool,
     },
+
+    /// Get the dot representation of a subgraph
+    Subgraph {
+        /// the node_id to start with. Get this from the url of the explore web UI
+        #[clap(short, long, value_parser)]
+        id: String,
+        /// The depth of the subgraph to collect
+        #[clap(short, long, value_parser, default_value = "1")]
+        depth: usize,
+    },
 }
