@@ -518,12 +518,16 @@ impl Connector for TableauConnector {
                 read: HashSet::from([
                     ReadCapabilities::Assets,
                     ReadCapabilities::Groups,
-                    ReadCapabilities::Policies,
+                    ReadCapabilities::Policies {
+                        default_policies: true,
+                    },
                     ReadCapabilities::Users,
                 ]),
                 write: HashSet::from([
                     WriteCapabilities::Groups { nested: false },
-                    WriteCapabilities::Policies,
+                    WriteCapabilities::Policies {
+                        default_policies: true,
+                    },
                 ]),
             },
         }

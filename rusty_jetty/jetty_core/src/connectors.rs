@@ -81,7 +81,10 @@ pub enum ReadCapabilities {
     /// Read users
     Users,
     /// Read policies
-    Policies,
+    Policies {
+        /// Connector support for default/wildcard policies
+        default_policies: bool,
+    },
 }
 
 #[derive(Hash, PartialEq, Eq, Clone, Debug)]
@@ -93,7 +96,10 @@ pub enum WriteCapabilities {
         nested: bool,
     },
     /// Write Policies
-    Policies,
+    Policies {
+        /// Connector support for default/wildcard policies
+        default_policies: bool,
+    },
     /// Add Users
     Users,
 }
