@@ -468,6 +468,8 @@ impl Translator {
                 self.global_to_local.policies[&connector][&node_name].to_owned()
             }
             NodeName::Tag(t) => t.to_owned(),
+            // Default policies don't have names
+            NodeName::DefaultPolicy { .. } => "".into(),
         }
     }
 }

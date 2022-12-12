@@ -3,8 +3,8 @@
 use serde::{Deserialize, Serialize};
 
 use crate::access_graph::{
-    AccessGraph, AssetAttributes, GroupAttributes, NodeIndex, PolicyAttributes, TagAttributes,
-    UserAttributes,
+    AccessGraph, AssetAttributes, DefaultPolicyAttributes, GroupAttributes, NodeIndex,
+    PolicyAttributes, TagAttributes, UserAttributes,
 };
 
 /// Implements the ToNodeIndex trait for one or more types that have an `idx` field.
@@ -18,7 +18,7 @@ macro_rules! impl_to_node_index {
     }
 }
 
-impl_to_node_index!(for AssetIndex, UserIndex, TagIndex, GroupIndex, PolicyIndex);
+impl_to_node_index!(for AssetIndex, UserIndex, TagIndex, GroupIndex, PolicyIndex, DefaultPolicyIndex);
 
 /// Index to an Asset node in the AccessGraph
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -115,5 +115,24 @@ impl PolicyIndex {
     }
     pub(crate) fn new(idx: NodeIndex) -> Self {
         PolicyIndex { idx }
+    }
+}
+
+/// Index to an Policy node in the AccessGraph
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct DefaultPolicyIndex {
+    idx: NodeIndex,
+}
+impl DefaultPolicyIndex {
+    /// get reference ot the PolicyAttributes corresponding to the node index
+    pub fn get_attributes<'a>(&self, ag: &'a AccessGraph) -> &'a DefaultPolicyAttributes {
+        let x = &ag[*self];
+        match x {
+            crate::access_graph::JettyNode::DefaultPolicy(a) => a,
+            _ => panic!("mismatch in node type; expected policy"),
+        }
+    }
+    pub(crate) fn new(idx: NodeIndex) -> Self {
+        DefaultPolicyIndex { idx }
     }
 }

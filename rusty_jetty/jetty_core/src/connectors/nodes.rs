@@ -132,6 +132,8 @@ pub struct ConnectorData {
     pub tags: Vec<RawTag>,
     /// All policies in the connector
     pub policies: Vec<RawPolicy>,
+    /// The default policies provided by the connector
+    pub default_policies: Vec<RawDefaultPolicy>,
     /// References to assets that are owned by another connector
     pub asset_references: Vec<RawAssetReference>,
     /// Mapping of all users to the assets they have permissions granted
@@ -153,6 +155,7 @@ impl ConnectorData {
         assets: Vec<RawAsset>,
         tags: Vec<RawTag>,
         policies: Vec<RawPolicy>,
+        default_policies: Vec<RawDefaultPolicy>,
         asset_references: Vec<RawAssetReference>,
         effective_permissions: SparseMatrix<UserName, Cual, HashSet<EffectivePermission>>,
         cual_prefix: Option<String>,
@@ -164,6 +167,7 @@ impl ConnectorData {
             asset_references,
             tags,
             policies,
+            default_policies,
             effective_permissions,
             cual_prefix,
         }
@@ -447,4 +451,28 @@ impl RawPolicy {
             pass_through_lineage,
         }
     }
+}
+
+/// Struct used to populate default policy nodes and edges in the graph. Must be returned
+/// from the connector as a single policy that can be keyed off the asset_path and
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RawDefaultPolicy {
+    /// Privileges applied as part of this policy
+    pub privileges: HashSet<String>,
+    /// Path to the assets that will be governed by this policy. Must include a wildcard match.
+    /// types can also be included
+    pub asset_path: HashSet<String>,
+    /// policy grantee
+    pub grantee: RawPolicyGrantee,
+    /// metadata for the policy
+    pub metadata: HashMap<String, String>,
+}
+
+/// Grantee of a policy
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RawPolicyGrantee {
+    /// Grantee of a group
+    Group(String),
+    /// Grantee of a user
+    User(String),
 }

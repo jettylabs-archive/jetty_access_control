@@ -26,8 +26,8 @@ use self::translate::Translator;
 use super::connectors;
 use core::hash::Hash;
 
-use std::collections::HashMap;
 use std::collections::HashSet;
+use std::collections::{BTreeSet, HashMap};
 use std::fmt::{Debug, Display};
 use std::fs::{self, File};
 use std::io::BufWriter;
@@ -324,6 +324,24 @@ pub struct PolicyAttributes {
     pub connectors: HashSet<ConnectorNamespace>,
 }
 
+/// A struct describing the attributes of a policy
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DefaultPolicyAttributes {
+    /// Policy name
+    pub name: NodeName,
+    /// Node Id
+    pub id: Uuid,
+    /// Policy privileges
+    pub privileges: HashSet<String>,
+    /// The path that this policy should be applied to
+    pub matching_path: String,
+    /// The types of assets that this should be applied to. If None, it's applied to all types
+    pub types: Option<BTreeSet<String>>,
+    /// Connectors for the default policy. Policies include a single asset and single grantee, so
+    /// this set should only ever include a single connector
+    pub connectors: HashSet<ConnectorNamespace>,
+}
+
 impl PolicyAttributes {
     fn merge_attributes(&self, new_attributes: &PolicyAttributes) -> Result<PolicyAttributes> {
         let name = merge_matched_field(&self.name, &new_attributes.name)
@@ -395,6 +413,8 @@ pub enum JettyNode {
     Tag(TagAttributes),
     /// Policy node
     Policy(PolicyAttributes),
+    /// Default policy
+    DefaultPolicy(DefaultPolicyAttributes),
 }
 
 impl JettyNode {
@@ -406,6 +426,7 @@ impl JettyNode {
             JettyNode::Asset(a) => a.name.to_string(),
             JettyNode::Tag(t) => t.name.to_string(),
             JettyNode::Policy(p) => p.name.to_string(),
+            JettyNode::DefaultPolicy(p) => p.name.to_string(),
         }
     }
 
@@ -418,6 +439,7 @@ impl JettyNode {
             // Tags don't really have connectors at this point, so return an empty HashSet
             JettyNode::Tag(_t) => Default::default(),
             JettyNode::Policy(p) => p.connectors.to_owned(),
+            JettyNode::DefaultPolicy(p) => p.connectors.to_owned(),
         }
     }
 
@@ -456,6 +478,7 @@ impl JettyNode {
             JettyNode::Policy(a) => a.name.to_owned(),
             JettyNode::Tag(a) => a.name.to_owned(),
             JettyNode::User(a) => a.name.to_owned(),
+            JettyNode::DefaultPolicy(a) => a.name.to_owned(),
         }
     }
 
@@ -467,6 +490,7 @@ impl JettyNode {
             JettyNode::Asset(n) => n.id,
             JettyNode::Tag(n) => n.id,
             JettyNode::Policy(n) => n.id,
+            JettyNode::DefaultPolicy(n) => n.id,
         }
     }
 }
@@ -589,6 +613,17 @@ pub enum NodeName {
     },
     /// Tag node
     Tag(String),
+    /// Default Policy Node
+    DefaultPolicy {
+        /// Root of the default policy path (before any wildcards)
+        root_node: Box<NodeName>,
+        /// The path of wildcards
+        matching_path: String,
+        /// The user/group to whom the policy is granted
+        grantee: Box<NodeName>,
+        /// The types of assets the policy should be applied to
+        types: Option<BTreeSet<String>>,
+    },
 }
 
 impl Default for NodeName {
@@ -618,6 +653,24 @@ impl Display for NodeName {
             ),
             NodeName::Policy { name, origin } => write!(f, "{origin}::{name}"),
             NodeName::Tag(n) => write!(f, "{n}"),
+            NodeName::DefaultPolicy {
+                root_node,
+                matching_path,
+                grantee,
+                types,
+            } => {
+                write!(
+                    f,
+                    "{}/{}::{}->{}",
+                    root_node,
+                    matching_path,
+                    match types {
+                        Some(t) => t.iter().map(|s| s.to_owned()).collect::<Vec<_>>().join(","),
+                        None => "all types".into(),
+                    },
+                    grantee
+                )
+            }
         }
     }
 }

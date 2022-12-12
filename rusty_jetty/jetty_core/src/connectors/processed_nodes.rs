@@ -3,7 +3,7 @@
 
 use std::{
     cmp::Ordering,
-    collections::{HashMap, HashSet},
+    collections::{BTreeSet, HashMap, HashSet},
 };
 
 use uuid::Uuid;
@@ -11,10 +11,11 @@ use uuid::Uuid;
 use crate::{
     access_graph::{
         helpers::{insert_edge_pair, NodeHelper},
-        AssetAttributes, EdgeType, GroupAttributes, JettyEdge, JettyNode, NodeName,
-        PolicyAttributes, TagAttributes, UserAttributes,
+        AssetAttributes, DefaultPolicyAttributes, EdgeType, GroupAttributes, JettyEdge, JettyNode,
+        NodeName, PolicyAttributes, TagAttributes, UserAttributes,
     },
     jetty::ConnectorNamespace,
+    Jetty,
 };
 
 use super::nodes::{EffectivePermission, SparseMatrix};
@@ -32,6 +33,8 @@ pub struct ProcessedConnectorData {
     pub tags: Vec<ProcessedTag>,
     /// All policies in the connector
     pub policies: Vec<ProcessedPolicy>,
+    /// Default policies from the connector
+    pub default_policies: Vec<ProcessedDefaultPolicy>,
     /// All references to un-owned assets. Only necessary
     pub asset_references: Vec<ProcessedAssetReference>,
     /// Mapping of all users to the assets they have permissions granted
@@ -253,6 +256,26 @@ impl NodeHelper for ProcessedGroup {
         }
         hs
     }
+}
+
+/// Struct used to populate default policy nodes and edges in the graph
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ProcessedDefaultPolicy {
+    /// Tricky one...
+    pub name: NodeName,
+    /// Privileges associated with the policy, scoped to
+    /// relevant context
+    pub privileges: HashSet<String>,
+    /// IDs of assets governed by the policy
+    pub root_node: NodeName,
+    /// Path to determine scope
+    pub matching_path: String,
+    /// The types of assets to apply this to
+    pub types: Option<BTreeSet<String>>,
+    /// Who the privilege is granted to
+    pub grantee: NodeName,
+    /// Connector that the privilege exists in
+    pub connector: ConnectorNamespace,
 }
 
 /// Object used to populate user nodes and edges in the graph
@@ -504,5 +527,27 @@ impl NodeHelper for ProcessedPolicy {
             );
         }
         hs
+    }
+}
+
+impl ProcessedDefaultPolicy {
+    fn get_node(&self) -> Option<JettyNode> {
+        Some(JettyNode::DefaultPolicy(DefaultPolicyAttributes {
+            name: NodeName::DefaultPolicy {
+                root_node: Box::new(self.root_node.to_owned()),
+                matching_path: self.matching_path.to_owned(),
+                grantee: Box::new(self.grantee.to_owned()),
+                types: self.types.to_owned(),
+            },
+            id: Uuid::new_v5(&Uuid::NAMESPACE_URL, self.name.to_string().as_bytes()),
+            privileges: self.privileges.to_owned(),
+            matching_path: self.matching_path.to_owned(),
+            types: self.types.to_owned(),
+            connectors: [self.connector.to_owned()].into(),
+        }))
+    }
+
+    fn get_edges(&self, jetty: Jetty) -> HashSet<JettyEdge> {
+        todo!()
     }
 }

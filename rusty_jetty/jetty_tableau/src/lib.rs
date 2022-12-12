@@ -502,6 +502,7 @@ impl Connector for TableauConnector {
             tags,
             policies,
             Default::default(),
+            Default::default(),
             effective_permissions,
             Some(
                 get_cual_prefix()

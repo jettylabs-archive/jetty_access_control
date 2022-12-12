@@ -15,6 +15,7 @@ use std::collections::HashMap;
 use uuid::Uuid;
 
 use self::typed_indices::AssetIndex;
+use self::typed_indices::DefaultPolicyIndex;
 use self::typed_indices::GroupIndex;
 use self::typed_indices::PolicyIndex;
 use self::typed_indices::TagIndex;
@@ -41,6 +42,7 @@ pub(crate) struct NodeMap {
     pub(crate) groups: HashMap<NodeName, typed_indices::GroupIndex>,
     tags: HashMap<NodeName, typed_indices::TagIndex>,
     policies: HashMap<NodeName, typed_indices::PolicyIndex>,
+    default_policies: HashMap<NodeName, typed_indices::DefaultPolicyIndex>,
 }
 
 /// The a map of UUIDs to typed indices
@@ -51,6 +53,7 @@ pub(crate) struct NodeIdMap {
     groups: HashMap<uuid::Uuid, typed_indices::GroupIndex>,
     tags: HashMap<uuid::Uuid, typed_indices::TagIndex>,
     policies: HashMap<uuid::Uuid, typed_indices::PolicyIndex>,
+    default_policies: HashMap<uuid::Uuid, typed_indices::DefaultPolicyIndex>,
 }
 
 impl Graph {
@@ -103,6 +106,11 @@ impl Graph {
             NodeName::Tag(_) => self
                 .nodes
                 .tags
+                .get(node)
+                .map(|n| NodeIndex::from(n.to_owned())),
+            NodeName::DefaultPolicy { .. } => self
+                .nodes
+                .default_policies
                 .get(node)
                 .map(|n| NodeIndex::from(n.to_owned())),
         }
@@ -247,6 +255,14 @@ impl Graph {
                     self.node_ids
                         .policies
                         .insert(node_id, PolicyIndex::new(idx));
+                }
+                JettyNode::DefaultPolicy(_) => {
+                    self.nodes
+                        .default_policies
+                        .insert(node_name, DefaultPolicyIndex::new(idx));
+                    self.node_ids
+                        .default_policies
+                        .insert(node_id, DefaultPolicyIndex::new(idx));
                 }
             };
         };

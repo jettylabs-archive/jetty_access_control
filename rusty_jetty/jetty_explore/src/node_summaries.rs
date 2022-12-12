@@ -40,6 +40,10 @@ pub(crate) enum NodeSummary {
         name: NodeName,
         connectors: HashSet<ConnectorNamespace>,
     },
+    DefaultPolicy {
+        name: NodeName,
+        connectors: HashSet<ConnectorNamespace>,
+    },
 }
 
 impl NodeSummary {
@@ -50,6 +54,7 @@ impl NodeSummary {
             NodeSummary::Group { name, .. } => name,
             NodeSummary::Tag { name, .. } => name,
             NodeSummary::Policy { name, .. } => name,
+            NodeSummary::DefaultPolicy { name, .. } => name,
         }
         .clone()
     }
@@ -83,6 +88,10 @@ impl From<JettyNode> for NodeSummary {
                 connectors: n.connectors,
             },
             JettyNode::Policy(n) => NodeSummary::Policy {
+                name: n.name,
+                connectors: n.connectors,
+            },
+            JettyNode::DefaultPolicy(n) => NodeSummary::DefaultPolicy {
                 name: n.name,
                 connectors: n.connectors,
             },
