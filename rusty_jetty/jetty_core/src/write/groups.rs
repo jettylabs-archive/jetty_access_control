@@ -437,8 +437,8 @@ fn generate_diff(
             // iterate over the policy targets to build the diff structs
             for target in policy_targets {
                 policy_diffs.push(policies::Diff {
-                    asset: ag[target].get_node_name(),
-                    agent: k.clone(),
+                    assets: vec![ag[target].get_node_name()],
+                    agents: vec![k.clone()],
                     details: vec![policies::DiffDetails::RemovePolicy],
                     connectors: policy.connectors.to_owned(),
                 });
