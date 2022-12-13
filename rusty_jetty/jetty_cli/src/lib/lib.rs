@@ -29,7 +29,7 @@ use jetty_core::{
     jetty::{ConnectorNamespace, CredentialsMap, JettyConfig},
     logging::{self, debug, error, info},
     project::{self, groups_cfg_path_local},
-    write::Diffs,
+    write::{assets::bootstrap::write_bootstrapped_asset_yaml, Diffs},
     Connector, Jetty,
 };
 
@@ -253,13 +253,16 @@ async fn bootstrap(overwrite: bool) -> Result<()> {
     jetty.try_access_graph()?;
 
     // Build all the yaml first
-    let group_yaml = jetty.build_bootstrapped_group_yaml()?;
-    // TODO: Add Policy yaml
+    let group_yaml = jetty.generate_bootstrapped_group_yaml()?;
+    let asset_yaml = jetty.generate_bootstrapped_policy_yaml()?;
 
     // Now check for all the files
     if !overwrite {
         if groups_cfg_path_local().exists() {
             bail!("{} already exists; run `jetty bootstrap --overwrite` to overwrite the existing configuration", groups_cfg_path_local().to_string_lossy())
+        }
+        if project::assets_cfg_root_path().exists() {
+            bail!("{} already exists; run `jetty bootstrap --overwrite` to overwrite the existing configuration", project::assets_cfg_root_path().to_string_lossy())
         }
     }
 
@@ -268,16 +271,17 @@ async fn bootstrap(overwrite: bool) -> Result<()> {
     // groups
     fs::create_dir_all(groups_cfg_path_local().parent().unwrap()).unwrap(); // Create the parent dir, if needed
     fs::write(groups_cfg_path_local(), group_yaml)?; // write the contents
-                                                     // sanity check - the diff should be empty at this point
+                                                     // assets
+    write_bootstrapped_asset_yaml(asset_yaml)?;
+
+    // sanity check - the diff should be empty at this point
     if jetty_core::write::get_group_diff(&jetty)
         .context("checking the generated group configuration")?
         .len()
         != 0
     {
-        bail!("something went wrong - the configuration generated doesn't fully match the true state; please contact support: support@get-jetty.com")
+        bail!("something went wrong - the configuration generated doesn't fully match the true state of your environment; please contact support: support@get-jetty.com")
     }
-
-    // TODO: Policies
 
     Ok(())
 }

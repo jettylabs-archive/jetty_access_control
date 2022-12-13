@@ -173,10 +173,6 @@ impl<'a> Coordinator<'a> {
 
         // Add policies to overwrite the default, when necessary.
         add_non_default_policies(&mut connector_data);
-
-        dbg!(&connector_data.default_policies);
-        dbg!(&connector_data.policies);
-
         connector_data
     }
 
@@ -505,7 +501,6 @@ fn add_non_default_policies(connector_data: &mut ConnectorData) {
         // start with the "/*" path. This exists for schemas when the parent is a database, or for tables/views when the parent
         // is a schema
         if default_policy.wildcard_path == "/*" {
-            dbg!(&default_policy.root_asset.to_string());
 
             asset_map[&default_policy.root_asset.to_string()]
                 .iter()

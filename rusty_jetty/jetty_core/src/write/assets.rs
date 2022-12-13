@@ -1,6 +1,6 @@
 //! Parse and manage user-configured policies
 
-mod bootstrap;
+pub mod bootstrap;
 
 use std::collections::{HashMap, HashSet};
 

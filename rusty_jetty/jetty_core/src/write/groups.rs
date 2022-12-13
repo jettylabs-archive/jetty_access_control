@@ -22,7 +22,7 @@ use crate::{
     Jetty,
 };
 
-use super::policies;
+use super::assets;
 
 /// group configuration, as represented in the yaml
 #[derive(Deserialize, Debug)]
@@ -436,10 +436,10 @@ fn generate_diff(
 
             // iterate over the policy targets to build the diff structs
             for target in policy_targets {
-                policy_diffs.push(policies::Diff {
+                policy_diffs.push(assets::Diff {
                     assets: vec![ag[target].get_node_name()],
                     agents: vec![k.clone()],
-                    details: vec![policies::DiffDetails::RemovePolicy],
+                    details: vec![assets::DiffDetails::RemovePolicy],
                     connectors: policy.connectors.to_owned(),
                 });
             }

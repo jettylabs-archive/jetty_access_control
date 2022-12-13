@@ -400,6 +400,18 @@ impl TryFrom<JettyNode> for PolicyAttributes {
     }
 }
 
+impl TryFrom<JettyNode> for DefaultPolicyAttributes {
+    type Error = anyhow::Error;
+
+    /// convert from a JettyNode to PolicyAttributes, if possible
+    fn try_from(value: JettyNode) -> Result<Self, Self::Error> {
+        match value {
+            JettyNode::DefaultPolicy(a) => Ok(a),
+            _ => bail!("not a policy node"),
+        }
+    }
+}
+
 /// Enum of node types
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum JettyNode {

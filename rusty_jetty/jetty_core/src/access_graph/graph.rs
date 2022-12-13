@@ -41,8 +41,8 @@ pub(crate) struct NodeMap {
     users: HashMap<NodeName, typed_indices::UserIndex>,
     pub(crate) groups: HashMap<NodeName, typed_indices::GroupIndex>,
     tags: HashMap<NodeName, typed_indices::TagIndex>,
-    policies: HashMap<NodeName, typed_indices::PolicyIndex>,
-    default_policies: HashMap<NodeName, typed_indices::DefaultPolicyIndex>,
+    pub(crate) policies: HashMap<NodeName, typed_indices::PolicyIndex>,
+    pub(crate) default_policies: HashMap<NodeName, typed_indices::DefaultPolicyIndex>,
 }
 
 /// The a map of UUIDs to typed indices

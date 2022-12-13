@@ -85,7 +85,7 @@ impl Jetty {
     }
 
     /// Generate the YAML for a bootstrapped group configuration
-    pub fn build_bootstrapped_group_yaml(&self) -> Result<String> {
+    pub fn generate_bootstrapped_group_yaml(&self) -> Result<String> {
         let config = self.build_bootstrapped_group_config()?;
         Ok(yaml_peg::serde::to_string(&config)?)
     }
