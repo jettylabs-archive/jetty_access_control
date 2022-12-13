@@ -10,7 +10,7 @@ pub mod test_util;
 pub mod translate;
 
 use crate::connectors::nodes::{ConnectorData, EffectivePermission, SparseMatrix};
-use crate::connectors::processed_nodes::ProcessedConnectorData;
+use crate::connectors::processed_nodes::{ProcessedConnectorData, ProcessedDefaultPolicy};
 #[cfg(test)]
 use crate::cual::Cual;
 
@@ -526,6 +526,10 @@ pub enum EdgeType {
     RemovedFrom,
     /// asset -> had removed -> tag
     UntaggedAs,
+    /// default policy -> asset
+    ProvidedDefaultForChildren,
+    /// asset -> default policy
+    ReceivedChildrensDefaultFrom,
     /// anything else
     #[default]
     Other,
@@ -547,6 +551,8 @@ fn get_edge_type_pair(edge_type: &EdgeType) -> EdgeType {
         EdgeType::Governs => EdgeType::GovernedBy,
         EdgeType::RemovedFrom => EdgeType::UntaggedAs,
         EdgeType::UntaggedAs => EdgeType::RemovedFrom,
+        EdgeType::ProvidedDefaultForChildren => EdgeType::ReceivedChildrensDefaultFrom,
+        EdgeType::ReceivedChildrensDefaultFrom => EdgeType::ProvidedDefaultForChildren,
         EdgeType::Other => EdgeType::Other,
     }
 }
@@ -764,6 +770,12 @@ impl AccessGraph {
         ag.add_nodes(&connector_data)?;
         ag.add_edges()?;
 
+        // Add default policies after the rest of the graph is created. This is necessary because
+        // these policies depend on hierarchy, which isn't really established until this point.
+        ag.register_default_policy_nodes_and_edges(&connector_data.default_policies)?;
+        // Add the newly created edges
+        ag.add_edges()?;
+
         // Merge effective permissions into the access graph
         ag.effective_permissions = ag.translate_effective_permissions_to_global_indices(
             connector_data.effective_permissions,
@@ -899,6 +911,9 @@ impl AccessGraph {
         self.last_modified
     }
 
+    /// Go through the connector data an add nodes and edges for most node types.
+    /// **This intentionally excludes default policies. They must be handled separately
+    /// after other nodes are added**
     pub(crate) fn add_nodes(&mut self, data: &ProcessedConnectorData) -> Result<()> {
         self.register_nodes_and_edges(&data.groups)?;
         self.register_nodes_and_edges(&data.users)?;
@@ -928,6 +943,23 @@ impl AccessGraph {
 
             if let Some(node) = n.get_node() {
                 self.graph.add_node(&node)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn register_default_policy_nodes_and_edges(
+        &mut self,
+        nodes: &Vec<ProcessedDefaultPolicy>,
+    ) -> Result<()> {
+        for n in nodes {
+            let edges = n.get_edges(self);
+            self.edge_cache.extend(edges);
+
+            if let Some(node) = n.get_node() {
+                self.graph.add_node(&node)?;
+            } else {
+                bail!("unable to add default policy node")
             }
         }
         Ok(())

@@ -3,6 +3,7 @@
 
 mod accessible_assets;
 mod asset_paths_for_tag;
+mod default_policy_targets;
 mod extract_graph;
 mod get_node;
 mod matching_children;

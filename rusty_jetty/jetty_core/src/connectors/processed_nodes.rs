@@ -11,10 +11,11 @@ use uuid::Uuid;
 use crate::{
     access_graph::{
         helpers::{insert_edge_pair, NodeHelper},
-        AssetAttributes, DefaultPolicyAttributes, EdgeType, GroupAttributes, JettyEdge, JettyNode,
-        NodeName, PolicyAttributes, TagAttributes, UserAttributes,
+        AccessGraph, AssetAttributes, DefaultPolicyAttributes, EdgeType, GroupAttributes,
+        JettyEdge, JettyNode, NodeName, PolicyAttributes, TagAttributes, UserAttributes,
     },
     jetty::ConnectorNamespace,
+    logging::error,
     Jetty,
 };
 
@@ -531,7 +532,8 @@ impl NodeHelper for ProcessedPolicy {
 }
 
 impl ProcessedDefaultPolicy {
-    fn get_node(&self) -> Option<JettyNode> {
+    /// Gets a jetty node, based on a ProcessedDefaultPolicy
+    pub(crate) fn get_node(&self) -> Option<JettyNode> {
         Some(JettyNode::DefaultPolicy(DefaultPolicyAttributes {
             name: NodeName::DefaultPolicy {
                 root_node: Box::new(self.root_node.to_owned()),
@@ -547,7 +549,35 @@ impl ProcessedDefaultPolicy {
         }))
     }
 
-    fn get_edges(&self, jetty: Jetty) -> HashSet<JettyEdge> {
-        todo!()
+    /// Gets all the edges needed to add a default policy to the graph. This requires graph traversal
+    /// because we add an edge between the DefaultPolicy and every policy that it could impact.
+    pub(crate) fn get_edges(&self, ag: &AccessGraph) -> HashSet<JettyEdge> {
+        let mut edges = HashSet::new();
+
+        // Insert an edge to the root node
+        edges.insert(JettyEdge::new(
+            self.name.to_owned(),
+            self.root_node.to_owned(),
+            EdgeType::ProvidedDefaultForChildren,
+        ));
+
+        // expand the path to get all relevant nodes
+        let target_node_indices = match ag.default_policy_targets(&self.root_node) {
+            Ok(i) => i,
+            Err(e) => {
+                error!("unable to properly build edges from default policies: {e}");
+                Default::default()
+            }
+        };
+        // Add edges to all target nodes
+        edges.extend(target_node_indices.into_iter().map(|t| {
+            JettyEdge::new(
+                self.name.to_owned(),
+                ag[t].get_node_name().to_owned(),
+                EdgeType::Governs,
+            )
+        }));
+
+        edges
     }
 }
