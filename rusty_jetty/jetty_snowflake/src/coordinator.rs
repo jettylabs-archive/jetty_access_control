@@ -12,7 +12,10 @@ use jetty_core::connectors::nodes;
 use jetty_core::connectors::AssetType;
 use jetty_core::connectors::UserIdentifier;
 
+use jetty_core::connectors::nodes::ConnectorData;
 use jetty_core::connectors::nodes::EffectivePermission;
+use jetty_core::connectors::nodes::RawPolicy;
+use jetty_core::connectors::nodes::RawPolicyGrantee;
 use jetty_core::connectors::nodes::SparseMatrix;
 use jetty_core::cual::Cualable;
 use jetty_core::logging::debug;
@@ -149,7 +152,7 @@ impl<'a> Coordinator<'a> {
 
         self.role_grants = self.build_role_grants();
 
-        let connector_data = nodes::ConnectorData {
+        let mut connector_data = nodes::ConnectorData {
             // 19 Sec
             groups: self.get_jetty_groups(),
             // 7 Sec
@@ -168,10 +171,10 @@ impl<'a> Coordinator<'a> {
             ),
         };
 
-        // FIXME: Now, for each asset under a default policy that doesn't have a more specific policy, but that exists, create
-        // an empty policy
+        // Add policies to overwrite the default, when necessary.
+        add_non_default_policies(&mut connector_data);
 
-        todo!()
+        connector_data
     }
 
     /// Get the role grants into a nicer format
@@ -436,5 +439,107 @@ impl<'a> Coordinator<'a> {
         }
 
         res
+    }
+}
+
+/// This function adds empty privileges to all existing objects that don't have the default privileges that would be applied if there
+/// weren't a more specific policy.
+///
+/// This is necessary because a future grant isn't strictly the same thing as a default policy. If
+/// an asset exists without the permission that the future grant will apply, it's never going to get that permission. So for that case,
+/// we need to make sure that another policy takes its place.
+fn add_non_default_policies(connector_data: &mut ConnectorData) {
+    // a map of <asset name: HashSet (children asset name, child asset type)>
+    // Makes it simple to navigate the hierarchy
+    let asset_map: HashMap<_, _> = connector_data.assets.iter().fold(
+        HashMap::new(),
+        |mut acc: HashMap<String, HashSet<(String, AssetType)>>, c| {
+            for parent in &c.child_of {
+                acc.entry(parent.to_owned())
+                    .and_modify(|kids| {
+                        kids.insert((c.name.to_owned(), c.asset_type.to_owned()));
+                    })
+                    .or_insert(HashSet::from([(
+                        c.name.to_owned(),
+                        c.asset_type.to_owned(),
+                    )]));
+            }
+            acc
+        },
+    );
+
+    // set of all the asset - role pairs that exist in existing policies. If an asset-role pair exists, we don't need to do anything
+    let policy_set = connector_data
+        .policies
+        .iter()
+        .map(|p| {
+            p.governs_assets.iter().map(|asset| {
+                p.granted_to_groups
+                    .iter()
+                    .map(|group| (asset.to_owned(), group.to_owned()))
+            })
+        })
+        .flatten()
+        .flatten()
+        .collect::<HashSet<_>>();
+
+    // Iterate through the default polices and generate the new no-privilege policies where necessary
+    for default_policy in &connector_data.default_policies {
+        let grantee = if let RawPolicyGrantee::Group(g) = &default_policy.grantee {
+            g.to_owned()
+        } else {
+            error!("no grantee found for future grant");
+            continue;
+        };
+
+        // get all the potentially governed assets for this default policy
+        let target_assets: HashSet<_> =
+        // start with the "/*" path. This exists for schemas when the parent is a database, or for tables/views when the parent
+        // is a schema
+        if default_policy.wildcard_path == "/*" {
+            asset_map[&default_policy.root_asset.to_string()]
+                .iter()
+                .filter_map(|(name, asset_type)| {
+                    if default_policy.target_types.contains(&asset_type.0) {
+                        Some(name.to_owned())
+                    } else {
+                        None
+                    }
+                })
+                .collect()
+        }
+        // "/*/*" -> the parent is a database, and the children are tables or views
+        else if default_policy.wildcard_path == "/*/*" {
+            asset_map[&default_policy.root_asset.to_string()]
+                .iter()
+                // get all the grandchildren, then flatten
+                .map(|(level_one_name, _)| asset_map[level_one_name].to_owned())
+                .flatten()
+                .filter_map(|(name, asset_type)| {
+                    if default_policy.target_types.contains(&asset_type.0) {
+                        Some(name)
+                    } else {
+                        None
+                    }
+                })
+                .collect()
+        } else {
+            error!("unsupported wildcard path {}", default_policy.wildcard_path);
+            panic!()
+        };
+        // now check each of the target assets in the policy set. If they're not there, create a blank policy for them (no privileges)
+        let new_policies = target_assets.into_iter().filter_map(|asset_name| {
+            if policy_set.contains(&(asset_name.to_owned(), grantee.to_owned())) {
+                None
+            } else {
+                Some(RawPolicy {
+                    name: "test".to_owned(),
+                    governs_assets: [asset_name].into(),
+                    granted_to_groups: [grantee.to_owned()].into(),
+                    ..Default::default()
+                })
+            }
+        });
+        connector_data.policies.extend(new_policies);
     }
 }
