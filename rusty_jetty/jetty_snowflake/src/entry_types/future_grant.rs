@@ -1,10 +1,14 @@
 use std::collections::HashSet;
 
-use jetty_core::connectors::nodes::{self, RawDefaultPolicy, RawPolicyGrantee};
+use anyhow::{bail, Result};
+use jetty_core::connectors::{
+    nodes::{self, RawDefaultPolicy, RawPolicyGrantee},
+    AssetType,
+};
 
 use serde::{Deserialize, Serialize};
 
-use crate::{cual::cual_from_snowflake_obj_name, strip_quotes_and_deserialize};
+use crate::{consts, cual::cual_from_snowflake_obj_name, strip_quotes_and_deserialize};
 
 use super::grant::Grant;
 
@@ -41,7 +45,7 @@ impl FutureGrant {
             // If it's Tables/views/other things, but set at the database level
             // TODO This will break if there are any periods in the name of a database or schema
             if stripped_name.split(".").collect::<Vec<_>>().len() == 1 {
-                "/*/**"
+                "/*/*"
             }
             // Otherwise, it's tables, views, etc. Set at the schema level
             else {
@@ -54,7 +58,7 @@ impl FutureGrant {
             privileges: all_privileges,
             root_asset: cual,
             wildcard_path,
-            target_types: HashSet::from([self.grant_on]),
+            target_types: [convert_to_asset_type(&self.grant_on).unwrap()].into(),
             // Snowflake only allows grants to roles
             grantee: RawPolicyGrantee::Group(self.grantee_name),
             // empty for now
@@ -82,4 +86,14 @@ impl FutureGrant {
     pub(crate) fn privilege(&self) -> &str {
         &self.privilege
     }
+}
+
+fn convert_to_asset_type(grant_on: &str) -> Result<AssetType> {
+    Ok(match grant_on {
+        "SCHEMA" => AssetType(consts::SCHEMA.to_owned()),
+        "TABLE" => AssetType(consts::TABLE.to_owned()),
+        "VIEW" => AssetType(consts::VIEW.to_owned()),
+        "DATABASE" => AssetType(consts::DATABASE.to_owned()),
+        o => bail!("unable to handle asset type: {o}"),
+    })
 }

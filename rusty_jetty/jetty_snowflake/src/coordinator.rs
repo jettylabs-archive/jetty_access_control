@@ -174,6 +174,9 @@ impl<'a> Coordinator<'a> {
         // Add policies to overwrite the default, when necessary.
         add_non_default_policies(&mut connector_data);
 
+        dbg!(&connector_data.default_policies);
+        dbg!(&connector_data.policies);
+
         connector_data
     }
 
@@ -454,16 +457,21 @@ fn add_non_default_policies(connector_data: &mut ConnectorData) {
     let asset_map: HashMap<_, _> = connector_data.assets.iter().fold(
         HashMap::new(),
         |mut acc: HashMap<String, HashSet<(String, AssetType)>>, c| {
+            // make sure the child is in the list
+            acc.entry(c.cual.to_string()).or_insert(HashSet::new());
+
+            // add the parent relationships
             for parent in &c.child_of {
                 acc.entry(parent.to_owned())
                     .and_modify(|kids| {
-                        kids.insert((c.name.to_owned(), c.asset_type.to_owned()));
+                        kids.insert((c.cual.to_string(), c.asset_type.to_owned()));
                     })
                     .or_insert(HashSet::from([(
-                        c.name.to_owned(),
+                        c.cual.to_string(),
                         c.asset_type.to_owned(),
                     )]));
             }
+
             acc
         },
     );
@@ -497,10 +505,12 @@ fn add_non_default_policies(connector_data: &mut ConnectorData) {
         // start with the "/*" path. This exists for schemas when the parent is a database, or for tables/views when the parent
         // is a schema
         if default_policy.wildcard_path == "/*" {
+            dbg!(&default_policy.root_asset.to_string());
+
             asset_map[&default_policy.root_asset.to_string()]
                 .iter()
                 .filter_map(|(name, asset_type)| {
-                    if default_policy.target_types.contains(&asset_type.0) {
+                    if default_policy.target_types.contains(&asset_type) {
                         Some(name.to_owned())
                     } else {
                         None
@@ -516,7 +526,7 @@ fn add_non_default_policies(connector_data: &mut ConnectorData) {
                 .map(|(level_one_name, _)| asset_map[level_one_name].to_owned())
                 .flatten()
                 .filter_map(|(name, asset_type)| {
-                    if default_policy.target_types.contains(&asset_type.0) {
+                    if default_policy.target_types.contains(&asset_type) {
                         Some(name)
                     } else {
                         None
@@ -527,7 +537,8 @@ fn add_non_default_policies(connector_data: &mut ConnectorData) {
             error!("unsupported wildcard path {}", default_policy.wildcard_path);
             panic!()
         };
-        // now check each of the target assets in the policy set. If they're not there, create a blank policy for them (no privileges)
+
+        // FUTURE: Remove policies that duplicate the default policies
         let new_policies = target_assets.into_iter().filter_map(|asset_name| {
             if policy_set.contains(&(asset_name.to_owned(), grantee.to_owned())) {
                 None
@@ -541,5 +552,74 @@ fn add_non_default_policies(connector_data: &mut ConnectorData) {
             }
         });
         connector_data.policies.extend(new_policies);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::consts;
+
+    use super::*;
+    use anyhow::Result;
+    use jetty_core::connectors::nodes::{RawAsset, RawDefaultPolicy};
+
+    #[test]
+    fn test_add_non_default_policies() -> Result<()> {
+        cual::set_cual_account_name("test");
+        let assets = [
+            RawAsset {
+                cual: cual!("db"),
+                name: "whatever".to_owned(),
+                asset_type: AssetType(consts::DATABASE.to_owned()),
+                ..Default::default()
+            },
+            RawAsset {
+                cual: cual!("db", "schema"),
+                name: "whatever schema".to_owned(),
+                asset_type: AssetType(consts::SCHEMA.to_owned()),
+                child_of: [cual!("db").to_string()].into(),
+                ..Default::default()
+            },
+            RawAsset {
+                cual: cual!("db", "schema2"),
+                name: "whatever schema2".to_owned(),
+                asset_type: AssetType(consts::SCHEMA.to_owned()),
+                child_of: [cual!("db").to_string()].into(),
+                ..Default::default()
+            },
+        ]
+        .into();
+
+        let policies = [RawPolicy {
+            name: "p1".to_owned(),
+            privileges: ["read".to_owned()].into(),
+            governs_assets: [cual!("db", "schema2").to_string()].into(),
+            granted_to_groups: ["group".to_owned()].into(),
+            ..Default::default()
+        }]
+        .into();
+
+        let default_policies = [RawDefaultPolicy {
+            privileges: ["write".to_owned()].into(),
+            root_asset: cual!("db"),
+            wildcard_path: "/*".to_owned(),
+            target_types: [AssetType(consts::SCHEMA.to_owned())].into(),
+            grantee: RawPolicyGrantee::Group("group".to_owned()),
+            metadata: Default::default(),
+        }]
+        .into();
+
+        let mut connector_data = ConnectorData {
+            assets,
+            policies,
+            default_policies,
+            ..Default::default()
+        };
+        add_non_default_policies(&mut connector_data);
+
+        dbg!(connector_data.policies);
+        dbg!(connector_data.default_policies);
+
+        Ok(())
     }
 }

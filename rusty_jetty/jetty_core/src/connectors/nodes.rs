@@ -9,6 +9,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::cual::Cual;
 
+use super::AssetType;
+
 /// Alias for a sparse matrix addressable by matrix\[x\]\[y\], where each entry is of type T.
 pub type SparseMatrix<X, Y, T> = HashMap<X, HashMap<Y, T>>;
 
@@ -464,7 +466,7 @@ pub struct RawDefaultPolicy {
     /// The wildcard path to assets that will be affected by this policy (e.g. "*/**" )
     pub wildcard_path: String,
     /// The types that the policy should be applied to
-    pub target_types: HashSet<String>,
+    pub target_types: HashSet<AssetType>,
     /// policy grantee
     pub grantee: RawPolicyGrantee,
     /// metadata for the policy
