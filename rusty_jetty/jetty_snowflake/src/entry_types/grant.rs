@@ -10,7 +10,6 @@ use crate::{cual::cual_from_snowflake_obj_name, strip_quotes_and_deserialize};
 #[derive(Deserialize, Serialize, Clone, PartialEq, Eq, Hash)]
 pub enum GrantType {
     Standard(StandardGrant),
-    Future(super::future_grant::FutureGrant),
 }
 
 pub trait Grant {
@@ -26,39 +25,35 @@ pub trait Grant {
     }
 }
 
+/// This can be totally reworked, but just leaving it is as
 impl Grant for GrantType {
     fn granted_on_name(&self) -> &str {
         match self {
             GrantType::Standard(s) => s.granted_on_name(),
-            GrantType::Future(f) => f.granted_on_name(),
         }
     }
 
     fn role_name(&self) -> &str {
         match self {
             GrantType::Standard(s) => s.role_name(),
-            GrantType::Future(f) => f.role_name(),
         }
     }
 
     fn privilege(&self) -> &str {
         match self {
             GrantType::Standard(s) => s.privilege(),
-            GrantType::Future(f) => f.privilege(),
         }
     }
 
     fn granted_on(&self) -> &str {
         match self {
             GrantType::Standard(s) => s.granted_on(),
-            GrantType::Future(f) => f.granted_on(),
         }
     }
 
     fn into_policy(self, all_privileges: HashSet<String>) -> nodes::RawPolicy {
         match self {
             GrantType::Standard(s) => s.into_policy(all_privileges),
-            GrantType::Future(f) => f.into_policy(all_privileges),
         }
     }
 }

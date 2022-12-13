@@ -28,7 +28,10 @@ pub struct FutureGrant {
 }
 
 impl FutureGrant {
-    fn into_default_policy(self, all_privileges: HashSet<String>) -> nodes::RawDefaultPolicy {
+    pub(crate) fn into_default_policy(
+        self,
+        all_privileges: HashSet<String>,
+    ) -> nodes::RawDefaultPolicy {
         let stripped_name = self.name.split_once('<').unwrap().0.trim_end_matches('.');
         let cual = cual_from_snowflake_obj_name(stripped_name).unwrap();
 
@@ -59,9 +62,24 @@ impl FutureGrant {
         }
     }
 
+    /// Get the asset type that the grant is applied to
+    pub(crate) fn grant_on(&self) -> &str {
+        &self.grant_on
+    }
+
+    /// Get the asset the grant is set on
+    pub(crate) fn granted_on_name(&self) -> &str {
+        &self.name
+    }
+
     /// grantee_name is the role that this privilege will be granted to
     /// when new objects within scope are created
     pub(crate) fn role_name(&self) -> &str {
         &self.grantee_name
+    }
+
+    /// privilege
+    pub(crate) fn privilege(&self) -> &str {
+        &self.privilege
     }
 }

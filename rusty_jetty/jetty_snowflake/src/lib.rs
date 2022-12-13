@@ -447,6 +447,48 @@ impl SnowflakeConnector {
             .collect::<Vec<_>>()
     }
 
+    /// Convert future grants into default policies
+    fn future_grants_to_default_policies(
+        &self,
+        grants: &[FutureGrant],
+    ) -> Vec<nodes::RawDefaultPolicy> {
+        grants
+            .iter()
+            .filter(|g| consts::ASSET_TYPES.contains(&g.grant_on()))
+            // Collect roles by asset name so the role:asset ratio is 1:1.
+            .fold(
+                HashMap::new(),
+                |mut asset_map: HashMap<String, HashSet<FutureGrant>>, g| {
+                    if let Some(asset_privileges) = asset_map.get_mut(g.granted_on_name()) {
+                        asset_privileges.insert(g.clone());
+                    } else {
+                        asset_map
+                            .insert(g.granted_on_name().to_owned(), HashSet::from([g.clone()]));
+                    }
+                    asset_map
+                },
+            )
+            .iter()
+            .filter_map(|(_asset_name, grants)| {
+                // When we read, a policy will get created for each unique
+                // role/user, asset combination. All privileges will be bunched together
+                // for that combination.
+                if grants.is_empty() {
+                    // No privileges.
+                    return None;
+                }
+                // Each set of grants should be exactly the same except for privileges.
+                // We will take the first one...
+                let final_grant = grants.iter().next().cloned().unwrap();
+                // ...and now we'll combine all of the privileges from the
+                // grants into one policy.
+                let privileges: HashSet<String> =
+                    grants.iter().map(|g| g.privilege().to_owned()).collect();
+                Some(final_grant.into_default_policy(privileges))
+            })
+            .collect::<Vec<_>>()
+    }
+
     fn generate_diff_queries(&self, diffs: &LocalDiffs) -> Vec<Vec<String>> {
         let mut first_queries: Vec<String> = vec![];
         let mut second_queries: Vec<String> = vec![];

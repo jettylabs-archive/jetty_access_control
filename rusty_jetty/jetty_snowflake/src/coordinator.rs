@@ -29,6 +29,7 @@ use crate::entry_types;
 use crate::entry_types::ObjectKind;
 use crate::entry_types::RoleName;
 use crate::Asset;
+use crate::FutureGrant;
 use crate::Grant;
 use crate::GrantType;
 
@@ -148,7 +149,7 @@ impl<'a> Coordinator<'a> {
 
         self.role_grants = self.build_role_grants();
 
-        nodes::ConnectorData {
+        let connector_data = nodes::ConnectorData {
             // 19 Sec
             groups: self.get_jetty_groups(),
             // 7 Sec
@@ -157,7 +158,7 @@ impl<'a> Coordinator<'a> {
             assets: self.get_jetty_assets(),
             tags: self.get_jetty_tags(),
             policies: self.get_jetty_policies(),
-            default_policies: Default::default(),
+            default_policies: self.get_jetty_default_policies(),
             effective_permissions: self.get_effective_permissions(),
             asset_references: Default::default(),
             cual_prefix: Some(
@@ -165,7 +166,12 @@ impl<'a> Coordinator<'a> {
                     .context("cual account not yet set")
                     .unwrap(),
             ),
-        }
+        };
+
+        // FIXME: Now, for each asset under a default policy that doesn't have a more specific policy, but that exists, create
+        // an empty policy
+
+        todo!()
     }
 
     /// Get the role grants into a nicer format
@@ -209,16 +215,13 @@ impl<'a> Coordinator<'a> {
 
     /// Get future grants grants by roles
     /// Snowflake doesn't allow permissions to be granted to users
-    fn get_future_grants_by_role(&self) -> HashMap<String, Vec<GrantType>> {
-        let mut res: HashMap<String, Vec<GrantType>> = HashMap::new();
+    fn get_future_grants_by_role(&self) -> HashMap<String, Vec<FutureGrant>> {
+        let mut res: HashMap<String, Vec<FutureGrant>> = HashMap::new();
         for grant in &self.env.future_grants {
             if let Some(v) = res.get_mut(grant.role_name()) {
-                v.push(GrantType::Future(grant.to_owned()));
+                v.push(grant.to_owned());
             } else {
-                res.insert(
-                    grant.role_name().to_owned(),
-                    vec![GrantType::Future(grant.to_owned())],
-                );
+                res.insert(grant.role_name().to_owned(), vec![grant.to_owned()]);
             }
         }
         res
@@ -374,11 +377,17 @@ impl<'a> Coordinator<'a> {
             res.extend(self.conn.grants_to_policies(&grants))
         }
 
+        res
+    }
+
+    /// get default policies
+    fn get_jetty_default_policies(&self) -> Vec<nodes::RawDefaultPolicy> {
+        let mut res = vec![];
+
         // For future grants
         for (_role, grants) in self.get_future_grants_by_role() {
-            res.extend(self.conn.grants_to_policies(&grants))
+            res.extend(self.conn.future_grants_to_default_policies(&grants))
         }
-
         res
     }
 
