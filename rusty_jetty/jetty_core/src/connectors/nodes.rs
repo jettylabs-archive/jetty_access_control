@@ -459,9 +459,12 @@ impl RawPolicy {
 pub struct RawDefaultPolicy {
     /// Privileges applied as part of this policy
     pub privileges: HashSet<String>,
-    /// Path to the assets that will be governed by this policy. Must include a wildcard match.
-    /// types can also be included
-    pub asset_path: HashSet<String>,
+    /// The cual of the asset that the policy originates from
+    pub root_asset: Cual,
+    /// The wildcard path to assets that will be affected by this policy (e.g. "*/**" )
+    pub wildcard_path: String,
+    /// The types that the policy should be applied to
+    pub target_types: HashSet<String>,
     /// policy grantee
     pub grantee: RawPolicyGrantee,
     /// metadata for the policy
