@@ -1,5 +1,6 @@
 //! Jetty Module
 //!
+use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::{collections::HashMap, fmt::Display};
@@ -12,7 +13,7 @@ use uuid::Uuid;
 use yaml_peg::serde as yaml;
 
 use crate::access_graph::AccessGraph;
-use crate::connectors::ConnectorCapabilities;
+use crate::connectors::{AssetType, ConnectorCapabilities};
 use crate::{project, Connector};
 
 /// The user-defined namespace corresponding to the connector.
@@ -115,10 +116,13 @@ impl ConnectorConfig {
     }
 }
 
+#[derive(Default)]
 /// A struct representing the built-in characteristics of a connector.
 pub struct ConnectorManifest {
     /// The capabilities of the connector.
     pub capabilities: ConnectorCapabilities,
+    /// The asset type/privilege pairs that are allowed for a connector
+    pub asset_privileges: HashMap<AssetType, HashSet<String>>,
 }
 
 /// Alias for HashMap to hold credentials information.

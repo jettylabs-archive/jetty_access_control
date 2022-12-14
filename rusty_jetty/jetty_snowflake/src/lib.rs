@@ -31,7 +31,7 @@ pub use entry_types::{
 use futures::{StreamExt, TryStreamExt};
 use jetty_core::access_graph::translate::diffs::{groups, LocalDiffs};
 use jetty_core::connectors::{
-    ConnectorCapabilities, NewConnector, ReadCapabilities, WriteCapabilities,
+    AssetType, ConnectorCapabilities, NewConnector, ReadCapabilities, WriteCapabilities,
 };
 use jetty_core::jetty::ConnectorManifest;
 use jetty_core::logging::error;
@@ -172,6 +172,75 @@ impl Connector for SnowflakeConnector {
                     },
                 ]),
             },
+            asset_privileges: [
+                (
+                    AssetType(consts::DATABASE.to_owned()),
+                    [
+                        "MODIFY",
+                        "MONITOR",
+                        "USAGE",
+                        "CREATE SCHEMA",
+                        "OWNERSHIP",
+                        "IMPORTED PRIVILEGES",
+                    ]
+                    .into_iter()
+                    .map(|p| p.to_owned())
+                    .collect(),
+                ),
+                (
+                    AssetType(consts::SCHEMA.to_owned()),
+                    [
+                        "OWNERSHIP",
+                        "MODIFY",
+                        "MONITOR",
+                        "USAGE",
+                        "CREATE EXTERNAL TABLE",
+                        "CREATE FILE FORMAT",
+                        "CREATE FUNCTION",
+                        "CREATE MASKING POLICY",
+                        "CREATE MATERIALIZED VIEW",
+                        "CREATE PASSWORD POLICY",
+                        "CREATE PIPE",
+                        "CREATE PROCEDURE",
+                        "CREATE ROW ACCESS POLICY",
+                        "CREATE SESSION POLICY",
+                        "CREATE SEQUENCE",
+                        "CREATE STAGE",
+                        "CREATE STREAM",
+                        "CREATE TAG",
+                        "CREATE TABLE",
+                        "CREATE TASK",
+                        "CREATE VIEW",
+                        "ADD SEARCH OPTIMIZATION",
+                    ]
+                    .into_iter()
+                    .map(|p| p.to_owned())
+                    .collect(),
+                ),
+                (
+                    AssetType(consts::TABLE.to_owned()),
+                    [
+                        "OWNERSHIP",
+                        "SELECT",
+                        "INSERT",
+                        "UPDATE",
+                        "DELETE",
+                        "TRUNCATE",
+                        "REFERENCES",
+                    ]
+                    .into_iter()
+                    .map(|p| p.to_owned())
+                    .collect(),
+                ),
+                (
+                    AssetType(consts::VIEW.to_owned()),
+                    ["OWNERSHIP", "SELECT", "REFERENCES"]
+                        .into_iter()
+                        .map(|p| p.to_owned())
+                        .collect(),
+                ),
+            ]
+            .into(),
         }
     }
     fn plan_changes(&self, diffs: &LocalDiffs) -> Vec<std::string::String> {

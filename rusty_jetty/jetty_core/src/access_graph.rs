@@ -336,7 +336,7 @@ pub struct DefaultPolicyAttributes {
     /// The path that this policy should be applied to
     pub matching_path: String,
     /// The types of assets that this should be applied to. If None, it's applied to all types
-    pub types: Option<BTreeSet<String>>,
+    pub types: Option<BTreeSet<AssetType>>,
     /// Connectors for the default policy. Policies include a single asset and single grantee, so
     /// this set should only ever include a single connector
     pub connectors: HashSet<ConnectorNamespace>,
@@ -640,7 +640,7 @@ pub enum NodeName {
         /// The user/group to whom the policy is granted
         grantee: Box<NodeName>,
         /// The types of assets the policy should be applied to
-        types: Option<BTreeSet<String>>,
+        types: Option<BTreeSet<AssetType>>,
     },
 }
 
@@ -683,7 +683,11 @@ impl Display for NodeName {
                     root_node,
                     matching_path,
                     match types {
-                        Some(t) => t.iter().map(|s| s.to_owned()).collect::<Vec<_>>().join(","),
+                        Some(t) => t
+                            .iter()
+                            .map(|s| s.to_string())
+                            .collect::<Vec<_>>()
+                            .join(","),
                         None => "all types".into(),
                     },
                     grantee
@@ -1046,7 +1050,7 @@ where
 }
 
 #[allow(dead_code)]
-fn merge_map<K, V>(m1: &HashMap<K, V>, m2: &HashMap<K, V>) -> Result<HashMap<K, V>>
+pub(crate) fn merge_map<K, V>(m1: &HashMap<K, V>, m2: &HashMap<K, V>) -> Result<HashMap<K, V>>
 where
     K: Debug + Clone + Hash + std::cmp::Eq,
     V: Debug + Clone + std::cmp::PartialEq,

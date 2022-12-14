@@ -111,6 +111,7 @@ impl Connector for DbtConnector {
                 read: HashSet::from([ReadCapabilities::AssetLineage]),
                 write: HashSet::from([]),
             },
+            ..Default::default()
         }
     }
 

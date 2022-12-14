@@ -19,7 +19,10 @@ use crate::{
     Jetty,
 };
 
-use super::nodes::{EffectivePermission, SparseMatrix};
+use super::{
+    nodes::{EffectivePermission, SparseMatrix},
+    AssetType,
+};
 
 /// Container for all node data for a given connector
 #[derive(Debug, Default, PartialEq, Eq, Clone)]
@@ -272,7 +275,7 @@ pub struct ProcessedDefaultPolicy {
     /// Path to determine scope
     pub matching_path: String,
     /// The types of assets to apply this to
-    pub types: Option<BTreeSet<String>>,
+    pub types: Option<BTreeSet<AssetType>>,
     /// Who the privilege is granted to
     pub grantee: NodeName,
     /// Connector that the privilege exists in

@@ -40,7 +40,7 @@ impl AccessGraph {
                 |n| match n {
                     JettyNode::Asset(a) => match &types {
                         // If a types are specified, target asset must match
-                        Some(t) => t.contains(&a.asset_type().0),
+                        Some(t) => t.contains(&a.asset_type()),
                         // if no type is specified, match all types
                         None => true,
                     },

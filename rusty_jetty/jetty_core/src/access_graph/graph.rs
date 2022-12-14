@@ -37,8 +37,8 @@ pub(crate) struct Graph {
 /// A map of node names to typed indices
 #[derive(Serialize, Deserialize, Default, Debug)]
 pub(crate) struct NodeMap {
-    assets: HashMap<NodeName, typed_indices::AssetIndex>,
-    users: HashMap<NodeName, typed_indices::UserIndex>,
+    pub(crate) assets: HashMap<NodeName, typed_indices::AssetIndex>,
+    pub(crate) users: HashMap<NodeName, typed_indices::UserIndex>,
     pub(crate) groups: HashMap<NodeName, typed_indices::GroupIndex>,
     tags: HashMap<NodeName, typed_indices::TagIndex>,
     pub(crate) policies: HashMap<NodeName, typed_indices::PolicyIndex>,

@@ -20,29 +20,7 @@ use crate::{
     project, Jetty,
 };
 
-#[derive(Serialize, Debug, Default, Clone, Ord, PartialOrd, Eq, PartialEq)]
-struct YamlAssetDoc {
-    identifier: YamlAssetIdentifier,
-    policies: BTreeSet<YamlPolicy>,
-}
-
-#[derive(Serialize, Debug, Default, Clone, Ord, PartialOrd, Eq, PartialEq)]
-struct YamlAssetIdentifier {
-    name: String,
-    asset_type: Option<AssetType>,
-    connector: ConnectorNamespace,
-}
-
-#[derive(Serialize, Debug, Default, Clone, Ord, PartialOrd, Eq, PartialEq)]
-struct YamlPolicy {
-    description: Option<String>,
-    users: Option<BTreeSet<String>>,
-    groups: Option<BTreeSet<String>>,
-    metadata: Option<BTreeMap<String, String>>,
-    privileges: BTreeSet<String>,
-    /// this is specifically for default policies
-    path: Option<String>,
-}
+use super::{YamlAssetDoc, YamlAssetIdentifier, YamlPolicy};
 
 struct SimplePolicy {
     privileges: BTreeSet<String>,

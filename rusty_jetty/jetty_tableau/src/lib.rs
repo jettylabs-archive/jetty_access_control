@@ -531,6 +531,8 @@ impl Connector for TableauConnector {
                     },
                 ]),
             },
+            // FIXME: Add asset privileges
+            ..Default::default()
         }
     }
 

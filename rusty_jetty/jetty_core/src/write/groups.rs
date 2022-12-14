@@ -235,7 +235,6 @@ fn generate_diff(
     jetty: &Jetty,
 ) -> Result<BTreeMap<NodeName, Diff>> {
     let mut group_diffs = BTreeMap::new();
-    let mut policy_diffs = Vec::new();
 
     let ag = jetty.access_graph.as_ref().ok_or_else(|| {
         anyhow!("jetty initialized without an access graph; try running `jetty fetch` first")
@@ -417,33 +416,6 @@ fn generate_diff(
             None,
             Some(1),
         );
-
-        // Iterate over the policies that we need to remove
-        for policy_index in remove_policies {
-            let policy = match TryInto::<PolicyAttributes>::try_into(ag[policy_index].clone()) {
-                Ok(p) => p,
-                Err(_) => continue,
-            };
-
-            let policy_targets = ag.get_matching_children(
-                policy_index,
-                |e| matches!(e, EdgeType::Governs),
-                |_| false,
-                |n| matches!(n, JettyNode::Asset(_)),
-                None,
-                Some(1),
-            );
-
-            // iterate over the policy targets to build the diff structs
-            for target in policy_targets {
-                policy_diffs.push(assets::Diff {
-                    assets: vec![ag[target].get_node_name()],
-                    agents: vec![k.clone()],
-                    details: vec![assets::DiffDetails::RemovePolicy],
-                    connectors: policy.connectors.to_owned(),
-                });
-            }
-        }
     }
 
     Ok(group_diffs)
@@ -501,7 +473,7 @@ fn diff_node_names(old: &Vec<NodeName>, new: &Vec<NodeName>) -> NodeNameListDiff
 }
 
 /// Given a config, get all the final, connector-scoped node names for the groups.
-fn get_all_group_names(
+pub(crate) fn get_all_group_names(
     groups: &BTreeMap<String, GroupConfig>,
     jetty_connector_names: BTreeSet<&ConnectorNamespace>,
 ) -> Result<BTreeMap<String, BTreeMap<ConnectorNamespace, NodeName>>> {
@@ -793,6 +765,7 @@ mod tests {
                     }]),
                     read: HashSet::new(),
                 },
+                ..Default::default()
             }
         }
 
