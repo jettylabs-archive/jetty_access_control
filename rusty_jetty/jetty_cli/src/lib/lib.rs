@@ -12,6 +12,7 @@ mod usage_stats;
 use std::{
     collections::HashMap,
     env, fs,
+    str::FromStr,
     sync::Arc,
     thread,
     time::{self, Instant},
@@ -91,6 +92,7 @@ pub async fn cli() -> Result<()> {
             JettyCommand::Diff { fetch } => UsageEvent::InvokedDiff { fetch },
             JettyCommand::Plan { fetch } => UsageEvent::InvokedPlan { fetch },
             JettyCommand::Apply { no_fetch } => UsageEvent::InvokedApply { no_fetch },
+            JettyCommand::Subgraph { depth, .. } => UsageEvent::InvokedSubgraph { depth },
         };
         record_usage(event, &jetty_config)
             .await
@@ -173,6 +175,25 @@ pub async fn cli() -> Result<()> {
                 fetch(&None, &false).await?;
             };
             apply().await?;
+        }
+        JettyCommand::Subgraph { id, depth } => {
+            let jetty = new_jetty_with_connectors().await.map_err(|_| {
+                anyhow!(
+                    "unable to find {} - make sure you are in a \
+                Jetty project directory, or create a new project by running `jetty init`",
+                    project::jetty_cfg_path_local().display()
+                )
+            })?;
+
+            let ag = jetty.try_access_graph()?;
+            let parsed_uuid = uuid::Uuid::from_str(id)?;
+            let binding = ag.extract_graph(
+                ag.get_untyped_index_from_id(&parsed_uuid)
+                    .ok_or(anyhow!("unable to find the right node"))?,
+                *depth,
+            );
+            let generated_dot = binding.dot();
+            println!("{generated_dot:?}");
         }
     }
 
