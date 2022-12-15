@@ -116,7 +116,7 @@ impl ConnectorConfig {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 /// A struct representing the built-in characteristics of a connector.
 pub struct ConnectorManifest {
     /// The capabilities of the connector.

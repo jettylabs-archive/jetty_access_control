@@ -64,7 +64,10 @@ pub(crate) fn parse_asset_config(
     // Iterate through the policies
     for policy in &config.policies {
         let policy_state = PolicyState {
-            privileges: policy.privileges.to_owned().into_iter().collect(),
+            privileges: match &policy.privileges {
+                Some(p) => p.to_owned().into_iter().collect(),
+                None => Default::default(),
+            },
             metadata: Default::default(),
         };
 
@@ -142,12 +145,7 @@ pub(crate) fn parse_asset_config(
                         res_default_policies.insert(
                             (
                                 asset_name.to_owned(),
-                                // FIXME: need to get the group name from the config
-                                NodeName::Group {
-                                    name: user.to_owned(),
-                                    origin: config.identifier.connector.to_owned(),
-                                }
-                                .to_owned(),
+                                NodeName::User(user.to_owned()),
                                 p.to_owned(),
                                 policy.types.to_owned(),
                             ),
@@ -156,15 +154,7 @@ pub(crate) fn parse_asset_config(
                     }
                     None => {
                         res_policies.insert(
-                            (
-                                asset_name.to_owned(),
-                                // FIXME: need to get the group name from the config
-                                NodeName::Group {
-                                    name: user.to_owned(),
-                                    origin: config.identifier.connector.to_owned(),
-                                }
-                                .to_owned(),
-                            ),
+                            (asset_name.to_owned(), NodeName::User(user.to_owned())),
                             policy_state.to_owned(),
                         );
                     }
@@ -183,11 +173,27 @@ pub(crate) fn parse_asset_config(
                 .collect::<HashSet<_>>()
         } else {
             let asset_attribs = AssetAttributes::try_from(ag.get_node(&asset_name)?.to_owned())?;
+
+            match jetty
+                .connector_manifests()
+                .get(&config.identifier.connector)
+            {
+                Some(m) => match m.asset_privileges.get(&asset_attribs.asset_type) {
+                    Some(_) => (),
+                    None => {
+                        dbg!(m.asset_privileges.keys(), &asset_attribs.asset_type);
+                    }
+                },
+                None => {
+                    dbg!(&config.identifier.connector, jetty.connector_manifests());
+                }
+            }
+
             jetty.connector_manifests()[&config.identifier.connector].asset_privileges
                 [&asset_attribs.asset_type]
                 .to_owned()
         };
-        for privilege in &policy.privileges {
+        for privilege in &policy_state.privileges {
             if !allowed_privilege_set.contains(privilege) {
                 bail!("unsupported privilege: {privilege}")
             }

@@ -88,6 +88,10 @@ impl SnowflakeRestClient {
             .await
             .context("couldn't send request")?
             .error_for_status()?;
+        // FIXME
+        if config.sql == "SHOW GRANTS TO ROLE \"ACCOUNTADMIN\"" {
+            dbg!(&response);
+        }
         let res = response.text().await.context("couldn't get body text")?;
         Ok(res)
     }

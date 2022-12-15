@@ -59,7 +59,7 @@ pub trait NewConnector {
     ) -> Result<Box<Self>>;
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 /// The capabilities of a connector
 pub struct ConnectorCapabilities {
     /// The write capabilities of the connector. Right now these can include:

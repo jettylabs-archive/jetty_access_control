@@ -29,7 +29,11 @@ use jetty_core::{
     jetty::{ConnectorNamespace, CredentialsMap, JettyConfig},
     logging::{self, debug, error, info},
     project::{self, groups_cfg_path_local},
-    write::{assets::bootstrap::write_bootstrapped_asset_yaml, Diffs},
+    write::{
+        assets::{bootstrap::write_bootstrapped_asset_yaml, get_policy_diffs},
+        groups::parse_and_validate_groups,
+        Diffs,
+    },
     Connector, Jetty,
 };
 
@@ -264,6 +268,15 @@ async fn bootstrap(overwrite: bool) -> Result<()> {
         if project::assets_cfg_root_path().exists() {
             bail!("{} already exists; run `jetty bootstrap --overwrite` to overwrite the existing configuration", project::assets_cfg_root_path().to_string_lossy())
         }
+    } else {
+        match fs::remove_file(groups_cfg_path_local()) {
+            Ok(_) => println!("removed existing groups file"),
+            Err(_) => (),
+        };
+        match fs::remove_dir_all(project::assets_cfg_root_path()) {
+            Ok(_) => println!("removed existing asset directory"),
+            Err(_) => (),
+        };
     }
 
     // Now write the yaml files
@@ -275,7 +288,8 @@ async fn bootstrap(overwrite: bool) -> Result<()> {
     write_bootstrapped_asset_yaml(asset_yaml)?;
 
     // sanity check - the diff should be empty at this point
-    if jetty_core::write::get_group_diff(&jetty)
+    let validated_group_config = parse_and_validate_groups(&jetty)?;
+    if jetty_core::write::get_group_diff(&validated_group_config, &jetty)
         .context("checking the generated group configuration")?
         .len()
         != 0
@@ -299,9 +313,25 @@ async fn diff() -> Result<()> {
     jetty.try_access_graph()?;
 
     // For now, we're just looking at group diffs
-    let group_diff = jetty_core::write::get_group_diff(&jetty)?;
+    let validated_group_config = parse_and_validate_groups(&jetty)?;
+    let group_diff = jetty_core::write::get_group_diff(&validated_group_config, &jetty)?;
+
+    // now get the policy diff
+    // need to get the group configs and all available connectors
+    let policy_diff = get_policy_diffs(&jetty, &validated_group_config)?;
+    dbg!(&policy_diff);
+
+    // Now print out the diffs
+    println!("\nGROUPS\n----------------");
     if !group_diff.is_empty() {
         group_diff.iter().for_each(|diff| println!("{diff}"));
+    } else {
+        println!("No changes found");
+    };
+
+    println!("\nPOLICIES\n----------------");
+    if !policy_diff.is_empty() {
+        policy_diff.iter().for_each(|diff| println!("{diff}"));
     } else {
         println!("No changes found");
     };
@@ -320,9 +350,10 @@ async fn plan() -> Result<()> {
 
     // make sure there's an existing access graph
     let ag = jetty.try_access_graph()?;
+    let validated_group_config = parse_and_validate_groups(&jetty)?;
 
     let diffs = Diffs {
-        groups: jetty_core::write::get_group_diff(&jetty)?,
+        groups: jetty_core::write::get_group_diff(&validated_group_config, &jetty)?,
     };
 
     let connector_specific_diffs = diffs.split_by_connector();
@@ -369,9 +400,10 @@ async fn apply() -> Result<()> {
 
     // make sure there's an existing access graph
     let ag = jetty.try_access_graph()?;
+    let validated_group_config = parse_and_validate_groups(&jetty)?;
 
     let diffs = Diffs {
-        groups: jetty_core::write::get_group_diff(&jetty)?,
+        groups: jetty_core::write::get_group_diff(&validated_group_config, &jetty)?,
     };
 
     let connector_specific_diffs = diffs.split_by_connector();
@@ -419,7 +451,9 @@ async fn apply() -> Result<()> {
 
             println!("Here is the current diff based on your configuration:");
             // For now, we're just looking at group diffs
-            let group_diff = jetty_core::write::get_group_diff(&jetty)?;
+
+            let validated_group_config = parse_and_validate_groups(&jetty)?;
+            let group_diff = jetty_core::write::get_group_diff(&validated_group_config, &jetty)?;
             if !group_diff.is_empty() {
                 group_diff.iter().for_each(|diff| println!("{diff}"));
                 println!(

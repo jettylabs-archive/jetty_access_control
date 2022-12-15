@@ -182,6 +182,7 @@ impl Connector for SnowflakeConnector {
                         "CREATE SCHEMA",
                         "OWNERSHIP",
                         "IMPORTED PRIVILEGES",
+                        "REFERENCE_USAGE",
                     ]
                     .into_iter()
                     .map(|p| p.to_owned())
@@ -212,6 +213,7 @@ impl Connector for SnowflakeConnector {
                         "CREATE TASK",
                         "CREATE VIEW",
                         "ADD SEARCH OPTIMIZATION",
+                        "CREATE TEMPORARY TABLE",
                     ]
                     .into_iter()
                     .map(|p| p.to_owned())
@@ -227,6 +229,7 @@ impl Connector for SnowflakeConnector {
                         "DELETE",
                         "TRUNCATE",
                         "REFERENCES",
+                        "REBUILD",
                     ]
                     .into_iter()
                     .map(|p| p.to_owned())
@@ -234,10 +237,19 @@ impl Connector for SnowflakeConnector {
                 ),
                 (
                     AssetType(consts::VIEW.to_owned()),
-                    ["OWNERSHIP", "SELECT", "REFERENCES"]
-                        .into_iter()
-                        .map(|p| p.to_owned())
-                        .collect(),
+                    [
+                        "OWNERSHIP",
+                        "SELECT",
+                        "REFERENCES",
+                        "DELETE",
+                        "INSERT",
+                        "REBUILD",
+                        "TRUNCATE",
+                        "UPDATE",
+                    ]
+                    .into_iter()
+                    .map(|p| p.to_owned())
+                    .collect(),
                 ),
             ]
             .into(),
@@ -450,6 +462,7 @@ impl SnowflakeConnector {
             // TODO: Determine whether this is actually okay behavior.
             return Ok(vec![]);
         }
+
         let rows_value: JsonValue =
             serde_json::from_str(&result).context("failed to deserialize")?;
         if let Some(info) = rows_value.get("partitionInfo") {

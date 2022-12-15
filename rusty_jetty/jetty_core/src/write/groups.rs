@@ -26,7 +26,7 @@ use super::assets;
 
 /// group configuration, as represented in the yaml
 #[derive(Deserialize, Debug)]
-pub(crate) struct GroupConfig {
+pub struct GroupConfig {
     name: String,
     connector_names: Option<Vec<ConnectorName>>,
     members: GroupMembers,
@@ -553,8 +553,8 @@ fn get_all_inherited_users(
     res
 }
 
-/// Return the diff between the configuration and current state
-pub fn get_group_diff(jetty: &Jetty) -> Result<Vec<Diff>> {
+/// Parse and validate the group config, returning a map of <group name, group config>
+pub fn parse_and_validate_groups(jetty: &Jetty) -> Result<BTreeMap<String, GroupConfig>> {
     // first, read the config files
     let group_config = fs::read_to_string(project::groups_cfg_path_local())?;
     // parse
@@ -576,8 +576,15 @@ pub fn get_group_diff(jetty: &Jetty) -> Result<Vec<Diff>> {
             .join("\n\n");
         bail!(error_message);
     };
+    Ok(parsed_config)
+}
 
-    let mut diff_vec = generate_diff(&parsed_config, jetty)?
+/// Return the diff between a validated configuration map and current environment state
+pub fn get_group_diff(
+    parsed_config: &BTreeMap<String, GroupConfig>,
+    jetty: &Jetty,
+) -> Result<Vec<Diff>> {
+    let mut diff_vec = generate_diff(parsed_config, jetty)?
         .into_values()
         .collect::<Vec<_>>();
     diff_vec.sort_by(|a, b| {

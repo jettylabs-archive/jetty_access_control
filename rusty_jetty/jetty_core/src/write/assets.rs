@@ -1,47 +1,34 @@
 //! Parse and manage user-configured policies
 
 pub mod bootstrap;
+pub mod diff;
 pub mod parser;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use glob::glob;
 use petgraph::stable_graph::NodeIndex;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     access_graph::{
-        merge_map, AccessGraph, AssetPath, EdgeType, JettyNode, NodeName, PolicyAttributes,
+        merge_map, AccessGraph, AssetPath, DefaultPolicyAttributes, EdgeType, JettyNode, NodeName,
+        PolicyAttributes,
     },
-    connectors::AssetType,
+    connectors::{AssetType, WriteCapabilities},
     jetty::ConnectorNamespace,
     logging::warn,
-    project, Jetty,
+    project,
+    write::groups::get_all_group_names,
+    Jetty,
 };
 
-pub(crate) struct Diff {
-    /// The name of the asset being changed
-    pub(crate) asset: NodeName,
-    /// The map of users and their changes
-    pub(crate) users: BTreeMap<NodeName, DiffDetails>,
-    /// Same, but for groups
-    pub(crate) groups: BTreeMap<NodeName, DiffDetails>,
-    pub(crate) connectors: HashSet<ConnectorNamespace>,
-}
+use self::diff::{diff_assets, PolicyDiff};
 
-pub(crate) enum DiffDetails {
-    AddAgent {
-        add: PolicyState,
-    },
-    RemoveAgent,
-    ModifyAgent {
-        add: PolicyState,
-        remove: PolicyState,
-    },
-}
+use super::groups::GroupConfig;
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct PolicyState {
     privileges: HashSet<String>,
     metadata: HashMap<String, String>,
@@ -56,19 +43,26 @@ struct YamlAssetDoc {
 #[derive(Serialize, Deserialize, Debug, Default, Clone, Ord, PartialOrd, Eq, PartialEq)]
 struct YamlAssetIdentifier {
     name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     asset_type: Option<AssetType>,
     connector: ConnectorNamespace,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone, Ord, PartialOrd, Eq, PartialEq)]
 struct YamlPolicy {
+    #[serde(skip_serializing_if = "Option::is_none")]
     description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     users: Option<BTreeSet<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     groups: Option<BTreeSet<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     metadata: Option<BTreeMap<String, String>>,
-    privileges: BTreeSet<String>,
+    privileges: Option<BTreeSet<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     /// this is specifically for default policies
     path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     /// this is specifically for default policies - the types on which the policy should be applied
     types: Option<BTreeSet<AssetType>>,
 }
@@ -86,7 +80,10 @@ pub(crate) struct CombinedPolicyState {
 }
 
 /// Collect all the configurations and turn them into a combined policy state object
-fn get_config_state(jetty: &Jetty) -> Result<CombinedPolicyState> {
+fn get_config_state(
+    jetty: &Jetty,
+    validated_group_config: &BTreeMap<String, GroupConfig>,
+) -> Result<CombinedPolicyState> {
     let mut res = CombinedPolicyState {
         ..Default::default()
     };
@@ -100,25 +97,57 @@ fn get_config_state(jetty: &Jetty) -> Result<CombinedPolicyState> {
         .as_str(),
     )?;
 
+    // We need to get the connectors that can handle groups. With how things are set up, that means that if ever there's a connector that uses groups, and we want to manage with
+    // groups, but that doesn't write them, we'll need to fix it here.
+    // There is also the case in which groups don't exist, just users. If that's the case, jetty groups should just transform into users.
+    // FUTURE: Improve this
+    let binding = jetty.connector_manifests();
+    let connectors = binding
+        .iter()
+        .filter_map(|(name, manifest)| {
+            if manifest
+                .capabilities
+                .write
+                .contains(&WriteCapabilities::Groups { nested: true })
+            {
+                Some(name)
+            } else if manifest
+                .capabilities
+                .write
+                .contains(&WriteCapabilities::Groups { nested: false })
+            {
+                Some(name)
+            } else {
+                None
+            }
+        })
+        .collect();
+    let config_groups = get_all_group_names(validated_group_config, connectors)?;
+
     // read the files
     for path in paths {
         let path = path?;
-        let yaml = std::fs::read_to_string(path)?;
+        let yaml = std::fs::read_to_string(&path)?;
         // parse the configs and extend the map. At this stage there should could be a user or a group mentioned
         // twice in two different policies, so we need to combine the policies. I guess. Which is weird
         // FUTURE: when we start using metadata, this could break. Policies will need to be keyed off metadata too, somehow.
-        res.merge_combining_if_exists(parser::parse_asset_config(&yaml, jetty)?);
+        res.merge_combining_if_exists(
+            parser::parse_asset_config(&yaml, jetty, &config_groups).context(format!(
+                "problem with configuration file: {}",
+                path.to_string_lossy()
+            ))?,
+        )?;
     }
 
     Ok(res)
 }
 
 /// Collect all the policy information from the environment and create a map of <(Asset, Agent) -> PolicyState)
-fn get_env_state(jetty: &Jetty) -> Result<HashMap<(NodeName, NodeName), PolicyState>> {
+fn get_env_state(jetty: &Jetty) -> Result<CombinedPolicyState> {
     let ag = jetty.try_access_graph()?;
 
     // iterate through all the policies in the graph and fold them into the needed type
-    let res = ag
+    let policies = ag
         .graph
         .nodes
         .policies
@@ -144,7 +173,51 @@ fn get_env_state(jetty: &Jetty) -> Result<HashMap<(NodeName, NodeName), PolicySt
             acc
         });
 
-    Ok(res)
+    let default_policies =
+        ag.graph
+            .nodes
+            .default_policies
+            .iter()
+            .fold(HashMap::new(), |mut acc, (name, &idx)| {
+                let policy: DefaultPolicyAttributes = ag[idx].to_owned().try_into().unwrap();
+
+                let agents = get_policy_agents(idx.into(), ag);
+                let root_asset = get_default_policy_root_asset(idx.into(), ag);
+                let path = policy.matching_path;
+                let types = policy.types;
+
+                for agent in &agents {
+                    acc.insert(
+                        (
+                            root_asset.to_owned(),
+                            agent.to_owned(),
+                            path.to_owned(),
+                            types.to_owned(),
+                        ),
+                        PolicyState {
+                            privileges: policy.privileges.to_owned().into_iter().collect(),
+                            metadata: Default::default(),
+                        },
+                    );
+                }
+
+                acc
+            });
+    Ok(CombinedPolicyState {
+        policies,
+        default_policies,
+    })
+}
+
+/// Get the policy diffs for regular policies
+pub fn get_policy_diffs(
+    jetty: &Jetty,
+    validated_group_config: &BTreeMap<String, GroupConfig>,
+) -> Result<Vec<PolicyDiff>> {
+    let config_state = get_config_state(jetty, validated_group_config)?;
+    let env_state = get_env_state(jetty)?;
+
+    Ok(diff_assets(&config_state, &env_state))
 }
 
 fn get_policy_agents(idx: NodeIndex, ag: &AccessGraph) -> HashSet<NodeName> {
@@ -175,6 +248,29 @@ fn get_policy_assets(idx: NodeIndex, ag: &AccessGraph) -> HashSet<NodeName> {
         .into_iter()
         .map(|n| ag[n].get_node_name().to_owned())
         .collect()
+}
+
+/// Get the root node for the default policy. There should only be one of these
+fn get_default_policy_root_asset(idx: NodeIndex, ag: &AccessGraph) -> NodeName {
+    let target_assets = ag.get_matching_children(
+        idx,
+        |e| matches!(e, EdgeType::ProvidedDefaultForChildren),
+        |_| false,
+        |n| matches!(n, JettyNode::Asset(_)),
+        Some(1),
+        Some(1),
+    );
+    let nodes = target_assets
+        .into_iter()
+        .map(|n| ag[n].get_node_name().to_owned())
+        .collect::<Vec<_>>();
+    if nodes.len() > 1 {
+        panic!("a default policy should never have more than one root node")
+    };
+    if nodes.len() == 0 {
+        panic!("a default policy should always have a root node")
+    };
+    nodes[0].to_owned()
 }
 
 impl CombinedPolicyState {

@@ -111,7 +111,11 @@ impl Jetty {
             }
 
             let mut yaml_policy = YamlPolicy {
-                privileges,
+                privileges: if privileges.is_empty() {
+                    None
+                } else {
+                    Some(privileges)
+                },
                 users: if users.is_empty() { None } else { Some(users) },
                 groups: if groups.is_empty() {
                     None
@@ -165,7 +169,11 @@ impl Jetty {
             }
 
             let mut yaml_policy = YamlPolicy {
-                privileges: default_policy.privileges.to_owned().into_iter().collect(),
+                privileges: if default_policy.privileges.is_empty() {
+                    None
+                } else {
+                    Some(default_policy.privileges.to_owned().into_iter().collect())
+                },
                 users: if users.is_empty() { None } else { Some(users) },
                 groups: if groups.is_empty() {
                     None

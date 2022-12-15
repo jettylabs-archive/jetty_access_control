@@ -661,13 +661,13 @@ impl Display for NodeName {
                 path,
             } => write!(
                 f,
-                "{}::{}::{}",
+                "{}::{}{}",
                 connector,
-                asset_type
-                    .as_ref()
-                    .unwrap_or(&AssetType("".to_string()))
-                    .to_string(),
-                path
+                path,
+                match asset_type {
+                    Some(t) => format!(" ({})", t.to_string()),
+                    None => "".to_string(),
+                }
             ),
             NodeName::Policy { name, origin } => write!(f, "{origin}::{name}"),
             NodeName::Tag(n) => write!(f, "{n}"),
