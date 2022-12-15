@@ -193,6 +193,9 @@ pub enum UsageEvent {
     /// `jetty apply`
     #[serde(rename = "invoked_apply")]
     InvokedApply { no_fetch: bool },
+    /// `jetty subgraph`
+    #[serde(rename = "invoked_subgraph")]
+    InvokedSubgraph { depth: usize },
 }
 
 /// Given an event, record its usage to Jetty anonymous usage stats.
