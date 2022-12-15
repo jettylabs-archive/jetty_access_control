@@ -9,7 +9,7 @@ use reqwest_middleware::{ClientBuilder, ClientWithMiddleware, RequestBuilder};
 use reqwest_retry::{policies::ExponentialBackoff, RetryTransientMiddleware};
 use serde::{Deserialize, Serialize};
 
-use std::collections::HashMap;
+use std::{collections::HashMap, thread, time::Duration};
 
 /// Claims for use with the `jsonwebtoken` crate when
 /// creating a new JWT.
@@ -79,15 +79,32 @@ impl SnowflakeRestClient {
     }
 
     pub(crate) async fn query(&self, config: &SnowflakeRequestConfig) -> Result<String> {
+        #[derive(Deserialize)]
+        struct AcceptedResponse {
+            #[serde(rename = "statementHandle")]
+            statement_handle: String,
+        }
         let request = self
             .get_request(config)
             .context(format!("failed to get request for query {:?}", &config.sql))?;
 
-        let response = request
+        let mut response = request
             .send()
             .await
             .context("couldn't send request")?
             .error_for_status()?;
+
+        while &response.status() == &reqwest::StatusCode::ACCEPTED {
+            thread::sleep(Duration::from_millis(1500));
+            let statement_handle = response.json::<AcceptedResponse>().await?.statement_handle;
+
+            let request = self.get_status_check_request(config, statement_handle)?;
+            response = request
+                .send()
+                .await
+                .context("couldn't send request")?
+                .error_for_status()?;
+        }
 
         let res = response.text().await.context("couldn't get body text")?;
         Ok(res)
@@ -112,6 +129,25 @@ impl SnowflakeRestClient {
             .http_client
             .post(self.get_url())
             .json(&body)
+            .header(consts::CONTENT_TYPE_HEADER, "application/json")
+            .header(consts::ACCEPT_HEADER, "application/json")
+            .header(consts::SNOWFLAKE_AUTH_HEADER, "KEYPAIR_JWT")
+            .header(consts::USER_AGENT_HEADER, "jetty-labs");
+        if config.use_jwt {
+            let token = self.get_jwt().context("failed to get jwt")?;
+            builder = builder.header(consts::AUTH_HEADER, format!["Bearer {token}"]);
+        }
+        Ok(builder)
+    }
+
+    fn get_status_check_request(
+        &self,
+        config: &SnowflakeRequestConfig,
+        statement_handle: String,
+    ) -> Result<RequestBuilder> {
+        let mut builder = self
+            .http_client
+            .get(format!("{}/{statement_handle}", self.get_url()))
             .header(consts::CONTENT_TYPE_HEADER, "application/json")
             .header(consts::ACCEPT_HEADER, "application/json")
             .header(consts::SNOWFLAKE_AUTH_HEADER, "KEYPAIR_JWT")
