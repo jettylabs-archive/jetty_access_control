@@ -9,12 +9,12 @@ use super::NodeName;
 use crate::{
     connectors::{
         nodes::{
-            ConnectorData, EffectivePermission, RawAsset, RawAssetReference, RawGroup, RawPolicy,
-            RawTag, RawUser, SparseMatrix,
+            ConnectorData, EffectivePermission, RawAsset, RawAssetReference, RawDefaultPolicy,
+            RawGroup, RawPolicy, RawPolicyGrantee, RawTag, RawUser, SparseMatrix,
         },
         processed_nodes::{
-            ProcessedAsset, ProcessedAssetReference, ProcessedConnectorData, ProcessedGroup,
-            ProcessedPolicy, ProcessedTag, ProcessedUser,
+            ProcessedAsset, ProcessedAssetReference, ProcessedConnectorData,
+            ProcessedDefaultPolicy, ProcessedGroup, ProcessedPolicy, ProcessedTag, ProcessedUser,
         },
         UserIdentifier,
     },
@@ -211,6 +211,13 @@ impl Translator {
                     })
                     .collect::<Vec<ProcessedAssetReference>>(),
             );
+            // convert the default policies
+            result.default_policies.extend(
+                cd.default_policies
+                    .into_iter()
+                    .map(|a| self.translate_default_policy_to_global(a, namespace.to_owned()))
+                    .collect::<Vec<ProcessedDefaultPolicy>>(),
+            );
         }
 
         result
@@ -406,6 +413,38 @@ impl Translator {
                 .collect(),
             pass_through_hierarchy: policy.pass_through_hierarchy,
             pass_through_lineage: policy.pass_through_lineage,
+            connector,
+        }
+    }
+
+    /// Convert node from raw to processed default policy
+    fn translate_default_policy_to_global(
+        &self,
+        policy: RawDefaultPolicy,
+        connector: ConnectorNamespace,
+    ) -> ProcessedDefaultPolicy {
+        let root_node = self.cual_to_asset_name(policy.root_asset).unwrap();
+        let types = if policy.target_types.is_empty() {
+            None
+        } else {
+            Some(policy.target_types.into_iter().collect())
+        };
+        let grantee = match policy.grantee {
+            RawPolicyGrantee::Group(g) => self.local_to_global.groups[&connector][&g].to_owned(),
+            RawPolicyGrantee::User(u) => self.local_to_global.users[&connector][&u].to_owned(),
+        };
+        ProcessedDefaultPolicy {
+            name: NodeName::DefaultPolicy {
+                root_node: Box::new(root_node.to_owned()),
+                matching_path: policy.wildcard_path.to_owned(),
+                grantee: Box::new(grantee.to_owned()),
+                types: types.to_owned(),
+            },
+            privileges: policy.privileges,
+            root_node: root_node.to_owned(),
+            matching_path: policy.wildcard_path,
+            types,
+            grantee,
             connector,
         }
     }

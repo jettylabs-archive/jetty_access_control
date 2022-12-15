@@ -174,21 +174,6 @@ pub(crate) fn parse_asset_config(
         } else {
             let asset_attribs = AssetAttributes::try_from(ag.get_node(&asset_name)?.to_owned())?;
 
-            match jetty
-                .connector_manifests()
-                .get(&config.identifier.connector)
-            {
-                Some(m) => match m.asset_privileges.get(&asset_attribs.asset_type) {
-                    Some(_) => (),
-                    None => {
-                        dbg!(m.asset_privileges.keys(), &asset_attribs.asset_type);
-                    }
-                },
-                None => {
-                    dbg!(&config.identifier.connector, jetty.connector_manifests());
-                }
-            }
-
             jetty.connector_manifests()[&config.identifier.connector].asset_privileges
                 [&asset_attribs.asset_type]
                 .to_owned()
@@ -232,6 +217,9 @@ fn path_is_legal(wildcard_path: &String) -> Result<()> {
     let segments = wildcard_path.split("/").collect::<Vec<_>>();
     let last_element_index = segments.len() - 1;
     for (idx, segment) in segments.into_iter().enumerate() {
+        if segment.is_empty() {
+            continue;
+        }
         // we only allow wildcards
         if segment != "*" && segment != "**" {
             bail!("illegal wildcard path: {wildcard_path}; path elements must be `*` or `**`");

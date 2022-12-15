@@ -340,7 +340,6 @@ async fn diff() -> Result<()> {
     // now get the policy diff
     // need to get the group configs and all available connectors
     let policy_diff = get_policy_diffs(&jetty, &validated_group_config)?;
-    dbg!(&policy_diff);
 
     // Now print out the diffs
     println!("\nGROUPS\n----------------");

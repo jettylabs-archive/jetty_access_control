@@ -565,7 +565,7 @@ impl ProcessedDefaultPolicy {
         ));
 
         // expand the path to get all relevant nodes
-        let target_node_indices = match ag.default_policy_targets(&self.root_node) {
+        let target_node_indices = match ag.default_policy_targets(&self.name) {
             Ok(i) => i,
             Err(e) => {
                 error!("unable to properly build edges from default policies: {e}");

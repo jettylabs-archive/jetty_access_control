@@ -172,6 +172,7 @@ impl<'a> Coordinator<'a> {
         };
         // Add policies to overwrite the default, when necessary.
         add_non_default_policies(&mut connector_data);
+
         connector_data
     }
 
