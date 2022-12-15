@@ -170,7 +170,6 @@ impl<'a> Coordinator<'a> {
                     .unwrap(),
             ),
         };
-
         // Add policies to overwrite the default, when necessary.
         add_non_default_policies(&mut connector_data);
         connector_data
@@ -487,11 +486,6 @@ fn add_non_default_policies(connector_data: &mut ConnectorData) {
         .flatten()
         .collect::<HashSet<_>>();
 
-    dbg!(&policy_set
-        .iter()
-        .filter(|v| v.1 == "TEST_DATA_ENG_ADMIN")
-        .collect::<HashSet<_>>());
-
     // Iterate through the default polices and generate the new no-privilege policies where necessary
     for default_policy in &connector_data.default_policies {
         let grantee = if let RawPolicyGrantee::Group(g) = &default_policy.grantee {
@@ -540,18 +534,9 @@ fn add_non_default_policies(connector_data: &mut ConnectorData) {
 
         // FUTURE: Remove policies that duplicate the default policies
         let new_policies = target_assets.into_iter().filter_map(|asset_name| {
-            if &grantee == "TEST_DATA_ENG_ADMIN" {
-                dbg!(&asset_name, &grantee);
-            }
             if policy_set.contains(&(asset_name.to_owned(), grantee.to_owned())) {
-                if &grantee == "TEST_DATA_ENG_ADMIN" {
-                    dbg!("got here...");
-                }
                 None
             } else {
-                if &grantee == "TEST_DATA_ENG_ADMIN" {
-                    dbg!("got to this other place...");
-                }
                 Some(RawPolicy {
                     name: format!("{asset_name}-{grantee}"),
                     governs_assets: [asset_name].into(),

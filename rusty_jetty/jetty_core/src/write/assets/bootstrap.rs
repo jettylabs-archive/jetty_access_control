@@ -168,7 +168,7 @@ impl Jetty {
                 };
             }
 
-            let mut yaml_policy = YamlPolicy {
+            let yaml_policy = YamlPolicy {
                 privileges: if default_policy.privileges.is_empty() {
                     None
                 } else {
@@ -181,6 +181,7 @@ impl Jetty {
                     Some(groups)
                 },
                 path: Some(default_policy.matching_path.to_owned()),
+                types: default_policy.types.to_owned(),
                 ..Default::default()
             };
 

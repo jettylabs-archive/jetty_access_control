@@ -152,7 +152,7 @@ fn get_env_state(jetty: &Jetty) -> Result<CombinedPolicyState> {
         .nodes
         .policies
         .iter()
-        .fold(HashMap::new(), |mut acc, (name, &idx)| {
+        .fold(HashMap::new(), |mut acc, (_name, &idx)| {
             let policy: PolicyAttributes = ag[idx].to_owned().try_into().unwrap();
 
             let agents = get_policy_agents(idx.into(), ag);

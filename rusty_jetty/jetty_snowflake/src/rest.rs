@@ -3,7 +3,7 @@
 
 use crate::{consts, creds::SnowflakeCredentials};
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use jsonwebtoken::{encode, get_current_timestamp, Algorithm, EncodingKey, Header};
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware, RequestBuilder};
 use reqwest_retry::{policies::ExponentialBackoff, RetryTransientMiddleware};
@@ -88,10 +88,7 @@ impl SnowflakeRestClient {
             .await
             .context("couldn't send request")?
             .error_for_status()?;
-        // FIXME
-        if config.sql == "SHOW GRANTS TO ROLE \"ACCOUNTADMIN\"" {
-            dbg!(&response);
-        }
+
         let res = response.text().await.context("couldn't get body text")?;
         Ok(res)
     }
