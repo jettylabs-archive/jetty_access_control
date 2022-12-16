@@ -30,8 +30,10 @@ struct SimplePolicy {
 }
 
 impl Jetty {
-    /// Go thorugh the config and return a map of path -> policies that can be written to create the assets directory
-    fn build_bootstrapped_policy_config(&self) -> Result<HashMap<NodeIndex, BTreeSet<YamlPolicy>>> {
+    /// Go thorugh the config and return a map of node_index -> (policies, default_policies) that can be written to create the assets directory
+    fn build_bootstrapped_policy_config(
+        &self,
+    ) -> Result<HashMap<NodeIndex, (BTreeSet<YamlPolicy>, BTreeSet<YamlPolicy>)>> {
         let ag = self.try_access_graph()?;
 
         let mut all_basic_policies = Vec::new();
@@ -126,10 +128,15 @@ impl Jetty {
             };
 
             res.entry(idx)
-                .and_modify(|policies: &mut BTreeSet<YamlPolicy>| {
-                    policies.insert(yaml_policy.to_owned());
-                })
-                .or_insert([yaml_policy].into());
+                .and_modify(
+                    |(policies, default_policies): &mut (
+                        BTreeSet<YamlPolicy>,
+                        BTreeSet<YamlPolicy>,
+                    )| {
+                        policies.insert(yaml_policy.to_owned());
+                    },
+                )
+                .or_insert(([yaml_policy].into(), [].into()));
         }
 
         // Pull in default policies. Not really going to clean these up, for now at least.
@@ -146,7 +153,7 @@ impl Jetty {
                 Some(1),
                 Some(1),
             );
-            let base_idx = binding.iter().next().unwrap();
+            let &base_idx = binding.iter().next().unwrap();
 
             let grantees = ag.get_matching_children(
                 idx,
@@ -185,11 +192,16 @@ impl Jetty {
                 ..Default::default()
             };
 
-            res.entry(*base_idx)
-                .and_modify(|policies: &mut BTreeSet<YamlPolicy>| {
-                    policies.insert(yaml_policy.to_owned());
-                })
-                .or_insert([yaml_policy].into());
+            res.entry(base_idx)
+                .and_modify(
+                    |(policies, default_policies): &mut (
+                        BTreeSet<YamlPolicy>,
+                        BTreeSet<YamlPolicy>,
+                    )| {
+                        default_policies.insert(yaml_policy.to_owned());
+                    },
+                )
+                .or_insert(([].into(), [yaml_policy].into()));
         }
 
         Ok(res)
@@ -200,27 +212,30 @@ impl Jetty {
         let ag = self.try_access_graph()?;
         self.build_bootstrapped_policy_config()?
             .into_iter()
-            .map(|(idx, policies)| -> Result<(PathBuf, String)> {
-                let node_name = ag[idx].get_node_name();
-                match node_name {
-                    NodeName::Asset {
-                        connector,
-                        asset_type,
-                        path,
-                    } => Ok((
-                        self.asset_index_to_file_path(idx),
-                        yaml_peg::serde::to_string(&YamlAssetDoc {
-                            identifier: YamlAssetIdentifier {
-                                name: path.to_string(),
-                                asset_type,
-                                connector,
-                            },
-                            policies,
-                        })?,
-                    )),
-                    _ => panic!("expected an asset node"),
-                }
-            })
+            .map(
+                |(idx, (policies, default_policies))| -> Result<(PathBuf, String)> {
+                    let node_name = ag[idx].get_node_name();
+                    match node_name {
+                        NodeName::Asset {
+                            connector,
+                            asset_type,
+                            path,
+                        } => Ok((
+                            self.asset_index_to_file_path(idx),
+                            yaml_peg::serde::to_string(&YamlAssetDoc {
+                                identifier: YamlAssetIdentifier {
+                                    name: path.to_string(),
+                                    asset_type,
+                                    connector,
+                                },
+                                policies,
+                                default_policies,
+                            })?,
+                        )),
+                        _ => panic!("expected an asset node"),
+                    }
+                },
+            )
             .collect()
     }
 
