@@ -38,6 +38,7 @@ pub(crate) struct PolicyState {
 struct YamlAssetDoc {
     identifier: YamlAssetIdentifier,
     policies: BTreeSet<YamlPolicy>,
+    #[serde(skip_serializing_if = "BTreeSet::is_empty", default)]
     default_policies: BTreeSet<YamlPolicy>,
 }
 

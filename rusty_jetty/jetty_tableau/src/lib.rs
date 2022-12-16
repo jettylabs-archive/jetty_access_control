@@ -26,7 +26,8 @@ use jetty_core::{
     connectors::{
         nodes::ConnectorData,
         nodes::{self as jetty_nodes, EffectivePermission, SparseMatrix},
-        ConnectorCapabilities, ConnectorClient, NewConnector, ReadCapabilities, WriteCapabilities,
+        AssetType, ConnectorCapabilities, ConnectorClient, NewConnector, ReadCapabilities,
+        WriteCapabilities,
     },
     cual::Cual,
     jetty::{ConnectorConfig, ConnectorManifest, CredentialsMap},
@@ -36,7 +37,13 @@ use jetty_core::{
 };
 
 use nodes::{asset_to_policy::env_to_jetty_policies, FromTableau};
-use permissions::PermissionManager;
+use permissions::{
+    consts::{
+        DATASOURCE_CAPABILITIES, FLOW_CAPABILITIES, LENS_CAPABILITIES, METRIC_CAPABILITIES,
+        PROJECT_CAPABILITIES, VIEW_CAPABILITIES, WORKBOOK_CAPABILITIES,
+    },
+    PermissionManager,
+};
 
 use std::{
     collections::{HashMap, HashSet},
@@ -523,6 +530,66 @@ impl Connector for TableauConnector {
     }
 
     fn get_manifest(&self) -> ConnectorManifest {
+        let asset_privileges = [
+            (
+                AssetType("workbook".to_owned()),
+                WORKBOOK_CAPABILITIES
+                    .iter()
+                    .map(|v| [format!("Allow{v}"), format!("Deny{v}")])
+                    .flatten()
+                    .collect(),
+            ),
+            (
+                AssetType("lens".to_owned()),
+                LENS_CAPABILITIES
+                    .iter()
+                    .map(|v| [format!("Allow{v}"), format!("Deny{v}")])
+                    .flatten()
+                    .collect(),
+            ),
+            (
+                AssetType("datasource".to_owned()),
+                DATASOURCE_CAPABILITIES
+                    .iter()
+                    .map(|v| [format!("Allow{v}"), format!("Deny{v}")])
+                    .flatten()
+                    .collect(),
+            ),
+            (
+                AssetType("flow".to_owned()),
+                FLOW_CAPABILITIES
+                    .iter()
+                    .map(|v| [format!("Allow{v}"), format!("Deny{v}")])
+                    .flatten()
+                    .collect(),
+            ),
+            (
+                AssetType("metric".to_owned()),
+                METRIC_CAPABILITIES
+                    .iter()
+                    .map(|v| [format!("Allow{v}"), format!("Deny{v}")])
+                    .flatten()
+                    .collect(),
+            ),
+            (
+                AssetType("project".to_owned()),
+                PROJECT_CAPABILITIES
+                    .iter()
+                    .map(|v| [format!("Allow{v}"), format!("Deny{v}")])
+                    .flatten()
+                    .collect(),
+            ),
+            (
+                AssetType("view".to_owned()),
+                VIEW_CAPABILITIES
+                    .iter()
+                    .map(|v| [format!("Allow{v}"), format!("Deny{v}")])
+                    .flatten()
+                    .collect(),
+            ),
+        ]
+        .into();
+
         ConnectorManifest {
             capabilities: ConnectorCapabilities {
                 read: HashSet::from([
@@ -540,8 +607,7 @@ impl Connector for TableauConnector {
                     },
                 ]),
             },
-            // FIXME: Add asset privileges
-            ..Default::default()
+            asset_privileges,
         }
     }
 
