@@ -127,13 +127,8 @@ pub async fn cli() -> Result<()> {
                 info!("Fetching all data first.");
                 fetch(&None, &false).await?;
             }
-            let jetty = new_jetty_with_connectors().await.map_err(|_| {
-                anyhow!(
-                    "unable to find {} - make sure you are in a \
-                Jetty project directory, or create a new project by running `jetty init`",
-                    project::jetty_cfg_path_local().display()
-                )
-            })?;
+
+            let jetty = new_jetty_with_connectors().await?;
 
             jetty.try_access_graph()?;
             jetty_explore::explore_web_ui(Arc::from(jetty.access_graph.unwrap()), bind).await;
@@ -177,13 +172,7 @@ pub async fn cli() -> Result<()> {
             apply().await?;
         }
         JettyCommand::Subgraph { id, depth } => {
-            let jetty = new_jetty_with_connectors().await.map_err(|_| {
-                anyhow!(
-                    "unable to find {} - make sure you are in a \
-                Jetty project directory, or create a new project by running `jetty init`",
-                    project::jetty_cfg_path_local().display()
-                )
-            })?;
+            let jetty = new_jetty_with_connectors().await?;
 
             let ag = jetty.try_access_graph()?;
             let parsed_uuid = uuid::Uuid::from_str(id)?;
@@ -201,13 +190,7 @@ pub async fn cli() -> Result<()> {
 }
 
 async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()> {
-    let jetty = new_jetty_with_connectors().await.map_err(|_| {
-        anyhow!(
-            "unable to find {} - make sure you are in a \
-        Jetty project directory, or create a new project by running `jetty init`",
-            project::jetty_cfg_path_local().display()
-        )
-    })?;
+    let jetty = new_jetty_with_connectors().await?;
 
     let mut data_from_connectors = vec![];
 
@@ -461,13 +444,8 @@ async fn apply() -> Result<()> {
     match fetch(&None, &false).await {
         Ok(_) => {
             // reload jetty to get the latest fetch
-            let jetty = new_jetty_with_connectors().await.map_err(|_| {
-                anyhow!(
-                    "unable to find {} - make sure you are in a \
-                Jetty project directory, or create a new project by running `jetty init`",
-                    project::jetty_cfg_path_local().display()
-                )
-            })?;
+
+            let jetty = new_jetty_with_connectors().await?;
 
             println!("Here is the current diff based on your configuration:");
             // For now, we're just looking at group diffs
@@ -569,8 +547,10 @@ async fn get_connectors(
 
 /// Create a new Jetty struct with all the connectors. Uses default locations for everything
 pub async fn new_jetty_with_connectors() -> Result<Jetty> {
-    let config = JettyConfig::read_from_file(project::jetty_cfg_path_local())
-        .context("Reading Jetty Config file")?;
+    let config = JettyConfig::read_from_file(project::jetty_cfg_path_local()).context(format!(
+        "unable to find Jetty Config file at {} - you can set this up by running `jetty init`",
+        project::jetty_cfg_path_local().to_string_lossy()
+    ))?;
 
     let creds = fetch_credentials(project::connector_cfg_path()).map_err(|_| {
         anyhow!(

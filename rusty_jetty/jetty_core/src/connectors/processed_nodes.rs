@@ -558,11 +558,20 @@ impl ProcessedDefaultPolicy {
         let mut edges = HashSet::new();
 
         // Insert an edge to the root node
-        edges.insert(JettyEdge::new(
+        insert_edge_pair(
+            &mut edges,
             self.name.to_owned(),
             self.root_node.to_owned(),
             EdgeType::ProvidedDefaultForChildren,
-        ));
+        );
+
+        // Insert edges to all the nodes governed by the policy
+        insert_edge_pair(
+            &mut edges,
+            self.name.to_owned(),
+            self.grantee.to_owned(),
+            EdgeType::GrantedTo,
+        );
 
         // expand the path to get all relevant nodes
         let target_node_indices = match ag.default_policy_targets(&self.name) {

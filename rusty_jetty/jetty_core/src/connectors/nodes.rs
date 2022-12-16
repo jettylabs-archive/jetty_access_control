@@ -474,7 +474,7 @@ pub struct RawDefaultPolicy {
 }
 
 /// Grantee of a policy
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RawPolicyGrantee {
     /// Grantee of a group
     Group(String),

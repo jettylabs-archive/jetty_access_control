@@ -222,7 +222,7 @@ fn load_access_graph() -> Result<Option<AccessGraph>> {
                     }
                     Err(e) => {
                         bail!(
-                            "found, but was unable to read {:?}\nerror: {}",
+                            "found tags file, but was unable to read {:?}\nerror: {}",
                             tags_path,
                             e
                         )

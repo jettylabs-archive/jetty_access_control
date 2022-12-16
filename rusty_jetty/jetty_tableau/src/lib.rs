@@ -139,6 +139,7 @@ impl TableauConnector {
         Vec<jetty_nodes::RawAsset>,
         Vec<jetty_nodes::RawTag>,
         Vec<jetty_nodes::RawPolicy>,
+        Vec<jetty_nodes::RawDefaultPolicy>,
     ) {
         // Transform assets
         let flows: Vec<jetty_nodes::RawAsset> =
@@ -164,6 +165,13 @@ impl TableauConnector {
 
         // Transform policies
         let all_policies = env_to_jetty_policies(&self.coordinator.env);
+        let default_policies = self
+            .coordinator
+            .env
+            .projects
+            .iter()
+            .flat_map(|(_, project)| project.get_default_policies(&self.coordinator.env))
+            .collect();
 
         (
             self.to_jetty(&self.coordinator.env.groups),
@@ -171,6 +179,7 @@ impl TableauConnector {
             all_assets,
             vec![], // self.object_to_jetty(&self.coordinator.env.tags);
             all_policies,
+            default_policies,
         )
     }
 
@@ -492,25 +501,25 @@ impl Connector for TableauConnector {
     }
 
     async fn get_data(&mut self) -> ConnectorData {
-        self.setup().await;
-        let (groups, users, assets, tags, policies) = self.env_to_jetty_all();
+        self.setup().await.unwrap();
+        let (groups, users, assets, tags, policies, default_policies) = self.env_to_jetty_all();
         let effective_permissions = self.get_effective_permissions();
-        ConnectorData::new(
+        ConnectorData {
             groups,
             users,
             assets,
             tags,
             policies,
-            Default::default(),
-            Default::default(),
+            default_policies,
+            asset_references: Default::default(),
             effective_permissions,
-            Some(
+            cual_prefix: Some(
                 get_cual_prefix()
                     .context("tableau cual prefix not yet set")
                     .unwrap()
                     .to_owned(),
             ),
-        )
+        }
     }
 
     fn get_manifest(&self) -> ConnectorManifest {

@@ -104,8 +104,7 @@ pub(crate) async fn ask_snowflake_connector_setup(
             .italic()
         );
 
-        let mut confirmed = false;
-        confirmed = Confirm::new("Enter 'y' once the ALTER USER is complete, or 'n' to skip Snowflake setup. You can add connectors later by running 'jetty add'.")
+        let confirmed = Confirm::new("Enter 'y' once the ALTER USER is complete, or 'n' to skip Snowflake setup. You can add connectors later by running 'jetty add'.")
             .prompt()?;
 
         if !confirmed {

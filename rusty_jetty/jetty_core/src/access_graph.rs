@@ -1010,8 +1010,9 @@ impl AccessGraph {
     }
     /// add tags and appropriate edges from a configuration file to the graph
     pub fn add_tags(&mut self, config: &String) -> Result<()> {
-        let parsed_tags = parse_tags(config)?;
-        let tags = tags_to_jetty_node_helpers(parsed_tags, self, config)?;
+        let parsed_tags = parse_tags(config).context("unable to parse tags")?;
+        let tags = tags_to_jetty_node_helpers(parsed_tags, self, config)
+            .context("unable to add tags to your environment")?;
         self.add_nodes(&ProcessedConnectorData {
             tags,
             ..Default::default()

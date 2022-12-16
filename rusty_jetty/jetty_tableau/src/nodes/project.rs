@@ -1,4 +1,7 @@
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::{
+    collections::{BTreeSet, HashMap, HashSet},
+    sync::Arc,
+};
 
 use super::{
     FromTableau, OwnedAsset, Permission, Permissionable, ProjectId, TableauAsset, PROJECT,
@@ -12,10 +15,32 @@ use crate::{
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use jetty_core::{
-    connectors::{nodes as jetty_nodes, AssetType},
+    connectors::{
+        nodes::{self as jetty_nodes, RawDefaultPolicy, RawPolicyGrantee},
+        AssetType,
+    },
     logging::debug,
 };
+use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
+
+lazy_static! {
+    // This determines the applicable types of the default policies that are fetched.
+    // Some are commented out because we don't support the Tableau Catalog yet.
+    static ref DEFAULT_POLICY_TYPE_CONVERSION: HashMap<String, String> = [
+        ("workbooks", "workbook"),
+        ("datasources", "datasource"),
+        // ("dataroles", "datarole"),
+        ("lenses", "lens"),
+        ("flows", "flow"),
+        ("metrics", "metric"),
+        // ("databases", "database"),
+        // ("tables", "table"),
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.to_owned(), v.to_owned()))
+    .collect();
+}
 
 /// Representation of a Tableau Project
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
@@ -40,6 +65,18 @@ pub(crate) enum ContentPermissions {
 impl Default for ContentPermissions {
     fn default() -> Self {
         ContentPermissions::ManagedByOwner
+    }
+}
+
+impl ToString for ContentPermissions {
+    fn to_string(&self) -> String {
+        match self {
+            ContentPermissions::LockedToProject => "LockedToProject".to_string(),
+            ContentPermissions::LockedToProjectWithoutNested => {
+                "LockedToProjectWithoutNested".to_string()
+            }
+            ContentPermissions::ManagedByOwner => "ManagedByOwner".to_string(),
+        }
     }
 }
 
@@ -79,8 +116,11 @@ impl Project {
         tc: &crate::TableauRestClient,
         env: &Environment,
     ) -> Result<()> {
-        let asset_types = ["workbooks", "projects"];
-        for asset_type in asset_types {
+        // first add the default project permissions (that's the easy one)
+        self.default_permissions
+            .insert("projects".to_owned(), self.permissions.to_owned());
+
+        for asset_type in DEFAULT_POLICY_TYPE_CONVERSION.keys() {
             let req = tc.build_request(
                 format!("projects/{}/default-permissions/{asset_type}", self.id.0),
                 None,
@@ -110,11 +150,60 @@ impl Project {
             } else {
                 bail!("unable to parse permissions")
             };
-            self.default_permissions
-                .insert(asset_type.to_owned(), final_permissions);
+            self.default_permissions.insert(
+                DEFAULT_POLICY_TYPE_CONVERSION[asset_type].to_owned(),
+                final_permissions,
+            );
         }
+        Ok(())
+    }
 
-        todo!()
+    /// Take a Project and generate default policies from it
+    pub(crate) fn get_default_policies(
+        &self,
+        env: &Environment,
+    ) -> Vec<jetty_nodes::RawDefaultPolicy> {
+        let mut res = Vec::new();
+        let root_cual = get_tableau_cual(
+            TableauAssetType::Project,
+            &self.name,
+            self.parent_project_id.as_ref(),
+            None,
+            env,
+        )
+        .expect("Generating cual from project");
+
+        for (asset_type, permissions) in &self.default_permissions {
+            for permission in permissions {
+                // get the raw policy
+                let raw: jetty_nodes::RawPolicy = permission.to_owned().into();
+                let mut grantees: HashSet<_> = raw
+                    .granted_to_users
+                    .into_iter()
+                    .map(|u| RawPolicyGrantee::User(u))
+                    .collect();
+                grantees.extend(
+                    raw.granted_to_groups
+                        .into_iter()
+                        .map(|g| RawPolicyGrantee::Group(g)),
+                );
+                for grantee in grantees {
+                    let grantees = res.push(RawDefaultPolicy {
+                        privileges: raw.privileges.to_owned(),
+                        root_asset: root_cual.to_owned(),
+                        wildcard_path: "/**".to_owned(),
+                        target_types: [AssetType(asset_type.to_owned())].into(),
+                        grantee,
+                        metadata: [(
+                            "Tableau Content Permissions".to_owned(),
+                            self.content_permissions.to_string(),
+                        )]
+                        .into(),
+                    });
+                }
+            }
+        }
+        res
     }
 }
 
@@ -235,7 +324,7 @@ impl FromTableau<Project> for jetty_nodes::RawAsset {
             None,
             env,
         )
-        .expect("Generating cual from flow");
+        .expect("Generating cual from project");
         let parent_cuals = val
             .get_parent_project_cual(env)
             .map_or_else(HashSet::new, |c| HashSet::from([c.uri()]));

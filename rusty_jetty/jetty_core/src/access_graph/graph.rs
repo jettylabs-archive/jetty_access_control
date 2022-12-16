@@ -195,6 +195,13 @@ impl Graph {
             .map(|n| NodeIndex::from(n.to_owned()))
         {
             Some(idx)
+        } else if let Some(idx) = self
+            .node_ids
+            .default_policies
+            .get(node)
+            .map(|n| NodeIndex::from(n.to_owned()))
+        {
+            Some(idx)
         } else {
             self.node_ids
                 .tags

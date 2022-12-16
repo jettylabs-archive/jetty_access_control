@@ -149,7 +149,7 @@ impl Jetty {
             let base_idx = binding.iter().next().unwrap();
 
             let grantees = ag.get_matching_children(
-                *base_idx,
+                idx,
                 |e| matches!(e, EdgeType::GrantedTo),
                 |_| false,
                 |n| matches!(n, JettyNode::Group(_)) || matches!(n, JettyNode::User(_)),

@@ -431,7 +431,16 @@ impl Translator {
         };
         let grantee = match policy.grantee {
             RawPolicyGrantee::Group(g) => self.local_to_global.groups[&connector][&g].to_owned(),
-            RawPolicyGrantee::User(u) => self.local_to_global.users[&connector][&u].to_owned(),
+            RawPolicyGrantee::User(u) => {
+                match self.local_to_global.users.get(&connector) {
+                    Some(m) => match m.get(&u) {
+                        Some(_) => (),
+                        None => println!("Unable to find user {u} in map: {m:?}"),
+                    },
+                    None => println!("Unable to find connector {connector}"),
+                }
+                self.local_to_global.users[&connector][&u].to_owned()
+            }
         };
         ProcessedDefaultPolicy {
             name: NodeName::DefaultPolicy {
