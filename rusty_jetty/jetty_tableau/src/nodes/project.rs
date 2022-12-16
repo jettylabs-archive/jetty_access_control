@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 
 use super::{
     FromTableau, OwnedAsset, Permission, Permissionable, ProjectId, TableauAsset, PROJECT,
@@ -26,6 +26,21 @@ pub(crate) struct Project {
     pub parent_project_id: Option<ProjectId>,
     pub controlling_permissions_project_id: Option<ProjectId>,
     pub permissions: Vec<Permission>,
+    pub content_permissions: ContentPermissions,
+    /// Map of <Asset Type, Set<Capability>>
+    pub default_permissions: HashMap<String, Vec<Permission>>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub(crate) enum ContentPermissions {
+    LockedToProject,
+    LockedToProjectWithoutNested,
+    ManagedByOwner,
+}
+impl Default for ContentPermissions {
+    fn default() -> Self {
+        ContentPermissions::ManagedByOwner
+    }
 }
 
 impl Project {
@@ -36,6 +51,8 @@ impl Project {
         parent_project_id: Option<ProjectId>,
         controlling_permissions_project_id: Option<ProjectId>,
         permissions: Vec<Permission>,
+        default_permissions: HashMap<String, Vec<Permission>>,
+        content_permissions: ContentPermissions,
     ) -> Self {
         Self {
             id,
@@ -44,6 +61,8 @@ impl Project {
             parent_project_id,
             controlling_permissions_project_id,
             permissions,
+            content_permissions,
+            default_permissions,
         }
     }
 
@@ -52,6 +71,50 @@ impl Project {
         self.permissions.iter().any(|p| {
             p.has_capability("ProjectLeader", "Allow") && p.grantee_user_ids().contains(&user.id)
         })
+    }
+
+    /// Get the default permissions for the project
+    pub(crate) async fn update_default_permissions(
+        &mut self,
+        tc: &crate::TableauRestClient,
+        env: &Environment,
+    ) -> Result<()> {
+        let asset_types = ["workbooks", "projects"];
+        for asset_type in asset_types {
+            let req = tc.build_request(
+                format!("projects/{}/default-permissions/{asset_type}", self.id.0),
+                None,
+                reqwest::Method::GET,
+            )?;
+
+            let resp = req.fetch_json_response(None).await?;
+
+            let permissions_array = rest::get_json_from_path(
+                &resp,
+                &vec!["permissions".to_owned(), "granteeCapabilities".to_owned()],
+            )?;
+
+            // default project, no parent project, user permission
+
+            let final_permissions = if matches!(permissions_array, serde_json::Value::Array(_)) {
+                let permissions: Vec<SerializedPermission> =
+                    serde_json::from_value(permissions_array)?;
+                permissions
+                    .iter()
+                    .map(|p| {
+                        p.to_owned()
+                            .into_permission(env)
+                            .expect("Couldn't understand Tableau permission response.")
+                    })
+                    .collect::<Vec<_>>()
+            } else {
+                bail!("unable to parse permissions")
+            };
+            self.default_permissions
+                .insert(asset_type.to_owned(), final_permissions);
+        }
+
+        todo!()
     }
 }
 
@@ -66,6 +129,7 @@ fn to_node(val: &serde_json::Value) -> Result<super::Project> {
         parent_project_id: Option<String>,
         controlling_permissions_project_id: Option<String>,
         updated_at: String,
+        content_permissions: ContentPermissions,
     }
 
     let project_info: ProjectInfo =
@@ -80,6 +144,8 @@ fn to_node(val: &serde_json::Value) -> Result<super::Project> {
             .controlling_permissions_project_id
             .map(ProjectId),
         permissions: Default::default(),
+        default_permissions: Default::default(),
+        content_permissions: project_info.content_permissions,
     })
 }
 

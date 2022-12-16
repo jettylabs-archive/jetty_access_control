@@ -243,6 +243,8 @@ mod tests {
                     Some(ProjectId("project2".to_owned())),
                     None,
                     vec![],
+                    Default::default(),
+                    Default::default(),
                 ),
             ),
             (
@@ -254,6 +256,8 @@ mod tests {
                     None,
                     None,
                     vec![],
+                    Default::default(),
+                    Default::default(),
                 ),
             ),
         ]);

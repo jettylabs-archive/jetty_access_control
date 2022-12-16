@@ -327,6 +327,27 @@ impl Coordinator {
             .collect::<Vec<_>>();
         fetches
     }
+
+    /// Return a Vec of futures that will request permissions for a collection of assets
+    fn get_default_permission_futures_for_projects<'a>(
+        &'a self,
+        projects: &'a mut HashMap<String, nodes::Project>,
+        env: &'a Environment,
+    ) -> Vec<
+        Pin<
+            Box<
+                dyn futures::Future<Output = std::result::Result<(), anyhow::Error>>
+                    + std::marker::Send
+                    + '_,
+            >,
+        >,
+    > {
+        let fetches = projects
+            .values_mut()
+            .map(|v| v.update_default_permissions(&self.rest_client, env))
+            .collect::<Vec<_>>();
+        fetches
+    }
 }
 
 /// Read and parse the saved Tableau environment asset information
@@ -361,6 +382,8 @@ mod test {
                     Some(ProjectId("project1".to_owned())),
                     None,
                     vec![],
+                    Default::default(),
+                    Default::default(),
                 ),
             ),
             (
@@ -372,6 +395,8 @@ mod test {
                     Some(ProjectId("project2".to_owned())),
                     None,
                     vec![],
+                    Default::default(),
+                    Default::default(),
                 ),
             ),
             (
@@ -383,6 +408,8 @@ mod test {
                     None,
                     None,
                     vec![],
+                    Default::default(),
+                    Default::default(),
                 ),
             ),
         ]);
