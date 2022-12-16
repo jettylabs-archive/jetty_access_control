@@ -23,7 +23,7 @@ impl AccessGraph {
         {
             (root_node, matching_path, types)
         } else {
-            panic!("node_name must be a NodeName::DefaultPolicy");
+            panic!("node_name must be a NodeName::DefaultPolicy: {default_policy}");
         };
 
         let wildcard_details = wildcard_parser(&matching_path);
