@@ -331,7 +331,10 @@ impl From<Permission> for jetty_nodes::RawPolicy {
             // Leaving names empty for now for policies since they don't have
             // a lot of significance for policies here anyway.
             Uuid::new_v4().to_string(),
-            val.capabilities.into_values().collect(),
+            val.capabilities
+                .into_iter()
+                .map(|(capability, mode)| format!("{mode}{capability}"))
+                .collect(),
             // Handled by the caller.
             HashSet::new(),
             HashSet::new(),
