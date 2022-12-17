@@ -336,7 +336,7 @@ pub struct DefaultPolicyAttributes {
     /// The path that this policy should be applied to
     pub matching_path: String,
     /// The types of assets that this should be applied to. If None, it's applied to all types
-    pub types: Option<BTreeSet<AssetType>>,
+    pub types: BTreeSet<AssetType>,
     /// Connectors for the default policy. Policies include a single asset and single grantee, so
     /// this set should only ever include a single connector
     pub connectors: HashSet<ConnectorNamespace>,
@@ -637,10 +637,8 @@ pub enum NodeName {
         root_node: Box<NodeName>,
         /// The path of wildcards
         matching_path: String,
-        /// The user/group to whom the policy is granted
-        grantee: Box<NodeName>,
         /// The types of assets the policy should be applied to
-        types: Option<BTreeSet<AssetType>>,
+        types: BTreeSet<AssetType>,
     },
 }
 
@@ -674,23 +672,18 @@ impl Display for NodeName {
             NodeName::DefaultPolicy {
                 root_node,
                 matching_path,
-                grantee,
                 types,
             } => {
                 write!(
                     f,
-                    "{}/{}::{}->{}",
+                    "{}/{} ({})",
                     root_node,
                     matching_path,
-                    match types {
-                        Some(t) => t
-                            .iter()
-                            .map(|s| s.to_string())
-                            .collect::<Vec<_>>()
-                            .join(","),
-                        None => "all types".into(),
-                    },
-                    grantee
+                    types
+                        .iter()
+                        .map(|s| s.to_string())
+                        .collect::<Vec<_>>()
+                        .join(", "),
                 )
             }
         }

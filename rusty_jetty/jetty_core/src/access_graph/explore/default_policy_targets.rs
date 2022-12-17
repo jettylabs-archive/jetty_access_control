@@ -38,12 +38,7 @@ impl AccessGraph {
                 |e| matches!(e, EdgeType::ParentOf),
                 |n| matches!(n, JettyNode::Asset(_)),
                 |n| match n {
-                    JettyNode::Asset(a) => match &types {
-                        // If a types are specified, target asset must match
-                        Some(t) => t.contains(&a.asset_type()),
-                        // if no type is specified, match all types
-                        None => true,
-                    },
+                    JettyNode::Asset(a) => types.contains(&a.asset_type()),
                     _ => false,
                 },
                 Some(wildcard_details.depth),

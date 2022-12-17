@@ -24,7 +24,7 @@ use crate::{
     Jetty,
 };
 
-use self::diff::{diff_assets, PolicyDiff};
+use self::diff::policies::{diff_policies, PolicyDiff};
 
 use super::groups::GroupConfig;
 
@@ -34,6 +34,13 @@ pub(crate) struct PolicyState {
     metadata: HashMap<String, String>,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct DefaultPolicyState {
+    privileges: BTreeSet<String>,
+    groups: BTreeSet<NodeName>,
+    users: BTreeSet<NodeName>,
+    metadata: HashMap<String, String>,
+}
 #[derive(Serialize, Deserialize, Debug, Default, Clone, Ord, PartialOrd, Eq, PartialEq)]
 struct YamlAssetDoc {
     identifier: YamlAssetIdentifier,
@@ -76,9 +83,8 @@ pub(crate) struct CombinedPolicyState {
     /// HashMap of <(NodeName::Asset, NodeName::User | NodeName::Group), PolicyState>
     policies: HashMap<(NodeName, NodeName), PolicyState>,
     /// Represents the future policies
-    /// HashMap of <(NodeName::Asset, NodeName::User | NodeName::Group, wildcard path), PolicyState>
-    default_policies:
-        HashMap<(NodeName, NodeName, String, Option<BTreeSet<AssetType>>), PolicyState>,
+    /// HashMap of <(NodeName::Asset, wildcard path, Asset Types), DefaultPolicyState>
+    default_policies: HashMap<(NodeName, String, BTreeSet<AssetType>), DefaultPolicyState>,
 }
 
 /// Collect all the configurations and turn them into a combined policy state object
@@ -188,20 +194,25 @@ fn get_env_state(jetty: &Jetty) -> Result<CombinedPolicyState> {
                 let path = policy.matching_path;
                 let types = policy.types;
 
-                for agent in &agents {
-                    acc.insert(
-                        (
-                            root_asset.to_owned(),
-                            agent.to_owned(),
-                            path.to_owned(),
-                            types.to_owned(),
-                        ),
-                        PolicyState {
-                            privileges: policy.privileges.to_owned().into_iter().collect(),
-                            metadata: Default::default(),
-                        },
-                    );
+                let mut groups = BTreeSet::new();
+                let mut users = BTreeSet::new();
+                for agent in agents {
+                    match agent {
+                        NodeName::User(_) => users.insert(agent),
+                        NodeName::Group { .. } => groups.insert(agent),
+                        _ => panic!("only users or groups allowed at this point"),
+                    };
                 }
+
+                acc.insert(
+                    (root_asset.to_owned(), path.to_owned(), types.to_owned()),
+                    DefaultPolicyState {
+                        privileges: policy.privileges.to_owned().into_iter().collect(),
+                        metadata: Default::default(),
+                        groups,
+                        users,
+                    },
+                );
 
                 acc
             });
@@ -219,7 +230,7 @@ pub fn get_policy_diffs(
     let config_state = get_config_state(jetty, validated_group_config)?;
     let env_state = get_env_state(jetty)?;
 
-    Ok(diff_assets(&config_state, &env_state))
+    Ok(diff_policies(&config_state, &env_state))
 }
 
 fn get_policy_agents(idx: NodeIndex, ag: &AccessGraph) -> HashSet<NodeName> {
@@ -288,13 +299,13 @@ impl CombinedPolicyState {
                 NodeName::Asset { path, .. } => path,
                 _ => bail!("expected an asset node"),
             };
-            let wildcard_path = k.2.to_owned();
+            let wildcard_path = k.1.to_owned();
             prioritized_policies
                 .entry(get_path_priority(wildcard_path, asset_path.to_owned()))
                 .and_modify(
                     |combined_state: &mut HashMap<
-                        (NodeName, NodeName, String, Option<BTreeSet<AssetType>>),
-                        PolicyState,
+                        (NodeName, String, BTreeSet<AssetType>),
+                        DefaultPolicyState,
                     >| {
                         combined_state.insert(k.to_owned(), v.to_owned());
                     },
@@ -312,29 +323,43 @@ impl CombinedPolicyState {
                 },
             );
 
-            for ((root_node, grantee, matching_path, types), policy_state) in default_policies {
+            for ((root_node, matching_path, types), default_policy_state) in default_policies {
                 let targets = ag.default_policy_targets(&NodeName::DefaultPolicy {
                     root_node: Box::new(root_node.to_owned()),
                     matching_path: matching_path.to_owned(),
-                    grantee: Box::new(grantee.to_owned()),
                     types: types.to_owned(),
                 })?;
 
-                intermediate_map
-                    .get_mut(&priority)
-                    .unwrap()
-                    .merge_combining_if_exists(CombinedPolicyState {
-                        policies: targets
-                            .iter()
-                            .map(|&t| {
-                                (
-                                    (ag[t].get_node_name(), grantee.to_owned()),
-                                    policy_state.to_owned(),
-                                )
-                            })
+                let mut grantees = default_policy_state.users.to_owned();
+                grantees.extend(default_policy_state.groups.to_owned());
+
+                for grantee in grantees {
+                    let policy_state = PolicyState {
+                        privileges: default_policy_state
+                            .privileges
+                            .to_owned()
+                            .into_iter()
                             .collect(),
-                        default_policies: Default::default(),
-                    })?;
+                        // FUTURE: for now, just leaving this blank. I think we'll need a mechanism to specify policy-level metadata on a default policy
+                        metadata: Default::default(),
+                    };
+
+                    intermediate_map
+                        .get_mut(&priority)
+                        .unwrap()
+                        .merge_combining_if_exists(CombinedPolicyState {
+                            policies: targets
+                                .iter()
+                                .map(|&t| {
+                                    (
+                                        (ag[t].get_node_name(), grantee.to_owned()),
+                                        policy_state.to_owned(),
+                                    )
+                                })
+                                .collect(),
+                            default_policies: Default::default(),
+                        })?;
+                }
             }
         }
 

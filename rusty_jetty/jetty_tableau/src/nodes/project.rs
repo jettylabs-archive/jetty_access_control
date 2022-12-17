@@ -118,7 +118,7 @@ impl Project {
     ) -> Result<()> {
         // first add the default project permissions (that's the easy one)
         self.default_permissions
-            .insert("projects".to_owned(), self.permissions.to_owned());
+            .insert("project".to_owned(), self.permissions.to_owned());
 
         for asset_type in DEFAULT_POLICY_TYPE_CONVERSION.keys() {
             let req = tc.build_request(

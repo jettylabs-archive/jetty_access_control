@@ -275,7 +275,7 @@ pub struct ProcessedDefaultPolicy {
     /// Path to determine scope
     pub matching_path: String,
     /// The types of assets to apply this to
-    pub types: Option<BTreeSet<AssetType>>,
+    pub types: BTreeSet<AssetType>,
     /// Who the privilege is granted to
     pub grantee: NodeName,
     /// Connector that the privilege exists in
@@ -541,7 +541,6 @@ impl ProcessedDefaultPolicy {
             name: NodeName::DefaultPolicy {
                 root_node: Box::new(self.root_node.to_owned()),
                 matching_path: self.matching_path.to_owned(),
-                grantee: Box::new(self.grantee.to_owned()),
                 types: self.types.to_owned(),
             },
             id: Uuid::new_v5(&Uuid::NAMESPACE_URL, self.name.to_string().as_bytes()),
