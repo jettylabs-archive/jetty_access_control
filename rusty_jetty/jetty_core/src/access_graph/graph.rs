@@ -115,8 +115,8 @@ impl Graph {
         }
     }
 
-    #[deprecated = "please transition to referencing nodes by their id rather than their name"]
-    /// Check whether a given node already exists in the graph, and, if so, return a typed index
+    /// Check whether a given node already exists in the graph, and, if so, return a typed index.
+    /// **Get index by id rather than node name whenever possible**
     pub(crate) fn get_asset_node_index(&self, node: &NodeName) -> Option<AssetIndex> {
         match node {
             NodeName::Asset { .. } => self.nodes.assets.get(node).map(|i| i.to_owned()),
@@ -124,8 +124,8 @@ impl Graph {
         }
     }
 
-    #[deprecated = "please transition to referencing nodes by their id rather than their name"]
-    /// Check whether a given node already exists in the graph, and, if so, return a typed index
+    /// Check whether a given node already exists in the graph, and, if so, return a typed index.
+    /// **Get index by id rather than node name whenever possible**
     pub(crate) fn get_user_node_index(&self, node: &NodeName) -> Option<UserIndex> {
         match node {
             NodeName::User(_) => self.nodes.users.get(node).map(|i| i.to_owned()),
@@ -133,8 +133,8 @@ impl Graph {
         }
     }
 
-    #[deprecated = "please transition to referencing nodes by their id rather than their name"]
-    /// Check whether a given node already exists in the graph, and, if so, return a typed index
+    /// Check whether a given node already exists in the graph, and, if so, return a typed index.
+    /// **Get index by id rather than node name whenever possible**
     pub(crate) fn get_group_node_index(&self, node: &NodeName) -> Option<GroupIndex> {
         match node {
             NodeName::Group { .. } => self.nodes.groups.get(node).map(|i| i.to_owned()),
@@ -142,8 +142,8 @@ impl Graph {
         }
     }
 
-    #[deprecated = "please transition to referencing nodes by their id rather than their name"]
-    /// Check whether a given node already exists in the graph, and, if so, return a typed index
+    /// Check whether a given node already exists in the graph, and, if so, return a typed index.
+    /// **Get index by id rather than node name whenever possible**
     pub(crate) fn get_tag_node_index(&self, node: &NodeName) -> Option<TagIndex> {
         match node {
             NodeName::Tag(_) => self.nodes.tags.get(node).map(|i| i.to_owned()),
@@ -151,8 +151,8 @@ impl Graph {
         }
     }
 
-    #[deprecated = "please transition to referencing nodes by their id rather than their name"]
-    /// Check whether a given node already exists in the graph, and, if so, return a typed index
+    /// Check whether a given node already exists in the graph, and, if so, return a typed index.
+    /// **Get index by id rather than node name whenever possible**
     pub(crate) fn get_policy_node_index(&self, node: &NodeName) -> Option<PolicyIndex> {
         match node {
             NodeName::Policy { .. } => self.nodes.policies.get(node).map(|i| i.to_owned()),

@@ -836,37 +836,38 @@ impl AccessGraph {
 
     // Get indices by id
 
-    /// Get the untyped node index for a given NodeName
+    /// Get the untyped node index for a given NodeName.
+    /// **Always prefer the get_untyped_index_from_id function when possible**
     pub fn get_untyped_index_from_name(&self, node_name: &NodeName) -> Option<NodeIndex> {
         self.graph.get_untyped_node_index(node_name)
     }
 
-    #[deprecated = "please transition to referencing nodes by their id rather than their name"]
-    /// Get the typed node index for a given NodeName
+    /// Get the typed node index for a given NodeName.
+    /// **Always prefer the get_asset_index_from_id function when possible**
     pub fn get_asset_index_from_name(&self, node_name: &NodeName) -> Option<AssetIndex> {
         self.graph.get_asset_node_index(node_name)
     }
 
-    #[deprecated = "please transition to referencing nodes by their id rather than their name"]
-    /// Get the untyped node index for a given NodeName
+    /// Get the untyped node index for a given NodeName.
+    /// **Always prefer the get_user_index_from_id function when possible**
     pub fn get_user_index_from_name(&self, node_name: &NodeName) -> Option<UserIndex> {
         self.graph.get_user_node_index(node_name)
     }
 
-    #[deprecated = "please transition to referencing nodes by their id rather than their name"]
-    /// Get the untyped node index for a given NodeName
+    /// Get the untyped node index for a given NodeName.
+    /// **Always prefer the get_tag_index_from_id function when possible**
     pub fn get_tag_index_from_name(&self, node_name: &NodeName) -> Option<TagIndex> {
         self.graph.get_tag_node_index(node_name)
     }
 
-    #[deprecated = "please transition to referencing nodes by their id rather than their name"]
-    /// Get the untyped node index for a given NodeName
+    /// Get the untyped node index for a given NodeName.
+    /// **Always prefer the get_policy_index_from_id function when possible**
     pub fn get_policy_index_from_name(&self, node_name: &NodeName) -> Option<PolicyIndex> {
         self.graph.get_policy_node_index(node_name)
     }
 
-    #[deprecated = "please transition to referencing nodes by their id rather than their name"]
-    /// Get the untyped node index for a given NodeName
+    /// Get the untyped node index for a given NodeName.
+    /// **Always prefer the get_group_index_from_id function when possible**
     pub fn get_group_index_from_name(&self, node_name: &NodeName) -> Option<GroupIndex> {
         self.graph.get_group_node_index(node_name)
     }

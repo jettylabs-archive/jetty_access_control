@@ -4,7 +4,6 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use anyhow::{anyhow, bail, Result};
 
-
 use crate::{
     access_graph::{AccessGraph, AssetAttributes, NodeName},
     connectors::AssetType,
@@ -176,6 +175,13 @@ fn parse_default_policies(
             )?;
         }
 
+        // make sure the a path is specified and is legal
+        if let Some(path) = &policy.path {
+            path_is_legal(path)?;
+        } else {
+            bail!("path must be specified for default policies")
+        }
+
         res_policies.insert(
             (
                 asset_name.to_owned(),
@@ -225,9 +231,7 @@ fn get_user_name(user: &String, ag: &AccessGraph) -> Result<NodeName> {
         .users
         .keys()
         .filter(|n| match n {
-            NodeName::User(graph_user) => {
-                graph_user == user
-            }
+            NodeName::User(graph_user) => graph_user == user,
             _ => false,
         })
         .collect::<Vec<_>>();
@@ -257,9 +261,7 @@ fn get_asset_name(
                 connector: _ag_connector,
                 asset_type: _ag_asset_type,
                 path,
-            } => {
-                connector == connector && asset_type == asset_type && &path.to_string() == name
-            }
+            } => connector == connector && asset_type == asset_type && &path.to_string() == name,
             _ => false,
         })
         .collect::<Vec<_>>();

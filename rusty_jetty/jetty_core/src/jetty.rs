@@ -7,7 +7,7 @@ use std::{collections::HashMap, fmt::Display};
 
 use anyhow::{anyhow, bail, Context, Result};
 
-use log::{debug};
+use log::debug;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use yaml_peg::serde as yaml;
@@ -145,7 +145,7 @@ pub struct Jetty {
     pub config: JettyConfig,
     // connector_config: HashMap<String, ConnectorCredentials>,
     /// The directory where data (such as the materialized graph) should be stored
-    data_dir: PathBuf,
+    _data_dir: PathBuf,
     /// The access graph, if it exists
     pub access_graph: Option<AccessGraph>,
     /// The connectors
@@ -167,7 +167,7 @@ impl Jetty {
 
         Ok(Jetty {
             config,
-            data_dir,
+            _data_dir: data_dir,
             access_graph: ag,
             connectors,
         })
@@ -184,7 +184,7 @@ impl Jetty {
 
         Ok(Jetty {
             config,
-            data_dir,
+            _data_dir: data_dir,
             access_graph: ag,
             connectors,
         })

@@ -2,10 +2,7 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use axum::{extract::Path, routing::get, Extension, Json, Router};
-use jetty_core::{
-    access_graph::{self, EdgeType, JettyNode, NodeName},
-    jetty::ConnectorNamespace,
-};
+use jetty_core::access_graph::{self, EdgeType, JettyNode};
 
 use uuid::Uuid;
 
