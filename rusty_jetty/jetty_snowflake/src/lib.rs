@@ -28,7 +28,7 @@ pub use entry_types::{
     Asset, Database, Entry, FutureGrant, Grant, GrantOf, GrantType, Object, Role, RoleName, Schema,
     StandardGrant, Table, User, View, Warehouse,
 };
-use futures::{StreamExt};
+use futures::StreamExt;
 use jetty_core::access_graph::translate::diffs::{groups, LocalDiffs};
 use jetty_core::connectors::{
     AssetType, ConnectorCapabilities, NewConnector, ReadCapabilities, WriteCapabilities,
@@ -529,23 +529,30 @@ impl SnowflakeConnector {
             .collect::<Vec<_>>()
     }
 
-    /// Convert future grants into default policies
+    /// Convert future grants into default policies. This is called for each role, so grants contains only policies
+    /// for a single role.
     fn future_grants_to_default_policies(
         &self,
         grants: &[FutureGrant],
     ) -> Vec<nodes::RawDefaultPolicy> {
         grants
             .iter()
+            // filter down to the asset types we support
             .filter(|g| consts::ASSET_TYPES.contains(&g.grant_on()))
-            // Collect roles by asset name so the role:asset ratio is 1:1.
+            // Collect policies by asset name and grant_on (asset type). Asset type and role combined give a path, so this will give us a single policy
+            // for each combo of (Asset, Path, Asset Type, and Agent)
             .fold(
                 HashMap::new(),
-                |mut asset_map: HashMap<String, HashSet<FutureGrant>>, g| {
-                    if let Some(asset_privileges) = asset_map.get_mut(g.granted_on_name()) {
+                |mut asset_map: HashMap<(String, String), HashSet<FutureGrant>>, g| {
+                    if let Some(asset_privileges) = asset_map
+                        .get_mut(&(g.granted_on_name().to_owned(), g.grant_on().to_owned()))
+                    {
                         asset_privileges.insert(g.clone());
                     } else {
-                        asset_map
-                            .insert(g.granted_on_name().to_owned(), HashSet::from([g.clone()]));
+                        asset_map.insert(
+                            (g.granted_on_name().to_owned(), g.grant_on().to_owned()),
+                            HashSet::from([g.clone()]),
+                        );
                     }
                     asset_map
                 },
@@ -553,7 +560,7 @@ impl SnowflakeConnector {
             .iter()
             .filter_map(|(_asset_name, grants)| {
                 // When we read, a policy will get created for each unique
-                // role/user, asset combination. All privileges will be bunched together
+                // role/user, root asset, type combination. All privileges will be bunched together
                 // for that combination.
                 if grants.is_empty() {
                     // No privileges.
