@@ -18,7 +18,7 @@ use crate::{
         },
         UserIdentifier,
     },
-    cual::{Cual},
+    cual::Cual,
     jetty::ConnectorNamespace,
     permissions::matrix::{DoubleInsert, InsertOrMerge},
 };
@@ -442,6 +442,7 @@ impl Translator {
                 root_node: Box::new(root_node.to_owned()),
                 matching_path: policy.wildcard_path.to_owned(),
                 types: types.to_owned(),
+                grantee: Box::new(grantee.to_owned()),
             },
             privileges: policy.privileges,
             root_node: root_node,

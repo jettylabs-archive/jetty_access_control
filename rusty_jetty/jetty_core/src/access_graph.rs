@@ -638,6 +638,8 @@ pub enum NodeName {
         matching_path: String,
         /// The types of assets the policy should be applied to
         types: BTreeSet<AssetType>,
+        /// The group/user the policy is granted to
+        grantee: Box<NodeName>,
     },
 }
 
@@ -672,10 +674,12 @@ impl Display for NodeName {
                 root_node,
                 matching_path,
                 types,
+                grantee,
             } => {
                 write!(
                     f,
-                    "{}/{} ({})",
+                    "{} -> {}/{} ({})",
+                    grantee,
                     root_node,
                     matching_path,
                     types

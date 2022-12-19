@@ -541,6 +541,7 @@ impl ProcessedDefaultPolicy {
                 root_node: Box::new(self.root_node.to_owned()),
                 matching_path: self.matching_path.to_owned(),
                 types: self.types.to_owned(),
+                grantee: Box::new(self.grantee.to_owned()),
             },
             id: Uuid::new_v5(&Uuid::NAMESPACE_URL, self.name.to_string().as_bytes()),
             privileges: self.privileges.to_owned(),

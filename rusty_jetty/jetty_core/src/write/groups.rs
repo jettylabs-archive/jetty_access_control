@@ -22,8 +22,6 @@ use crate::{
     Jetty,
 };
 
-
-
 /// group configuration, as represented in the yaml
 #[derive(Deserialize, Debug)]
 pub struct GroupConfig {
@@ -606,8 +604,7 @@ mod tests {
 
     use crate::{
         access_graph::{
-            translate::diffs::LocalDiffs,
-            GroupAttributes, NodeName, UserAttributes,
+            translate::diffs::LocalDiffs, AccessGraph, GroupAttributes, NodeName, UserAttributes,
         },
         connectors::ConnectorCapabilities,
         Connector,

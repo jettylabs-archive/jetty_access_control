@@ -84,7 +84,8 @@ pub(crate) struct CombinedPolicyState {
     policies: HashMap<(NodeName, NodeName), PolicyState>,
     /// Represents the future policies
     /// HashMap of <(NodeName::Asset, wildcard path, Asset Types), DefaultPolicyState>
-    default_policies: HashMap<(NodeName, String, BTreeSet<AssetType>), DefaultPolicyState>,
+    default_policies:
+        HashMap<(NodeName, String, BTreeSet<AssetType>, NodeName), DefaultPolicyState>,
 }
 
 /// Collect all the configurations and turn them into a combined policy state object
@@ -197,25 +198,28 @@ fn get_env_state(jetty: &Jetty) -> Result<CombinedPolicyState> {
                 let path = policy.matching_path;
                 let types = policy.types;
 
-                let mut groups = BTreeSet::new();
-                let mut users = BTreeSet::new();
-                for agent in agents {
-                    match agent {
-                        NodeName::User(_) => users.insert(agent),
-                        NodeName::Group { .. } => groups.insert(agent),
-                        _ => panic!("only users or groups allowed at this point"),
-                    };
+                for agent in &agents {
+                    acc.insert(
+                        (
+                            root_asset.to_owned(),
+                            path.to_owned(),
+                            types.to_owned(),
+                            agent.to_owned(),
+                        ),
+                        DefaultPolicyState {
+                            privileges: policy.privileges.to_owned().into_iter().collect(),
+                            metadata: Default::default(),
+                            groups: match agent {
+                                NodeName::Group { .. } => BTreeSet::from([agent.to_owned()]),
+                                _ => Default::default(),
+                            },
+                            users: match agent {
+                                NodeName::User(_) => BTreeSet::from([agent.to_owned()]),
+                                _ => Default::default(),
+                            },
+                        },
+                    );
                 }
-
-                acc.insert(
-                    (root_asset, path, types),
-                    DefaultPolicyState {
-                        privileges: policy.privileges.into_iter().collect(),
-                        metadata: Default::default(),
-                        groups,
-                        users,
-                    },
-                );
 
                 acc
             });
@@ -307,7 +311,7 @@ impl CombinedPolicyState {
                 .entry(get_path_priority(wildcard_path, asset_path.to_owned()))
                 .and_modify(
                     |combined_state: &mut HashMap<
-                        (NodeName, String, BTreeSet<AssetType>),
+                        (NodeName, String, BTreeSet<AssetType>, NodeName),
                         DefaultPolicyState,
                     >| {
                         combined_state.insert(k.to_owned(), v.to_owned());
@@ -326,11 +330,14 @@ impl CombinedPolicyState {
                 },
             );
 
-            for ((root_node, matching_path, types), default_policy_state) in default_policies {
+            for ((root_node, matching_path, types, grantee), default_policy_state) in
+                default_policies
+            {
                 let targets = ag.default_policy_targets(&NodeName::DefaultPolicy {
                     root_node: Box::new(root_node.to_owned()),
                     matching_path: matching_path.to_owned(),
                     types: types.to_owned(),
+                    grantee: Box::new(grantee.to_owned()),
                 })?;
 
                 let mut grantees = default_policy_state.users.to_owned();

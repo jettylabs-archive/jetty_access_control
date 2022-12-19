@@ -116,7 +116,7 @@ fn parse_default_policies(
     connector: &ConnectorNamespace,
     config_groups: &BTreeMap<String, BTreeMap<ConnectorNamespace, NodeName>>,
     jetty: &Jetty,
-) -> Result<HashMap<(NodeName, String, BTreeSet<AssetType>), DefaultPolicyState>> {
+) -> Result<HashMap<(NodeName, String, BTreeSet<AssetType>, NodeName), DefaultPolicyState>> {
     let ag = jetty.try_access_graph()?;
     let mut res_policies = HashMap::new();
     for policy in default_policies {
@@ -133,7 +133,7 @@ fn parse_default_policies(
         };
 
         // validate users
-        let _users: Option<BTreeSet<NodeName>> = if let Some(users) = &policy.users {
+        let users: Option<BTreeSet<NodeName>> = if let Some(users) = &policy.users {
             Some(
                 users
                     .iter()
@@ -182,24 +182,42 @@ fn parse_default_policies(
             bail!("path must be specified for default policies")
         }
 
-        res_policies.insert(
-            (
-                asset_name.to_owned(),
-                policy.path.to_owned().unwrap(),
-                policy.types.to_owned().unwrap(),
-            ),
-            DefaultPolicyState {
-                privileges: policy.privileges.to_owned().unwrap_or_default(),
-                groups: groups.to_owned().unwrap_or_default(),
-                users: groups.to_owned().unwrap_or_default(),
-                metadata: policy
-                    .metadata
-                    .to_owned()
-                    .unwrap_or_default()
-                    .into_iter()
-                    .collect(),
-            },
-        );
+        // now insert a policy for each user/group
+        let mut agents = Vec::new();
+        if let Some(some_users) = &users {
+            agents.extend(some_users);
+        }
+        if let Some(some_groups) = &groups {
+            agents.extend(some_groups);
+        }
+
+        for agent in agents {
+            res_policies.insert(
+                (
+                    asset_name.to_owned(),
+                    policy.path.to_owned().unwrap(),
+                    policy.types.to_owned().unwrap(),
+                    agent.to_owned(),
+                ),
+                DefaultPolicyState {
+                    privileges: policy.privileges.to_owned().unwrap_or_default(),
+                    groups: match agent {
+                        NodeName::Group { .. } => BTreeSet::from([agent.to_owned()]),
+                        _ => Default::default(),
+                    },
+                    users: match agent {
+                        NodeName::User(_) => BTreeSet::from([agent.to_owned()]),
+                        _ => Default::default(),
+                    },
+                    metadata: policy
+                        .metadata
+                        .to_owned()
+                        .unwrap_or_default()
+                        .into_iter()
+                        .collect(),
+                },
+            );
+        }
     }
 
     Ok(res_policies)
