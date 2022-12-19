@@ -26,30 +26,6 @@ pub(crate) struct Flow {
     pub permissions: Vec<super::Permission>,
 }
 
-impl Flow {
-    pub(crate) fn new(
-        id: String,
-        name: String,
-        project_id: ProjectId,
-        owner_id: String,
-        updated_at: String,
-        derived_from: HashSet<SourceOrigin>,
-        derived_to: HashSet<SourceOrigin>,
-        permissions: Vec<super::Permission>,
-    ) -> Self {
-        Self {
-            id,
-            name,
-            project_id,
-            owner_id,
-            updated_at,
-            derived_from,
-            derived_to,
-            permissions,
-        }
-    }
-}
-
 impl Downloadable for Flow {
     fn get_path(&self) -> String {
         format!("/flows/{}/content", &self.id)

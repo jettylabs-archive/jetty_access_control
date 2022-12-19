@@ -172,6 +172,8 @@ impl TableauConnector {
 
         // Transform policies
         let all_policies = env_to_jetty_policies(&self.coordinator.env);
+
+        // Get default policies for each project
         let default_policies = self
             .coordinator
             .env
@@ -457,8 +459,7 @@ body:
 
         // Add the user
         let req_body = json!({"user": {"id": user}});
-        let _ = self
-            .coordinator
+        self.coordinator
             .rest_client
             .build_request(
                 format!("groups/{group_id}/users"),
