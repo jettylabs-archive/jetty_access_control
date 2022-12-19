@@ -14,7 +14,7 @@ use colored::Colorize;
 use serde::Deserialize;
 
 use crate::{
-    access_graph::{AccessGraph, EdgeType, JettyNode, NodeName},
+    access_graph::{EdgeType, JettyNode, NodeName},
     connectors::WriteCapabilities,
     jetty::ConnectorNamespace,
     project,
@@ -252,13 +252,13 @@ fn generate_diff(
                 .write
                 .contains(&WriteCapabilities::Groups { nested: true })
             {
-                Some((n.to_owned(), true))
+                Some((n, true))
             } else if m
                 .capabilities
                 .write
                 .contains(&WriteCapabilities::Groups { nested: false })
             {
-                Some((n.to_owned(), false))
+                Some((n, false))
             } else {
                 None
             }
@@ -266,7 +266,7 @@ fn generate_diff(
         .collect();
 
     let all_config_group_names =
-        get_all_group_names(&groups, jetty_connector_names.keys().collect())?;
+        get_all_group_names(groups, jetty_connector_names.keys().collect())?;
 
     for (group_name, group) in groups {
         // get all the node names for the given group. These would be the local names of the groups that need to be created
@@ -282,7 +282,7 @@ fn generate_diff(
             let legal_users = if jetty_connector_names[origin] {
                 users_to_node_names(&group.members.users)
             } else {
-                get_all_inherited_users(&groups, group_name)
+                get_all_inherited_users(groups, group_name)
                     .into_iter()
                     .collect()
             };
@@ -308,7 +308,7 @@ fn generate_diff(
             };
 
             // check if the group exists, removing the key if it does
-            if let Some(group_index) = ag_groups.remove(&node_name) {
+            if let Some(group_index) = ag_groups.remove(node_name) {
                 // get all the users in the existing group and diff them
                 let ag_member_users = ag.get_matching_children(
                     group_index,

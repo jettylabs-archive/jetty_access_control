@@ -208,9 +208,9 @@ fn get_env_state(jetty: &Jetty) -> Result<CombinedPolicyState> {
                 }
 
                 acc.insert(
-                    (root_asset.to_owned(), path.to_owned(), types.to_owned()),
+                    (root_asset, path, types),
                     DefaultPolicyState {
-                        privileges: policy.privileges.to_owned().into_iter().collect(),
+                        privileges: policy.privileges.into_iter().collect(),
                         metadata: Default::default(),
                         groups,
                         users,
@@ -247,7 +247,7 @@ fn get_policy_agents(idx: NodeIndex, ag: &AccessGraph) -> HashSet<NodeName> {
     );
     target_agents
         .into_iter()
-        .map(|n| ag[n].get_node_name().to_owned())
+        .map(|n| ag[n].get_node_name())
         .collect()
 }
 
@@ -262,7 +262,7 @@ fn get_policy_assets(idx: NodeIndex, ag: &AccessGraph) -> HashSet<NodeName> {
     );
     target_assets
         .into_iter()
-        .map(|n| ag[n].get_node_name().to_owned())
+        .map(|n| ag[n].get_node_name())
         .collect()
 }
 
@@ -278,12 +278,12 @@ fn get_default_policy_root_asset(idx: NodeIndex, ag: &AccessGraph) -> NodeName {
     );
     let nodes = target_assets
         .into_iter()
-        .map(|n| ag[n].get_node_name().to_owned())
+        .map(|n| ag[n].get_node_name())
         .collect::<Vec<_>>();
     if nodes.len() > 1 {
         panic!("a default policy should never have more than one root node")
     };
-    if nodes.len() == 0 {
+    if nodes.is_empty() {
         panic!("a default policy should always have a root node")
     };
     nodes[0].to_owned()
@@ -456,7 +456,7 @@ impl CombinedPolicyState {
 }
 
 fn get_path_priority(wildcard_path: String, path: AssetPath) -> String {
-    let segments = wildcard_path.split("/").collect::<Vec<_>>();
+    let segments = wildcard_path.split('/').collect::<Vec<_>>();
     let mut path_score = format!("{:03}", path.components().len());
     for segment in segments {
         if segment == "*" {

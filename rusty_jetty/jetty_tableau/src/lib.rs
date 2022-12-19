@@ -420,7 +420,7 @@ body:
     ) -> Result<()> {
         let req_body = json!({"group": { "name": group_name }});
         let req = self.coordinator.rest_client.build_request(
-            format!("groups/"),
+            "groups/".to_string(),
             Some(req_body),
             reqwest::Method::POST,
         )?;
@@ -433,7 +433,7 @@ body:
 
         // update the environment so that when users look for this group in the future, they are able to find it!
         let mut locked_group_map = group_map.lock().unwrap();
-        locked_group_map.insert(group_name.to_owned(), group_id.to_owned());
+        locked_group_map.insert(group_name.to_owned(), group_id);
         Ok(())
     }
 
@@ -535,56 +535,49 @@ impl Connector for TableauConnector {
                 AssetType("workbook".to_owned()),
                 WORKBOOK_CAPABILITIES
                     .iter()
-                    .map(|v| [format!("Allow{v}"), format!("Deny{v}")])
-                    .flatten()
+                    .flat_map(|v| [format!("Allow{v}"), format!("Deny{v}")])
                     .collect(),
             ),
             (
                 AssetType("lens".to_owned()),
                 LENS_CAPABILITIES
                     .iter()
-                    .map(|v| [format!("Allow{v}"), format!("Deny{v}")])
-                    .flatten()
+                    .flat_map(|v| [format!("Allow{v}"), format!("Deny{v}")])
                     .collect(),
             ),
             (
                 AssetType("datasource".to_owned()),
                 DATASOURCE_CAPABILITIES
                     .iter()
-                    .map(|v| [format!("Allow{v}"), format!("Deny{v}")])
-                    .flatten()
+                    .flat_map(|v| [format!("Allow{v}"), format!("Deny{v}")])
                     .collect(),
             ),
             (
                 AssetType("flow".to_owned()),
                 FLOW_CAPABILITIES
                     .iter()
-                    .map(|v| [format!("Allow{v}"), format!("Deny{v}")])
-                    .flatten()
+                    .flat_map(|v| [format!("Allow{v}"), format!("Deny{v}")])
                     .collect(),
             ),
             (
                 AssetType("metric".to_owned()),
                 METRIC_CAPABILITIES
                     .iter()
-                    .map(|v| [format!("Allow{v}"), format!("Deny{v}")])
-                    .flatten()
+                    .flat_map(|v| [format!("Allow{v}"), format!("Deny{v}")])
                     .collect(),
             ),
             (
                 AssetType("project".to_owned()),
                 PROJECT_CAPABILITIES
                     .iter()
-                    .map(|v| [format!("Allow{v}"), format!("Deny{v}")])
-                    .flatten()
+                    .flat_map(|v| [format!("Allow{v}"), format!("Deny{v}")])
                     .collect(),
             ),
             (
                 AssetType("view".to_owned()),
                 VIEW_CAPABILITIES
                     .iter()
-                    .map(|v| [format!("Allow{v}"), format!("Deny{v}")])
-                    .flatten()
+                    .flat_map(|v| [format!("Allow{v}"), format!("Deny{v}")])
                     .collect(),
             ),
         ]

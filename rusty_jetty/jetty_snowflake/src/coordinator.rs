@@ -454,7 +454,7 @@ fn add_non_default_policies(connector_data: &mut ConnectorData) {
         HashMap::new(),
         |mut acc: HashMap<String, HashSet<(String, AssetType)>>, c| {
             // make sure the child is in the list
-            acc.entry(c.cual.to_string()).or_insert(HashSet::new());
+            acc.entry(c.cual.to_string()).or_default();
 
             // add the parent relationships
             for parent in &c.child_of {
@@ -476,14 +476,13 @@ fn add_non_default_policies(connector_data: &mut ConnectorData) {
     let policy_set = connector_data
         .policies
         .iter()
-        .map(|p| {
+        .flat_map(|p| {
             p.governs_assets.iter().map(|asset| {
                 p.granted_to_groups
                     .iter()
                     .map(|group| (asset.to_owned(), group.to_owned()))
             })
         })
-        .flatten()
         .flatten()
         .collect::<HashSet<_>>();
 
@@ -505,7 +504,7 @@ fn add_non_default_policies(connector_data: &mut ConnectorData) {
             asset_map[&default_policy.root_asset.to_string()]
                 .iter()
                 .filter_map(|(name, asset_type)| {
-                    if default_policy.target_types.contains(&asset_type) {
+                    if default_policy.target_types.contains(asset_type) {
                         Some(name.to_owned())
                     } else {
                         None
@@ -518,8 +517,7 @@ fn add_non_default_policies(connector_data: &mut ConnectorData) {
             asset_map[&default_policy.root_asset.to_string()]
                 .iter()
                 // get all the grandchildren, then flatten
-                .map(|(level_one_name, _)| asset_map[level_one_name].to_owned())
-                .flatten()
+                .flat_map(|(level_one_name, _)| asset_map[level_one_name].to_owned())
                 .filter_map(|(name, asset_type)| {
                     if default_policy.target_types.contains(&asset_type) {
                         Some(name)

@@ -179,15 +179,15 @@ impl Project {
                 let mut grantees: HashSet<_> = raw
                     .granted_to_users
                     .into_iter()
-                    .map(|u| RawPolicyGrantee::User(u))
+                    .map(RawPolicyGrantee::User)
                     .collect();
                 grantees.extend(
                     raw.granted_to_groups
                         .into_iter()
-                        .map(|g| RawPolicyGrantee::Group(g)),
+                        .map(RawPolicyGrantee::Group),
                 );
                 for grantee in grantees {
-                    let _grantees = res.push(RawDefaultPolicy {
+                    res.push(RawDefaultPolicy {
                         privileges: raw.privileges.to_owned(),
                         root_asset: root_cual.to_owned(),
                         wildcard_path: "/**".to_owned(),

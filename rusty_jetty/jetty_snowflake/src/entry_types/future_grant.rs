@@ -42,7 +42,7 @@ impl FutureGrant {
         } else {
             // If it's Tables/views/other things, but set at the database level
             // TODO This will break if there are any periods in the name of a database or schema
-            if stripped_name.split(".").collect::<Vec<_>>().len() == 1 {
+            if stripped_name.split('.').collect::<Vec<_>>().len() == 1 {
                 "/*/*"
             }
             // Otherwise, it's tables, views, etc. Set at the schema level

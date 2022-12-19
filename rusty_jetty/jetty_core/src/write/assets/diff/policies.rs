@@ -70,7 +70,7 @@ fn print_diff_inner_details(
             DiffDetails::AddAgent { add } => {
                 text += &format!(
                     "{}",
-                    format!("  + {}{}\n", prefix, name.to_string())
+                    format!("  + {}{}\n", prefix, name)
                         .as_str()
                         .green()
                 );
@@ -92,7 +92,7 @@ fn print_diff_inner_details(
             DiffDetails::RemoveAgent => {
                 text += &format!(
                     "{}",
-                    format!("  - {}{}\n", prefix, name.to_string())
+                    format!("  - {}{}\n", prefix, name)
                         .as_str()
                         .red()
                 );
@@ -100,7 +100,7 @@ fn print_diff_inner_details(
             DiffDetails::ModifyAgent { add, remove } => {
                 text += &format!(
                     "{}",
-                    format!("  ~ {}{}\n", prefix, name.to_string())
+                    format!("  ~ {}{}\n", prefix, name)
                         .as_str()
                         .yellow()
                 );

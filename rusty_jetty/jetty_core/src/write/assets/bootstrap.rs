@@ -69,8 +69,8 @@ impl Jetty {
                 all_basic_policies.push(SimplePolicy {
                     privileges: privileges.clone().into_iter().collect(),
                     asset,
-                    users: target_users.iter().map(|i| *i).collect(),
-                    groups: target_groups.iter().map(|i| *i).collect(),
+                    users: target_users.iter().copied().collect(),
+                    groups: target_groups.iter().copied().collect(),
                 })
             }
         }
@@ -151,7 +151,7 @@ impl Jetty {
                 Some(1),
                 Some(1),
             );
-            let &base_idx = binding.iter().next().unwrap();
+            let &base_idx = binding.first().unwrap();
 
             let grantees = ag.get_matching_children(
                 idx,
@@ -260,7 +260,7 @@ impl Jetty {
             Some(1),
             Some(1),
         );
-        let parent = binding.iter().next();
+        let parent = binding.first();
 
         match parent {
             Some(&p) => {

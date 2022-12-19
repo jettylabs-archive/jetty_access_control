@@ -26,8 +26,8 @@ impl AccessGraph {
             panic!("node_name must be a NodeName::DefaultPolicy: {default_policy}");
         };
 
-        let wildcard_details = wildcard_parser(&matching_path);
-        let root_id = self.get_node(&root_node)?.id();
+        let wildcard_details = wildcard_parser(matching_path);
+        let root_id = self.get_node(root_node)?.id();
         let root_idx = self
             .get_asset_index_from_id(&root_id)
             .ok_or(anyhow!("root node must exist in the graph"))?;
@@ -38,7 +38,7 @@ impl AccessGraph {
                 |e| matches!(e, EdgeType::ParentOf),
                 |n| matches!(n, JettyNode::Asset(_)),
                 |n| match n {
-                    JettyNode::Asset(a) => types.contains(&a.asset_type()),
+                    JettyNode::Asset(a) => types.contains(a.asset_type()),
                     _ => false,
                 },
                 Some(wildcard_details.depth),
@@ -65,7 +65,7 @@ struct WildcardDetails {
     open_ended: bool,
 }
 fn wildcard_parser(wildcard_string: &String) -> WildcardDetails {
-    let parts: Vec<_> = wildcard_string.split("/").collect();
+    let parts: Vec<_> = wildcard_string.split('/').collect();
     WildcardDetails {
         depth: parts.len(),
         open_ended: parts[parts.len() - 1] == "**",

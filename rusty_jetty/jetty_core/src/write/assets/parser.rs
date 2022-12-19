@@ -105,7 +105,7 @@ fn parse_policies(
 
         // Make sure the specified privileges are allowed/exist
         if let Some(privileges) = &policy.privileges {
-            privileges_are_legal(privileges, &asset_name, jetty, connector, None)?;
+            privileges_are_legal(privileges, asset_name, jetty, connector, None)?;
         }
     }
     Ok(res_policies)
@@ -125,7 +125,7 @@ fn parse_default_policies(
         let groups: Option<BTreeSet<NodeName>> = if let Some(groups) = &policy.groups {
             Some(
                 groups
-                    .into_iter()
+                    .iter()
                     .map(|g| get_group_name(g, connector, config_groups))
                     .collect::<Result<BTreeSet<NodeName>>>()?,
             )
@@ -137,7 +137,7 @@ fn parse_default_policies(
         let _users: Option<BTreeSet<NodeName>> = if let Some(users) = &policy.users {
             Some(
                 users
-                    .into_iter()
+                    .iter()
                     .map(|u| get_user_name(u, ag))
                     .collect::<Result<BTreeSet<NodeName>>>()?,
             )
@@ -154,7 +154,7 @@ fn parse_default_policies(
                     .into_keys()
                     .collect::<HashSet<_>>();
                 for asset_type in types {
-                    if !allowed_types.contains(&asset_type) {
+                    if !allowed_types.contains(asset_type) {
                         bail!(
                             "the type `{}` is not allowed for this connector",
                             asset_type.to_string()
@@ -169,7 +169,7 @@ fn parse_default_policies(
         if let Some(privileges) = &policy.privileges {
             privileges_are_legal(
                 privileges,
-                &asset_name,
+                asset_name,
                 jetty,
                 connector,
                 Some(policy.types.to_owned()),
@@ -226,11 +226,7 @@ fn get_user_name(user: &String, ag: &AccessGraph) -> Result<NodeName> {
         .keys()
         .filter(|n| match n {
             NodeName::User(graph_user) => {
-                if graph_user == user {
-                    true
-                } else {
-                    false
-                }
+                graph_user == user
             }
             _ => false,
         })
@@ -262,11 +258,7 @@ fn get_asset_name(
                 asset_type: _ag_asset_type,
                 path,
             } => {
-                if connector == connector && asset_type == asset_type && &path.to_string() == name {
-                    true
-                } else {
-                    false
-                }
+                connector == connector && asset_type == asset_type && &path.to_string() == name
             }
             _ => false,
         })
@@ -296,8 +288,7 @@ fn privileges_are_legal(
         let connector_privileges = &jetty.connector_manifests()[connector].asset_privileges;
         if let Some(ts) = t {
             ts.iter()
-                .map(|t| connector_privileges[t].to_owned())
-                .flatten()
+                .flat_map(|t| connector_privileges[t].to_owned())
                 .collect::<HashSet<_>>()
         } else {
             connector_privileges
@@ -323,7 +314,7 @@ fn privileges_are_legal(
 
 /// Validate that the wildcard path specified is allowed
 fn path_is_legal(wildcard_path: &String) -> Result<()> {
-    let segments = wildcard_path.split("/").collect::<Vec<_>>();
+    let segments = wildcard_path.split('/').collect::<Vec<_>>();
     let last_element_index = segments.len() - 1;
     for (idx, segment) in segments.into_iter().enumerate() {
         if segment.is_empty() {

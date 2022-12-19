@@ -444,7 +444,7 @@ impl Translator {
                 types: types.to_owned(),
             },
             privileges: policy.privileges,
-            root_node: root_node.to_owned(),
+            root_node: root_node,
             matching_path: policy.wildcard_path,
             types,
             grantee,
@@ -500,14 +500,14 @@ impl Translator {
         connector: &ConnectorNamespace,
     ) -> String {
         match &node_name {
-            NodeName::User(_n) => self.global_to_local.users[&connector][&node_name].to_owned(),
+            NodeName::User(_n) => self.global_to_local.users[connector][node_name].to_owned(),
             // There may be groups that don't exist yet, so we'll just use the group name without the origin
             NodeName::Group { name, .. } => name.to_owned(),
             NodeName::Asset { .. } => {
                 todo!()
             }
             NodeName::Policy { .. } => {
-                self.global_to_local.policies[&connector][&node_name].to_owned()
+                self.global_to_local.policies[connector][node_name].to_owned()
             }
             NodeName::Tag(t) => t.to_owned(),
             // Default policies don't have names

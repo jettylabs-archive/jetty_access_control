@@ -583,7 +583,7 @@ impl ProcessedDefaultPolicy {
         edges.extend(target_node_indices.into_iter().map(|t| {
             JettyEdge::new(
                 self.name.to_owned(),
-                ag[t].get_node_name().to_owned(),
+                ag[t].get_node_name(),
                 EdgeType::Governs,
             )
         }));
