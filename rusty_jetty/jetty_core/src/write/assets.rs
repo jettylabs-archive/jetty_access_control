@@ -24,7 +24,10 @@ use crate::{
     Jetty,
 };
 
-use self::diff::policies::{diff_policies, PolicyDiff};
+use self::diff::{
+    default_policies::{diff_default_policies, DefaultPolicyDiff},
+    policies::{diff_policies, PolicyDiff},
+};
 
 use super::groups::GroupConfig;
 
@@ -225,7 +228,7 @@ fn get_env_state(jetty: &Jetty) -> Result<CombinedPolicyState> {
                         ),
                         DefaultPolicyState {
                             privileges: policy.privileges.to_owned().into_iter().collect(),
-                            metadata: Default::default(),
+                            metadata: policy.metadata.to_owned(),
                             // We're getting this from the graph - only connector-managed default policies appear in the graph
                             connector_managed: true,
                         },
@@ -249,6 +252,17 @@ pub fn get_policy_diffs(
     let env_state = get_env_state(jetty)?;
 
     Ok(diff_policies(&config_state, &env_state))
+}
+
+/// Get the policy diffs for default policies
+pub fn get_default_policy_diffs(
+    jetty: &Jetty,
+    validated_group_config: &BTreeMap<String, GroupConfig>,
+) -> Result<Vec<DefaultPolicyDiff>> {
+    let config_state = get_config_state(jetty, validated_group_config)?;
+    let env_state = get_env_state(jetty)?;
+
+    Ok(diff_default_policies(&config_state, &env_state))
 }
 
 fn get_policy_agents(idx: NodeIndex, ag: &AccessGraph) -> HashSet<NodeName> {

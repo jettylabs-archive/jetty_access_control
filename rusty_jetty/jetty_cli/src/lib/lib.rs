@@ -31,7 +31,9 @@ use jetty_core::{
     logging::{self, debug, error, info},
     project::{self, groups_cfg_path_local},
     write::{
-        assets::{bootstrap::write_bootstrapped_asset_yaml, get_policy_diffs},
+        assets::{
+            bootstrap::write_bootstrapped_asset_yaml, get_default_policy_diffs, get_policy_diffs,
+        },
         groups::parse_and_validate_groups,
         Diffs,
     },
@@ -324,6 +326,10 @@ async fn diff() -> Result<()> {
     // need to get the group configs and all available connectors
     let policy_diff = get_policy_diffs(&jetty, &validated_group_config)?;
 
+    // now get the policy diff
+    // need to get the group configs and all available connectors
+    let default_policy_diff = get_default_policy_diffs(&jetty, &validated_group_config)?;
+
     // Now print out the diffs
     println!("\nGROUPS\n----------------");
     if !group_diff.is_empty() {
@@ -335,6 +341,15 @@ async fn diff() -> Result<()> {
     println!("\nPOLICIES\n----------------");
     if !policy_diff.is_empty() {
         policy_diff.iter().for_each(|diff| println!("{diff}"));
+    } else {
+        println!("No changes found");
+    };
+
+    println!("\nDEFAULT POLICIES\n----------------");
+    if !default_policy_diff.is_empty() {
+        default_policy_diff
+            .iter()
+            .for_each(|diff| println!("{diff}"));
     } else {
         println!("No changes found");
     };
