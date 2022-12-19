@@ -185,7 +185,13 @@ impl Jetty {
                 },
                 path: default_policy.matching_path.to_owned(),
                 types: default_policy.types.to_owned(),
-                ..Default::default()
+                metadata: if !default_policy.metadata.is_empty() {
+                    Some(default_policy.metadata.to_owned().into_iter().collect())
+                } else {
+                    None
+                },
+                connector_managed: true,
+                description: Default::default(),
             };
 
             res.entry(base_idx)

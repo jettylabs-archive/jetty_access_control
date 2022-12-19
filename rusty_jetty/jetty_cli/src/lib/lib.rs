@@ -228,7 +228,7 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
     ag.serialize_graph(project::data_dir().join(project::graph_filename()))?;
 
     pb.finish_with_message(format!(
-        "Access graph created in data took {:.1} seconds",
+        "Access graph created in {:.1} seconds",
         now.elapsed().as_secs_f32()
     ));
 

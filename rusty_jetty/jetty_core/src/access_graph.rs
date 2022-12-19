@@ -335,6 +335,8 @@ pub struct DefaultPolicyAttributes {
     pub privileges: HashSet<String>,
     /// The path that this policy should be applied to
     pub matching_path: String,
+    /// Metadata associated with the policy
+    pub metadata: HashMap<String, String>,
     /// The types of assets that this should be applied to. If None, it's applied to all types
     pub types: BTreeSet<AssetType>,
     /// Connectors for the default policy. Policies include a single asset and single grantee, so

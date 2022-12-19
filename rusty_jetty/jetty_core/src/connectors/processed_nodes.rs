@@ -277,6 +277,8 @@ pub struct ProcessedDefaultPolicy {
     pub types: BTreeSet<AssetType>,
     /// Who the privilege is granted to
     pub grantee: NodeName,
+    /// The metadata associated with the policy
+    pub metadata: HashMap<String, String>,
     /// Connector that the privilege exists in
     pub connector: ConnectorNamespace,
 }
@@ -547,6 +549,7 @@ impl ProcessedDefaultPolicy {
             privileges: self.privileges.to_owned(),
             matching_path: self.matching_path.to_owned(),
             types: self.types.to_owned(),
+            metadata: self.metadata.to_owned(),
             connectors: [self.connector.to_owned()].into(),
         }))
     }

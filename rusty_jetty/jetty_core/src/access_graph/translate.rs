@@ -450,6 +450,7 @@ impl Translator {
             types,
             grantee,
             connector,
+            metadata: policy.metadata.to_owned(),
         }
     }
 
