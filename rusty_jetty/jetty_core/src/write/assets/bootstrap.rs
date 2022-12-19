@@ -1,22 +1,20 @@
 //! Bootstrap policies from the generated graph into a yaml file
 
 use std::{
-    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
+    collections::{BTreeSet, HashMap, HashSet},
     fs,
     path::PathBuf,
 };
 
 use anyhow::Result;
 use petgraph::stable_graph::NodeIndex;
-use serde::Serialize;
+
 
 use crate::{
     access_graph::{
-        AssetAttributes, AssetPath, DefaultPolicyAttributes, EdgeType, JettyNode, NodeName,
+        AssetAttributes, DefaultPolicyAttributes, EdgeType, JettyNode, NodeName,
         PolicyAttributes,
     },
-    connectors::AssetType,
-    jetty::ConnectorNamespace,
     project, Jetty,
 };
 
@@ -101,7 +99,7 @@ impl Jetty {
         let mut res = HashMap::new();
 
         for ((idx, privileges), grantees) in basic_policies {
-            let base_node = AssetAttributes::try_from(ag[idx].to_owned())?;
+            let _base_node = AssetAttributes::try_from(ag[idx].to_owned())?;
             let mut users = BTreeSet::new();
             let mut groups = BTreeSet::new();
             for g in grantees {
@@ -112,7 +110,7 @@ impl Jetty {
                 };
             }
 
-            let mut yaml_policy = YamlPolicy {
+            let yaml_policy = YamlPolicy {
                 privileges: if privileges.is_empty() {
                     None
                 } else {
@@ -129,7 +127,7 @@ impl Jetty {
 
             res.entry(idx)
                 .and_modify(
-                    |(policies, default_policies): &mut (
+                    |(policies, _default_policies): &mut (
                         BTreeSet<YamlPolicy>,
                         BTreeSet<YamlPolicy>,
                     )| {
@@ -194,7 +192,7 @@ impl Jetty {
 
             res.entry(base_idx)
                 .and_modify(
-                    |(policies, default_policies): &mut (
+                    |(_policies, default_policies): &mut (
                         BTreeSet<YamlPolicy>,
                         BTreeSet<YamlPolicy>,
                     )| {
@@ -241,7 +239,7 @@ impl Jetty {
 
     /// given an asset index, get the directory path to its directory. THis doesn't include project directory prefix or the actual filename
     fn asset_index_to_file_path(&self, idx: NodeIndex) -> PathBuf {
-        let mut reverse_path = self.get_reverse_path(idx);
+        let reverse_path = self.get_reverse_path(idx);
         reverse_path.iter().rev().collect()
     }
 
@@ -290,7 +288,7 @@ impl NodeName {
     fn to_path_part(&self) -> String {
         match &self {
             NodeName::Asset {
-                connector,
+                connector: _,
                 asset_type,
                 path,
             } => clean_string_for_path(format!(

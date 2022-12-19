@@ -63,7 +63,7 @@ impl AccessGraph {
         idx: NodeIndex,
         edge_matcher: fn(&EdgeType) -> bool,
         passthrough_matcher: fn(&JettyNode) -> bool,
-        mut target_matcher: X,
+        target_matcher: X,
         min_depth: usize,
         max_depth: usize,
         current_depth: usize,

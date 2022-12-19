@@ -14,7 +14,7 @@ use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
 
 use coordinator::Environment;
-use futures::{future::BoxFuture, Future, StreamExt, TryFutureExt};
+use futures::{future::BoxFuture, Future, StreamExt};
 use reqwest::RequestBuilder;
 use rest::get_cual_prefix;
 pub use rest::TableauRestClient;
@@ -346,7 +346,7 @@ body:
             .env
             .groups
             .iter()
-            .map(|(name, g)| (g.name.to_owned(), g.id.to_owned()))
+            .map(|(_name, g)| (g.name.to_owned(), g.id.to_owned()))
             .collect();
 
         let group_map_mutex = Arc::new(Mutex::new(group_map));

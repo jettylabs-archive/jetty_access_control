@@ -1,14 +1,13 @@
 //! Module to diff default policies
 
 use std::{
-    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
-    fmt::Display,
+    collections::{BTreeSet, HashSet},
 };
 
-use colored::Colorize;
+
 
 use crate::{
-    access_graph::{AssetPath, NodeName},
+    access_graph::{NodeName},
     connectors::AssetType,
     jetty::ConnectorNamespace,
     write::assets::DefaultPolicyState,

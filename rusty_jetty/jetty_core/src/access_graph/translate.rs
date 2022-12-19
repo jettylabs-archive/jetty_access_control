@@ -18,10 +18,9 @@ use crate::{
         },
         UserIdentifier,
     },
-    cual::{self, Cual},
+    cual::{Cual},
     jetty::ConnectorNamespace,
     permissions::matrix::{DoubleInsert, InsertOrMerge},
-    write::Diffs,
 };
 
 use anyhow::{Context, Result};
@@ -501,7 +500,7 @@ impl Translator {
         connector: &ConnectorNamespace,
     ) -> String {
         match &node_name {
-            NodeName::User(n) => self.global_to_local.users[&connector][&node_name].to_owned(),
+            NodeName::User(_n) => self.global_to_local.users[&connector][&node_name].to_owned(),
             // There may be groups that don't exist yet, so we'll just use the group name without the origin
             NodeName::Group { name, .. } => name.to_owned(),
             NodeName::Asset { .. } => {

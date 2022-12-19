@@ -14,7 +14,7 @@ mod cual;
 mod manifest;
 
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{HashSet},
     path::{Path, PathBuf},
 };
 

@@ -1,6 +1,5 @@
 use std::{
-    collections::{BTreeSet, HashMap, HashSet},
-    sync::Arc,
+    collections::{HashMap, HashSet},
 };
 
 use super::{
@@ -188,7 +187,7 @@ impl Project {
                         .map(|g| RawPolicyGrantee::Group(g)),
                 );
                 for grantee in grantees {
-                    let grantees = res.push(RawDefaultPolicy {
+                    let _grantees = res.push(RawDefaultPolicy {
                         privileges: raw.privileges.to_owned(),
                         root_asset: root_cual.to_owned(),
                         wildcard_path: "/**".to_owned(),

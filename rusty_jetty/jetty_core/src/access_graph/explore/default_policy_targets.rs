@@ -3,7 +3,7 @@
 use std::collections::BTreeSet;
 
 use anyhow::{anyhow, Result};
-use petgraph::{stable_graph::NodeIndex, Direction};
+use petgraph::{stable_graph::NodeIndex};
 
 use crate::access_graph::{AccessGraph, EdgeType, JettyNode, NodeName};
 

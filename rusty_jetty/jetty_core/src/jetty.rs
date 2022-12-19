@@ -7,7 +7,7 @@ use std::{collections::HashMap, fmt::Display};
 
 use anyhow::{anyhow, bail, Context, Result};
 
-use log::{debug, info};
+use log::{debug};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use yaml_peg::serde as yaml;
@@ -233,6 +233,6 @@ fn load_access_graph() -> Result<Option<AccessGraph>> {
             };
             Ok(Some(ag))
         }
-        Err(e) => Ok(None),
+        Err(_e) => Ok(None),
     }
 }

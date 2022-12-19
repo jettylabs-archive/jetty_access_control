@@ -5,7 +5,7 @@ use std::collections::HashSet;
 use jetty_core::connectors::nodes;
 use serde::{Deserialize, Serialize};
 
-use crate::{cual::cual_from_snowflake_obj_name, strip_quotes_and_deserialize};
+use crate::{cual::cual_from_snowflake_obj_name};
 
 #[derive(Deserialize, Serialize, Clone, PartialEq, Eq, Hash)]
 pub enum GrantType {

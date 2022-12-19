@@ -232,12 +232,3 @@ async fn all_members_handler(
         .collect::<Vec<_>>();
     Json(group_attributes)
 }
-
-/// Construct a NodeName::Group form the node_id url parameter
-fn group_name_from_url_param(node_id: String) -> NodeName {
-    let (origin, name) = node_id.split_once("::").unwrap();
-    NodeName::Group {
-        name: name.to_owned(),
-        origin: ConnectorNamespace(origin.to_owned()),
-    }
-}

@@ -14,7 +14,7 @@ use colored::Colorize;
 use serde::Deserialize;
 
 use crate::{
-    access_graph::{AccessGraph, EdgeType, JettyNode, NodeName, PolicyAttributes},
+    access_graph::{AccessGraph, EdgeType, JettyNode, NodeName},
     connectors::WriteCapabilities,
     jetty::ConnectorNamespace,
     project,
@@ -22,7 +22,7 @@ use crate::{
     Jetty,
 };
 
-use super::assets;
+
 
 /// group configuration, as represented in the yaml
 #[derive(Deserialize, Debug)]
@@ -408,7 +408,7 @@ fn generate_diff(
         );
 
         // Get all related policies and remove them as well
-        let remove_policies = ag.get_matching_children(
+        let _remove_policies = ag.get_matching_children(
             v,
             |e| matches!(e, EdgeType::GrantedFrom),
             |_| false,
@@ -606,11 +606,10 @@ mod tests {
 
     use crate::{
         access_graph::{
-            cual_to_asset_name_test, translate::diffs::LocalDiffs, AssetAttributes,
-            GroupAttributes, NodeName, TagAttributes, UserAttributes,
+            translate::diffs::LocalDiffs,
+            GroupAttributes, NodeName, UserAttributes,
         },
         connectors::ConnectorCapabilities,
-        cual::Cual,
         Connector,
     };
 
@@ -776,13 +775,13 @@ mod tests {
             }
         }
 
-        fn plan_changes(&self, diffs: &LocalDiffs) -> Vec<String> {
+        fn plan_changes(&self, _diffs: &LocalDiffs) -> Vec<String> {
             todo!()
         }
 
         fn apply_changes<'life0, 'life1, 'async_trait>(
             &'life0 self,
-            diffs: &'life1 LocalDiffs,
+            _diffs: &'life1 LocalDiffs,
         ) -> core::pin::Pin<
             Box<
                 dyn core::future::Future<Output = Result<String>>

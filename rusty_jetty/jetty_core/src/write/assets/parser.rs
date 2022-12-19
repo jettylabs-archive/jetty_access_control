@@ -3,7 +3,7 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use anyhow::{anyhow, bail, Result};
-use graphviz_rust::attributes::width;
+
 
 use crate::{
     access_graph::{AccessGraph, AssetAttributes, NodeName},
@@ -92,7 +92,7 @@ fn parse_policies(
         // Make sure all the users exist
         if let Some(users) = &policy.users {
             for user in users {
-                let user_name = get_user_name(user, ag)?;
+                let _user_name = get_user_name(user, ag)?;
                 // Now add the matching user to the results map
                 // Depending on whether its a default policy or not...
 
@@ -134,7 +134,7 @@ fn parse_default_policies(
         };
 
         // validate users
-        let users: Option<BTreeSet<NodeName>> = if let Some(users) = &policy.users {
+        let _users: Option<BTreeSet<NodeName>> = if let Some(users) = &policy.users {
             Some(
                 users
                     .into_iter()
@@ -258,8 +258,8 @@ fn get_asset_name(
         .keys()
         .filter(|n| match n {
             NodeName::Asset {
-                connector: ag_connector,
-                asset_type: ag_asset_type,
+                connector: _ag_connector,
+                asset_type: _ag_asset_type,
                 path,
             } => {
                 if connector == connector && asset_type == asset_type && &path.to_string() == name {

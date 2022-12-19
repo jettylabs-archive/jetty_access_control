@@ -1,13 +1,10 @@
 use std::collections::BTreeMap;
 
 use anyhow::{anyhow, bail, Context, Result};
-use serde::Deserialize;
+
 use yaml_peg::{parse, repr::RcRepr};
 
-use crate::{
-    jetty::ConnectorNamespace,
-    write::parser_common::{get_optional_bool, get_optional_string, indicated_msg},
-};
+use crate::{jetty::ConnectorNamespace, write::parser_common::indicated_msg};
 
 use super::{ConnectorName, GroupConfig, GroupMembers, MemberGroup, MemberUser};
 
@@ -160,7 +157,8 @@ Sales Analysts:
             - elliot@allsafe.com
 
 "#;
-        dbg!(parse_groups(&group_config.to_owned()));
+
+        dbg!(parse_groups(&group_config.to_owned())?);
         Ok(())
     }
 }

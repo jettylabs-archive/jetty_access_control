@@ -77,7 +77,6 @@ impl Graph {
 
     /// Check whether a given NodeName exists in the graph, and, if so, return the NodeIndex.
     /// If it does not, returns None
-    #[deprecated = "please transition to referencing nodes by their id rather than their name"]
     pub(crate) fn get_untyped_node_index(&self, node: &NodeName) -> Option<NodeIndex> {
         // I was hoping to do this with a trait object, but it turns out that
         // I couldn't easily return Option<&dyn ToNodeIndex> from the match -

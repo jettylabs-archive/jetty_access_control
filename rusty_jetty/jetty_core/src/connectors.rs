@@ -14,7 +14,6 @@ use crate::{
     access_graph::translate::diffs::LocalDiffs,
     connectors::nodes::ConnectorData,
     jetty::{ConnectorConfig, ConnectorManifest, CredentialsMap},
-    write,
 };
 
 /// Client using the connector

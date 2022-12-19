@@ -2,15 +2,13 @@ use std::collections::HashSet;
 
 use anyhow::{bail, Result};
 use jetty_core::connectors::{
-    nodes::{self, RawDefaultPolicy, RawPolicyGrantee},
+    nodes::{self, RawPolicyGrantee},
     AssetType,
 };
 
 use serde::{Deserialize, Serialize};
 
-use crate::{consts, cual::cual_from_snowflake_obj_name, strip_quotes_and_deserialize};
-
-use super::grant::Grant;
+use crate::{consts, cual::cual_from_snowflake_obj_name};
 
 /// Snowflake future grant entry.
 ///

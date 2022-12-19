@@ -1,15 +1,14 @@
 //! Module to diff regular policies
 
 use std::{
-    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
+    collections::{BTreeMap, HashMap, HashSet},
     fmt::Display,
 };
 
 use colored::Colorize;
 
 use crate::{
-    access_graph::{AssetPath, NodeName},
-    connectors::AssetType,
+    access_graph::{NodeName},
     jetty::ConnectorNamespace,
     write::assets::{CombinedPolicyState, PolicyState},
 };

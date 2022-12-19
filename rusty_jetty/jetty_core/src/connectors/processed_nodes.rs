@@ -16,7 +16,6 @@ use crate::{
     },
     jetty::ConnectorNamespace,
     logging::error,
-    Jetty,
 };
 
 use super::{

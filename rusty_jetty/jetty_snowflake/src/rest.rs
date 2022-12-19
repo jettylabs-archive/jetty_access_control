@@ -3,7 +3,7 @@
 
 use crate::{consts, creds::SnowflakeCredentials};
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result};
 use jsonwebtoken::{encode, get_current_timestamp, Algorithm, EncodingKey, Header};
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware, RequestBuilder};
 use reqwest_retry::{policies::ExponentialBackoff, RetryTransientMiddleware};

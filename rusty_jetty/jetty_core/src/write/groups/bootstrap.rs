@@ -6,7 +6,7 @@ use anyhow::{anyhow, bail, Result};
 use serde::Serialize;
 
 use crate::{
-    access_graph::{AccessGraph, EdgeType, GroupAttributes, JettyEdge, JettyNode, NodeName},
+    access_graph::{EdgeType, JettyNode, NodeName},
     Jetty,
 };
 

@@ -249,7 +249,7 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
 }
 
 async fn bootstrap(overwrite: bool) -> Result<()> {
-    let mut jetty = new_jetty_with_connectors().await.map_err(|_| {
+    let jetty = new_jetty_with_connectors().await.map_err(|_| {
         anyhow!(
             "unable to find {} - make sure you are in a \
         Jetty project directory, or create a new project by running `jetty init`",
@@ -305,7 +305,7 @@ async fn bootstrap(overwrite: bool) -> Result<()> {
 }
 
 async fn diff() -> Result<()> {
-    let mut jetty = new_jetty_with_connectors().await.map_err(|_| {
+    let jetty = new_jetty_with_connectors().await.map_err(|_| {
         anyhow!(
             "unable to find {} - make sure you are in a \
         Jetty project directory, or create a new project by running `jetty init`",
@@ -343,7 +343,7 @@ async fn diff() -> Result<()> {
 }
 
 async fn plan() -> Result<()> {
-    let mut jetty = new_jetty_with_connectors().await.map_err(|_| {
+    let jetty = new_jetty_with_connectors().await.map_err(|_| {
         anyhow!(
             "unable to find {} - make sure you are in a \
         Jetty project directory, or create a new project by running `jetty init`",
@@ -393,7 +393,7 @@ async fn plan() -> Result<()> {
 }
 
 async fn apply() -> Result<()> {
-    let mut jetty = new_jetty_with_connectors().await.map_err(|_| {
+    let jetty = new_jetty_with_connectors().await.map_err(|_| {
         anyhow!(
             "unable to find {} - make sure you are in a \
         Jetty project directory, or create a new project by running `jetty init`",

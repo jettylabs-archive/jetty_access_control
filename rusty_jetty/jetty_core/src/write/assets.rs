@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     access_graph::{
-        merge_map, AccessGraph, AssetPath, DefaultPolicyAttributes, EdgeType, JettyNode, NodeName,
+        AccessGraph, AssetPath, DefaultPolicyAttributes, EdgeType, JettyNode, NodeName,
         PolicyAttributes,
     },
     connectors::{AssetType, WriteCapabilities},
@@ -189,7 +189,7 @@ fn get_env_state(jetty: &Jetty) -> Result<CombinedPolicyState> {
             .nodes
             .default_policies
             .iter()
-            .fold(HashMap::new(), |mut acc, (name, &idx)| {
+            .fold(HashMap::new(), |mut acc, (_name, &idx)| {
                 let policy: DefaultPolicyAttributes = ag[idx].to_owned().try_into().unwrap();
 
                 let agents = get_policy_agents(idx.into(), ag);

@@ -28,14 +28,14 @@ pub use entry_types::{
     Asset, Database, Entry, FutureGrant, Grant, GrantOf, GrantType, Object, Role, RoleName, Schema,
     StandardGrant, Table, User, View, Warehouse,
 };
-use futures::{StreamExt, TryStreamExt};
+use futures::{StreamExt};
 use jetty_core::access_graph::translate::diffs::{groups, LocalDiffs};
 use jetty_core::connectors::{
     AssetType, ConnectorCapabilities, NewConnector, ReadCapabilities, WriteCapabilities,
 };
 use jetty_core::jetty::ConnectorManifest;
 use jetty_core::logging::error;
-use jetty_core::write::groups::DiffDetails;
+
 use rest::{SnowflakeRequestConfig, SnowflakeRestClient, SnowflakeRestConfig};
 use serde::de::value::MapDeserializer;
 
