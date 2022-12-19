@@ -147,6 +147,9 @@ fn get_config_state(
         )?;
     }
 
+    // Now that we've built out the state, expand the default policies:
+    res.expand_default_policies(jetty)?;
+
     Ok(res)
 }
 
@@ -289,7 +292,7 @@ fn get_default_policy_root_asset(idx: NodeIndex, ag: &AccessGraph) -> NodeName {
 impl CombinedPolicyState {
     /// Resolve all the default policies from the config into materialized policies.
     /// This takes into account the hierarchy of the default policies.
-    fn expand_default_policies(&mut self, jetty: Jetty) -> Result<()> {
+    fn expand_default_policies(&mut self, jetty: &Jetty) -> Result<()> {
         let ag = jetty.try_access_graph()?;
 
         // prioritize default policies

@@ -4,6 +4,7 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+        
         {
             "type": "lldb",
             "request": "launch",
@@ -40,6 +41,24 @@
             },
             "args": ["fetch"],
             "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'jetty_cli' (diff)",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=jetty_cli",
+                    "--package=jetty_cli"
+                ],
+                "filter": {
+                    "name": "jetty_cli",
+                    "kind": "bin"
+                }
+            },
+            "args": ["diff"],
+            "cwd": "${workspaceFolder}/jetty-test"
         },
         {
             "type": "lldb",

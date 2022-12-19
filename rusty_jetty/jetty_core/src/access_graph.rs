@@ -455,7 +455,6 @@ impl JettyNode {
         }
     }
 
-    #[allow(dead_code)]
     fn merge_nodes(&self, new_node: &JettyNode) -> Result<JettyNode> {
         match (&self, new_node) {
             (JettyNode::Group(a1), JettyNode::Group(a2)) => {

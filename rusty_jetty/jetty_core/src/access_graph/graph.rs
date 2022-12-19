@@ -280,7 +280,7 @@ impl Graph {
     /// Updates a node. Should return the updated node. Returns an
     /// error if the nodes are incompatible (would require overwriting values).
     /// To be compatible, metadata from each
-    #[allow(dead_code)]
+
     pub(crate) fn merge_nodes(&mut self, idx: NodeIndex, new: &JettyNode) -> Result<JettyNode> {
         // Fetch node from graph
         let node = &mut self.graph[idx];
