@@ -9,16 +9,14 @@ use std::{
 use anyhow::Result;
 use petgraph::stable_graph::NodeIndex;
 
-
 use crate::{
     access_graph::{
-        AssetAttributes, DefaultPolicyAttributes, EdgeType, JettyNode, NodeName,
-        PolicyAttributes,
+        AssetAttributes, DefaultPolicyAttributes, EdgeType, JettyNode, NodeName, PolicyAttributes,
     },
     project, Jetty,
 };
 
-use super::{YamlAssetDoc, YamlAssetIdentifier, YamlPolicy};
+use super::{YamlAssetDoc, YamlAssetIdentifier, YamlDefaultPolicy, YamlPolicy};
 
 struct SimplePolicy {
     privileges: BTreeSet<String>,
@@ -31,7 +29,7 @@ impl Jetty {
     /// Go thorugh the config and return a map of node_index -> (policies, default_policies) that can be written to create the assets directory
     fn build_bootstrapped_policy_config(
         &self,
-    ) -> Result<HashMap<NodeIndex, (BTreeSet<YamlPolicy>, BTreeSet<YamlPolicy>)>> {
+    ) -> Result<HashMap<NodeIndex, (BTreeSet<YamlPolicy>, BTreeSet<YamlDefaultPolicy>)>> {
         let ag = self.try_access_graph()?;
 
         let mut all_basic_policies = Vec::new();
@@ -129,7 +127,7 @@ impl Jetty {
                 .and_modify(
                     |(policies, _default_policies): &mut (
                         BTreeSet<YamlPolicy>,
-                        BTreeSet<YamlPolicy>,
+                        BTreeSet<YamlDefaultPolicy>,
                     )| {
                         policies.insert(yaml_policy.to_owned());
                     },
@@ -173,7 +171,7 @@ impl Jetty {
                 };
             }
 
-            let yaml_policy = YamlPolicy {
+            let yaml_default_policy = YamlDefaultPolicy {
                 privileges: if default_policy.privileges.is_empty() {
                     None
                 } else {
@@ -185,8 +183,8 @@ impl Jetty {
                 } else {
                     Some(groups)
                 },
-                path: Some(default_policy.matching_path.to_owned()),
-                types: Some(default_policy.types.to_owned()),
+                path: default_policy.matching_path.to_owned(),
+                types: default_policy.types.to_owned(),
                 ..Default::default()
             };
 
@@ -194,12 +192,12 @@ impl Jetty {
                 .and_modify(
                     |(_policies, default_policies): &mut (
                         BTreeSet<YamlPolicy>,
-                        BTreeSet<YamlPolicy>,
+                        BTreeSet<YamlDefaultPolicy>,
                     )| {
-                        default_policies.insert(yaml_policy.to_owned());
+                        default_policies.insert(yaml_default_policy.to_owned());
                     },
                 )
-                .or_insert(([].into(), [yaml_policy].into()));
+                .or_insert(([].into(), [yaml_default_policy].into()));
         }
 
         Ok(res)

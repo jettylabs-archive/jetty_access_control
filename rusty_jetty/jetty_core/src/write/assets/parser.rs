@@ -11,7 +11,10 @@ use crate::{
     Jetty,
 };
 
-use super::{CombinedPolicyState, DefaultPolicyState, PolicyState, YamlAssetDoc, YamlPolicy};
+use super::{
+    CombinedPolicyState, DefaultPolicyState, PolicyState, YamlAssetDoc, YamlDefaultPolicy,
+    YamlPolicy,
+};
 
 /// Parse the configuration into a policy state struct
 pub(crate) fn parse_asset_config(
@@ -112,7 +115,7 @@ fn parse_policies(
 
 fn parse_default_policies(
     asset_name: &NodeName,
-    default_policies: &BTreeSet<YamlPolicy>,
+    default_policies: &BTreeSet<YamlDefaultPolicy>,
     connector: &ConnectorNamespace,
     config_groups: &BTreeMap<String, BTreeMap<ConnectorNamespace, NodeName>>,
     jetty: &Jetty,
@@ -145,23 +148,18 @@ fn parse_default_policies(
         };
 
         // make sure that types are specified and that they are all legal
-        match &policy.types {
-            Some(types) => {
-                let allowed_types = jetty.connector_manifests()[connector]
-                    .asset_privileges
-                    .to_owned()
-                    .into_keys()
-                    .collect::<HashSet<_>>();
-                for asset_type in types {
-                    if !allowed_types.contains(asset_type) {
-                        bail!(
-                            "the type `{}` is not allowed for this connector",
-                            asset_type.to_string()
-                        )
-                    }
-                }
+        let allowed_types = jetty.connector_manifests()[connector]
+            .asset_privileges
+            .to_owned()
+            .into_keys()
+            .collect::<HashSet<_>>();
+        for asset_type in &policy.types {
+            if !allowed_types.contains(asset_type) {
+                bail!(
+                    "the type `{}` is not allowed for this connector",
+                    asset_type.to_string()
+                )
             }
-            None => bail!("asset types must be specified for default policies"),
         }
 
         // Make sure the specified privileges are allowed/exist
@@ -175,12 +173,8 @@ fn parse_default_policies(
             )?;
         }
 
-        // make sure the a path is specified and is legal
-        if let Some(path) = &policy.path {
-            path_is_legal(path)?;
-        } else {
-            bail!("path must be specified for default policies")
-        }
+        // make sure the a path is legal
+        path_is_legal(&policy.path)?;
 
         // now insert a policy for each user/group
         let mut agents = Vec::new();
@@ -195,8 +189,8 @@ fn parse_default_policies(
             res_policies.insert(
                 (
                     asset_name.to_owned(),
-                    policy.path.to_owned().unwrap(),
-                    policy.types.to_owned().unwrap(),
+                    policy.path.to_owned(),
+                    policy.types.to_owned(),
                     agent.to_owned(),
                 ),
                 DefaultPolicyState {
@@ -299,24 +293,17 @@ fn privileges_are_legal(
     asset_name: &NodeName,
     jetty: &Jetty,
     connector: &ConnectorNamespace,
-    types: Option<Option<BTreeSet<AssetType>>>,
+    types: Option<BTreeSet<AssetType>>,
 ) -> Result<()> {
     let ag = jetty.try_access_graph()?;
     let connector_privileges = &jetty.connector_manifests()[connector].asset_privileges;
     // if types were passed, it's a default policy
     let allowed_privilege_set = if let Some(t) = types {
         let connector_privileges = &jetty.connector_manifests()[connector].asset_privileges;
-        if let Some(ts) = t {
-            ts.iter()
-                .flat_map(|t| connector_privileges[t].to_owned())
-                .collect::<HashSet<_>>()
-        } else {
-            connector_privileges
-                .values()
-                .flatten()
-                .map(|v| v.to_owned())
-                .collect::<HashSet<_>>()
-        }
+
+        t.iter()
+            .flat_map(|t| connector_privileges[t].to_owned())
+            .collect::<HashSet<_>>()
     }
     // Otherwise it's a normal policy, so get the allowed privileges for that type
     else {
