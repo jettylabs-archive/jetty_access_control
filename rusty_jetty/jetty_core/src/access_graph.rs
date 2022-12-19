@@ -836,7 +836,6 @@ impl AccessGraph {
 
     // Get indices by id
 
-    #[deprecated = "please transition to referencing nodes by their id rather than their name"]
     /// Get the untyped node index for a given NodeName
     pub fn get_untyped_index_from_name(&self, node_name: &NodeName) -> Option<NodeIndex> {
         self.graph.get_untyped_node_index(node_name)
