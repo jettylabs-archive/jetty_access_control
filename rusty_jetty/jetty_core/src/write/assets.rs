@@ -37,9 +37,8 @@ pub(crate) struct PolicyState {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct DefaultPolicyState {
     privileges: BTreeSet<String>,
-    groups: BTreeSet<NodeName>,
-    users: BTreeSet<NodeName>,
     metadata: HashMap<String, String>,
+    connector_managed: bool,
 }
 #[derive(Serialize, Deserialize, Debug, Default, Clone, Ord, PartialOrd, Eq, PartialEq)]
 struct YamlAssetDoc {
@@ -101,7 +100,7 @@ pub(crate) struct CombinedPolicyState {
     /// HashMap of <(NodeName::Asset, NodeName::User | NodeName::Group), PolicyState>
     policies: HashMap<(NodeName, NodeName), PolicyState>,
     /// Represents the future policies
-    /// HashMap of <(NodeName::Asset, wildcard path, Asset Types), DefaultPolicyState>
+    /// HashMap of <(NodeName::Asset, wildcard path, Asset Types, Grantee), DefaultPolicyState>
     default_policies:
         HashMap<(NodeName, String, BTreeSet<AssetType>, NodeName), DefaultPolicyState>,
 }
@@ -227,14 +226,8 @@ fn get_env_state(jetty: &Jetty) -> Result<CombinedPolicyState> {
                         DefaultPolicyState {
                             privileges: policy.privileges.to_owned().into_iter().collect(),
                             metadata: Default::default(),
-                            groups: match agent {
-                                NodeName::Group { .. } => BTreeSet::from([agent.to_owned()]),
-                                _ => Default::default(),
-                            },
-                            users: match agent {
-                                NodeName::User(_) => BTreeSet::from([agent.to_owned()]),
-                                _ => Default::default(),
-                            },
+                            // We're getting this from the graph - only connector-managed default policies appear in the graph
+                            connector_managed: true,
                         },
                     );
                 }
@@ -358,36 +351,31 @@ impl CombinedPolicyState {
                     grantee: Box::new(grantee.to_owned()),
                 })?;
 
-                let mut grantees = default_policy_state.users.to_owned();
-                grantees.extend(default_policy_state.groups.to_owned());
+                let policy_state = PolicyState {
+                    privileges: default_policy_state
+                        .privileges
+                        .to_owned()
+                        .into_iter()
+                        .collect(),
+                    // FUTURE: for now, just leaving this blank. I think we'll need a mechanism to specify policy-level metadata on a default policy
+                    metadata: Default::default(),
+                };
 
-                for grantee in grantees {
-                    let policy_state = PolicyState {
-                        privileges: default_policy_state
-                            .privileges
-                            .to_owned()
-                            .into_iter()
+                intermediate_map
+                    .get_mut(&priority)
+                    .unwrap()
+                    .merge_combining_if_exists(CombinedPolicyState {
+                        policies: targets
+                            .iter()
+                            .map(|&t| {
+                                (
+                                    (ag[t].get_node_name(), grantee.to_owned()),
+                                    policy_state.to_owned(),
+                                )
+                            })
                             .collect(),
-                        // FUTURE: for now, just leaving this blank. I think we'll need a mechanism to specify policy-level metadata on a default policy
-                        metadata: Default::default(),
-                    };
-
-                    intermediate_map
-                        .get_mut(&priority)
-                        .unwrap()
-                        .merge_combining_if_exists(CombinedPolicyState {
-                            policies: targets
-                                .iter()
-                                .map(|&t| {
-                                    (
-                                        (ag[t].get_node_name(), grantee.to_owned()),
-                                        policy_state.to_owned(),
-                                    )
-                                })
-                                .collect(),
-                            default_policies: Default::default(),
-                        })?;
-                }
+                        default_policies: Default::default(),
+                    })?;
             }
         }
 
@@ -449,6 +437,7 @@ impl CombinedPolicyState {
                 }
             };
         }
+        // Merge the default policies
         for (other_k, other_v) in other.default_policies {
             let existing_entry = self.default_policies.get_mut(&other_k);
             match existing_entry {

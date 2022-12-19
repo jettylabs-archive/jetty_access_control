@@ -8,7 +8,7 @@ use std::{
 use colored::Colorize;
 
 use crate::{
-    access_graph::{NodeName},
+    access_graph::NodeName,
     jetty::ConnectorNamespace,
     write::assets::{CombinedPolicyState, PolicyState},
 };
@@ -22,7 +22,7 @@ pub struct PolicyDiff {
     pub(crate) users: BTreeMap<NodeName, DiffDetails>,
     /// Same, but for groups
     pub(crate) groups: BTreeMap<NodeName, DiffDetails>,
-    pub(crate) connectors: HashSet<ConnectorNamespace>,
+    pub(crate) connector: ConnectorNamespace,
 }
 
 #[derive(Debug, Clone)]
@@ -41,7 +41,7 @@ pub(crate) enum DiffDetails {
 struct PolicyDiffHelper {
     pub(crate) users: BTreeMap<NodeName, DiffDetails>,
     pub(crate) groups: BTreeMap<NodeName, DiffDetails>,
-    pub(crate) connectors: HashSet<ConnectorNamespace>,
+    pub(crate) connector: ConnectorNamespace,
 }
 
 impl Display for PolicyDiff {
@@ -68,12 +68,7 @@ fn print_diff_inner_details(
     for (name, details) in inner_details {
         match details {
             DiffDetails::AddAgent { add } => {
-                text += &format!(
-                    "{}",
-                    format!("  + {}{}\n", prefix, name)
-                        .as_str()
-                        .green()
-                );
+                text += &format!("{}", format!("  + {}{}\n", prefix, name).as_str().green());
                 if !add.privileges.is_empty() {
                     text += "      privileges:\n";
                     for privilege in &add.privileges {
@@ -90,20 +85,10 @@ fn print_diff_inner_details(
                 }
             }
             DiffDetails::RemoveAgent => {
-                text += &format!(
-                    "{}",
-                    format!("  - {}{}\n", prefix, name)
-                        .as_str()
-                        .red()
-                );
+                text += &format!("{}", format!("  - {}{}\n", prefix, name).as_str().red());
             }
             DiffDetails::ModifyAgent { add, remove } => {
-                text += &format!(
-                    "{}",
-                    format!("  ~ {}{}\n", prefix, name)
-                        .as_str()
-                        .yellow()
-                );
+                text += &format!("{}", format!("  ~ {}{}\n", prefix, name).as_str().yellow());
                 if !add.privileges.is_empty() || !remove.privileges.is_empty() {
                     text += "      privileges:\n";
                     for privilege in &add.privileges {
@@ -119,7 +104,7 @@ fn print_diff_inner_details(
                     for (k, v) in &add.metadata {
                         text += &format!("{}", format!("        + {k}: {v}\n").as_str().green());
                     }
-                    for (k, v) in &add.metadata {
+                    for (k, v) in &remove.metadata {
                         text += &format!("{}", format!("        - {k}: {v}\n").as_str().red());
                     }
                 }
@@ -172,7 +157,12 @@ pub(crate) fn diff_policies(
                 _ => panic!("got wrong node type while diffing"),
             })
             .or_insert({
+                // get the connector from the asset
                 let mut d = PolicyDiffHelper::default();
+                d.connector = match &config_key.0 {
+                    NodeName::Asset { connector, .. } => connector.to_owned(),
+                    _ => panic!("got wrong node type while diffing"),
+                };
                 match &config_key.1 {
                     NodeName::User(_) => {
                         d.users.insert(config_key.1.to_owned(), diff_details);
@@ -209,7 +199,7 @@ pub(crate) fn diff_policies(
             asset,
             users: helper.users,
             groups: helper.groups,
-            connectors: helper.connectors,
+            connector: helper.connector,
         })
         .collect::<Vec<_>>();
     collected_diffs.sort_by_key(|f| f.asset.to_string());

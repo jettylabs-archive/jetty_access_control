@@ -195,20 +195,13 @@ fn parse_default_policies(
                 ),
                 DefaultPolicyState {
                     privileges: policy.privileges.to_owned().unwrap_or_default(),
-                    groups: match agent {
-                        NodeName::Group { .. } => BTreeSet::from([agent.to_owned()]),
-                        _ => Default::default(),
-                    },
-                    users: match agent {
-                        NodeName::User(_) => BTreeSet::from([agent.to_owned()]),
-                        _ => Default::default(),
-                    },
                     metadata: policy
                         .metadata
                         .to_owned()
                         .unwrap_or_default()
                         .into_iter()
                         .collect(),
+                    connector_managed: policy.connector_managed,
                 },
             );
         }
