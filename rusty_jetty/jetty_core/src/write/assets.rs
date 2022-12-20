@@ -48,7 +48,11 @@ struct YamlAssetDoc {
     identifier: YamlAssetIdentifier,
     #[serde(skip_serializing_if = "BTreeSet::is_empty", default)]
     policies: BTreeSet<YamlPolicy>,
-    #[serde(skip_serializing_if = "BTreeSet::is_empty", default)]
+    #[serde(
+        skip_serializing_if = "BTreeSet::is_empty",
+        default,
+        rename = "default policies"
+    )]
     default_policies: BTreeSet<YamlDefaultPolicy>,
 }
 
@@ -58,32 +62,24 @@ struct YamlAssetIdentifier {
     #[serde(skip_serializing_if = "Option::is_none")]
     asset_type: Option<AssetType>,
     connector: ConnectorNamespace,
+    id: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone, Ord, PartialOrd, Eq, PartialEq)]
 struct YamlPolicy {
     #[serde(skip_serializing_if = "Option::is_none")]
     description: Option<String>,
+    privileges: Option<BTreeSet<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     users: Option<BTreeSet<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     groups: Option<BTreeSet<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     metadata: Option<BTreeMap<String, String>>,
-    privileges: Option<BTreeSet<String>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone, Ord, PartialOrd, Eq, PartialEq)]
 struct YamlDefaultPolicy {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    description: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    users: Option<BTreeSet<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    groups: Option<BTreeSet<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    metadata: Option<BTreeMap<String, String>>,
-    privileges: Option<BTreeSet<String>>,
     /// this is specifically for default policies
     path: String,
     /// this is specifically for default policies - the types on which the policy should be applied
@@ -91,6 +87,15 @@ struct YamlDefaultPolicy {
     #[serde(skip_serializing_if = "not_connector_managed", default)]
     /// Whether this default policy is managed by the connector (rather than just by Jetty)
     connector_managed: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    description: Option<String>,
+    privileges: Option<BTreeSet<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    users: Option<BTreeSet<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    groups: Option<BTreeSet<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    metadata: Option<BTreeMap<String, String>>,
 }
 
 fn not_connector_managed(v: &bool) -> bool {

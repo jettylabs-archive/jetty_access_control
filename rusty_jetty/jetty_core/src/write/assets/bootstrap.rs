@@ -360,7 +360,8 @@ impl Jetty {
             .into_iter()
             .map(
                 |(idx, (policies, default_policies))| -> Result<(PathBuf, String)> {
-                    let node_name = ag[idx].get_node_name();
+                    let attributes: AssetAttributes = ag[idx].to_owned().try_into()?;
+                    let node_name = attributes.name();
                     match node_name {
                         NodeName::Asset {
                             connector,
@@ -371,8 +372,9 @@ impl Jetty {
                             yaml_peg::serde::to_string(&YamlAssetDoc {
                                 identifier: YamlAssetIdentifier {
                                     name: path.to_string(),
-                                    asset_type,
-                                    connector,
+                                    asset_type: asset_type.to_owned(),
+                                    connector: connector.to_owned(),
+                                    id: attributes.id.to_string(),
                                 },
                                 policies,
                                 default_policies,
@@ -496,16 +498,6 @@ fn compact_regular_policies(
 ) -> HashSet<(NodeName, NodeName)> {
     let mut removal_list = HashSet::new();
     for (other_k, other_v) in expanded_default_policies {
-        match &other_k.0 {
-            NodeName::Asset { path, .. } => {
-                if path.components().join("").ends_with("bob") {
-                    println!("mario?");
-                    dbg!(&other_k);
-                }
-            }
-            _ => (),
-        }
-
         let entry = existing_policies.get(&other_k).cloned();
         match entry {
             Some(p) => {
