@@ -128,6 +128,11 @@ pub(crate) fn diff_policies(
     // iterate through each of the policies in the config. If it doesn't exist in the environment, add it to the policy_diffs.
     // If it does exist, remove it from my copy of the the environment and diff the details.
     for (config_key, config_value) in config_policies {
+        // If it's an empty policy (no privileges or metadata), skip it
+        if config_value.privileges.is_empty() && config_value.metadata.is_empty() {
+            continue;
+        }
+
         let diff_details = match env_policies.remove(config_key) {
             Some(env_state) => {
                 if &env_state == config_value {
@@ -177,7 +182,12 @@ pub(crate) fn diff_policies(
     }
 
     // Now iterate through whatever is left in the env_policies and add removal diffs
-    for (env_key, _env_value) in &env_policies {
+    for (env_key, env_value) in &env_policies {
+        // If it's an empty policy (no privileges or metadata), skip it
+        if env_value.privileges.is_empty() && env_value.metadata.is_empty() {
+            continue;
+        }
+
         let diff_details = DiffDetails::RemoveAgent;
         policy_diffs
             // add to the policy diff for the asset

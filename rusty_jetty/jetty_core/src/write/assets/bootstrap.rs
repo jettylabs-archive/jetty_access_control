@@ -152,15 +152,26 @@ impl Jetty {
             .map(|k| k.to_owned())
             .collect::<Vec<_>>();
         priority_levels.sort();
+
+        let mut removal_list = HashSet::new();
         for priority in priority_levels.into_iter().rev() {
-            compact_regular_policies(&mut basic_policies, &expanded_default_policies[&priority]);
+            removal_list.extend(compact_regular_policies(
+                &mut basic_policies,
+                &expanded_default_policies[&priority],
+            ));
         }
+        // now remove redundant policies
+        for policy in removal_list {
+            basic_policies.remove(&policy);
+        }
+
         // At this point, we basic_policies contains all the non-default policies to bootstrap, and default_policies contains all the defaults. We're ready to turn
         // them into yaml structs
 
         // Now fold and add the policies to the output map
         let mut res = HashMap::new();
         self.fold_and_build_yaml_policies(basic_policies, &mut res)?;
+        self.fold_and_build_yaml_default_policies(default_policies, &mut res)?;
 
         Ok(res)
     }
@@ -472,23 +483,35 @@ pub fn write_bootstrapped_asset_yaml(assets: HashMap<PathBuf, String>) -> Result
 }
 
 /// merge a CombinedPolicyState struct into self, compacting for default policies.
-///  - If there's an existing policy that exactly matches the existing policy, delete the existing one
+///  - If there's an existing policy that exactly matches the existing policy, add the existing one to the removal list
 ///  - If there's a policy that doesn't match, just skip and move on
 ///  - If there's not a matching policy, create a new one with no privileges and no metadata
+/// return the removal list so that unneeded polices can be removed
 fn compact_regular_policies(
     existing_policies: &mut HashMap<(NodeName, NodeName), PolicyState>,
     CombinedPolicyState {
         policies: expanded_default_policies,
         ..
     }: &CombinedPolicyState,
-) {
+) -> HashSet<(NodeName, NodeName)> {
+    let mut removal_list = HashSet::new();
     for (other_k, other_v) in expanded_default_policies {
+        match &other_k.0 {
+            NodeName::Asset { path, .. } => {
+                if path.components().join("").ends_with("bob") {
+                    println!("mario?");
+                    dbg!(&other_k);
+                }
+            }
+            _ => (),
+        }
+
         let entry = existing_policies.get(&other_k).cloned();
         match entry {
             Some(p) => {
                 // if the policy matches a default policy, drop it
                 if p == other_v.to_owned() {
-                    existing_policies.remove(&other_k);
+                    removal_list.insert(other_k.to_owned());
                 }
                 // if it doesn't match a default policy, leave it as is
                 else {
@@ -501,4 +524,6 @@ fn compact_regular_policies(
             }
         };
     }
+    // at the end, remove all the unneeded policies
+    removal_list
 }
