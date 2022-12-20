@@ -184,12 +184,32 @@ pub(crate) fn diff_policies(
             .entry(env_key.0.to_owned())
             .and_modify(|d| match &env_key.1 {
                 NodeName::User(_) => {
-                    d.users.insert(env_key.1.to_owned(), diff_details);
+                    d.users
+                        .insert(env_key.1.to_owned(), diff_details.to_owned());
                 }
                 NodeName::Group { .. } => {
-                    d.groups.insert(env_key.1.to_owned(), diff_details);
+                    d.groups
+                        .insert(env_key.1.to_owned(), diff_details.to_owned());
                 }
                 _ => panic!("got wrong node type while diffing"),
+            })
+            .or_insert({
+                // get the connector from the asset
+                let mut d = PolicyDiffHelper::default();
+                d.connector = match &env_key.0 {
+                    NodeName::Asset { connector, .. } => connector.to_owned(),
+                    _ => panic!("got wrong node type while diffing"),
+                };
+                match &env_key.1 {
+                    NodeName::User(_) => {
+                        d.users.insert(env_key.1.to_owned(), diff_details);
+                    }
+                    NodeName::Group { .. } => {
+                        d.groups.insert(env_key.1.to_owned(), diff_details);
+                    }
+                    _ => panic!("got wrong node type while diffing"),
+                }
+                d
             });
     }
 

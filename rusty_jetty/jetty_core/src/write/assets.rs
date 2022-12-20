@@ -46,6 +46,7 @@ pub(crate) struct DefaultPolicyState {
 #[derive(Serialize, Deserialize, Debug, Default, Clone, Ord, PartialOrd, Eq, PartialEq)]
 struct YamlAssetDoc {
     identifier: YamlAssetIdentifier,
+    #[serde(skip_serializing_if = "BTreeSet::is_empty", default)]
     policies: BTreeSet<YamlPolicy>,
     #[serde(skip_serializing_if = "BTreeSet::is_empty", default)]
     default_policies: BTreeSet<YamlDefaultPolicy>,
@@ -97,7 +98,7 @@ fn not_connector_managed(v: &bool) -> bool {
 }
 
 /// State for policies and default policies
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub(crate) struct CombinedPolicyState {
     /// Represents the basic policies
     /// HashMap of <(NodeName::Asset, NodeName::User | NodeName::Group), PolicyState>

@@ -3,7 +3,7 @@
 use std::collections::BTreeSet;
 
 use anyhow::{anyhow, Result};
-use petgraph::{stable_graph::NodeIndex};
+use petgraph::stable_graph::NodeIndex;
 
 use crate::access_graph::{AccessGraph, EdgeType, JettyNode, NodeName};
 
@@ -65,6 +65,15 @@ struct WildcardDetails {
     open_ended: bool,
 }
 fn wildcard_parser(wildcard_string: &String) -> WildcardDetails {
+    let wildcard_string = match wildcard_string.strip_prefix('/') {
+        Some(s) => s.to_owned(),
+        None => wildcard_string.to_owned(),
+    };
+    let wildcard_string = match wildcard_string.strip_suffix('/') {
+        Some(s) => s.to_owned(),
+        None => wildcard_string.to_owned(),
+    };
+
     let parts: Vec<_> = wildcard_string.split('/').collect();
     WildcardDetails {
         depth: parts.len(),
@@ -80,7 +89,7 @@ mod tests {
     fn test_wildcard_parser() -> Result<()> {
         let test_cases = [
             ("**", 1, true),
-            ("*", 1, false),
+            ("/*", 1, false),
             ("*/**", 2, true),
             ("*/*", 2, false),
             ("*/*/*/*/*", 5, false),
