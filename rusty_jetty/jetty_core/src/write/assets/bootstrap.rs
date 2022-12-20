@@ -6,34 +6,30 @@ use std::{
     path::PathBuf,
 };
 
-use anyhow::Result;
+use anyhow::{anyhow, bail, Result};
 use petgraph::stable_graph::NodeIndex;
 
 use crate::{
     access_graph::{
         AssetAttributes, DefaultPolicyAttributes, EdgeType, JettyNode, NodeName, PolicyAttributes,
     },
+    connectors::AssetType,
     project, Jetty,
 };
 
-use super::{YamlAssetDoc, YamlAssetIdentifier, YamlDefaultPolicy, YamlPolicy};
-
-struct SimplePolicy {
-    privileges: BTreeSet<String>,
-    asset: NodeIndex,
-    users: HashSet<NodeIndex>,
-    groups: HashSet<NodeIndex>,
-}
+use super::{
+    CombinedPolicyState, DefaultPolicyState, PolicyState, YamlAssetDoc, YamlAssetIdentifier,
+    YamlDefaultPolicy, YamlPolicy,
+};
 
 impl Jetty {
-    /// Go thorugh the config and return a map of node_index -> (policies, default_policies) that can be written to create the assets directory
-    fn build_bootstrapped_policy_config(
-        &self,
-    ) -> Result<HashMap<NodeIndex, (BTreeSet<YamlPolicy>, BTreeSet<YamlDefaultPolicy>)>> {
+    /// Collect the policies in the graph and return a map of <(asset name, agent name), SimplePolicy>
+    fn build_simple_policy_map(&self) -> Result<HashMap<(NodeName, NodeName), PolicyState>> {
         let ag = self.try_access_graph()?;
 
-        let mut all_basic_policies = Vec::new();
+        let mut all_basic_policies = HashMap::new();
 
+        // FUTURE: this should be updated so that each policy has a single grantee and a single asset
         let policies = &ag.graph.nodes.policies;
         for (_, idx) in policies {
             let attributes = PolicyAttributes::try_from(ag[*idx].clone())?;
@@ -63,83 +59,38 @@ impl Jetty {
                 Some(1),
             );
 
-            for asset in target_assets {
-                all_basic_policies.push(SimplePolicy {
-                    privileges: privileges.clone().into_iter().collect(),
-                    asset,
-                    users: target_users.iter().copied().collect(),
-                    groups: target_groups.iter().copied().collect(),
-                })
-            }
-        }
+            let grantees = [target_groups, target_users].concat();
 
-        // We'll assume that all privileges for a given user/group were already combined.
-
-        // Fold based on the name of the asset and the privileges -> If they are equal, create
-        // a single entry - this means multiple groups/users
-        let basic_policies = all_basic_policies.into_iter().fold(
-            HashMap::new(),
-            |mut acc: HashMap<(NodeIndex, BTreeSet<String>), HashSet<NodeIndex>>, x| {
-                acc.entry((x.asset.to_owned(), x.privileges.to_owned()))
-                    .and_modify(|f| {
-                        f.extend(&x.groups);
-                        f.extend(&x.users);
-                    })
-                    .or_insert({
-                        let mut z = x.groups.to_owned();
-                        z.extend(x.users);
-                        z
-                    });
-                acc
-            },
-        );
-        // Now push the policies to the results
-        let mut res = HashMap::new();
-
-        for ((idx, privileges), grantees) in basic_policies {
-            let _base_node = AssetAttributes::try_from(ag[idx].to_owned())?;
-            let mut users = BTreeSet::new();
-            let mut groups = BTreeSet::new();
-            for g in grantees {
-                match &ag[g] {
-                    JettyNode::Group(attr) => groups.insert(attr.name.to_string()),
-                    JettyNode::User(attr) => users.insert(attr.name.to_string()),
-                    _ => panic!("wrong node type as grantee: expected user or group"),
-                };
-            }
-
-            let yaml_policy = YamlPolicy {
-                privileges: if privileges.is_empty() {
-                    None
-                } else {
-                    Some(privileges)
-                },
-                users: if users.is_empty() { None } else { Some(users) },
-                groups: if groups.is_empty() {
-                    None
-                } else {
-                    Some(groups)
-                },
-                ..Default::default()
+            let simple_policy = PolicyState {
+                privileges: attributes.privileges.to_owned().into_iter().collect(),
+                metadata: Default::default(),
             };
 
-            res.entry(idx)
-                .and_modify(
-                    |(policies, _default_policies): &mut (
-                        BTreeSet<YamlPolicy>,
-                        BTreeSet<YamlDefaultPolicy>,
-                    )| {
-                        policies.insert(yaml_policy.to_owned());
-                    },
-                )
-                .or_insert(([yaml_policy].into(), [].into()));
+            for asset in target_assets {
+                for &grantee in &grantees {
+                    all_basic_policies.insert(
+                        (ag[asset].get_node_name(), ag[grantee].get_node_name()),
+                        simple_policy.to_owned(),
+                    );
+                }
+            }
         }
+        Ok(all_basic_policies)
+    }
 
-        // Pull in default policies. Not really going to clean these up, for now at least.
+    /// Collect all the default policies from the graph and return a map of <(Asset, path, types, grantee), DefaultPolicyState>
+    fn build_default_policy_map(
+        &self,
+    ) -> Result<HashMap<(NodeName, String, BTreeSet<AssetType>, NodeName), DefaultPolicyState>>
+    {
+        let ag = self.try_access_graph()?;
+        // The contract for getting default policies from connectors will require that it be one agent <-> asset (including root node, path, and type) per policy.
         let default_policies = &ag.graph.nodes.default_policies;
+
+        let mut res = HashMap::new();
         // Push the future policies to the results
         for (_, &idx) in default_policies {
-            let default_policy = DefaultPolicyAttributes::try_from(ag[idx].to_owned())?;
+            let attributes = DefaultPolicyAttributes::try_from(ag[idx].to_owned())?;
             // There should only be one base_node
             let binding = ag.get_matching_children(
                 idx,
@@ -159,23 +110,108 @@ impl Jetty {
                 Some(1),
                 Some(1),
             );
+            for grantee in grantees {
+                res.insert(
+                    (
+                        ag[base_idx].get_node_name(),
+                        attributes.matching_path.to_owned(),
+                        attributes.types.to_owned(),
+                        ag[grantee].get_node_name(),
+                    ),
+                    DefaultPolicyState {
+                        privileges: attributes.privileges.to_owned().into_iter().collect(),
+                        metadata: attributes.metadata.to_owned(),
+                        connector_managed: true,
+                    },
+                );
+            }
+        }
+        Ok(res)
+    }
 
+    /// Go thorugh the config and return a map of node_index (asset) -> (policies, default_policies) that can be written to create the assets directory
+    fn build_bootstrapped_policy_config(
+        &self,
+    ) -> Result<HashMap<NodeIndex, (BTreeSet<YamlPolicy>, BTreeSet<YamlDefaultPolicy>)>> {
+        let ag = self.try_access_graph()?;
+        let mut basic_policies = self.build_simple_policy_map()?;
+        let default_policies = self.build_default_policy_map()?;
+
+        // now expand the default policies to make a more compact representation of the policies
+        let default_policy_state = CombinedPolicyState {
+            // the following function doesn't actually use the policies part, so I don't need to pass it in
+            policies: Default::default(),
+            default_policies: default_policies.to_owned(),
+        };
+
+        let expanded_default_policies = default_policy_state.get_prioritized_policies(self)?;
+
+        // now iterate through the expanded default policies from highest priority to lowest and use them to compress the basic policies
+        let mut priority_levels = expanded_default_policies
+            .keys()
+            .map(|k| k.to_owned())
+            .collect::<Vec<_>>();
+        priority_levels.sort();
+        for priority in priority_levels.into_iter().rev() {
+            compact_regular_policies(&mut basic_policies, &expanded_default_policies[&priority]);
+        }
+        // At this point, we basic_policies contains all the non-default policies to bootstrap, and default_policies contains all the defaults. We're ready to turn
+        // them into yaml structs
+
+        // Now fold and add the policies to the output map
+        let mut res = HashMap::new();
+        self.fold_and_build_yaml_policies(basic_policies, &mut res)?;
+
+        Ok(res)
+    }
+
+    fn fold_and_build_yaml_policies(
+        &self,
+        basic_policies: HashMap<(NodeName, NodeName), PolicyState>,
+        policy_map: &mut HashMap<NodeIndex, (BTreeSet<YamlPolicy>, BTreeSet<YamlDefaultPolicy>)>,
+    ) -> Result<()> {
+        let ag = self.try_access_graph()?;
+        let folded_policies = basic_policies.into_iter().fold(
+            HashMap::new(),
+            // acc is HashMap of <(Asset, Privileges, Metadata), Set<grantees>>
+            |mut acc: HashMap<
+                (NodeName, BTreeSet<String>, BTreeSet<(String, String)>),
+                HashSet<NodeName>,
+            >,
+             ((policy_asset, policy_grantee), policy_state)| {
+                acc.entry((
+                    policy_asset.to_owned(),
+                    policy_state.privileges.to_owned().into_iter().collect(),
+                    policy_state.metadata.to_owned().into_iter().collect(),
+                ))
+                .and_modify(|f| {
+                    f.insert(policy_grantee.to_owned());
+                })
+                .or_insert([policy_grantee.to_owned()].into());
+                acc
+            },
+        );
+
+        for ((asset, privileges, metadata), grantees) in &folded_policies {
+            // split users and groups
             let mut users = BTreeSet::new();
             let mut groups = BTreeSet::new();
-
             for g in grantees {
-                match &ag[g] {
+                match &ag[ag
+                    .get_untyped_index_from_name(g)
+                    .ok_or(anyhow!("unable to find grantee node in graph"))?]
+                {
                     JettyNode::Group(attr) => groups.insert(attr.name.to_string()),
                     JettyNode::User(attr) => users.insert(attr.name.to_string()),
-                    _ => panic!("wrong node type as grantee: expected user or group"),
+                    _ => bail!("wrong node type as grantee: expected user or group"),
                 };
             }
 
-            let yaml_default_policy = YamlDefaultPolicy {
-                privileges: if default_policy.privileges.is_empty() {
+            let yaml_policy = YamlPolicy {
+                privileges: if privileges.is_empty() {
                     None
                 } else {
-                    Some(default_policy.privileges.to_owned().into_iter().collect())
+                    Some(privileges.to_owned())
                 },
                 users: if users.is_empty() { None } else { Some(users) },
                 groups: if groups.is_empty() {
@@ -183,30 +219,127 @@ impl Jetty {
                 } else {
                     Some(groups)
                 },
-                path: default_policy.matching_path.to_owned(),
-                types: default_policy.types.to_owned(),
-                metadata: if !default_policy.metadata.is_empty() {
-                    Some(default_policy.metadata.to_owned().into_iter().collect())
-                } else {
-                    None
-                },
-                connector_managed: true,
                 description: Default::default(),
+                metadata: if metadata.is_empty() {
+                    None
+                } else {
+                    Some(metadata.to_owned().into_iter().collect())
+                },
             };
 
-            res.entry(base_idx)
+            policy_map
+                .entry(
+                    ag.get_untyped_index_from_name(asset)
+                        .ok_or(anyhow!("unable to find asset node for policy"))?,
+                )
+                .and_modify(
+                    |(policies, _default_policies): &mut (
+                        BTreeSet<YamlPolicy>,
+                        BTreeSet<YamlDefaultPolicy>,
+                    )| {
+                        policies.insert(yaml_policy.to_owned());
+                    },
+                )
+                .or_insert(([yaml_policy].into(), [].into()));
+        }
+        Ok(())
+    }
+
+    fn fold_and_build_yaml_default_policies(
+        &self,
+        default_policies: HashMap<
+            (NodeName, String, BTreeSet<AssetType>, NodeName),
+            DefaultPolicyState,
+        >,
+        policy_map: &mut HashMap<NodeIndex, (BTreeSet<YamlPolicy>, BTreeSet<YamlDefaultPolicy>)>,
+    ) -> Result<()> {
+        let ag = self.try_access_graph()?;
+        let folded_default_policies = default_policies.into_iter().fold(
+            HashMap::new(),
+            // acc is HashMap of <(Asset, Path, Types, Privileges, Metadata), Set<grantees>>
+            |mut acc: HashMap<
+                (
+                    NodeName,
+                    String,
+                    BTreeSet<AssetType>,
+                    BTreeSet<String>,
+                    BTreeSet<(String, String)>,
+                ),
+                HashSet<NodeName>,
+            >,
+             ((policy_asset, policy_path, asset_types, policy_grantee), policy_state)| {
+                acc.entry((
+                    policy_asset.to_owned(),
+                    policy_path.to_owned(),
+                    asset_types.to_owned(),
+                    policy_state.privileges.to_owned(),
+                    policy_state.metadata.to_owned().into_iter().collect(),
+                ))
+                .and_modify(|f| {
+                    f.insert(policy_grantee.to_owned());
+                })
+                .or_insert([policy_grantee.to_owned()].into());
+                acc
+            },
+        );
+
+        // Now push the policies to the results
+
+        for ((asset, path, types, privileges, metadata), grantees) in &folded_default_policies {
+            // split users and groups
+            let mut users = BTreeSet::new();
+            let mut groups = BTreeSet::new();
+            for g in grantees {
+                match &ag[ag
+                    .get_untyped_index_from_name(g)
+                    .ok_or(anyhow!("unable to find grantee node in graph"))?]
+                {
+                    JettyNode::Group(attr) => groups.insert(attr.name.to_string()),
+                    JettyNode::User(attr) => users.insert(attr.name.to_string()),
+                    _ => bail!("wrong node type as grantee: expected user or group"),
+                };
+            }
+
+            let yaml_policy = YamlDefaultPolicy {
+                privileges: if privileges.is_empty() {
+                    None
+                } else {
+                    Some(privileges.to_owned())
+                },
+                users: if users.is_empty() { None } else { Some(users) },
+                groups: if groups.is_empty() {
+                    None
+                } else {
+                    Some(groups)
+                },
+                description: Default::default(),
+                metadata: if metadata.is_empty() {
+                    None
+                } else {
+                    Some(metadata.to_owned().into_iter().collect())
+                },
+                path: path.to_owned(),
+                types: types.to_owned(),
+                // only connector-managed defaults should be present when bootstrapping
+                connector_managed: true,
+            };
+
+            policy_map
+                .entry(
+                    ag.get_untyped_index_from_name(asset)
+                        .ok_or(anyhow!("unable to find asset node for policy"))?,
+                )
                 .and_modify(
                     |(_policies, default_policies): &mut (
                         BTreeSet<YamlPolicy>,
                         BTreeSet<YamlDefaultPolicy>,
                     )| {
-                        default_policies.insert(yaml_default_policy.to_owned());
+                        default_policies.insert(yaml_policy.to_owned());
                     },
                 )
-                .or_insert(([].into(), [yaml_default_policy].into()));
+                .or_insert(([].into(), [yaml_policy].into()));
         }
-
-        Ok(res)
+        Ok(())
     }
 
     /// Generate the yaml configs for each asset, as well as the proper path for them in the file system
@@ -336,4 +469,36 @@ pub fn write_bootstrapped_asset_yaml(assets: HashMap<PathBuf, String>) -> Result
         fs::write(parent_path.join(project::assets_cfg_filename()), policy_doc)?;
     }
     Ok(())
+}
+
+/// merge a CombinedPolicyState struct into self, compacting for default policies.
+///  - If there's an existing policy that exactly matches the existing policy, delete the existing one
+///  - If there's a policy that doesn't match, just skip and move on
+///  - If there's not a matching policy, create a new one with no privileges and no metadata
+fn compact_regular_policies(
+    existing_policies: &mut HashMap<(NodeName, NodeName), PolicyState>,
+    CombinedPolicyState {
+        policies: expanded_default_policies,
+        ..
+    }: &CombinedPolicyState,
+) {
+    for (other_k, other_v) in expanded_default_policies {
+        let entry = existing_policies.get(&other_k).cloned();
+        match entry {
+            Some(p) => {
+                // if the policy matches a default policy, drop it
+                if p == other_v.to_owned() {
+                    existing_policies.remove(&other_k);
+                }
+                // if it doesn't match a default policy, leave it as is
+                else {
+                    continue;
+                };
+            }
+            // If there's no matching policy, add an empty one so that it won't be overwritten by the default
+            None => {
+                existing_policies.insert(other_k.to_owned(), Default::default());
+            }
+        };
+    }
 }

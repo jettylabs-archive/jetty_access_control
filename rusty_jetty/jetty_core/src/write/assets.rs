@@ -31,7 +31,7 @@ use self::diff::{
 
 use super::groups::GroupConfig;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub(crate) struct PolicyState {
     privileges: HashSet<String>,
     metadata: HashMap<String, String>,
@@ -323,6 +323,25 @@ impl CombinedPolicyState {
     /// Resolve all the default policies from the config into materialized policies.
     /// This takes into account the hierarchy of the default policies.
     fn expand_default_policies(&mut self, jetty: &Jetty) -> Result<()> {
+        let intermediate_map = self.get_prioritized_policies(jetty)?;
+        // Now we go through each priority, from highest to lowest, and add the policies to self, skipping if exists
+        let mut priority_levels = intermediate_map
+            .keys()
+            .map(|k| k.to_owned())
+            .collect::<Vec<_>>();
+        priority_levels.sort();
+        for priority in priority_levels.into_iter().rev() {
+            self.merge_skipping_if_exists(intermediate_map[&priority].to_owned());
+        }
+
+        Ok(())
+    }
+
+    /// Expand default policies into a map of <priority, combined policy state>
+    fn get_prioritized_policies(
+        &self,
+        jetty: &Jetty,
+    ) -> Result<HashMap<String, CombinedPolicyState>> {
         let ag = jetty.try_access_graph()?;
 
         // prioritize default policies
@@ -346,7 +365,9 @@ impl CombinedPolicyState {
                 .or_insert(HashMap::from([(k.to_owned(), v.to_owned())]));
         }
 
-        // This intermediate map holds all of the policies, sorted by priority level. They are merged, combining policies and metadata if they already exist.
+        // This intermediate map holds all of the regular policies created by the default policies,
+        // sorted by default policies' priority levels.
+        // Note: They are merged within each priority level so that there is just one for each asset <-> user combination, combining policies and metadata if they already exist.
         let mut intermediate_map = HashMap::new();
         for (priority, default_policies) in prioritized_policies {
             intermediate_map.insert(
@@ -393,18 +414,7 @@ impl CombinedPolicyState {
                     })?;
             }
         }
-
-        // Now we go through each priority, from highest to lowest, and add the policies to self, skipping if exists
-        let mut priority_levels = intermediate_map
-            .keys()
-            .map(|k| k.to_owned())
-            .collect::<Vec<_>>();
-        priority_levels.sort();
-        for priority in priority_levels.into_iter().rev() {
-            self.merge_skipping_if_exists(intermediate_map[&priority].to_owned());
-        }
-
-        Ok(())
+        Ok(intermediate_map)
     }
 
     /// merge a CombinedPolicyState struct into self, replacing entries if they exist
