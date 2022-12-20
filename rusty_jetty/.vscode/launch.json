@@ -63,6 +63,24 @@
         {
             "type": "lldb",
             "request": "launch",
+            "name": "Debug executable 'jetty_cli' (bootstrap -no)",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=jetty_cli",
+                    "--package=jetty_cli"
+                ],
+                "filter": {
+                    "name": "jetty_cli",
+                    "kind": "bin"
+                }
+            },
+            "args": ["bootstrap", "-no"],
+            "cwd": "${workspaceFolder}/jetty-test"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
             "name": "Debug executable 'jetty_cli' (explore)",
             "cargo": {
                 "args": [
