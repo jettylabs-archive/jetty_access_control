@@ -556,25 +556,4 @@ mod tests {
         );
         dbg!(x);
     }
-
-    #[test]
-    fn test_generate_id_file_map() -> Result<()> {
-        let paths = glob("../jetty-test/assets/**/*.y*ml")
-            .context("trouble generating config file paths")?;
-
-        let x = generate_id_file_map(paths);
-        dbg!(x);
-        Ok(())
-    }
-
-    #[test]
-    fn directory_paths() -> Result<()> {
-        let paths =
-            glob("../jetty-test/assets/**/").context("trouble generating config file paths")?;
-
-        for path in paths {
-            dbg!(path?);
-        }
-        Ok(())
-    }
 }
