@@ -28,11 +28,12 @@ use jetty_core::{
     connectors::{ConnectorClient, NewConnector},
     fetch_credentials,
     jetty::{ConnectorNamespace, CredentialsMap, JettyConfig},
-    logging::{self, debug, error, info},
+    logging::{self, debug, error, info, warn},
     project::{self, groups_cfg_path_local},
     write::{
         assets::{
-            bootstrap::write_bootstrapped_asset_yaml, get_default_policy_diffs, get_policy_diffs,
+            bootstrap::{update_asset_files, write_bootstrapped_asset_yaml},
+            get_default_policy_diffs, get_policy_diffs,
         },
         groups::parse_and_validate_groups,
         Diffs,
@@ -247,6 +248,10 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
         debug!("Skipping visualization.")
     };
 
+    if let Err(e) = update_asset_files(&new_jetty_with_connectors().await?) {
+        warn!("failed to generate files for all assets: {}", e);
+    };
+
     Ok(())
 }
 
@@ -292,6 +297,9 @@ async fn bootstrap(overwrite: bool) -> Result<()> {
     fs::write(groups_cfg_path_local(), group_yaml)?; // write the contents
                                                      // assets
     write_bootstrapped_asset_yaml(asset_yaml)?;
+    if let Err(e) = update_asset_files(&jetty) {
+        warn!("failed to generate files for all assets: {}", e);
+    };
 
     // sanity check - the diff should be empty at this point
     let validated_group_config = parse_and_validate_groups(&jetty)?;

@@ -4,12 +4,16 @@ pub mod bootstrap;
 pub mod diff;
 pub mod parser;
 
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::{
+    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
+    path::PathBuf,
+};
 
 use anyhow::{bail, Context, Result};
-use glob::glob;
+use glob::{glob, Paths};
 use petgraph::stable_graph::NodeIndex;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 use crate::{
     access_graph::{
@@ -44,7 +48,7 @@ pub(crate) struct DefaultPolicyState {
     connector_managed: bool,
 }
 #[derive(Serialize, Deserialize, Debug, Default, Clone, Ord, PartialOrd, Eq, PartialEq)]
-struct YamlAssetDoc {
+pub(crate) struct YamlAssetDoc {
     identifier: YamlAssetIdentifier,
     #[serde(skip_serializing_if = "BTreeSet::is_empty", default)]
     policies: BTreeSet<YamlPolicy>,
@@ -57,7 +61,7 @@ struct YamlAssetDoc {
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone, Ord, PartialOrd, Eq, PartialEq)]
-struct YamlAssetIdentifier {
+pub(crate) struct YamlAssetIdentifier {
     name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     asset_type: Option<AssetType>,
@@ -124,13 +128,7 @@ fn get_config_state(
     };
 
     // collect the paths to all the config files
-    let paths = glob(
-        format!(
-            "{}/**/*.y*ml",
-            project::assets_cfg_root_path().to_string_lossy()
-        )
-        .as_str(),
-    )?;
+    let paths = get_config_paths()?;
 
     // We need to get the connectors that can handle groups. With how things are set up, that means that if ever there's a connector that uses groups, and we want to manage with
     // groups, but that doesn't write them, we'll need to fix it here.
@@ -166,12 +164,12 @@ fn get_config_state(
         // parse the configs and extend the map. At this stage there should could be a user or a group mentioned
         // twice in two different policies, so we need to combine the policies. I guess. Which is weird
         // FUTURE: when we start using metadata, this could break. Policies will need to be keyed off metadata too, somehow.
-        res.merge_combining_if_exists(
-            parser::parse_asset_config(&yaml, jetty, &config_groups).context(format!(
+        let (_identifier, policy_state) = parser::parse_asset_config(&yaml, jetty, &config_groups)
+            .context(format!(
                 "problem with configuration file: {}",
                 path.to_string_lossy()
-            ))?,
-        )?;
+            ))?;
+        res.merge_combining_if_exists(policy_state)?;
     }
 
     // Now that we've built out the state, expand the default policies:
@@ -258,6 +256,19 @@ pub fn get_policy_diffs(
     let env_state = get_env_state(jetty)?;
 
     Ok(diff_policies(&config_state, &env_state))
+}
+
+/// Get the paths of all asset config files
+fn get_config_paths() -> Result<glob::Paths> {
+    // collect the paths to all the config files
+    glob(
+        format!(
+            "{}/**/*.y*ml",
+            project::assets_cfg_root_path().to_string_lossy()
+        )
+        .as_str(),
+    )
+    .context("trouble generating config file paths")
 }
 
 /// Get the policy diffs for default policies
@@ -512,9 +523,29 @@ fn get_path_priority(wildcard_path: String, path: AssetPath) -> String {
     path_score
 }
 
+/// Parse the configuration files into a node id -> filepath map
+pub(crate) fn generate_id_file_map(paths: Paths) -> Result<HashMap<Uuid, PathBuf>> {
+    let mut res = HashMap::new();
+    for path in paths {
+        let path = path?;
+        let yaml = std::fs::read_to_string(&path)?;
+
+        let YamlAssetDoc {
+            identifier: YamlAssetIdentifier { id: asset_id, .. },
+            ..
+        } = parser::simple_parse(&yaml).context(format!(
+            "unable to generate asset -> file map; problem with configuration file: {}",
+            path.to_string_lossy()
+        ))?;
+        res.insert(Uuid::parse_str(asset_id.as_str())?, path);
+    }
+    Ok(res)
+}
+
 #[cfg(test)]
 
 mod tests {
+
     use super::*;
 
     #[test]
@@ -524,5 +555,26 @@ mod tests {
             AssetPath::new(["a".to_owned(), "b".to_owned()].into()),
         );
         dbg!(x);
+    }
+
+    #[test]
+    fn test_generate_id_file_map() -> Result<()> {
+        let paths = glob("../jetty-test/assets/**/*.y*ml")
+            .context("trouble generating config file paths")?;
+
+        let x = generate_id_file_map(paths);
+        dbg!(x);
+        Ok(())
+    }
+
+    #[test]
+    fn directory_paths() -> Result<()> {
+        let paths =
+            glob("../jetty-test/assets/**/").context("trouble generating config file paths")?;
+
+        for path in paths {
+            dbg!(path?);
+        }
+        Ok(())
     }
 }

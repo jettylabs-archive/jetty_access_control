@@ -6,7 +6,7 @@ use std::{
     path::PathBuf,
 };
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use petgraph::stable_graph::NodeIndex;
 
 use crate::{
@@ -14,12 +14,14 @@ use crate::{
         AssetAttributes, DefaultPolicyAttributes, EdgeType, JettyNode, NodeName, PolicyAttributes,
     },
     connectors::AssetType,
-    project, Jetty,
+    project,
+    write::groups::get_all_group_names,
+    Jetty,
 };
 
 use super::{
-    CombinedPolicyState, DefaultPolicyState, PolicyState, YamlAssetDoc, YamlAssetIdentifier,
-    YamlDefaultPolicy, YamlPolicy,
+    generate_id_file_map, CombinedPolicyState, DefaultPolicyState, PolicyState, YamlAssetDoc,
+    YamlAssetIdentifier, YamlDefaultPolicy, YamlPolicy,
 };
 
 impl Jetty {
@@ -370,12 +372,7 @@ impl Jetty {
                         } => Ok((
                             self.asset_index_to_file_path(idx),
                             yaml_peg::serde::to_string(&YamlAssetDoc {
-                                identifier: YamlAssetIdentifier {
-                                    name: path.to_string(),
-                                    asset_type: asset_type.to_owned(),
-                                    connector: connector.to_owned(),
-                                    id: attributes.id.to_string(),
-                                },
+                                identifier: asset_attributes_to_yaml_identifier(&attributes),
                                 policies,
                                 default_policies,
                             })?,
@@ -518,4 +515,73 @@ fn compact_regular_policies(
     }
     // at the end, remove all the unneeded policies
     removal_list
+}
+
+/// Add files (without policies or default policies) for all assets in the graph.
+pub fn update_asset_files(jetty: &Jetty) -> Result<()> {
+    let ag = jetty.try_access_graph()?;
+    // Start by collecting all the assets that are in the config
+    let paths = super::get_config_paths()?;
+    let id_file_map = generate_id_file_map(paths)?;
+    let config_id_set: HashSet<uuid::Uuid> = id_file_map.keys().cloned().collect();
+
+    // Get the assets that don't exist in config, and create files for them
+    let env_ids: HashSet<uuid::Uuid> = ag.graph.node_ids.assets.keys().cloned().collect();
+    for id in env_ids.difference(&config_id_set) {
+        let idx = ag
+            .get_asset_index_from_id(id)
+            .to_owned()
+            .ok_or(anyhow!("unable to get asset by id"))?;
+        let attributes: AssetAttributes = ag[idx].to_owned().try_into()?;
+        let policy_doc = YamlAssetDoc {
+            identifier: asset_attributes_to_yaml_identifier(&attributes),
+            policies: Default::default(),
+            default_policies: Default::default(),
+        };
+        let yaml = yaml_peg::serde::to_string(&policy_doc)?;
+        let parent_path = project::assets_cfg_root_path().join(
+            jetty
+                .asset_index_to_file_path(idx.into())
+                .to_owned()
+                .join(project::assets_cfg_filename()),
+        );
+        // make sure the parent directories exist
+        fs::create_dir_all(&parent_path)?;
+        fs::write(parent_path.join(project::assets_cfg_filename()), yaml)?;
+    }
+
+    // Get the assets that don't exist in the env and delete files.
+    // They should be using version control, so this shouldn't be a big deal.
+    for id in config_id_set.difference(&env_ids) {
+        let x = &id_file_map[id];
+        fs::remove_file(x).context("removing nonexistent assets from config")?;
+    }
+
+    // Delete any empty folders
+    let asset_directories =
+        glob::glob(format!("{}/**/", project::assets_cfg_root_path().to_string_lossy()).as_str())
+            .context("trouble generating config directory paths")?;
+    for dir in asset_directories {
+        fs::remove_dir(dir?).ok();
+    }
+
+    Ok(())
+}
+
+fn asset_attributes_to_yaml_identifier(attributes: &AssetAttributes) -> YamlAssetIdentifier {
+    if let NodeName::Asset {
+        connector,
+        asset_type,
+        path,
+    } = attributes.name()
+    {
+        YamlAssetIdentifier {
+            name: path.to_string(),
+            asset_type: asset_type.to_owned(),
+            connector: connector.to_owned(),
+            id: attributes.id.to_string(),
+        }
+    } else {
+        panic!("wrong node name type for an asset node")
+    }
 }

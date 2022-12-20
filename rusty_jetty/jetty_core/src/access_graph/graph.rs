@@ -48,7 +48,7 @@ pub(crate) struct NodeMap {
 /// The a map of UUIDs to typed indices
 #[derive(Serialize, Deserialize, Default, Debug)]
 pub(crate) struct NodeIdMap {
-    assets: HashMap<uuid::Uuid, typed_indices::AssetIndex>,
+    pub(crate) assets: HashMap<uuid::Uuid, typed_indices::AssetIndex>,
     users: HashMap<uuid::Uuid, typed_indices::UserIndex>,
     groups: HashMap<uuid::Uuid, typed_indices::GroupIndex>,
     tags: HashMap<uuid::Uuid, typed_indices::TagIndex>,

@@ -1,8 +1,12 @@
 //! Parse asset configuration files
 
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::{
+    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
+    path::PathBuf,
+};
 
 use anyhow::{anyhow, bail, Result};
+use petgraph::stable_graph::NodeIndex;
 
 use crate::{
     access_graph::{AccessGraph, AssetAttributes, NodeName},
@@ -12,8 +16,8 @@ use crate::{
 };
 
 use super::{
-    CombinedPolicyState, DefaultPolicyState, PolicyState, YamlAssetDoc, YamlDefaultPolicy,
-    YamlPolicy,
+    CombinedPolicyState, DefaultPolicyState, PolicyState, YamlAssetDoc, YamlAssetIdentifier,
+    YamlDefaultPolicy, YamlPolicy,
 };
 
 /// Parse the configuration into a policy state struct
@@ -21,13 +25,10 @@ pub(crate) fn parse_asset_config(
     val: &str,
     jetty: &Jetty,
     config_groups: &BTreeMap<String, BTreeMap<ConnectorNamespace, NodeName>>,
-) -> Result<CombinedPolicyState> {
-    let config_vec: Vec<YamlAssetDoc> = yaml_peg::serde::from_str(val)?;
-    if config_vec.is_empty() {
-        bail!("unable to parse configuration")
-    };
-    let config = config_vec[0].to_owned();
+) -> Result<(YamlAssetIdentifier, CombinedPolicyState)> {
     let ag = jetty.try_access_graph()?;
+
+    let config = simple_parse(val)?;
 
     // make sure the asset exists
     let asset_name = get_asset_name(
@@ -55,10 +56,23 @@ pub(crate) fn parse_asset_config(
         jetty,
     )?;
 
-    Ok(CombinedPolicyState {
-        policies: res_policies,
-        default_policies: res_default_policies,
-    })
+    Ok((
+        config.identifier,
+        CombinedPolicyState {
+            policies: res_policies,
+            default_policies: res_default_policies,
+        },
+    ))
+}
+
+/// parse a yaml file into a YamlAssetDoc with only syntactic validation
+pub(crate) fn simple_parse(val: &str) -> Result<YamlAssetDoc> {
+    let config_vec: Vec<YamlAssetDoc> = yaml_peg::serde::from_str(val)?;
+    if config_vec.is_empty() {
+        bail!("unable to parse configuration")
+    };
+    let config = config_vec[0].to_owned();
+    Ok(config)
 }
 
 fn parse_policies(
