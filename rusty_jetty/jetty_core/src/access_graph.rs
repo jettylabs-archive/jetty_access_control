@@ -13,6 +13,7 @@ use crate::connectors::nodes::{ConnectorData, EffectivePermission, SparseMatrix}
 use crate::connectors::processed_nodes::{ProcessedConnectorData, ProcessedDefaultPolicy};
 #[cfg(test)]
 use crate::cual::Cual;
+use crate::Jetty;
 
 use crate::connectors::AssetType;
 use crate::jetty::ConnectorNamespace;
@@ -802,9 +803,10 @@ impl AccessGraph {
     /// This handles the translation from connectors local state to a global state
     pub fn new_from_connector_data(
         connector_data: Vec<(ConnectorData, ConnectorNamespace)>,
+        jetty: &Jetty,
     ) -> Result<Self> {
         // Build the translator
-        let tr = Translator::new(&connector_data);
+        let tr = Translator::new(&connector_data, jetty)?;
         // Process the connector data
         let pcd = tr.local_to_processed_connector_data(connector_data);
         let ag_res = AccessGraph::new(pcd.to_owned(), Some(tr));

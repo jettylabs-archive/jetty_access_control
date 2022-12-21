@@ -228,7 +228,10 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
     let pb = basic_progress_bar("Creating access graph");
     let now = Instant::now();
 
-    let ag = AccessGraph::new_from_connector_data(data_from_connectors)?;
+    // the last jetty was partially consumed by the fetch, so re-instantiating here
+    let jetty = new_jetty_with_connectors().await?;
+
+    let ag = AccessGraph::new_from_connector_data(data_from_connectors, &jetty)?;
     ag.serialize_graph(project::data_dir().join(project::graph_filename()))?;
 
     pb.finish_with_message(format!(
@@ -249,7 +252,7 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
         debug!("Skipping visualization.")
     };
 
-    if let Err(e) = update_asset_files(&new_jetty_with_connectors().await?) {
+    if let Err(e) = update_asset_files(&jetty) {
         warn!("failed to generate files for all assets: {}", e);
     };
 

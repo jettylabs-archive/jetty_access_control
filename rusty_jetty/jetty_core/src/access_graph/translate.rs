@@ -21,6 +21,8 @@ use crate::{
     cual::Cual,
     jetty::ConnectorNamespace,
     permissions::matrix::{DoubleInsert, InsertOrMerge},
+    write::users,
+    Jetty,
 };
 
 use anyhow::{anyhow, Context, Result};
@@ -52,18 +54,18 @@ pub(crate) struct LocalToGlobalIdentifiers {
 
 impl Translator {
     /// Use the ConnectorData from all connectors to populate the mappings
-    pub fn new(data: &[(ConnectorData, ConnectorNamespace)]) -> Self {
+    pub fn new(data: &[(ConnectorData, ConnectorNamespace)], jetty: &Jetty) -> Result<Self> {
         let mut t = Translator::default();
 
         // build the namespace mapping
         t.build_cual_namespace_map(data);
 
         // Start by pulling out all the user nodes and resolving them to single identities
-        t.resolve_users(data);
+        t.resolve_users(data, jetty)?;
         t.resolve_groups(data);
         t.resolve_policies(data);
 
-        t
+        Ok(t)
     }
 
     fn build_cual_namespace_map(&mut self, data: &[(ConnectorData, ConnectorNamespace)]) {
@@ -73,19 +75,35 @@ impl Translator {
         }
     }
 
-    /// This is entity resolution for users. Right now it is very simple, but it can be built out as needed
-    fn resolve_users(&mut self, data: &[(ConnectorData, ConnectorNamespace)]) {
+    // This is entity resolution for users. Right now it is very simple, but it can be built out as needed
+    fn resolve_users(
+        &mut self,
+        data: &[(ConnectorData, ConnectorNamespace)],
+        jetty: &Jetty,
+    ) -> Result<()> {
         let user_data: Vec<_> = data.iter().map(|(c, n)| (&c.users, n)).collect();
+        let user_config_id_map = users::parser::get_validated_nodename_local_id_map(jetty)?;
         // for each connector, look over all the users.
         for (users, namespace) in user_data {
             for user in users {
-                let mut node_name = NodeName::User(user.name.to_owned());
-                for id in &user.identifiers {
-                    //If they have an Email address, make that the identifier.
-                    if let UserIdentifier::Email(email) = id {
-                        node_name = NodeName::User(email.to_owned())
-                    }
+                // if a user exists in the config, just use that mapping
+                let node_name = if let Some(name) = user_config_id_map
+                    .get(namespace)
+                    .and_then(|m| m.get_by_right(&user.name))
+                {
+                    name.to_owned()
                 }
+                // if no user exists in the config, use their email if possible, or just the connector_specific id
+                else {
+                    let mut node_name = NodeName::User(user.name.to_owned());
+                    for id in &user.identifiers {
+                        //If they have an Email address, make that the identifier.
+                        if let UserIdentifier::Email(email) = id {
+                            node_name = NodeName::User(email.to_owned())
+                        }
+                    }
+                    node_name
+                };
 
                 self.local_to_global.users.double_insert(
                     namespace.to_owned(),
@@ -99,6 +117,7 @@ impl Translator {
                 );
             }
         }
+        Ok(())
     }
 
     /// This resolves groups. When we start allowing cross-platform Jetty groups, this will need an update.

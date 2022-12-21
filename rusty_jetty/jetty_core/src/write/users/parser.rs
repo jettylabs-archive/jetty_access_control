@@ -8,11 +8,12 @@ use std::{
 
 use anyhow::{bail, Result};
 use bimap::BiHashMap;
+use colored::Colorize;
 use glob::Paths;
 
 use crate::{access_graph::NodeName, jetty::ConnectorNamespace, Jetty};
 
-use super::UserYaml;
+use super::{get_config_paths, UserYaml};
 
 /// read all config files into a Vec of user structs
 fn read_config_files(paths: Paths) -> Result<HashMap<PathBuf, UserYaml>> {
@@ -75,7 +76,7 @@ fn validate_config(configs: &HashMap<PathBuf, UserYaml>, jetty: &Jetty) -> Resul
 }
 
 /// Get a map of nodenames to local ids for each connector
-pub(crate) fn get_nodename_local_id_map(
+fn get_nodename_local_id_map(
     configs: &HashMap<PathBuf, UserYaml>,
 ) -> HashMap<ConnectorNamespace, BiHashMap<NodeName, String>> {
     let mut res = HashMap::new();
@@ -99,4 +100,24 @@ pub(crate) fn get_nodename_local_id_map(
         }
     }
     todo!()
+}
+
+pub(crate) fn get_validated_nodename_local_id_map(
+    jetty: &Jetty,
+) -> Result<HashMap<ConnectorNamespace, BiHashMap<NodeName, String>>> {
+    let paths = get_config_paths()?;
+    let configs = read_config_files(paths)?;
+    let errors = validate_config(&configs, jetty)?;
+    if !errors.is_empty() {
+        bail!(
+            "invalid user configuration:\n{}",
+            errors
+                .into_iter()
+                .map(|e| format!("{}", format!(" -{e}").as_str().red()))
+                .collect::<Vec<_>>()
+                .join("\n")
+        )
+    }
+
+    Ok(get_nodename_local_id_map(&configs))
 }
