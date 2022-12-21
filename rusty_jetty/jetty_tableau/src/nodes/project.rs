@@ -1,6 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-};
+use std::collections::{HashMap, HashSet};
 
 use super::{
     FromTableau, OwnedAsset, Permission, Permissionable, ProjectId, TableauAsset, PROJECT,
@@ -8,6 +6,7 @@ use super::{
 use crate::{
     coordinator::Environment,
     nodes::SerializedPermission,
+    permissions::consts::{self},
     rest::{self, get_tableau_cual, FetchJson, TableauAssetType},
 };
 
@@ -151,9 +150,21 @@ impl Project {
             };
             self.default_permissions.insert(
                 DEFAULT_POLICY_TYPE_CONVERSION[asset_type].to_owned(),
-                final_permissions,
+                final_permissions.to_owned(),
             );
+
+            // View permissions are the same as workbook permissions, so add them here
+            if asset_type == "workbooks" {
+                self.default_permissions.insert(
+                    "view".to_owned(),
+                    final_permissions
+                        .iter()
+                        .map(|p| convert_workbook_permission_to_view_permissions(p))
+                        .collect(),
+                );
+            }
         }
+
         Ok(())
     }
 
@@ -351,5 +362,18 @@ impl FromTableau<Project> for jetty_nodes::RawAsset {
 impl TableauAsset for Project {
     fn get_asset_type(&self) -> TableauAssetType {
         TableauAssetType::Project
+    }
+}
+
+fn convert_workbook_permission_to_view_permissions(permission: &Permission) -> Permission {
+    let mut new_capabilities = HashMap::new();
+    for (capability, mode) in &permission.capabilities {
+        if consts::VIEW_CAPABILITIES.contains(&capability.as_str()) {
+            new_capabilities.insert(capability.to_owned(), mode.to_owned());
+        }
+    }
+    Permission {
+        grantee: permission.grantee.to_owned(),
+        capabilities: new_capabilities,
     }
 }

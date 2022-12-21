@@ -539,12 +539,8 @@ pub fn update_asset_files(jetty: &Jetty) -> Result<()> {
             default_policies: Default::default(),
         };
         let yaml = yaml_peg::serde::to_string(&policy_doc)?;
-        let parent_path = project::assets_cfg_root_path().join(
-            jetty
-                .asset_index_to_file_path(idx.into())
-                .to_owned()
-                .join(project::assets_cfg_filename()),
-        );
+        let parent_path =
+            project::assets_cfg_root_path().join(jetty.asset_index_to_file_path(idx.into()));
         // make sure the parent directories exist
         fs::create_dir_all(&parent_path)?;
         fs::write(parent_path.join(project::assets_cfg_filename()), yaml)?;
