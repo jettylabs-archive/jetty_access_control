@@ -99,7 +99,7 @@ fn get_nodename_local_id_map(
                 });
         }
     }
-    todo!()
+    res
 }
 
 pub(crate) fn get_validated_nodename_local_id_map(
