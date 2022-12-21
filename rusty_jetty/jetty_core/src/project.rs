@@ -67,7 +67,7 @@ pub fn users_cfg_root_path_local() -> PathBuf {
 }
 
 /// The path to assets configuration files
-pub fn assets_cfg_root_path() -> PathBuf {
+pub fn assets_cfg_root_path_local() -> PathBuf {
     ASSETS_DIR.to_owned()
 }
 

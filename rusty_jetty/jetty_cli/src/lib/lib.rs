@@ -278,8 +278,8 @@ async fn bootstrap(overwrite: bool) -> Result<()> {
         if groups_cfg_path_local().exists() {
             bail!("{} already exists; run `jetty bootstrap --overwrite` to overwrite the existing configuration", groups_cfg_path_local().to_string_lossy())
         }
-        if project::assets_cfg_root_path().exists() {
-            bail!("{} already exists; run `jetty bootstrap --overwrite` to overwrite the existing configuration", project::assets_cfg_root_path().to_string_lossy())
+        if project::assets_cfg_root_path_local().exists() {
+            bail!("{} already exists; run `jetty bootstrap --overwrite` to overwrite the existing configuration", project::assets_cfg_root_path_local().to_string_lossy())
         }
         if project::users_cfg_root_path_local().exists() {
             bail!("{} already exists; run `jetty bootstrap --overwrite` to overwrite the existing configuration", project::users_cfg_root_path_local().to_string_lossy())
@@ -289,7 +289,7 @@ async fn bootstrap(overwrite: bool) -> Result<()> {
             Ok(_) => println!("removed existing groups file"),
             Err(_) => (),
         };
-        match fs::remove_dir_all(project::assets_cfg_root_path()) {
+        match fs::remove_dir_all(project::assets_cfg_root_path_local()) {
             Ok(_) => println!("removed existing asset directory"),
             Err(_) => (),
         };

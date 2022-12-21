@@ -454,7 +454,7 @@ impl NodeName {
 /// Write the output of generate_bootstrapped_policy_yaml to the proper directories
 pub fn write_bootstrapped_asset_yaml(assets: HashMap<PathBuf, String>) -> Result<()> {
     for (path, policy_doc) in assets {
-        let parent_path = project::assets_cfg_root_path().join(path);
+        let parent_path = project::assets_cfg_root_path_local().join(path);
         // make sure the parent directories exist
         fs::create_dir_all(&parent_path)?;
         fs::write(parent_path.join(project::assets_cfg_filename()), policy_doc)?;
@@ -521,7 +521,7 @@ pub fn update_asset_files(jetty: &Jetty) -> Result<()> {
         };
         let yaml = yaml_peg::serde::to_string(&policy_doc)?;
         let parent_path =
-            project::assets_cfg_root_path().join(jetty.asset_index_to_file_path(idx.into()));
+            project::assets_cfg_root_path_local().join(jetty.asset_index_to_file_path(idx.into()));
         // make sure the parent directories exist
         fs::create_dir_all(&parent_path)?;
         fs::write(parent_path.join(project::assets_cfg_filename()), yaml)?;
@@ -535,9 +535,14 @@ pub fn update_asset_files(jetty: &Jetty) -> Result<()> {
     }
 
     // Delete any empty folders
-    let asset_directories =
-        glob::glob(format!("{}/**/", project::assets_cfg_root_path().to_string_lossy()).as_str())
-            .context("trouble generating config directory paths")?;
+    let asset_directories = glob::glob(
+        format!(
+            "{}/**/",
+            project::assets_cfg_root_path_local().to_string_lossy()
+        )
+        .as_str(),
+    )
+    .context("trouble generating config directory paths")?;
     for dir in asset_directories {
         fs::remove_dir(dir?).ok();
     }

@@ -264,7 +264,7 @@ fn get_config_paths() -> Result<glob::Paths> {
     glob(
         format!(
             "{}/**/*.y*ml",
-            project::assets_cfg_root_path().to_string_lossy()
+            project::assets_cfg_root_path_local().to_string_lossy()
         )
         .as_str(),
     )

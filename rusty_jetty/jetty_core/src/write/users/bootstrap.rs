@@ -14,12 +14,7 @@ use crate::{
     Jetty,
 };
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-struct UserYaml {
-    name: String,
-    identifiers: HashMap<ConnectorNamespace, String>,
-    id: Uuid,
-}
+use super::UserYaml;
 
 impl Jetty {
     /// Get all the users from the access graph and convert them into a map of path to file and yaml config
