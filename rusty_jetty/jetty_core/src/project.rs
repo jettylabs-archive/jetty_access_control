@@ -14,6 +14,8 @@
 //!       │    └── groups.yaml
 //!       ├── tags
 //!       │    └── tags.yaml
+//!       ├── users
+//!       │    └── <name>.yaml
 //!       └── assets
 //!            └── <structure mirroring your infrastructure>
 //! ```
@@ -31,6 +33,7 @@ lazy_static! {
     static ref GROUPS_CFG: PathBuf = PathBuf::from("groups.yaml");
     static ref ASSETS_DIR: PathBuf = PathBuf::from("assets");
     static ref ASSETS_CFG: PathBuf = PathBuf::from("index.yaml");
+    static ref USERS_DIR: PathBuf = PathBuf::from("users");
     static ref JETTY_CFG: PathBuf = PathBuf::from("jetty_config.yaml");
     static ref CONNECTOR_CFG: PathBuf = PathBuf::from("connectors.yaml");
     static ref PROFILE_CFG_DIR: PathBuf = PathBuf::from(".jetty");
@@ -56,6 +59,11 @@ pub fn groups_cfg_path<P: AsRef<Path>>(project_path: P) -> PathBuf {
 /// Local path for the groups config.
 pub fn groups_cfg_path_local() -> PathBuf {
     GROUPS_DIR.as_path().join(GROUPS_CFG.as_path())
+}
+
+/// Local path for the users config.
+pub fn users_cfg_root_path_local() -> PathBuf {
+    USERS_DIR.to_owned()
 }
 
 /// The path to assets configuration files

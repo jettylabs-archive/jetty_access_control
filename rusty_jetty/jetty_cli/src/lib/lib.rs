@@ -36,6 +36,7 @@ use jetty_core::{
             get_default_policy_diffs, get_policy_diffs,
         },
         groups::parse_and_validate_groups,
+        users::bootstrap::write_bootstrapped_user_yaml,
         Diffs,
     },
     Connector, Jetty,
@@ -270,6 +271,7 @@ async fn bootstrap(overwrite: bool) -> Result<()> {
     // Build all the yaml first
     let group_yaml = jetty.generate_bootstrapped_group_yaml()?;
     let asset_yaml = jetty.generate_bootstrapped_policy_yaml()?;
+    let user_yaml = jetty.generate_bootstrapped_user_yaml()?;
 
     // Now check for all the files
     if !overwrite {
@@ -278,6 +280,9 @@ async fn bootstrap(overwrite: bool) -> Result<()> {
         }
         if project::assets_cfg_root_path().exists() {
             bail!("{} already exists; run `jetty bootstrap --overwrite` to overwrite the existing configuration", project::assets_cfg_root_path().to_string_lossy())
+        }
+        if project::users_cfg_root_path_local().exists() {
+            bail!("{} already exists; run `jetty bootstrap --overwrite` to overwrite the existing configuration", project::users_cfg_root_path_local().to_string_lossy())
         }
     } else {
         match fs::remove_file(groups_cfg_path_local()) {
@@ -288,6 +293,10 @@ async fn bootstrap(overwrite: bool) -> Result<()> {
             Ok(_) => println!("removed existing asset directory"),
             Err(_) => (),
         };
+        match fs::remove_file(project::users_cfg_root_path_local()) {
+            Ok(_) => println!("removed existing users directory"),
+            Err(_) => (),
+        };
     }
 
     // Now write the yaml files
@@ -295,11 +304,15 @@ async fn bootstrap(overwrite: bool) -> Result<()> {
     // groups
     fs::create_dir_all(groups_cfg_path_local().parent().unwrap()).unwrap(); // Create the parent dir, if needed
     fs::write(groups_cfg_path_local(), group_yaml)?; // write the contents
-                                                     // assets
+
+    // assets
     write_bootstrapped_asset_yaml(asset_yaml)?;
     if let Err(e) = update_asset_files(&jetty) {
         warn!("failed to generate files for all assets: {}", e);
     };
+
+    // users
+    write_bootstrapped_user_yaml(user_yaml)?;
 
     // sanity check - the diff should be empty at this point
     let validated_group_config = parse_and_validate_groups(&jetty)?;

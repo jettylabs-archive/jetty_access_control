@@ -23,7 +23,7 @@ use crate::{
     permissions::matrix::{DoubleInsert, InsertOrMerge},
 };
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use bimap;
 use serde::{Deserialize, Serialize};
 
@@ -515,5 +515,38 @@ impl Translator {
             // Default policies don't have names
             NodeName::DefaultPolicy { .. } => "".into(),
         }
+    }
+
+    pub(crate) fn try_translate_node_name_to_local(
+        &self,
+        node_name: &NodeName,
+        connector: &ConnectorNamespace,
+    ) -> Result<String> {
+        Ok(match &node_name {
+            NodeName::User(_n) => self
+                .global_to_local
+                .users
+                .get(connector)
+                .ok_or(anyhow!("unable to find connector for node translation"))?
+                .get(node_name)
+                .ok_or(anyhow!("unable to find username for collection"))?
+                .to_owned(),
+            // There may be groups that don't exist yet, so we'll just use the group name without the origin
+            NodeName::Group { name, .. } => name.to_owned(),
+            NodeName::Asset { .. } => {
+                todo!()
+            }
+            NodeName::Policy { .. } => self
+                .global_to_local
+                .policies
+                .get(connector)
+                .ok_or(anyhow!("unable to find connector for node translation"))?
+                .get(node_name)
+                .ok_or(anyhow!("unable to find username for collection"))?
+                .to_owned(),
+            NodeName::Tag(t) => t.to_owned(),
+            // Default policies don't have names
+            NodeName::DefaultPolicy { .. } => "".into(),
+        })
     }
 }

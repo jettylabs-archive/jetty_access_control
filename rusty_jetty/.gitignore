@@ -31,3 +31,4 @@ groups.yaml
 jetty_project/
 
 /*/assets/**/*.yaml
+/*/users/*.yaml

@@ -4,6 +4,8 @@ pub mod assets;
 pub mod groups;
 mod parser_common;
 pub(crate) mod tag_parser;
+pub mod users;
+mod utils;
 
 use std::collections::HashMap;
 

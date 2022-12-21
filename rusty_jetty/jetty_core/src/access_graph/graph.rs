@@ -49,7 +49,7 @@ pub(crate) struct NodeMap {
 #[derive(Serialize, Deserialize, Default, Debug)]
 pub(crate) struct NodeIdMap {
     pub(crate) assets: HashMap<uuid::Uuid, typed_indices::AssetIndex>,
-    users: HashMap<uuid::Uuid, typed_indices::UserIndex>,
+    pub(crate) users: HashMap<uuid::Uuid, typed_indices::UserIndex>,
     groups: HashMap<uuid::Uuid, typed_indices::GroupIndex>,
     tags: HashMap<uuid::Uuid, typed_indices::TagIndex>,
     policies: HashMap<uuid::Uuid, typed_indices::PolicyIndex>,
