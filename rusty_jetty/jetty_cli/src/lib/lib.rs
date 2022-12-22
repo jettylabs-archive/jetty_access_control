@@ -36,7 +36,7 @@ use jetty_core::{
             get_default_policy_diffs, get_policy_diffs,
         },
         groups::parse_and_validate_groups,
-        users::bootstrap::write_bootstrapped_user_yaml,
+        users::bootstrap::{update_user_files, write_bootstrapped_user_yaml},
         Diffs,
     },
     Connector, Jetty,
@@ -255,6 +255,9 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
     if let Err(e) = update_asset_files(&jetty) {
         warn!("failed to generate files for all assets: {}", e);
     };
+    if let Err(e) = update_user_files(&jetty) {
+        warn!("failed to generate files for all users: {}", e);
+    };
 
     Ok(())
 }
@@ -316,6 +319,9 @@ async fn bootstrap(overwrite: bool) -> Result<()> {
 
     // users
     write_bootstrapped_user_yaml(user_yaml)?;
+    if let Err(e) = update_user_files(&jetty) {
+        warn!("failed to generate files for all users: {}", e);
+    }
 
     // sanity check - the diff should be empty at this point
     let validated_group_config = parse_and_validate_groups(&jetty)?;

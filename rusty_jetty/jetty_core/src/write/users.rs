@@ -18,7 +18,6 @@ use crate::{access_graph::NodeName, jetty::ConnectorNamespace, project};
 pub(crate) struct UserYaml {
     name: String,
     identifiers: HashMap<ConnectorNamespace, String>,
-    id: Uuid,
 }
 
 /// Get the paths of all asset config files

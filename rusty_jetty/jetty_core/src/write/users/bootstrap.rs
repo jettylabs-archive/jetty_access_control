@@ -74,7 +74,6 @@ fn user_yaml_from_idx(jetty: &Jetty, idx: UserIndex) -> Result<UserYaml> {
     Ok(UserYaml {
         name: attributes.name.to_string(),
         identifiers,
-        id: attributes.id.to_owned(),
     })
 }
 
