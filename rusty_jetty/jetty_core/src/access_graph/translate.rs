@@ -568,4 +568,17 @@ impl Translator {
             NodeName::DefaultPolicy { .. } => "".into(),
         })
     }
+
+    pub(crate) fn get_all_local_users(&self) -> HashMap<(ConnectorNamespace, String), NodeName> {
+        self.local_to_global
+            .users
+            .iter()
+            .map(|(connector, user_map)| {
+                user_map.iter().map(|(k, node_name)| {
+                    ((connector.to_owned(), k.to_owned()), node_name.to_owned())
+                })
+            })
+            .flatten()
+            .collect()
+    }
 }

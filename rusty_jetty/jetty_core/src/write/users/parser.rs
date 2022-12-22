@@ -76,7 +76,7 @@ fn validate_config(configs: &HashMap<PathBuf, UserYaml>, jetty: &Jetty) -> Resul
 }
 
 /// Get a map of nodenames to local ids for each connector
-fn get_nodename_local_id_map(
+pub(crate) fn get_nodename_local_id_map(
     configs: &HashMap<PathBuf, UserYaml>,
 ) -> HashMap<ConnectorNamespace, BiHashMap<NodeName, String>> {
     let mut res = HashMap::new();
@@ -102,9 +102,7 @@ fn get_nodename_local_id_map(
     res
 }
 
-pub(crate) fn get_validated_nodename_local_id_map(
-    jetty: &Jetty,
-) -> Result<HashMap<ConnectorNamespace, BiHashMap<NodeName, String>>> {
+pub(crate) fn get_validated_file_config_map(jetty: &Jetty) -> Result<HashMap<PathBuf, UserYaml>> {
     let paths = get_config_paths()?;
     let configs = read_config_files(paths)?;
     let errors = validate_config(&configs, jetty)?;
@@ -119,5 +117,12 @@ pub(crate) fn get_validated_nodename_local_id_map(
         )
     }
 
+    Ok(configs)
+}
+
+pub(crate) fn get_validated_nodename_local_id_map(
+    jetty: &Jetty,
+) -> Result<HashMap<ConnectorNamespace, BiHashMap<NodeName, String>>> {
+    let configs = get_validated_file_config_map(jetty)?;
     Ok(get_nodename_local_id_map(&configs))
 }

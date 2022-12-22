@@ -1,6 +1,7 @@
 //! Functionality to manage the write path for users
 
 pub mod bootstrap;
+pub mod diff;
 pub mod parser;
 
 use std::collections::HashMap;
