@@ -5,6 +5,7 @@
 
 mod ascii;
 mod cmd;
+mod diff;
 mod init;
 mod tui;
 mod usage_stats;
@@ -157,7 +158,7 @@ pub async fn cli() -> Result<()> {
             } else {
                 println!("Generating diff based off existing data. Run `jetty diff -f` to fetch before generating the diff.")
             };
-            diff().await?;
+            diff::diff().await?;
         }
         JettyCommand::Plan { fetch: fetch_first } => {
             if *fetch_first {
@@ -332,57 +333,6 @@ async fn bootstrap(overwrite: bool) -> Result<()> {
     {
         bail!("something went wrong - the configuration generated doesn't fully match the true state of your environment; please contact support: support@get-jetty.com")
     }
-
-    Ok(())
-}
-
-async fn diff() -> Result<()> {
-    let jetty = new_jetty_with_connectors().await.map_err(|_| {
-        anyhow!(
-            "unable to find {} - make sure you are in a \
-        Jetty project directory, or create a new project by running `jetty init`",
-            project::jetty_cfg_path_local().display()
-        )
-    })?;
-
-    // make sure there's an existing access graph
-    jetty.try_access_graph()?;
-
-    // For now, we're just looking at group diffs
-    let validated_group_config = parse_and_validate_groups(&jetty)?;
-    let group_diff = jetty_core::write::get_group_diff(&validated_group_config, &jetty)?;
-
-    // now get the policy diff
-    // need to get the group configs and all available connectors
-    let policy_diff = get_policy_diffs(&jetty, &validated_group_config)?;
-
-    // now get the policy diff
-    // need to get the group configs and all available connectors
-    let default_policy_diff = get_default_policy_diffs(&jetty, &validated_group_config)?;
-
-    // Now print out the diffs
-    println!("\nGROUPS\n----------------");
-    if !group_diff.is_empty() {
-        group_diff.iter().for_each(|diff| println!("{diff}"));
-    } else {
-        println!("No changes found");
-    };
-
-    println!("\nPOLICIES\n----------------");
-    if !policy_diff.is_empty() {
-        policy_diff.iter().for_each(|diff| println!("{diff}"));
-    } else {
-        println!("No changes found");
-    };
-
-    println!("\nDEFAULT POLICIES\n----------------");
-    if !default_policy_diff.is_empty() {
-        default_policy_diff
-            .iter()
-            .for_each(|diff| println!("{diff}"));
-    } else {
-        println!("No changes found");
-    };
 
     Ok(())
 }

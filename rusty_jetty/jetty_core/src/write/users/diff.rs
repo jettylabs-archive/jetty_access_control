@@ -2,19 +2,61 @@
 
 use std::{
     collections::{BTreeMap, BTreeSet, HashMap, HashSet},
+    fmt::Display,
     path::PathBuf,
 };
 
 use anyhow::Result;
+use colored::Colorize;
 
 use crate::{access_graph::NodeName, jetty::ConnectorNamespace, Jetty};
 
 use super::{parser::get_validated_file_config_map, UserYaml};
 
+/// Differences between identity assignemnts in the config and the environment
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-struct IdentityDiff {
+pub struct IdentityDiff {
+    /// The user with the change
     node: NodeName,
+    /// The details of the change
     details: IdentityDiffDetails,
+}
+
+impl Display for IdentityDiff {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut text = "".to_owned();
+        match &self.details {
+            IdentityDiffDetails::AddUser { add } => {
+                text +=
+                    format!("{}{}\n", "+ user: ".green(), self.node.to_string().green()).as_str();
+                for (conn, local_name) in add {
+                    text += format!("{}", format!("  + {conn}: {local_name}\n").green()).as_str();
+                }
+            }
+            IdentityDiffDetails::RemoveUser { remove } => {
+                text +=
+                    format!("{}", format!("- user: {}\n", self.node.to_string()).red()).as_str();
+                for (conn, local_name) in remove {
+                    text += &format!("{}", format!("  - {conn}: {local_name}\n").red());
+                }
+            }
+            IdentityDiffDetails::ModifyUser { add, remove } => {
+                text += format!(
+                    "{}{}\n",
+                    "~ user: ".yellow(),
+                    self.node.to_string().yellow()
+                )
+                .as_str();
+                for (conn, local_name) in add {
+                    text += format!("{}", format!("  + {conn}: {local_name}\n").green()).as_str();
+                }
+                for (conn, local_name) in remove {
+                    text += format!("{}", format!("  - {conn}:{local_name}\n").red()).as_str();
+                }
+            }
+        }
+        write!(f, "{text}")
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -22,7 +64,9 @@ enum IdentityDiffDetails {
     AddUser {
         add: BTreeSet<(ConnectorNamespace, String)>,
     },
-    RemoveUser,
+    RemoveUser {
+        remove: BTreeSet<(ConnectorNamespace, String)>,
+    },
     ModifyUser {
         add: BTreeSet<(ConnectorNamespace, String)>,
         remove: BTreeSet<(ConnectorNamespace, String)>,
@@ -32,7 +76,7 @@ enum IdentityDiffDetails {
 /// This diffs the actual identities themselves - what local usernames become what Jetty user?
 // FUTURE: Right now, this is inefficient with how it reads in the config
 // (we could end up reading it in many times for different processes)
-fn diff_identities(jetty: &Jetty) -> Result<BTreeSet<IdentityDiff>> {
+pub fn get_identity_diffs(jetty: &Jetty) -> Result<BTreeSet<IdentityDiff>> {
     let config_identity_state = get_identity_config_state(jetty)?;
     let mut env_identity_state = get_identity_env_state(jetty)?;
     let mut res = BTreeSet::new();
@@ -62,10 +106,12 @@ fn diff_identities(jetty: &Jetty) -> Result<BTreeSet<IdentityDiff>> {
     }
 
     // handle nodes in the env, but not in the config
-    for (env_node, _) in env_identity_state {
+    for (env_node, env_identities) in env_identity_state {
         res.insert(IdentityDiff {
             node: env_node,
-            details: IdentityDiffDetails::RemoveUser,
+            details: IdentityDiffDetails::RemoveUser {
+                remove: env_identities.into_iter().collect(),
+            },
         });
     }
 
