@@ -11,7 +11,10 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::{
-    access_graph::{graph::typed_indices::UserIndex, AccessGraph, NodeName, UserAttributes},
+    access_graph::{
+        graph::typed_indices::{TypedIndex, UserIndex},
+        AccessGraph, NodeName, UserAttributes,
+    },
     jetty::ConnectorNamespace,
     project,
     write::utils::clean_string_for_path,
@@ -60,7 +63,7 @@ pub fn write_bootstrapped_user_yaml(users: HashMap<PathBuf, String>) -> Result<(
 
 fn user_yaml_from_idx(jetty: &Jetty, idx: UserIndex) -> Result<UserYaml> {
     let ag = jetty.try_access_graph()?;
-    let attributes: UserAttributes = ag[idx].to_owned().try_into()?;
+    let attributes = idx.get_attributes(jetty)?;
     let mut identifiers: HashMap<ConnectorNamespace, String> = HashMap::new();
     for connector in jetty.connectors.keys() {
         if let Ok(val) = ag
@@ -74,6 +77,11 @@ fn user_yaml_from_idx(jetty: &Jetty, idx: UserIndex) -> Result<UserYaml> {
     Ok(UserYaml {
         name: attributes.name.to_string(),
         identifiers,
+        groups: idx
+            .groups(jetty)?
+            .into_iter()
+            .map(|g| g.name(jetty).unwrap().to_string())
+            .collect(),
     })
 }
 

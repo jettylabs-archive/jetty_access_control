@@ -4,7 +4,7 @@ pub mod bootstrap;
 pub mod diff;
 pub mod parser;
 
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 
 use anyhow::{Context, Result};
 use bimap::BiHashMap;
@@ -18,6 +18,8 @@ use crate::{access_graph::NodeName, jetty::ConnectorNamespace, project};
 pub(crate) struct UserYaml {
     name: String,
     identifiers: HashMap<ConnectorNamespace, String>,
+    #[serde(skip_serializing_if = "BTreeSet::is_empty", default)]
+    groups: BTreeSet<String>,
 }
 
 /// Get the paths of all asset config files

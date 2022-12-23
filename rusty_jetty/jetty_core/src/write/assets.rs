@@ -88,7 +88,7 @@ struct YamlDefaultPolicy {
     path: String,
     /// this is specifically for default policies - the types on which the policy should be applied
     types: BTreeSet<AssetType>,
-    #[serde(skip_serializing_if = "not_connector_managed", default)]
+    #[serde(skip_serializing_if = "bool_is_false", default)]
     /// Whether this default policy is managed by the connector (rather than just by Jetty)
     connector_managed: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -102,7 +102,7 @@ struct YamlDefaultPolicy {
     metadata: Option<BTreeMap<String, String>>,
 }
 
-fn not_connector_managed(v: &bool) -> bool {
+fn bool_is_false(v: &bool) -> bool {
     !v
 }
 
