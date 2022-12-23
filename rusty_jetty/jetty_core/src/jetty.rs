@@ -204,6 +204,13 @@ impl Jetty {
             "unable to find an existing access graph; try running `jetty fetch`"
         ))
     }
+
+    /// Getter for a mutable reference to the access graph. Returns an error if no access graph has been created
+    pub fn try_access_graph_mut(&mut self) -> Result<&mut AccessGraph> {
+        self.access_graph.as_mut().ok_or(anyhow!(
+            "unable to find an existing access graph; try running `jetty fetch`"
+        ))
+    }
 }
 
 /// Load access graph from a file

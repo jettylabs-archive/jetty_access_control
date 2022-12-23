@@ -129,7 +129,7 @@ mod tests {
     fn get_matching_simple_paths_works() -> Result<()> {
         let ag = AccessGraph::new_dummy(
             &[
-                &JettyNode::User(UserAttributes::new("user".to_owned())),
+                &JettyNode::User(UserAttributes::simple_new("user".to_owned())),
                 &JettyNode::Group(GroupAttributes::new("group1".to_owned())),
                 &JettyNode::Group(GroupAttributes::new("group2".to_owned())),
                 &JettyNode::Group(GroupAttributes::new("group3".to_owned())),

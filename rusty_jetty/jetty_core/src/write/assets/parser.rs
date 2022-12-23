@@ -1,15 +1,11 @@
 //! Parse asset configuration files
 
-use std::{
-    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
-    path::PathBuf,
-};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
-use anyhow::{anyhow, bail, Result};
-use petgraph::stable_graph::NodeIndex;
+use anyhow::{anyhow, bail, Context, Result};
 
 use crate::{
-    access_graph::{AccessGraph, AssetAttributes, NodeName},
+    access_graph::{AccessGraph, AssetAttributes, NodeName, UserAttributes},
     connectors::AssetType,
     jetty::ConnectorNamespace,
     Jetty,
@@ -108,7 +104,7 @@ fn parse_policies(
         // Make sure all the users exist
         if let Some(users) = &policy.users {
             for user in users {
-                let _user_name = get_user_name(user, ag)?;
+                let _user_name = get_user_name_and_connector(user, ag)?;
                 // Now add the matching user to the results map
                 // Depending on whether its a default policy or not...
 
@@ -154,7 +150,19 @@ fn parse_default_policies(
             Some(
                 users
                     .iter()
-                    .map(|u| get_user_name(u, ag))
+                    .map(|u| match get_user_name_and_connector(u, ag) {
+                        Ok((name, conn)) => {
+                            if &conn == connector {
+                                Ok(name)
+                            } else {
+                                Err(anyhow!(
+                                    "cannot set a {connector}-specific policy for non-{connector} user {u}"
+                                ))
+                            }
+                        }
+
+                        Err(e) => Err(anyhow!("{e}")),
+                    })
                     .collect::<Result<BTreeSet<NodeName>>>()?,
             )
         } else {
@@ -243,24 +251,20 @@ fn get_group_name(
 }
 
 /// Validate that a user exists and get their nodename
-fn get_user_name(user: &String, ag: &AccessGraph) -> Result<NodeName> {
-    let matching_users = ag
-        .graph
-        .nodes
-        .users
-        .keys()
-        .filter(|n| match n {
-            NodeName::User(graph_user) => graph_user == user,
-            _ => false,
-        })
-        .collect::<Vec<_>>();
-    if matching_users.is_empty() {
-        bail!("unable to find user: {user}")
-    }
-    if matching_users.len() > 1 {
-        bail!("found too many matching users for {user} 😳")
-    }
-    Ok(matching_users[0].to_owned())
+fn get_user_name_and_connector(
+    user: &String,
+    ag: &AccessGraph,
+) -> Result<(NodeName, ConnectorNamespace)> {
+    let user_name = NodeName::User(user.to_owned());
+
+    let user: UserAttributes = ag
+        .get_node(&user_name)
+        .context(format!(
+            "looking for user \"{user}\": user does not appear to exist"
+        ))?
+        .to_owned()
+        .try_into()?;
+    Ok((user_name, user.connector()))
 }
 
 /// Validate that an asset exists and get its NodeName
@@ -277,10 +281,14 @@ fn get_asset_name(
         .keys()
         .filter(|n| match n {
             NodeName::Asset {
-                connector: _ag_connector,
-                asset_type: _ag_asset_type,
+                connector: ag_connector,
+                asset_type: ag_asset_type,
                 path,
-            } => connector == connector && asset_type == asset_type && &path.to_string() == name,
+            } => {
+                connector == ag_connector
+                    && asset_type == ag_asset_type
+                    && &path.to_string() == name
+            }
             _ => false,
         })
         .collect::<Vec<_>>();

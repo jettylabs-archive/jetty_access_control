@@ -7,8 +7,11 @@ use graphviz_rust as graphviz;
 use graphviz_rust::cmd::CommandArg;
 use graphviz_rust::cmd::Format;
 use graphviz_rust::printer::PrinterContext;
+use petgraph::stable_graph::EdgeIndex;
 use petgraph::stable_graph::NodeIndex;
+use petgraph::Direction;
 
+use petgraph::visit::EdgeRef;
 use petgraph::{dot, stable_graph::StableDiGraph};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -54,6 +57,17 @@ pub(crate) struct NodeIdMap {
     tags: HashMap<uuid::Uuid, typed_indices::TagIndex>,
     policies: HashMap<uuid::Uuid, typed_indices::PolicyIndex>,
     default_policies: HashMap<uuid::Uuid, typed_indices::DefaultPolicyIndex>,
+}
+
+#[derive(Debug)]
+/// Information necessary to plan an edge redirection
+pub(crate) struct EdgeRedirection {
+    /// The index of the edge that will be redirected
+    idx: EdgeIndex,
+    /// Its intended origin
+    from: NodeIndex,
+    /// Its intended target
+    to: NodeIndex,
 }
 
 impl Graph {
@@ -230,7 +244,7 @@ impl Graph {
         self.node_ids.policies.get(node).map(|i| i.to_owned())
     }
 
-    /// Adds a node to the graph and returns the index.
+    /// Adds a node to the graph as well as the appropriate lookup tables
     pub(crate) fn add_node(&mut self, node: &JettyNode) -> Result<()> {
         let node_name = node.get_node_name();
         let node_id = node.id();
@@ -276,7 +290,7 @@ impl Graph {
         Ok(())
     }
 
-    /// Adds a node to the graph and returns the index.
+    /// Remove a node from the graph, also removing it from the mapping tables (node_ids and nodes)
     pub(crate) fn remove_node(&mut self, idx: NodeIndex) -> Result<()> {
         let node = &self.graph[idx];
         let node_name = node.get_node_name();
@@ -309,6 +323,73 @@ impl Graph {
             }
         };
         self.graph.remove_node(idx);
+        Ok(())
+    }
+
+    /// Find an existing edge and recreate it with the specified endpoints
+    pub(crate) fn redirect_edge(
+        &mut self,
+        edge_idx: EdgeIndex,
+        from: NodeIndex,
+        to: NodeIndex,
+    ) -> Result<()> {
+        let weight = self
+            .graph
+            .remove_edge(edge_idx)
+            .ok_or(anyhow!("failed to find edge to redirect"))?;
+        self.graph.add_edge(from, to, weight);
+        Ok(())
+    }
+
+    /// redirect edges to or from a node, when the other side of the edge meet certain criteria
+    pub(crate) fn plan_conditional_redirect_edges_from_node<F>(
+        &mut self,
+        old_node: NodeIndex,
+        new_node: NodeIndex,
+        target_matcher: F,
+    ) -> Result<Vec<EdgeRedirection>>
+    where
+        F: Fn(&JettyNode) -> bool,
+    {
+        let mut redirect_list = Vec::new();
+
+        // collect outgoing edges that need a change
+        for edge in self.graph.edges_directed(old_node, Direction::Outgoing) {
+            let target = edge.target();
+            if target_matcher(&self.graph[target]) {
+                redirect_list.push(EdgeRedirection {
+                    idx: edge.id(),
+                    from: new_node.to_owned(),
+                    to: target.to_owned(),
+                });
+            }
+        }
+
+        // collect incoming edges that need a change
+        for edge in self.graph.edges_directed(old_node, Direction::Incoming) {
+            let source = edge.source();
+            if target_matcher(&self.graph[source]) {
+                redirect_list.push(EdgeRedirection {
+                    idx: edge.id(),
+                    from: source.to_owned(),
+                    to: new_node.to_owned(),
+                });
+            }
+        }
+
+        Ok(redirect_list)
+    }
+
+    pub(crate) fn execute_edge_redirects(&mut self, edges: Vec<EdgeRedirection>) -> Result<()> {
+        // make changes to the necessary edges
+        for EdgeRedirection {
+            idx: edge_id,
+            from: source,
+            to: target,
+        } in edges
+        {
+            self.redirect_edge(edge_id, source, target)?;
+        }
         Ok(())
     }
 

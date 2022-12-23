@@ -15,7 +15,7 @@ use crate::connectors::processed_nodes::{ProcessedConnectorData, ProcessedDefaul
 use crate::cual::Cual;
 use crate::Jetty;
 
-use crate::connectors::AssetType;
+use crate::connectors::{AssetType, UserIdentifier};
 use crate::jetty::ConnectorNamespace;
 use crate::logging::debug;
 use crate::write::tag_parser::{parse_tags, tags_to_jetty_node_helpers};
@@ -78,9 +78,33 @@ impl UserAttributes {
         })
     }
 
-    /// Convenience constructor for testing
+    /// Generate new UserAttributes struct
+    pub(crate) fn new(
+        name: &NodeName,
+        identifiers: &HashSet<UserIdentifier>,
+        metadata: &HashMap<String, String>,
+        connector: Option<&ConnectorNamespace>,
+    ) -> Self {
+        UserAttributes {
+            name: name.to_owned(),
+            id: Uuid::new_v5(&Uuid::NAMESPACE_URL, name.to_string().as_bytes()),
+            identifiers: identifiers.to_owned(),
+            metadata: metadata.to_owned(),
+            connectors: connector
+                .map(|c| HashSet::from([c.to_owned()]))
+                .unwrap_or_default(),
+        }
+    }
+
+    /// users can only have at most one connector, so this makes things a bit easier.
+    /// While the graph is being created, it's possible that a user has 0 connectors, but that
+    /// should never be the case when this might be called
+    pub(crate) fn connector(&self) -> ConnectorNamespace {
+        self.connectors.iter().next().unwrap().to_owned()
+    }
+
     #[cfg(test)]
-    fn new(name: String) -> Self {
+    fn simple_new(name: String) -> Self {
         Self {
             name: NodeName::User(name.to_owned()),
             id: Uuid::new_v5(
@@ -822,6 +846,11 @@ impl AccessGraph {
         &self.translator
     }
 
+    /// Return a mutable reference to the translator
+    pub fn translator_mut(&mut self) -> &mut Translator {
+        &mut self.translator
+    }
+
     /// This translate effective permissions from using node names for indices to using
     /// node indices
     fn translate_effective_permissions_to_global_indices(
@@ -1021,6 +1050,38 @@ impl AccessGraph {
         // add edges from the cache
         self.add_edges()?;
 
+        Ok(())
+    }
+
+    // Given a node index and a connector, add that connector to the specified asset in the graph
+    pub(crate) fn add_connector_to_user<T>(
+        &mut self,
+        user_idx: T,
+        connector: &ConnectorNamespace,
+    ) -> Result<()>
+    where
+        T: Into<NodeIndex> + Copy,
+    {
+        match &mut self[user_idx.into()] {
+            JettyNode::User(attributes) => attributes.connectors.insert(connector.to_owned()),
+            _ => bail!("requires a node type"),
+        };
+        Ok(())
+    }
+
+    // Given a node index and a connector, remove that connector from the specified asset in the graph
+    pub(crate) fn remove_connector_from_user<T>(
+        &mut self,
+        user_idx: T,
+        connector: &ConnectorNamespace,
+    ) -> Result<()>
+    where
+        T: Into<NodeIndex> + Copy,
+    {
+        match &mut self[user_idx.into()] {
+            JettyNode::User(attributes) => attributes.connectors.remove(connector),
+            _ => bail!("requires a node type"),
+        };
         Ok(())
     }
 }

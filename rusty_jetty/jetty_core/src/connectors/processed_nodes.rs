@@ -287,13 +287,12 @@ pub struct ProcessedDefaultPolicy {
 
 impl NodeHelper for ProcessedUser {
     fn get_node(&self) -> Option<JettyNode> {
-        Some(JettyNode::User(UserAttributes {
-            name: self.name.to_owned(),
-            id: Uuid::new_v5(&Uuid::NAMESPACE_URL, self.name.to_string().as_bytes()),
-            identifiers: self.identifiers.to_owned(),
-            metadata: self.metadata.to_owned(),
-            connectors: HashSet::from([self.connector.to_owned()]),
-        }))
+        Some(JettyNode::User(UserAttributes::new(
+            &self.name,
+            &self.identifiers,
+            &self.metadata,
+            Some(&self.connector),
+        )))
     }
 
     fn get_edges(&self) -> HashSet<JettyEdge> {

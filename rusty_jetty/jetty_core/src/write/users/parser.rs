@@ -36,7 +36,7 @@ fn validate_config(configs: &HashMap<PathBuf, UserYaml>, jetty: &Jetty) -> Resul
     let ag = jetty.try_access_graph()?;
     let allowed_connectors: HashSet<ConnectorNamespace> =
         jetty.connectors.keys().cloned().collect();
-    let allowed_local_names: HashSet<_> =
+    let mut allowed_local_names: HashSet<_> =
         ag.translator().get_all_local_users().into_keys().collect();
     let mut errors = Vec::new();
     let mut jetty_name_map = HashMap::new();
@@ -60,13 +60,6 @@ fn validate_config(configs: &HashMap<PathBuf, UserYaml>, jetty: &Jetty) -> Resul
                 ));
             }
 
-            // make sure local names are valid
-            if !allowed_local_names.contains(&(connector.to_owned(), local_name.to_owned())) {
-                errors.push(format!(
-                    "invalid identifier in {}: {connector} doesn't have a user identified as \"{local_name}\"", path.display()
-                ));
-            }
-
             // make sure that the connector-specific names are only used once and that they exist
             if let Some(old_path) = local_id_map.insert(
                 (connector.to_owned(), local_name.to_owned()),
@@ -78,7 +71,20 @@ fn validate_config(configs: &HashMap<PathBuf, UserYaml>, jetty: &Jetty) -> Resul
                     path.display()
                 ));
             }
+            // make sure local names are valid (but only if it's not a duplicate)
+            else if !allowed_local_names.remove(&(connector.to_owned(), local_name.to_owned())) {
+                errors.push(format!(
+                    "invalid identifier in {}: {connector} doesn't have a user identified as \"{local_name}\"", path.display()
+                ));
+            }
         }
+    }
+
+    // if there are an remaining allowed_local_names, we create errors - all users must be accounted for
+    for (connector, local_name) in &allowed_local_names {
+        errors.push(format!(
+            "missing configuration for {connector} user {local_name}"
+        ));
     }
 
     // only one use of each identifier
@@ -118,10 +124,15 @@ pub(crate) fn get_validated_file_config_map(jetty: &Jetty) -> Result<HashMap<Pat
     let errors = validate_config(&configs, jetty)?;
     if !errors.is_empty() {
         bail!(
-            "invalid user configuration:\n{}",
+            "invalid user configuration: ({})\n{}",
+            if errors.len() == 1 {
+                "1 error".to_owned()
+            } else {
+                format!("{} errors", errors.len())
+            },
             errors
                 .into_iter()
-                .map(|e| format!("{}", format!(" -{e}").as_str().red()))
+                .map(|e| format!("{}", format!(" - {e}").as_str().red()))
                 .collect::<Vec<_>>()
                 .join("\n")
         )

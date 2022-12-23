@@ -134,7 +134,7 @@ mod tests {
     fn get_test_graph() -> AccessGraph {
         AccessGraph::new_dummy(
             &[
-                &JettyNode::User(UserAttributes::new("user".to_owned())),
+                &JettyNode::User(UserAttributes::simple_new("user".to_owned())),
                 &JettyNode::Group(GroupAttributes::new("group1".to_owned())),
                 &JettyNode::Group(GroupAttributes::new("group2".to_owned())),
                 &JettyNode::Group(GroupAttributes::new("group3".to_owned())),

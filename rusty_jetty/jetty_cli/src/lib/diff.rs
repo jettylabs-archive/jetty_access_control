@@ -7,14 +7,14 @@ use jetty_core::{
     write::{
         assets::{get_default_policy_diffs, get_policy_diffs},
         groups::parse_and_validate_groups,
-        users::diff::get_identity_diffs,
+        users::diff::{get_identity_diffs, update_graph},
     },
 };
 
 use crate::new_jetty_with_connectors;
 
 pub(super) async fn diff() -> Result<()> {
-    let jetty = new_jetty_with_connectors().await.map_err(|_| {
+    let jetty = &mut new_jetty_with_connectors().await.map_err(|_| {
         anyhow!(
             "unable to find {} - make sure you are in a \
         Jetty project directory, or create a new project by running `jetty init`",
@@ -27,6 +27,8 @@ pub(super) async fn diff() -> Result<()> {
 
     // user identity diffs
     let user_identity_diffs = get_identity_diffs(&jetty)?;
+    // update the graph before parsing other configs/generating other diffs
+    update_graph(jetty, &user_identity_diffs)?;
 
     // group diffs
     let validated_group_config = parse_and_validate_groups(&jetty)?;

@@ -581,4 +581,50 @@ impl Translator {
             .flatten()
             .collect()
     }
+
+    /// update the translator to reflect the new mapping of a local name to a jetty name
+    /// This can be used whether the node exists already or is entirely new
+    pub(crate) fn modify_user_mapping(
+        &mut self,
+        connector: &ConnectorNamespace,
+        local_name: &String,
+        old_node: &NodeName,
+        new_node: &NodeName,
+    ) -> Result<()> {
+        let global_to_local = self
+            .global_to_local
+            .users
+            .get_mut(connector)
+            .ok_or(anyhow!("unable to find connector for user map update"))?;
+        global_to_local.remove(old_node);
+        global_to_local.insert(new_node.to_owned(), local_name.to_owned());
+
+        let local_to_global = self
+            .local_to_global
+            .users
+            .get_mut(connector)
+            .ok_or(anyhow!("unable to find connector for user map update"))?;
+        local_to_global.remove(local_name);
+        local_to_global.insert(local_name.to_owned(), new_node.to_owned());
+
+        Ok(())
+    }
+
+    /// This will entirely remove a user from both the local and global translator mapping
+    pub(crate) fn remove_user_from_mapping(&mut self, node_name: &NodeName) -> Result<()> {
+        for (conn, map) in self.global_to_local.users.iter_mut() {
+            // get the connector and local name from here, use it to delete in the other map as well
+            match map.remove(node_name) {
+                Some(local_name) => {
+                    self.local_to_global
+                        .users
+                        .get_mut(conn)
+                        .unwrap()
+                        .remove(&local_name);
+                }
+                None => (),
+            };
+        }
+        Ok(())
+    }
 }
