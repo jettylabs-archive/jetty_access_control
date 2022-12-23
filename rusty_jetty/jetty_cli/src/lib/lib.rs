@@ -300,7 +300,7 @@ async fn bootstrap(overwrite: bool) -> Result<()> {
             Ok(_) => println!("removed existing asset directory"),
             Err(_) => (),
         };
-        match fs::remove_file(project::users_cfg_root_path_local()) {
+        match fs::remove_dir_all(project::users_cfg_root_path_local()) {
             Ok(_) => println!("removed existing users directory"),
             Err(_) => (),
         };
