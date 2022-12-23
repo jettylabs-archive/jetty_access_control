@@ -276,6 +276,42 @@ impl Graph {
         Ok(())
     }
 
+    /// Adds a node to the graph and returns the index.
+    pub(crate) fn remove_node(&mut self, idx: NodeIndex) -> Result<()> {
+        let node = &self.graph[idx];
+        let node_name = node.get_node_name();
+        let node_id = node.id();
+
+        match node {
+            JettyNode::Group(_) => {
+                self.nodes.groups.remove(&node_name);
+                self.node_ids.groups.remove(&node_id);
+            }
+            JettyNode::User(_) => {
+                self.nodes.users.remove(&node_name);
+                self.node_ids.users.remove(&node_id);
+            }
+            JettyNode::Asset(_) => {
+                self.nodes.assets.remove(&node_name);
+                self.node_ids.assets.remove(&node_id);
+            }
+            JettyNode::Tag(_) => {
+                self.nodes.tags.remove(&node_name);
+                self.node_ids.tags.remove(&node_id);
+            }
+            JettyNode::Policy(_) => {
+                self.nodes.policies.remove(&node_name);
+                self.node_ids.policies.remove(&node_id);
+            }
+            JettyNode::DefaultPolicy(_) => {
+                self.nodes.default_policies.remove(&node_name);
+                self.node_ids.default_policies.remove(&node_id);
+            }
+        };
+        self.graph.remove_node(idx);
+        Ok(())
+    }
+
     /// Updates a node. Should return the updated node. Returns an
     /// error if the nodes are incompatible (would require overwriting values).
     /// To be compatible, metadata from each
