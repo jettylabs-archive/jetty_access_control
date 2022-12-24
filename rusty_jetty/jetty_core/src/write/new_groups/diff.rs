@@ -159,8 +159,6 @@ fn get_config_state(
     // iterate through every group in the config. for each identifier, get the group's identifiers that are from the right connector
     let group_map = get_config_map(validated_config, &connectors.keys().cloned().collect());
 
-    let all_groups: HashSet<_> = group_map.values().cloned().flatten().collect();
-
     validated_config
         .iter()
         .map(|group| {

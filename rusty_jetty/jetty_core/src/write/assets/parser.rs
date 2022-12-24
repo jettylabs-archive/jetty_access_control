@@ -104,7 +104,7 @@ fn parse_policies(
         // Make sure all the users exist
         if let Some(users) = &policy.users {
             for user in users {
-                let _user_name = get_user_name_and_connector(user, ag)?;
+                let _user_name = get_user_name_and_connectors(user, ag)?;
                 // Now add the matching user to the results map
                 // Depending on whether its a default policy or not...
 
@@ -150,9 +150,9 @@ fn parse_default_policies(
             Some(
                 users
                     .iter()
-                    .map(|u| match get_user_name_and_connector(u, ag) {
-                        Ok((name, conn)) => {
-                            if &conn == connector {
+                    .map(|u| match get_user_name_and_connectors(u, ag) {
+                        Ok((name, conns)) => {
+                            if conns.contains(connector) {
                                 Ok(name)
                             } else {
                                 Err(anyhow!(
@@ -251,10 +251,10 @@ fn get_group_name(
 }
 
 /// Validate that a user exists and get their nodename
-fn get_user_name_and_connector(
+fn get_user_name_and_connectors(
     user: &String,
     ag: &AccessGraph,
-) -> Result<(NodeName, ConnectorNamespace)> {
+) -> Result<(NodeName, HashSet<ConnectorNamespace>)> {
     let user_name = NodeName::User(user.to_owned());
 
     let user: UserAttributes = ag
@@ -264,7 +264,7 @@ fn get_user_name_and_connector(
         ))?
         .to_owned()
         .try_into()?;
-    Ok((user_name, user.connector()))
+    Ok((user_name, user.connectors().to_owned()))
 }
 
 /// Validate that an asset exists and get its NodeName

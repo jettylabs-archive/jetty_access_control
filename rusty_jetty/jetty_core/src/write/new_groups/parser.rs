@@ -100,23 +100,35 @@ pub fn get_config_map(
         .map(|group| {
             (
                 group.name.to_owned(),
-                connectors
-                    .into_iter()
-                    .map(|connector| {
-                        (connector.to_owned(), {
-                            match group.identifiers.get(connector) {
-                                Some(name) => NodeName::Group {
-                                    name: name.to_owned(),
-                                    origin: connector.to_owned(),
-                                },
-                                None => NodeName::Group {
-                                    name: group.name.to_owned(),
-                                    origin: connector.to_owned(),
-                                },
-                            }
+                // branch on whether it's a connector-specific group
+                if let (Some(connector), local_name) = split_group_name(&group.name) {
+                    [(
+                        connector.to_owned(),
+                        NodeName::Group {
+                            name: local_name,
+                            origin: connector,
+                        },
+                    )]
+                    .into()
+                } else {
+                    connectors
+                        .into_iter()
+                        .map(|connector| {
+                            (connector.to_owned(), {
+                                match group.identifiers.get(connector) {
+                                    Some(name) => NodeName::Group {
+                                        name: name.to_owned(),
+                                        origin: connector.to_owned(),
+                                    },
+                                    None => NodeName::Group {
+                                        name: group.name.to_owned(),
+                                        origin: connector.to_owned(),
+                                    },
+                                }
+                            })
                         })
-                    })
-                    .collect(),
+                        .collect()
+                },
             )
         })
         .collect()

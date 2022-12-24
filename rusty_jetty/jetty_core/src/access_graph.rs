@@ -99,8 +99,8 @@ impl UserAttributes {
     /// users can only have at most one connector, so this makes things a bit easier.
     /// While the graph is being created, it's possible that a user has 0 connectors, but that
     /// should never be the case when this might be called
-    pub(crate) fn connector(&self) -> ConnectorNamespace {
-        self.connectors.iter().next().unwrap().to_owned()
+    pub(crate) fn connectors(&self) -> &HashSet<ConnectorNamespace> {
+        &self.connectors
     }
 
     #[cfg(test)]

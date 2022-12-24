@@ -27,11 +27,8 @@ pub fn get_env_config(jetty: &Jetty) -> Result<GroupConfig> {
         .into_iter()
         .map(|(group, members)| GroupYaml {
             name: group.to_string(),
-            identifiers: if let NodeName::Group { name, origin } = group {
-                [(origin, name.to_owned())].into()
-            } else {
-                panic!("expected a group node")
-            },
+            // when bootstrapping, identifiers are not necessary because we don't try to combine multiple groups into one
+            identifiers: Default::default(),
             member_of: members.into_iter().map(|m| m.to_string()).collect(),
         })
         .collect())
