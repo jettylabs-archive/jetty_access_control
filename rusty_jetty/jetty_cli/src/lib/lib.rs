@@ -37,6 +37,7 @@ use jetty_core::{
             get_default_policy_diffs, get_policy_diffs,
         },
         groups::parse_and_validate_groups,
+        new_groups,
         users::bootstrap::{update_user_files, write_bootstrapped_user_yaml},
         Diffs,
     },
@@ -264,7 +265,7 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
 }
 
 async fn bootstrap(overwrite: bool) -> Result<()> {
-    let jetty = new_jetty_with_connectors().await.map_err(|_| {
+    let jetty = &new_jetty_with_connectors().await.map_err(|_| {
         anyhow!(
             "unable to find {} - make sure you are in a \
         Jetty project directory, or create a new project by running `jetty init`",
@@ -276,7 +277,7 @@ async fn bootstrap(overwrite: bool) -> Result<()> {
     jetty.try_access_graph()?;
 
     // Build all the yaml first
-    let group_yaml = jetty.generate_bootstrapped_group_yaml()?;
+    let group_yaml = new_groups::get_env_config(jetty)?;
     let asset_yaml = jetty.generate_bootstrapped_policy_yaml()?;
     let user_yaml = jetty.generate_bootstrapped_user_yaml()?;
 
@@ -309,8 +310,9 @@ async fn bootstrap(overwrite: bool) -> Result<()> {
     // Now write the yaml files
 
     // groups
-    fs::create_dir_all(groups_cfg_path_local().parent().unwrap()).unwrap(); // Create the parent dir, if needed
-    fs::write(groups_cfg_path_local(), group_yaml)?; // write the contents
+    if let Err(e) = new_groups::write_env_config(&group_yaml) {
+        warn!("failed to write groups file: {}", e);
+    }
 
     // assets
     write_bootstrapped_asset_yaml(asset_yaml)?;
@@ -325,14 +327,14 @@ async fn bootstrap(overwrite: bool) -> Result<()> {
     }
 
     // sanity check - the diff should be empty at this point
-    let validated_group_config = parse_and_validate_groups(&jetty)?;
-    if jetty_core::write::get_group_diff(&validated_group_config, &jetty)
-        .context("checking the generated group configuration")?
-        .len()
-        != 0
-    {
-        bail!("something went wrong - the configuration generated doesn't fully match the true state of your environment; please contact support: support@get-jetty.com")
-    }
+    // let validated_group_config = parse_and_validate_groups(&jetty)?;
+    // if jetty_core::write::get_group_diff(&validated_group_config, &jetty)
+    //     .context("checking the generated group configuration")?
+    //     .len()
+    //     != 0
+    // {
+    //     bail!("something went wrong - the configuration generated doesn't fully match the true state of your environment; please contact support: support@get-jetty.com")
+    // }
 
     Ok(())
 }

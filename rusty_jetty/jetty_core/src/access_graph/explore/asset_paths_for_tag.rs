@@ -33,7 +33,7 @@ impl AccessGraph {
         };
 
         // The poison nodes are all the assets that the tag is directly removed from
-        let binding = self.get_matching_children(
+        let binding = self.get_matching_descendants(
             tag,
             |n| matches!(n, EdgeType::RemovedFrom),
             |_| false,
@@ -45,7 +45,7 @@ impl AccessGraph {
 
         let node_paths_hierarchy = if tag_node.pass_through_hierarchy {
             // get paths of tags applied through hierarchy
-            let hierarchy_inheritors = self.all_matching_simple_paths_to_children(
+            let hierarchy_inheritors = self.all_matching_simple_paths_to_descendants(
                 tag,
                 |e| matches!(e, EdgeType::AppliedTo) || matches!(e, EdgeType::ParentOf),
                 |n| matches!(n, JettyNode::Asset(_)),
@@ -60,7 +60,7 @@ impl AccessGraph {
 
         let node_paths_lineage = if tag_node.pass_through_lineage {
             // get paths of tags applied through lineage
-            let lineage_inheritors = self.all_matching_simple_paths_to_children(
+            let lineage_inheritors = self.all_matching_simple_paths_to_descendants(
                 tag,
                 |e| matches!(e, EdgeType::AppliedTo) || matches!(e, EdgeType::DerivedTo),
                 |n| matches!(n, JettyNode::Asset(_)),
@@ -74,7 +74,7 @@ impl AccessGraph {
         };
 
         // get paths for tags applied only directly
-        let directly_assigned = self.all_matching_simple_paths_to_children(
+        let directly_assigned = self.all_matching_simple_paths_to_descendants(
             tag,
             |e| matches!(e, EdgeType::AppliedTo),
             |_| false,

@@ -11,7 +11,7 @@ use super::{AccessGraph, EdgeType, JettyNode, NodePath};
 impl AccessGraph {
     /// Return the descendent node and matching paths from a provided node to all of its matching descendants.
     /// Specify filter functions to match edges and passthrough nodes.
-    pub fn all_matching_simple_paths_to_children<T: Into<NodeIndex>>(
+    pub fn all_matching_simple_paths_to_descendants<T: Into<NodeIndex>>(
         &self,
         from: T,
         edge_matcher: fn(&EdgeType) -> bool,
@@ -34,7 +34,7 @@ impl AccessGraph {
         let mut visited = IndexSet::from([(from_idx.to_owned())]);
         let mut results = HashMap::new();
 
-        self.all_matching_simple_paths_to_children_recursive(
+        self.all_matching_simple_paths_to_descendants_recursive(
             from_idx,
             edge_matcher,
             passthrough_matcher,
@@ -51,7 +51,7 @@ impl AccessGraph {
 
     /// Returns a Vec of Vec<JettyNodes> representing the matching non-cyclic paths
     /// between two nodes
-    fn all_matching_simple_paths_to_children_recursive(
+    fn all_matching_simple_paths_to_descendants_recursive(
         &self,
         from_idx: NodeIndex,
         edge_matcher: fn(&EdgeType) -> bool,
@@ -105,7 +105,7 @@ impl AccessGraph {
             }
             // Is it a passthrough type?
             if passthrough_matcher(node_weight) {
-                self.all_matching_simple_paths_to_children_recursive(
+                self.all_matching_simple_paths_to_descendants_recursive(
                     child,
                     edge_matcher,
                     passthrough_matcher,
@@ -224,7 +224,7 @@ mod tests {
             .ok_or(anyhow!("unable to find matching node"))?;
 
         // Test getting multiple paths to the same node
-        let a = ag.all_matching_simple_paths_to_children(
+        let a = ag.all_matching_simple_paths_to_descendants(
             from_index,
             |_| true,
             |_| true,
@@ -250,7 +250,7 @@ mod tests {
             .ok_or(anyhow!("unable to find matching node"))?;
 
         // Test getting multiple paths to the same node
-        let a = ag.all_matching_simple_paths_to_children(
+        let a = ag.all_matching_simple_paths_to_descendants(
             from_index,
             |_| true,
             |_| true,

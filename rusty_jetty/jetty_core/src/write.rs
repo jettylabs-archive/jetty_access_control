@@ -2,6 +2,7 @@
 
 pub mod assets;
 pub mod groups;
+pub mod new_groups;
 mod parser_common;
 pub(crate) mod tag_parser;
 pub mod users;

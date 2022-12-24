@@ -157,7 +157,7 @@ async fn users_incl_downstream_handler(
         .context("getting asset node index")
         .unwrap();
 
-    let mut asset_list = ag.get_matching_children(
+    let mut asset_list = ag.get_matching_descendants(
         asset_index,
         |e| matches!(e, EdgeType::DerivedTo),
         |n| matches!(n, JettyNode::Asset(_)),
@@ -221,7 +221,7 @@ fn asset_genealogy_with_path(
         .context("getting asset node index")
         .unwrap();
 
-    let paths = ag.all_matching_simple_paths_to_children(
+    let paths = ag.all_matching_simple_paths_to_descendants(
         asset_index,
         edge_matcher,
         |n| matches!(n, JettyNode::Asset(_)),

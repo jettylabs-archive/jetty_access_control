@@ -20,7 +20,7 @@ use super::{
 pub(crate) fn parse_asset_config(
     val: &str,
     jetty: &Jetty,
-    config_groups: &BTreeMap<String, BTreeMap<ConnectorNamespace, NodeName>>,
+    config_groups: &HashMap<String, HashMap<ConnectorNamespace, NodeName>>,
 ) -> Result<(YamlAssetIdentifier, CombinedPolicyState)> {
     let ag = jetty.try_access_graph()?;
 
@@ -75,7 +75,7 @@ fn parse_policies(
     asset_name: &NodeName,
     policies: &BTreeSet<YamlPolicy>,
     connector: &ConnectorNamespace,
-    config_groups: &BTreeMap<String, BTreeMap<ConnectorNamespace, NodeName>>,
+    config_groups: &HashMap<String, HashMap<ConnectorNamespace, NodeName>>,
     jetty: &Jetty,
 ) -> Result<HashMap<(NodeName, NodeName), PolicyState>> {
     let ag = jetty.try_access_graph()?;
@@ -127,7 +127,7 @@ fn parse_default_policies(
     asset_name: &NodeName,
     default_policies: &BTreeSet<YamlDefaultPolicy>,
     connector: &ConnectorNamespace,
-    config_groups: &BTreeMap<String, BTreeMap<ConnectorNamespace, NodeName>>,
+    config_groups: &HashMap<String, HashMap<ConnectorNamespace, NodeName>>,
     jetty: &Jetty,
 ) -> Result<HashMap<(NodeName, String, BTreeSet<AssetType>, NodeName), DefaultPolicyState>> {
     let ag = jetty.try_access_graph()?;
@@ -237,7 +237,7 @@ fn parse_default_policies(
 fn get_group_name(
     group: &String,
     connector: &ConnectorNamespace,
-    config_groups: &BTreeMap<String, BTreeMap<ConnectorNamespace, NodeName>>,
+    config_groups: &HashMap<String, HashMap<ConnectorNamespace, NodeName>>,
 ) -> Result<NodeName> {
     // make sure the groups exist. Needs info from the group parsing. Use the resolved group name
     let group_name = config_groups

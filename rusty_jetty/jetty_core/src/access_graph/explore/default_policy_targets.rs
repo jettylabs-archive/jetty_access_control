@@ -33,7 +33,7 @@ impl AccessGraph {
             .ok_or(anyhow!("root node must exist in the graph"))?;
 
         let res = self
-            .get_matching_children(
+            .get_matching_descendants(
                 root_idx,
                 |e| matches!(e, EdgeType::ParentOf),
                 |n| matches!(n, JettyNode::Asset(_)),

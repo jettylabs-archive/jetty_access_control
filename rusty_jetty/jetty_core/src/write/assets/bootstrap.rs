@@ -15,7 +15,7 @@ use crate::{
     },
     connectors::AssetType,
     project,
-    write::{groups::get_all_group_names, utils::clean_string_for_path},
+    write::utils::clean_string_for_path,
     Jetty,
 };
 
@@ -36,7 +36,7 @@ impl Jetty {
         for (_, idx) in policies {
             let attributes = PolicyAttributes::try_from(ag[*idx].clone())?;
             let privileges = attributes.privileges.to_owned();
-            let target_assets = ag.get_matching_children(
+            let target_assets = ag.get_matching_descendants(
                 *idx,
                 |e| matches!(e, EdgeType::Governs),
                 |_| false,
@@ -44,7 +44,7 @@ impl Jetty {
                 Some(1),
                 Some(1),
             );
-            let target_users = ag.get_matching_children(
+            let target_users = ag.get_matching_descendants(
                 *idx,
                 |e| matches!(e, EdgeType::GrantedTo),
                 |_| false,
@@ -52,7 +52,7 @@ impl Jetty {
                 Some(1),
                 Some(1),
             );
-            let target_groups = ag.get_matching_children(
+            let target_groups = ag.get_matching_descendants(
                 *idx,
                 |e| matches!(e, EdgeType::GrantedTo),
                 |_| false,
@@ -94,7 +94,7 @@ impl Jetty {
         for (_, &idx) in default_policies {
             let attributes = DefaultPolicyAttributes::try_from(ag[idx].to_owned())?;
             // There should only be one base_node
-            let binding = ag.get_matching_children(
+            let binding = ag.get_matching_descendants(
                 idx,
                 |e| matches!(e, EdgeType::ProvidedDefaultForChildren),
                 |_| false,
@@ -104,7 +104,7 @@ impl Jetty {
             );
             let &base_idx = binding.first().unwrap();
 
-            let grantees = ag.get_matching_children(
+            let grantees = ag.get_matching_descendants(
                 idx,
                 |e| matches!(e, EdgeType::GrantedTo),
                 |_| false,
@@ -399,7 +399,7 @@ impl Jetty {
         parts.push(ag[idx].get_node_name().to_path_part());
 
         // extend with parent. There should only be one parent
-        let binding = ag.get_matching_children(
+        let binding = ag.get_matching_descendants(
             idx,
             |e| matches!(e, EdgeType::ChildOf),
             |_| false,

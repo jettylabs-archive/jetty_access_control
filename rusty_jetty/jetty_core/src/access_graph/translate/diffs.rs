@@ -17,7 +17,7 @@ pub mod groups {
         jetty::ConnectorNamespace,
         write::groups::{self, GroupMemberChanges},
     };
-    
+
     use std::collections::HashSet;
 
     #[derive(Debug)]

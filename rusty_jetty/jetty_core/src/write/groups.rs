@@ -308,7 +308,7 @@ fn generate_diff(
             // check if the group exists, removing the key if it does
             if let Some(group_index) = ag_groups.remove(node_name) {
                 // get all the users in the existing group and diff them
-                let ag_member_users = ag.get_matching_children(
+                let ag_member_users = ag.get_matching_descendants(
                     group_index,
                     |e| matches!(e, EdgeType::Includes),
                     |_| false,
@@ -325,7 +325,7 @@ fn generate_diff(
                 let user_changes = diff_node_names(&old, &legal_users);
 
                 // get all the groups in the existing group and diff them
-                let ag_member_groups = ag.get_matching_children(
+                let ag_member_groups = ag.get_matching_descendants(
                     group_index,
                     |e| matches!(e, EdgeType::Includes),
                     |_| false,
@@ -406,7 +406,7 @@ fn generate_diff(
         );
 
         // Get all related policies and remove them as well
-        let _remove_policies = ag.get_matching_children(
+        let _remove_policies = ag.get_matching_descendants(
             v,
             |e| matches!(e, EdgeType::GrantedFrom),
             |_| false,

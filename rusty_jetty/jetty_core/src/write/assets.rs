@@ -23,9 +23,7 @@ use crate::{
     connectors::{AssetType, WriteCapabilities},
     jetty::ConnectorNamespace,
     logging::warn,
-    project,
-    write::groups::get_all_group_names,
-    Jetty,
+    project, Jetty,
 };
 
 use self::diff::{
@@ -33,7 +31,7 @@ use self::diff::{
     policies::{diff_policies, PolicyDiff},
 };
 
-use super::groups::GroupConfig;
+use super::new_groups::{get_config_map, get_group_capable_connectors, GroupYaml};
 
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub(crate) struct PolicyState {
@@ -121,7 +119,7 @@ pub(crate) struct CombinedPolicyState {
 /// Collect all the configurations and turn them into a combined policy state object
 fn get_config_state(
     jetty: &Jetty,
-    validated_group_config: &BTreeMap<String, GroupConfig>,
+    validated_group_config: &BTreeSet<GroupYaml>,
 ) -> Result<CombinedPolicyState> {
     let mut res = CombinedPolicyState {
         ..Default::default()
@@ -134,28 +132,11 @@ fn get_config_state(
     // groups, but that doesn't write them, we'll need to fix it here.
     // There is also the case in which groups don't exist, just users. If that's the case, jetty groups should just transform into users.
     // FUTURE: Improve this
-    let binding = jetty.connector_manifests();
-    let connectors = binding
-        .iter()
-        .filter_map(|(name, manifest)| {
-            if manifest
-                .capabilities
-                .write
-                .contains(&WriteCapabilities::Groups { nested: true })
-            {
-                Some(name)
-            } else if manifest
-                .capabilities
-                .write
-                .contains(&WriteCapabilities::Groups { nested: false })
-            {
-                Some(name)
-            } else {
-                None
-            }
-        })
+    let connectors = &get_group_capable_connectors(jetty)
+        .keys()
+        .cloned()
         .collect();
-    let config_groups = get_all_group_names(validated_group_config, connectors)?;
+    let config_groups = get_config_map(validated_group_config, connectors);
 
     // read the files
     for path in paths {
@@ -250,7 +231,7 @@ fn get_env_state(jetty: &Jetty) -> Result<CombinedPolicyState> {
 /// Get the policy diffs for regular policies
 pub fn get_policy_diffs(
     jetty: &Jetty,
-    validated_group_config: &BTreeMap<String, GroupConfig>,
+    validated_group_config: &BTreeSet<GroupYaml>,
 ) -> Result<Vec<PolicyDiff>> {
     let config_state = get_config_state(jetty, validated_group_config)?;
     let env_state = get_env_state(jetty)?;
@@ -274,7 +255,7 @@ fn get_config_paths() -> Result<glob::Paths> {
 /// Get the policy diffs for default policies
 pub fn get_default_policy_diffs(
     jetty: &Jetty,
-    validated_group_config: &BTreeMap<String, GroupConfig>,
+    validated_group_config: &BTreeSet<GroupYaml>,
 ) -> Result<Vec<DefaultPolicyDiff>> {
     let config_state = get_config_state(jetty, validated_group_config)?;
     let env_state = get_env_state(jetty)?;
@@ -283,7 +264,7 @@ pub fn get_default_policy_diffs(
 }
 
 fn get_policy_agents(idx: NodeIndex, ag: &AccessGraph) -> HashSet<NodeName> {
-    let target_agents = ag.get_matching_children(
+    let target_agents = ag.get_matching_descendants(
         idx,
         |e| matches!(e, EdgeType::GrantedTo),
         |_| false,
@@ -298,7 +279,7 @@ fn get_policy_agents(idx: NodeIndex, ag: &AccessGraph) -> HashSet<NodeName> {
 }
 
 fn get_policy_assets(idx: NodeIndex, ag: &AccessGraph) -> HashSet<NodeName> {
-    let target_assets = ag.get_matching_children(
+    let target_assets = ag.get_matching_descendants(
         idx,
         |e| matches!(e, EdgeType::Governs),
         |_| false,
@@ -314,7 +295,7 @@ fn get_policy_assets(idx: NodeIndex, ag: &AccessGraph) -> HashSet<NodeName> {
 
 /// Get the root node for the default policy. There should only be one of these
 fn get_default_policy_root_asset(idx: NodeIndex, ag: &AccessGraph) -> NodeName {
-    let target_assets = ag.get_matching_children(
+    let target_assets = ag.get_matching_descendants(
         idx,
         |e| matches!(e, EdgeType::ProvidedDefaultForChildren),
         |_| false,

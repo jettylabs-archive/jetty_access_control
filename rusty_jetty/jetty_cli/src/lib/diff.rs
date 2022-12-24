@@ -7,6 +7,7 @@ use jetty_core::{
     write::{
         assets::{get_default_policy_diffs, get_policy_diffs},
         groups::parse_and_validate_groups,
+        new_groups,
         users::diff::{get_identity_diffs, update_graph},
     },
 };
@@ -31,8 +32,8 @@ pub(super) async fn diff() -> Result<()> {
     update_graph(jetty, &user_identity_diffs)?;
 
     // group diffs
-    let validated_group_config = parse_and_validate_groups(&jetty)?;
-    let group_diff = jetty_core::write::get_group_diff(&validated_group_config, &jetty)?;
+    let validated_group_config = new_groups::parse_and_validate_groups(&jetty)?;
+    let group_diff = new_groups::generate_diffs(&validated_group_config, &jetty)?;
 
     // now get the policy diff
     // need to get the group configs and all available connectors

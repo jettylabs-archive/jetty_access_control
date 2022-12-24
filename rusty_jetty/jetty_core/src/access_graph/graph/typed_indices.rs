@@ -100,16 +100,13 @@ impl UserIndex {
     }
 
     /// Get the groups that this user is a direct member of
-    pub fn groups(&self, jetty: &Jetty) -> Result<HashSet<GroupIndex>> {
+    pub fn member_of_groups(&self, jetty: &Jetty) -> Result<HashSet<GroupIndex>> {
         let ag = jetty.try_access_graph()?;
         Ok(ag
             .get_matching_children(
                 self.idx,
                 |e| matches!(e, EdgeType::MemberOf),
-                |_| false,
                 |n| matches!(n, JettyNode::Group(_)),
-                Some(1),
-                Some(1),
             )
             .into_iter()
             .map(|idx| GroupIndex::new(idx))
@@ -134,6 +131,20 @@ impl GroupIndex {
     }
     pub(crate) fn new(idx: NodeIndex) -> Self {
         GroupIndex { idx }
+    }
+
+    /// Groups which are members of self
+    pub fn member_of(&self, jetty: &Jetty) -> Result<HashSet<GroupIndex>> {
+        let ag = jetty.try_access_graph()?;
+        Ok(ag
+            .get_matching_children(
+                self.idx,
+                |e| matches!(EdgeType::MemberOf, e),
+                |n| matches!(n, JettyNode::Group(_)),
+            )
+            .into_iter()
+            .map(|idx| GroupIndex::new(idx))
+            .collect())
     }
 }
 

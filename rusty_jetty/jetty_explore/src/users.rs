@@ -89,7 +89,7 @@ async fn direct_groups_handler(
         .context("fetching user node")
         .unwrap();
 
-    let group_nodes = ag.get_matching_children(
+    let group_nodes = ag.get_matching_descendants(
         from,
         |n| matches!(n, EdgeType::MemberOf),
         |n| matches!(n, JettyNode::Group(_)),
@@ -123,7 +123,7 @@ async fn inherited_groups_handler(
         .context("fetching user node")
         .unwrap();
 
-    let res = ag.all_matching_simple_paths_to_children(
+    let res = ag.all_matching_simple_paths_to_descendants(
         from,
         |n| matches!(n, EdgeType::MemberOf),
         |n| matches!(n, JettyNode::Group(_)),

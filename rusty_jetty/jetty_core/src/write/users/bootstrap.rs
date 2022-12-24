@@ -78,7 +78,7 @@ fn user_yaml_from_idx(jetty: &Jetty, idx: UserIndex) -> Result<UserYaml> {
         name: attributes.name.to_string(),
         identifiers,
         groups: idx
-            .groups(jetty)?
+            .member_of_groups(jetty)?
             .into_iter()
             .map(|g| g.name(jetty).unwrap().to_string())
             .collect(),

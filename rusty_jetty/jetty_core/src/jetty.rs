@@ -211,6 +211,11 @@ impl Jetty {
             "unable to find an existing access graph; try running `jetty fetch`"
         ))
     }
+
+    /// return whether a given connector name exists in the config
+    pub(crate) fn has_connector(&self, connector: &ConnectorNamespace) -> bool {
+        self.connectors.contains_key(&connector)
+    }
 }
 
 /// Load access graph from a file

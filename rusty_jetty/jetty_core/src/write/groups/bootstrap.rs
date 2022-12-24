@@ -38,7 +38,7 @@ impl Jetty {
                 bail!("group index doesn't point to a group")
             }
 
-            let members = &ag.get_matching_children(
+            let members = &ag.get_matching_descendants(
                 *idx,
                 |e| matches!(e, EdgeType::Includes),
                 |_| false,

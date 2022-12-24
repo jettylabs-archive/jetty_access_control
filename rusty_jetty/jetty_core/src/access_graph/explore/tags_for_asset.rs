@@ -121,7 +121,7 @@ impl AccessGraph {
         min_depth: usize,
     ) -> HashMap<NodeIndex, HashSet<super::NodePath>> {
         // go through inheritance to find all tags
-        self.all_matching_simple_paths_to_children(
+        self.all_matching_simple_paths_to_descendants(
             from,
             edge_matcher,
             |n| matches!(n, JettyNode::Asset(_)),
