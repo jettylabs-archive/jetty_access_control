@@ -73,17 +73,16 @@ fn print_diff_inner_details(
             DiffDetails::AddAgent { add } => {
                 text += &format!("{}", format!("  + {}{}\n", prefix, name).as_str().green());
                 if !add.privileges.is_empty() {
-                    text += "      privileges:\n";
+                    text += "    privileges:\n";
                     for privilege in &add.privileges {
-                        text +=
-                            &format!("{}", format!("        + {}\n", privilege).as_str().green());
+                        text += &format!("{}", format!("      + {}\n", privilege).as_str().green());
                     }
                 }
                 if !add.metadata.is_empty() {
-                    text += "      metadata:\n";
+                    text += "    metadata:\n";
                     for (k, v) in &add.metadata {
                         text +=
-                            &format!("{}", format!("{}{k}: {v}\n", "        + ").as_str().green());
+                            &format!("{}", format!("{}{k}: {v}\n", "      + ").as_str().green());
                     }
                 }
             }
@@ -93,22 +92,21 @@ fn print_diff_inner_details(
             DiffDetails::ModifyAgent { add, remove } => {
                 text += &format!("{}", format!("  ~ {}{}\n", prefix, name).as_str().yellow());
                 if !add.privileges.is_empty() || !remove.privileges.is_empty() {
-                    text += "      privileges:\n";
+                    text += "    privileges:\n";
                     for privilege in &add.privileges {
-                        text +=
-                            &format!("{}", format!("        + {}\n", privilege).as_str().green());
+                        text += &format!("{}", format!("      + {}\n", privilege).as_str().green());
                     }
                     for privilege in &remove.privileges {
-                        text += &format!("{}", format!("        - {}\n", privilege).as_str().red());
+                        text += &format!("{}", format!("      - {}\n", privilege).as_str().red());
                     }
                 }
                 if !add.metadata.is_empty() || !remove.metadata.is_empty() {
-                    text += "      metadata:\n";
+                    text += "    metadata:\n";
                     for (k, v) in &add.metadata {
-                        text += &format!("{}", format!("        + {k}: {v}\n").as_str().green());
+                        text += &format!("{}", format!("      + {k}: {v}\n").as_str().green());
                     }
                     for (k, v) in &remove.metadata {
-                        text += &format!("{}", format!("        - {k}: {v}\n").as_str().red());
+                        text += &format!("{}", format!("      - {k}: {v}\n").as_str().red());
                     }
                 }
             }

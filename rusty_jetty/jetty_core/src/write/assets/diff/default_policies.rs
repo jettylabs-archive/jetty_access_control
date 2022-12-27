@@ -80,23 +80,22 @@ fn print_diff_inner_details(
 
                 text += &format!(
                     "{}",
-                    format!("{}connector-managed: {}\n", "      ", add.connector_managed)
+                    format!("{}connector-managed: {}\n", "    ", add.connector_managed)
                         .as_str()
                         .green()
                 );
 
                 if !add.privileges.is_empty() {
-                    text += "      privileges:\n";
+                    text += "    privileges:\n";
                     for privilege in &add.privileges {
-                        text +=
-                            &format!("{}", format!("        + {}\n", privilege).as_str().green());
+                        text += &format!("{}", format!("      + {}\n", privilege).as_str().green());
                     }
                 }
                 if !add.metadata.is_empty() {
-                    text += "      metadata:\n";
+                    text += "    metadata:\n";
                     for (k, v) in &add.metadata {
                         text +=
-                            &format!("{}", format!("{}{k}: {v}\n", "        + ").as_str().green());
+                            &format!("{}", format!("{}{k}: {v}\n", "      + ").as_str().green());
                     }
                 }
             }
@@ -114,7 +113,7 @@ fn print_diff_inner_details(
                     ConnectorManagementDiff::Changed(v) => {
                         text += &format!(
                             "{}",
-                            format!("{}connector-managed: {}\n", "      ", v)
+                            format!("{}connector-managed: {}\n", "    ", v)
                                 .as_str()
                                 .yellow()
                         )
@@ -123,22 +122,21 @@ fn print_diff_inner_details(
                 }
 
                 if !add.privileges.is_empty() || !remove.privileges.is_empty() {
-                    text += "      privileges:\n";
+                    text += "    privileges:\n";
                     for privilege in &add.privileges {
-                        text +=
-                            &format!("{}", format!("        + {}\n", privilege).as_str().green());
+                        text += &format!("{}", format!("      + {}\n", privilege).as_str().green());
                     }
                     for privilege in &remove.privileges {
-                        text += &format!("{}", format!("        - {}\n", privilege).as_str().red());
+                        text += &format!("{}", format!("      - {}\n", privilege).as_str().red());
                     }
                 }
                 if !add.metadata.is_empty() || !remove.metadata.is_empty() {
                     text += "      metadata:\n";
                     for (k, v) in &add.metadata {
-                        text += &format!("{}", format!("        + {k}: {v}\n").as_str().green());
+                        text += &format!("{}", format!("      + {k}: {v}\n").as_str().green());
                     }
                     for (k, v) in &remove.metadata {
-                        text += &format!("{}", format!("        - {k}: {v}\n").as_str().red());
+                        text += &format!("{}", format!("      - {k}: {v}\n").as_str().red());
                     }
                 }
             }
