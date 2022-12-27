@@ -14,8 +14,12 @@ use uuid::Uuid;
 
 use crate::{access_graph::NodeName, jetty::ConnectorNamespace, project};
 
+pub use diff::get_membership_diffs;
+pub use parser::get_validated_file_config_map;
+
+/// Struct representing user configuration files
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub(crate) struct UserYaml {
+pub struct UserYaml {
     name: String,
     identifiers: HashMap<ConnectorNamespace, String>,
     #[serde(skip_serializing_if = "BTreeSet::is_empty", default)]

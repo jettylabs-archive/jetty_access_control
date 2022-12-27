@@ -12,17 +12,19 @@ use colored::Colorize;
 use crate::{
     access_graph::{JettyNode, NodeName, UserAttributes},
     jetty::ConnectorNamespace,
-    write::{users::parser::get_validated_file_config_map, utils::diff_hashset},
+    write::{
+        new_groups::GroupConfig, users::parser::get_validated_file_config_map, utils::diff_hashset,
+    },
     Jetty,
 };
 
 /// Differences between identity assignemnts in the config and the environment
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct IdentityDiff {
     /// The user with the change
-    node: NodeName,
+    pub(crate) user: NodeName,
     /// The details of the change
-    details: IdentityDiffDetails,
+    pub(crate) details: IdentityDiffDetails,
 }
 
 impl Display for IdentityDiff {
@@ -31,14 +33,14 @@ impl Display for IdentityDiff {
         match &self.details {
             IdentityDiffDetails::AddUser { add } => {
                 text +=
-                    format!("{}{}\n", "+ user: ".green(), self.node.to_string().green()).as_str();
+                    format!("{}{}\n", "+ user: ".green(), self.user.to_string().green()).as_str();
                 for (conn, local_name) in add {
                     text += format!("{}", format!("  + {conn}: {local_name}\n").green()).as_str();
                 }
             }
             IdentityDiffDetails::RemoveUser { remove } => {
                 text +=
-                    format!("{}", format!("- user: {}\n", self.node.to_string()).red()).as_str();
+                    format!("{}", format!("- user: {}\n", self.user.to_string()).red()).as_str();
                 for (conn, local_name) in remove {
                     text += &format!("{}", format!("  - {conn}: {local_name}\n").red());
                 }
@@ -47,7 +49,7 @@ impl Display for IdentityDiff {
                 text += format!(
                     "{}{}\n",
                     "~ user: ".yellow(),
-                    self.node.to_string().yellow()
+                    self.user.to_string().yellow()
                 )
                 .as_str();
                 for (conn, local_name) in add {
@@ -62,8 +64,8 @@ impl Display for IdentityDiff {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-enum IdentityDiffDetails {
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) enum IdentityDiffDetails {
     AddUser {
         add: BTreeSet<(ConnectorNamespace, String)>,
     },
@@ -79,10 +81,13 @@ enum IdentityDiffDetails {
 /// This diffs the actual identities themselves - what local usernames become what Jetty user?
 // FUTURE: Right now, this is inefficient with how it reads in the config
 // (we could end up reading it in many times for different processes)
-pub fn get_identity_diffs(jetty: &Jetty) -> Result<BTreeSet<IdentityDiff>> {
-    let config_identity_state = get_identity_config_state(jetty)?;
+pub fn get_identity_diffs(
+    jetty: &Jetty,
+    validated_group_config: &GroupConfig,
+) -> Result<HashSet<IdentityDiff>> {
+    let config_identity_state = get_identity_config_state(jetty, validated_group_config)?;
     let mut env_identity_state = get_identity_env_state(jetty)?;
-    let mut res = BTreeSet::new();
+    let mut res = HashSet::new();
 
     // handle nodes in the config, but not in the env
     for (config_node, config_identities) in &config_identity_state {
@@ -103,7 +108,7 @@ pub fn get_identity_diffs(jetty: &Jetty) -> Result<BTreeSet<IdentityDiff>> {
             },
         };
         res.insert(IdentityDiff {
-            node: config_node.to_owned(),
+            user: config_node.to_owned(),
             details,
         });
     }
@@ -111,7 +116,7 @@ pub fn get_identity_diffs(jetty: &Jetty) -> Result<BTreeSet<IdentityDiff>> {
     // handle nodes in the env, but not in the config
     for (env_node, env_identities) in env_identity_state {
         res.insert(IdentityDiff {
-            node: env_node,
+            user: env_node,
             details: IdentityDiffDetails::RemoveUser {
                 remove: env_identities.into_iter().collect(),
             },
@@ -141,11 +146,12 @@ fn get_connector_name_changes(
 /// <NodeName, (Connector, Local Name)>.
 fn get_identity_config_state(
     jetty: &Jetty,
+    validated_group_config: &GroupConfig,
 ) -> Result<HashMap<NodeName, HashMap<ConnectorNamespace, String>>> {
-    let configs = get_validated_file_config_map(jetty)?;
+    let configs = get_validated_file_config_map(jetty, validated_group_config)?;
     let res: HashMap<_, HashMap<_, _>> = configs
         .into_iter()
-        .map(|(path, user)| {
+        .map(|(_path, user)| {
             (
                 NodeName::User(user.name.to_owned()),
                 user.identifiers
@@ -181,7 +187,7 @@ fn get_identity_env_state(
 /// Given user identity diffs, update the access graph to match the new user mapping. This
 /// should be run before other configurations are read and diffs are generated because it
 /// may affect them!
-pub fn update_graph(jetty: &mut Jetty, diffs: &BTreeSet<IdentityDiff>) -> Result<()> {
+pub fn update_graph(jetty: &mut Jetty, diffs: &HashSet<IdentityDiff>) -> Result<()> {
     let mut to = HashMap::new();
     let mut from = HashMap::new();
     let mut remove_list = HashSet::new();
@@ -191,16 +197,16 @@ pub fn update_graph(jetty: &mut Jetty, diffs: &BTreeSet<IdentityDiff>) -> Result
     for diff in diffs {
         match &diff.details {
             IdentityDiffDetails::AddUser { add } => {
-                to.extend(add.iter().map(|d| (d.to_owned(), diff.node.to_owned())));
-                add_list.insert(diff.node.to_owned());
+                to.extend(add.iter().map(|d| (d.to_owned(), diff.user.to_owned())));
+                add_list.insert(diff.user.to_owned());
             }
             IdentityDiffDetails::RemoveUser { remove } => {
-                from.extend(remove.iter().map(|d| (d.to_owned(), diff.node.to_owned())));
-                remove_list.insert(diff.node.to_owned());
+                from.extend(remove.iter().map(|d| (d.to_owned(), diff.user.to_owned())));
+                remove_list.insert(diff.user.to_owned());
             }
             IdentityDiffDetails::ModifyUser { add, remove } => {
-                from.extend(remove.iter().map(|d| (d.to_owned(), diff.node.to_owned())));
-                to.extend(add.iter().map(|d| (d.to_owned(), diff.node.to_owned())));
+                from.extend(remove.iter().map(|d| (d.to_owned(), diff.user.to_owned())));
+                to.extend(add.iter().map(|d| (d.to_owned(), diff.user.to_owned())));
             }
         }
     }

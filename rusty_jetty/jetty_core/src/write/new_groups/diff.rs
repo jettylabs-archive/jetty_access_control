@@ -56,11 +56,11 @@ impl Display for Diff {
                 )
                 .as_str();
                 if !member_of.is_empty() {
-                    text += "    member of:\n"
+                    text += "  member of:\n"
                 };
                 for group in member_of {
                     text +=
-                        format!("{}", format!("      + {}\n", group.to_string()).green()).as_str();
+                        format!("{}", format!("    + {}\n", group.to_string()).green()).as_str();
                 }
             }
             DiffDetails::RemoveGroup => {
@@ -81,15 +81,14 @@ impl Display for Diff {
                 )
                 .as_str();
                 if !add_member_of.is_empty() || !remove_member_of.is_empty() {
-                    text += "    member of:\n"
+                    text += "  member of:\n"
                 };
                 for user in add_member_of {
-                    text +=
-                        format!("{}", format!("      + {}\n", user.to_string()).green()).as_str();
+                    text += format!("{}", format!("    + {}\n", user.to_string()).green()).as_str();
                 }
 
                 for user in remove_member_of {
-                    text += format!("{}", format!("      - {}\n", user.to_string()).red()).as_str();
+                    text += format!("{}", format!("    - {}\n", user.to_string()).red()).as_str();
                 }
             }
         }

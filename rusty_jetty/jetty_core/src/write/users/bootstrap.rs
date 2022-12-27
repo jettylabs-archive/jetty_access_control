@@ -17,7 +17,10 @@ use crate::{
     },
     jetty::ConnectorNamespace,
     project,
-    write::utils::clean_string_for_path,
+    write::{
+        new_groups::{parse_and_validate_groups, GroupConfig},
+        utils::clean_string_for_path,
+    },
     Jetty,
 };
 
@@ -90,7 +93,8 @@ pub fn update_user_files(jetty: &Jetty) -> Result<()> {
     let ag = jetty.try_access_graph()?;
 
     // get all the users in the config
-    let configs = get_validated_file_config_map(jetty)?;
+    let validated_group_config = &parse_and_validate_groups(jetty)?;
+    let configs = get_validated_file_config_map(jetty, validated_group_config)?;
 
     let configs_local_name_map = configs
         .to_owned()

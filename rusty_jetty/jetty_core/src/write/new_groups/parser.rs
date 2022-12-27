@@ -88,7 +88,7 @@ fn split_group_name(name: &String) -> (Option<ConnectorNamespace>, String) {
     }
 }
 
-fn get_all_group_names(config: &GroupConfig) -> HashSet<String> {
+pub(crate) fn get_all_group_names(config: &GroupConfig) -> HashSet<String> {
     config.iter().map(|g| g.name.to_owned()).collect()
 }
 

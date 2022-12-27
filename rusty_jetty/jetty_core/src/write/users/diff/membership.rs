@@ -24,21 +24,27 @@ use crate::{
 };
 
 /// Differences between identity assignemnts in the config and the environment
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct MembershipDiff {
     /// The user with the change
-    node: NodeName,
-    /// The groups that exist in the config, not in the environment
-    add: BTreeSet<NodeName>,
-    /// The groups that exist in the environment, not in the config
-    remove: BTreeSet<NodeName>,
+    pub(crate) user: NodeName,
+    pub(crate) details: MembershipDiffDetails,
 }
 
-fn diff_group_membership(
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) struct MembershipDiffDetails {
+    /// The groups that exist in the config, not in the environment
+    pub(crate) add: BTreeSet<NodeName>,
+    /// The groups that exist in the environment, not in the config
+    pub(crate) remove: BTreeSet<NodeName>,
+}
+
+/// Get diffs to group membership
+pub fn get_membership_diffs(
     jetty: &Jetty,
     validated_user_config: &HashMap<PathBuf, UserYaml>,
     validated_group_config: &GroupConfig,
-) -> Result<BTreeSet<MembershipDiff>> {
+) -> Result<HashSet<MembershipDiff>> {
     let env_state = get_membership_env_state(jetty)?;
     let config_state =
         get_membership_config_state(jetty, validated_user_config, validated_group_config)?;
@@ -46,12 +52,19 @@ fn diff_group_membership(
     // we know that the env and config keys will match 1:1 - that's part of parser validation
     Ok(config_state
         .into_iter()
-        .map(|(user, member_of)| {
+        .filter_map(|(user, member_of)| {
             let (add, remove) = diff_hashset(&member_of, &env_state[&user]);
-            MembershipDiff {
-                node: user,
-                add: add.collect(),
-                remove: remove.collect(),
+            let diff = MembershipDiff {
+                user,
+                details: MembershipDiffDetails {
+                    add: add.collect(),
+                    remove: remove.collect(),
+                },
+            };
+            if !diff.details.add.is_empty() || !diff.details.remove.is_empty() {
+                Some(diff)
+            } else {
+                None
             }
         })
         .collect())

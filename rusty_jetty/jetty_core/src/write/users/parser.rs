@@ -11,7 +11,12 @@ use bimap::BiHashMap;
 use colored::Colorize;
 use glob::Paths;
 
-use crate::{access_graph::NodeName, jetty::ConnectorNamespace, Jetty};
+use crate::{
+    access_graph::NodeName,
+    jetty::ConnectorNamespace,
+    write::new_groups::{parser::get_all_group_names, GroupConfig},
+    Jetty,
+};
 
 use super::{get_config_paths, UserYaml};
 
@@ -32,12 +37,17 @@ fn read_config_files(paths: Paths) -> Result<HashMap<PathBuf, UserYaml>> {
 }
 
 /// Validate user configurations
-fn validate_config(configs: &HashMap<PathBuf, UserYaml>, jetty: &Jetty) -> Result<Vec<String>> {
+fn validate_config(
+    configs: &HashMap<PathBuf, UserYaml>,
+    validated_group_config: &GroupConfig,
+    jetty: &Jetty,
+) -> Result<Vec<String>> {
     let ag = jetty.try_access_graph()?;
     let allowed_connectors: HashSet<ConnectorNamespace> =
         jetty.connectors.keys().cloned().collect();
     let mut allowed_local_names: HashSet<_> =
         ag.translator().get_all_local_users().into_keys().collect();
+    let allowed_group_names = get_all_group_names(validated_group_config);
     let mut errors = Vec::new();
     let mut jetty_name_map = HashMap::new();
     let mut local_id_map = HashMap::new();
@@ -75,6 +85,14 @@ fn validate_config(configs: &HashMap<PathBuf, UserYaml>, jetty: &Jetty) -> Resul
             else if !allowed_local_names.remove(&(connector.to_owned(), local_name.to_owned())) {
                 errors.push(format!(
                     "invalid identifier in {}: {connector} doesn't have a user identified as \"{local_name}\"", path.display()
+                ));
+            }
+        }
+
+        for group in &config.groups {
+            if !allowed_group_names.contains(group) {
+                errors.push(format!(
+                    "invalid group name in {}: group config doesn't specify a group called \"{group}\"", path.display()
                 ));
             }
         }
@@ -118,10 +136,14 @@ pub(crate) fn get_nodename_local_id_map(
     res
 }
 
-pub(crate) fn get_validated_file_config_map(jetty: &Jetty) -> Result<HashMap<PathBuf, UserYaml>> {
+/// Read and validate user config
+pub fn get_validated_file_config_map(
+    jetty: &Jetty,
+    validated_group_config: &GroupConfig,
+) -> Result<HashMap<PathBuf, UserYaml>> {
     let paths = get_config_paths()?;
     let configs = read_config_files(paths)?;
-    let errors = validate_config(&configs, jetty)?;
+    let errors = validate_config(&configs, validated_group_config, jetty)?;
     if !errors.is_empty() {
         bail!(
             "invalid user configuration: ({})\n{}",
@@ -143,7 +165,8 @@ pub(crate) fn get_validated_file_config_map(jetty: &Jetty) -> Result<HashMap<Pat
 
 pub(crate) fn get_validated_nodename_local_id_map(
     jetty: &Jetty,
+    validated_group_config: &GroupConfig,
 ) -> Result<HashMap<ConnectorNamespace, BiHashMap<NodeName, String>>> {
-    let configs = get_validated_file_config_map(jetty)?;
+    let configs = get_validated_file_config_map(jetty, validated_group_config)?;
     Ok(get_nodename_local_id_map(&configs))
 }
