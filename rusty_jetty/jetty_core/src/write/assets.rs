@@ -31,7 +31,7 @@ use self::diff::{
     policies::{diff_policies, PolicyDiff},
 };
 
-use super::new_groups::{get_config_map, get_group_capable_connectors, GroupYaml};
+use super::new_groups::{get_group_capable_connectors, get_group_to_nodename_map, GroupYaml};
 
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub(crate) struct PolicyState {
@@ -136,7 +136,7 @@ fn get_config_state(
         .keys()
         .cloned()
         .collect();
-    let config_groups = get_config_map(validated_group_config, connectors);
+    let config_groups = get_group_to_nodename_map(validated_group_config, connectors);
 
     // read the files
     for path in paths {

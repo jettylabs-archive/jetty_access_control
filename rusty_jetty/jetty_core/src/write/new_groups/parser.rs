@@ -106,7 +106,7 @@ pub fn parse_and_validate_groups(jetty: &Jetty) -> Result<GroupConfig> {
 }
 
 /// get the map of jetty group names to the connector-specific group names
-pub fn get_config_map(
+pub fn get_group_to_nodename_map(
     validated_config: &GroupConfig,
     connectors: &HashSet<ConnectorNamespace>,
 ) -> HashMap<String, HashMap<ConnectorNamespace, NodeName>> {
@@ -144,6 +144,21 @@ pub fn get_config_map(
                         })
                         .collect()
                 },
+            )
+        })
+        .collect()
+}
+
+/// Get the map of group -> member_of strings
+pub(crate) fn get_group_membership_map(
+    validated_config: &GroupConfig,
+) -> HashMap<String, HashSet<String>> {
+    validated_config
+        .iter()
+        .map(|g| {
+            (
+                g.name.to_owned(),
+                g.member_of.to_owned().into_iter().collect(),
             )
         })
         .collect()

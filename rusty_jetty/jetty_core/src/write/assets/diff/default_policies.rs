@@ -11,7 +11,10 @@ use crate::{
     access_graph::NodeName,
     connectors::AssetType,
     jetty::ConnectorNamespace,
-    write::assets::{CombinedPolicyState, DefaultPolicyState},
+    write::{
+        assets::{CombinedPolicyState, DefaultPolicyState},
+        utils::diff_btreeset,
+    },
     Connector,
 };
 
@@ -201,20 +204,9 @@ fn add_and_remove<T: Ord + Clone>(
     env: &BTreeSet<T>,
 ) -> (BTreeSet<T>, BTreeSet<T>) {
     // in config, not in env
-    let add = config
-        .to_owned()
-        .difference(env)
-        .map(|p| p.to_owned())
-        .collect();
+    let (add, remove) = diff_btreeset(config, env);
 
-    // in env, not in config
-    let remove = env
-        .to_owned()
-        .difference(config)
-        .map(|p| p.to_owned())
-        .collect();
-
-    (add, remove)
+    (add.collect(), remove.collect())
 }
 
 /// diff from the environment state to the config state (additions are what will be added from config to env)

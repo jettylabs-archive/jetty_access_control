@@ -9,10 +9,11 @@ use anyhow::Result;
 use colored::Colorize;
 
 use crate::{
-    access_graph::NodeName, connectors::WriteCapabilities, jetty::ConnectorNamespace, Jetty,
+    access_graph::NodeName, connectors::WriteCapabilities, jetty::ConnectorNamespace,
+    write::utils::diff_hashset, Jetty,
 };
 
-use super::{bootstrap, get_config_map, GroupConfig};
+use super::{bootstrap, get_group_to_nodename_map, GroupConfig};
 
 #[derive(Debug, Clone)]
 /// A Diff for groups
@@ -163,7 +164,8 @@ fn get_config_state(
 ) -> HashMap<NodeName, HashSet<NodeName>> {
     let connectors = get_group_capable_connectors(jetty);
     // iterate through every group in the config. for each identifier, get the group's identifiers that are from the right connector
-    let group_map = get_config_map(validated_config, &connectors.keys().cloned().collect());
+    let group_map =
+        get_group_to_nodename_map(validated_config, &connectors.keys().cloned().collect());
 
     validated_config
         .iter()
@@ -193,12 +195,11 @@ fn get_config_state(
 
 /// Diff the member_of property of groups
 fn diff_matching_groups(config: &HashSet<NodeName>, env: &HashSet<NodeName>) -> DiffDetails {
-    let add = config.difference(env).cloned().collect();
-    let remove = env.difference(config).cloned().collect();
+    let (add, remove) = diff_hashset(config, env);
 
     DiffDetails::ModifyGroup {
-        add_member_of: add,
-        remove_member_of: remove,
+        add_member_of: add.collect(),
+        remove_member_of: remove.collect(),
     }
 }
 

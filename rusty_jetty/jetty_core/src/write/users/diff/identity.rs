@@ -12,7 +12,7 @@ use colored::Colorize;
 use crate::{
     access_graph::{JettyNode, NodeName, UserAttributes},
     jetty::ConnectorNamespace,
-    write::users::parser::get_validated_file_config_map,
+    write::{users::parser::get_validated_file_config_map, utils::diff_hashset},
     Jetty,
 };
 
@@ -129,10 +129,12 @@ fn get_connector_name_changes(
     // turn them into sets so that they're easier to compare
     let config_set: HashSet<_> = config.to_owned().into_iter().collect();
     let env_set: HashSet<_> = env.to_owned().into_iter().collect();
-    let add = config_set.difference(&env_set).cloned().collect();
-    let remove = env_set.difference(&config_set).cloned().collect();
+    let (add, remove) = diff_hashset(&config_set, &env_set);
 
-    IdentityDiffDetails::ModifyUser { add, remove }
+    IdentityDiffDetails::ModifyUser {
+        add: add.collect(),
+        remove: remove.collect(),
+    }
 }
 
 /// Get the identity state from the user configuration files, and return a Map of

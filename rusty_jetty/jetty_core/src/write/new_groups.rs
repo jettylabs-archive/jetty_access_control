@@ -14,7 +14,7 @@ pub use bootstrap::get_env_config;
 pub use bootstrap::write_env_config;
 pub(crate) use diff::get_group_capable_connectors;
 pub use diff::{generate_diffs, Diff};
-pub use parser::{get_config_map, parse_and_validate_groups};
+pub use parser::{get_group_to_nodename_map, parse_and_validate_groups};
 
 pub(crate) type GroupConfig = BTreeSet<GroupYaml>;
 

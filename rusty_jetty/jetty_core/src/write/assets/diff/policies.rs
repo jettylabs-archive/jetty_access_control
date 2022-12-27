@@ -10,7 +10,10 @@ use colored::Colorize;
 use crate::{
     access_graph::NodeName,
     jetty::ConnectorNamespace,
-    write::assets::{CombinedPolicyState, PolicyState},
+    write::{
+        assets::{CombinedPolicyState, PolicyState},
+        utils::diff_hashset,
+    },
 };
 
 #[derive(Debug)]
@@ -239,41 +242,25 @@ pub(crate) fn diff_policies(
 
 // Diff existing policies return an add and remove policy state
 fn diff_policy_state(config: &PolicyState, env: &PolicyState) -> DiffDetails {
-    // in config, not in env
-    let add_privileges: HashSet<_> = config
-        .privileges
-        .difference(&env.privileges)
-        .map(|p| p.to_owned())
-        .collect();
-    // in env, not in config
-    let remove_privileges: HashSet<_> = env
-        .privileges
-        .difference(&config.privileges)
-        .map(|p| p.to_owned())
-        .collect();
+    let (add_privileges, remove_privileges) = diff_hashset(&config.privileges, &env.privileges);
 
     let config_metadata_set: HashSet<_> = config.metadata.iter().collect();
     let env_metadata_set: HashSet<_> = env.metadata.iter().collect();
 
-    // in config, not in env
-    let add_metadata: HashMap<_, _> = config_metadata_set
-        .difference(&env_metadata_set)
-        .map(|(k, v)| (k.to_owned().to_owned(), v.to_owned().to_owned()))
-        .collect();
-    // in env, not in config
-    let remove_metadata: HashMap<_, _> = env_metadata_set
-        .difference(&config_metadata_set)
-        .map(|(k, v)| (k.to_owned().to_owned(), v.to_owned().to_owned()))
-        .collect();
+    let (add_metadata, remove_metadata) = diff_hashset(&config_metadata_set, &env_metadata_set);
 
     DiffDetails::ModifyAgent {
         add: PolicyState {
-            privileges: add_privileges,
-            metadata: add_metadata,
+            privileges: add_privileges.collect(),
+            metadata: add_metadata
+                .map(|(k, v)| (k.to_owned(), v.to_owned()))
+                .collect(),
         },
         remove: PolicyState {
-            privileges: remove_privileges,
-            metadata: remove_metadata,
+            privileges: remove_privileges.collect(),
+            metadata: remove_metadata
+                .map(|(k, v)| (k.to_owned(), v.to_owned()))
+                .collect(),
         },
     }
 }
