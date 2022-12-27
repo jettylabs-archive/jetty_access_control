@@ -147,6 +147,12 @@ pub fn generate_diffs(validated_config: &GroupConfig, jetty: &Jetty) -> Result<V
         });
     }
 
+    res.sort_by(|a, b| {
+        a.group_name
+            .to_string()
+            .to_lowercase()
+            .cmp(&b.group_name.to_string().to_lowercase())
+    });
     Ok(res)
 }
 
