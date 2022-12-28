@@ -442,7 +442,7 @@ impl NodeName {
                 "{}{}",
                 path.components()[path.components().len() - 1],
                 match asset_type {
-                    Some(t) => format!("@{}", t.0),
+                    Some(t) => format!(" ({})", t.0),
                     None => "".to_string(),
                 }
             )),
