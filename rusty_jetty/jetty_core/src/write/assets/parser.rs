@@ -1,6 +1,9 @@
 //! Parse asset configuration files
 
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::{
+    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
+    path::PathBuf,
+};
 
 use anyhow::{anyhow, bail, Context, Result};
 
@@ -12,8 +15,8 @@ use crate::{
 };
 
 use super::{
-    CombinedPolicyState, DefaultPolicyState, PolicyState, YamlAssetDoc, YamlAssetIdentifier,
-    YamlDefaultPolicy, YamlPolicy,
+    get_config_paths, CombinedPolicyState, DefaultPolicyState, PolicyState, YamlAssetDoc,
+    YamlAssetIdentifier, YamlDefaultPolicy, YamlPolicy,
 };
 
 /// Parse the configuration into a policy state struct
@@ -59,6 +62,19 @@ pub(crate) fn parse_asset_config(
             default_policies: res_default_policies,
         },
     ))
+}
+
+/// parse all configs into a map with the file path and YamlAssetDoc
+pub(crate) fn parse_to_file_map() -> Result<HashMap<PathBuf, YamlAssetDoc>> {
+    let mut res = HashMap::new();
+    let paths = get_config_paths()?;
+    for path in paths {
+        let path = path?;
+        let doc = std::fs::read_to_string(&path)?;
+        let parsed_doc = simple_parse(&doc)?;
+        res.insert(path.to_owned(), parsed_doc);
+    }
+    Ok(res)
 }
 
 /// parse a yaml file into a YamlAssetDoc with only syntactic validation

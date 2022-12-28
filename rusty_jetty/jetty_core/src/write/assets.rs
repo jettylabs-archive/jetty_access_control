@@ -3,6 +3,7 @@
 pub mod bootstrap;
 pub mod diff;
 pub mod parser;
+mod update;
 
 use std::{
     collections::{BTreeMap, BTreeSet, HashMap, HashSet},
