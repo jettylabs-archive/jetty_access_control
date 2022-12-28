@@ -3,6 +3,9 @@
 pub mod bootstrap;
 pub mod diff;
 pub mod parser;
+mod update;
+
+use anyhow::Result;
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -15,6 +18,8 @@ pub use bootstrap::write_env_config;
 pub(crate) use diff::get_group_capable_connectors;
 pub use diff::{generate_diffs, Diff};
 pub use parser::{get_group_to_nodename_map, parse_and_validate_groups};
+
+use super::UpdateConfig;
 
 pub(crate) type GroupConfig = BTreeSet<GroupYaml>;
 
@@ -30,4 +35,37 @@ pub struct GroupYaml {
     /// of another group in the config
     #[serde(skip_serializing_if = "BTreeSet::is_empty", default)]
     member_of: BTreeSet<String>,
+}
+
+impl UpdateConfig for GroupYaml {
+    fn update_user_name(&mut self, _old: &String, _new: &str) -> Result<bool> {
+        Ok(false)
+    }
+
+    fn remove_user_name(&mut self, _name: &String) -> Result<bool> {
+        Ok(false)
+    }
+
+    fn update_group_name(&mut self, old: &String, new: &str) -> Result<bool> {
+        let mut changed = false;
+        if &self.name == old {
+            self.name = new.to_string();
+            changed = true;
+        }
+        if self.member_of.remove(old) {
+            self.member_of.insert(new.to_string());
+            changed = true;
+        }
+
+        Ok(changed)
+    }
+
+    /// This will remove references to groups, but not the group itself
+    fn remove_group_name(&mut self, name: &String) -> Result<bool> {
+        if self.member_of.remove(name) {
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
 }

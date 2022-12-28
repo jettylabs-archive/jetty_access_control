@@ -34,7 +34,7 @@ use super::{
 
 impl Jetty {
     /// Get all the users from the access graph and convert them into a map of path to file and yaml config
-    pub fn generate_bootstrapped_user_yaml(&self) -> Result<HashMap<PathBuf, String>> {
+    pub fn generate_bootstrapped_user_yaml(&self) -> Result<HashMap<PathBuf, UserYaml>> {
         let ag = self.try_access_graph()?;
         let users = &ag.graph.nodes.users;
 
@@ -43,7 +43,7 @@ impl Jetty {
         for (name, &idx) in users {
             res.insert(
                 get_filename_from_node_name(name),
-                yaml_peg::serde::to_string(&user_yaml_from_idx(self, idx)?)?,
+                user_yaml_from_idx(self, idx)?,
             );
         }
 
@@ -52,14 +52,14 @@ impl Jetty {
 }
 
 /// Write the output of generate_bootstrapped_users_yaml to the proper directories
-pub fn write_bootstrapped_user_yaml(users: HashMap<PathBuf, String>) -> Result<()> {
+pub fn write_bootstrapped_user_yaml(users: HashMap<PathBuf, UserYaml>) -> Result<()> {
     let parent_path = project::users_cfg_root_path_local();
 
     // make sure the parent directories exist
     fs::create_dir_all(&parent_path)?;
 
     for (path, policy_doc) in users {
-        fs::write(parent_path.join(path), policy_doc)?;
+        write_user_config_file(&parent_path.join(path), &policy_doc)?;
     }
     Ok(())
 }
@@ -215,4 +215,11 @@ pub fn update_user_files(jetty: &Jetty) -> Result<()> {
 
 fn get_filename_from_node_name(name: &NodeName) -> PathBuf {
     format!("{}.yaml", clean_string_for_path(name.to_string())).into()
+}
+
+/// Write a UserYaml struct to a config file
+pub(crate) fn write_user_config_file(path: &PathBuf, config: &UserYaml) -> Result<()> {
+    let doc = yaml_peg::serde::to_string(config)?;
+    fs::write(path, doc)?;
+    Ok(())
 }

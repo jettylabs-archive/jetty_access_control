@@ -20,17 +20,23 @@ use crate::{
 
 use super::{get_config_paths, UserYaml};
 
+/// read a single config file into a UserYaml object
+pub(crate) fn read_config_file(path: &PathBuf) -> Result<UserYaml> {
+    let yaml = fs::read_to_string(&path)?;
+    let config_vec: Vec<UserYaml> = yaml_peg::serde::from_str(&yaml)?;
+    if config_vec.is_empty() {
+        bail!("unable to parse configuration")
+    };
+    let config = config_vec[0].to_owned();
+    Ok(config)
+}
+
 /// read all config files into a Vec of user structs
 fn read_config_files(paths: Paths) -> Result<HashMap<PathBuf, UserYaml>> {
     let mut res = HashMap::new();
     for path in paths {
         let path = path?;
-        let yaml = fs::read_to_string(&path)?;
-        let config_vec: Vec<UserYaml> = yaml_peg::serde::from_str(&yaml)?;
-        if config_vec.is_empty() {
-            bail!("unable to parse configuration")
-        };
-        let config = config_vec[0].to_owned();
+        let config = read_config_file(&path)?;
         res.insert(path, config);
     }
     Ok(res)

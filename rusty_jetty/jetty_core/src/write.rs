@@ -8,6 +8,8 @@ pub(crate) mod tag_parser;
 pub mod users;
 mod utils;
 
+use anyhow::Result;
+
 use std::collections::HashMap;
 
 pub use groups::get_group_diff;
@@ -42,4 +44,11 @@ impl Diffs {
 
         res
     }
+}
+
+trait UpdateConfig {
+    fn update_user_name(&mut self, old: &String, new: &str) -> Result<bool>;
+    fn remove_user_name(&mut self, name: &String) -> Result<bool>;
+    fn update_group_name(&mut self, old: &String, new: &str) -> Result<bool>;
+    fn remove_group_name(&mut self, name: &String) -> Result<bool>;
 }

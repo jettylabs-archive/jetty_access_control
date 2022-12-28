@@ -3,6 +3,7 @@
 pub mod bootstrap;
 pub mod diff;
 pub mod parser;
+mod update;
 
 use std::collections::{BTreeSet, HashMap};
 
@@ -17,6 +18,8 @@ use crate::{access_graph::NodeName, jetty::ConnectorNamespace, project};
 pub use diff::get_membership_diffs;
 pub use parser::get_validated_file_config_map;
 
+use super::UpdateConfig;
+
 /// Struct representing user configuration files
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct UserYaml {
@@ -24,6 +27,35 @@ pub struct UserYaml {
     identifiers: HashMap<ConnectorNamespace, String>,
     #[serde(skip_serializing_if = "BTreeSet::is_empty", default)]
     groups: BTreeSet<String>,
+}
+
+impl UpdateConfig for UserYaml {
+    fn update_user_name(&mut self, old: &String, new: &str) -> Result<bool> {
+        if &self.name == old {
+            self.name = new.to_owned();
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    /// No-op: if the name in the config is a match, delete the config file.
+    fn remove_user_name(&mut self, name: &String) -> Result<bool> {
+        Ok(true)
+    }
+
+    fn update_group_name(&mut self, old: &String, new: &str) -> Result<bool> {
+        if self.groups.remove(old) {
+            self.groups.insert(new.to_string());
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    fn remove_group_name(&mut self, name: &String) -> Result<bool> {
+        Ok(self.groups.remove(name))
+    }
 }
 
 /// Get the paths of all asset config files
