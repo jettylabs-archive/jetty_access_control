@@ -45,14 +45,8 @@ fn validate_config(config: &GroupConfig, jetty: &Jetty) -> Vec<String> {
                 errors.push(format!("configuration refers to group `{g}`, but there is no group with that name in the configuration"));
             }
             // if a group is connector-specific, only groups from Jetty or from that connector can be members. If it's a jetty group,
-            // only jetty groups can be members.
+            // any group can be a member
             let (member_prefix, _) = split_group_name(g);
-            if prefix.is_none() && member_prefix.is_some() {
-                errors.push(format!(
-                    "group {} cannot have a connector-specific member ({g})",
-                    group.name
-                ));
-            }
             if prefix.is_some() && member_prefix.is_some() && prefix != member_prefix {
                 errors.push(format!(
                     "{}, a connector-specific group, cannot have group members from other connectors ({g})",
