@@ -81,6 +81,24 @@
         {
             "type": "lldb",
             "request": "launch",
+            "name": "Debug executable 'jetty_cli' (remove group tableau::All Users)",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=jetty_cli",
+                    "--package=jetty_cli"
+                ],
+                "filter": {
+                    "name": "jetty_cli",
+                    "kind": "bin"
+                }
+            },
+            "args": ["remove", "group", "tableau::All Users"],
+            "cwd": "${workspaceFolder}/jetty-test"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
             "name": "Debug executable 'jetty_cli' (explore)",
             "cargo": {
                 "args": [

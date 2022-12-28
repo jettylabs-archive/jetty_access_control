@@ -105,7 +105,7 @@ impl UpdateConfig for YamlAssetDoc {
         let new_policies = policies
             .into_iter()
             .map(|mut p| -> Result<_> {
-                modified_policies = p.remove_group_name(name)?;
+                modified_policies = p.remove_group_name(name)? || modified_policies;
                 Ok(p)
             })
             .collect::<Result<BTreeSet<YamlPolicy>>>()?;
@@ -118,7 +118,7 @@ impl UpdateConfig for YamlAssetDoc {
         let new_default_policies = default_policies
             .into_iter()
             .map(|mut p| -> Result<_> {
-                modified_default_policies = p.remove_group_name(name)?;
+                modified_default_policies = p.remove_group_name(name)? || modified_default_policies;
                 Ok(p)
             })
             .collect::<Result<BTreeSet<YamlDefaultPolicy>>>()?;
@@ -145,15 +145,20 @@ impl UpdateConfig for YamlPolicy {
     }
 
     fn remove_user_name(&mut self, name: &String) -> anyhow::Result<bool> {
+        let mut modified = false;
+        let mut set_to_none = false;
         if let Some(users) = &mut self.users {
             if users.remove(name) {
-                Ok(true)
-            } else {
-                Ok(false)
+                modified = true;
+                if users.len() == 0 {
+                    set_to_none = true;
+                };
             }
-        } else {
-            Ok(false)
         }
+        if set_to_none {
+            self.users = None;
+        }
+        Ok(modified)
     }
 
     fn update_group_name(&mut self, old: &String, new: &str) -> anyhow::Result<bool> {
@@ -170,15 +175,20 @@ impl UpdateConfig for YamlPolicy {
     }
 
     fn remove_group_name(&mut self, name: &String) -> anyhow::Result<bool> {
+        let mut modified = false;
+        let mut set_to_none = false;
         if let Some(groups) = &mut self.groups {
             if groups.remove(name) {
-                Ok(true)
-            } else {
-                Ok(false)
+                modified = true;
+                if groups.len() == 0 {
+                    set_to_none = true;
+                };
             }
-        } else {
-            Ok(false)
         }
+        if set_to_none {
+            self.groups = None;
+        }
+        Ok(modified)
     }
 }
 
@@ -197,15 +207,20 @@ impl UpdateConfig for YamlDefaultPolicy {
     }
 
     fn remove_user_name(&mut self, name: &String) -> anyhow::Result<bool> {
-        if let Some(users) = &mut self.users {
-            if users.remove(name) {
-                Ok(true)
-            } else {
-                Ok(false)
+        let mut modified = false;
+        let mut set_to_none = false;
+        if let Some(groups) = &mut self.groups {
+            if groups.remove(name) {
+                modified = true;
+                if groups.len() == 0 {
+                    set_to_none = true;
+                };
             }
-        } else {
-            Ok(false)
         }
+        if set_to_none {
+            self.groups = None;
+        }
+        Ok(modified)
     }
 
     fn update_group_name(&mut self, old: &String, new: &str) -> anyhow::Result<bool> {
@@ -222,19 +237,24 @@ impl UpdateConfig for YamlDefaultPolicy {
     }
 
     fn remove_group_name(&mut self, name: &String) -> anyhow::Result<bool> {
+        let mut modified = false;
+        let mut set_to_none = false;
         if let Some(groups) = &mut self.groups {
             if groups.remove(name) {
-                Ok(true)
-            } else {
-                Ok(false)
+                modified = true;
+                if groups.len() == 0 {
+                    set_to_none = true;
+                };
             }
-        } else {
-            Ok(false)
         }
+        if set_to_none {
+            self.groups = None;
+        }
+        Ok(modified)
     }
 }
 
-fn update_user_name(_jetty: &Jetty, old: &String, new: &str) -> Result<()> {
+pub(crate) fn update_user_name(_jetty: &Jetty, old: &String, new: &str) -> Result<()> {
     let config = parse_to_file_map()?;
     for (path, mut asset_doc) in config {
         if asset_doc.update_user_name(old, new)? {
@@ -245,7 +265,7 @@ fn update_user_name(_jetty: &Jetty, old: &String, new: &str) -> Result<()> {
     Ok(())
 }
 
-fn remove_user_name(_jetty: &Jetty, name: &String) -> Result<()> {
+pub(crate) fn remove_user_name(_jetty: &Jetty, name: &String) -> Result<()> {
     let config = parse_to_file_map()?;
     for (path, mut asset_doc) in config {
         if asset_doc.remove_user_name(name)? {
@@ -256,7 +276,7 @@ fn remove_user_name(_jetty: &Jetty, name: &String) -> Result<()> {
     Ok(())
 }
 
-fn update_group_name(_jetty: &Jetty, old: &String, new: &str) -> Result<()> {
+pub(crate) fn update_group_name(_jetty: &Jetty, old: &String, new: &str) -> Result<()> {
     let config = parse_to_file_map()?;
     for (path, mut asset_doc) in config {
         if asset_doc.update_group_name(old, new)? {
@@ -267,7 +287,7 @@ fn update_group_name(_jetty: &Jetty, old: &String, new: &str) -> Result<()> {
     Ok(())
 }
 
-fn remove_group_name(jetty: &Jetty, name: &String) -> Result<()> {
+pub(crate) fn remove_group_name(_jetty: &Jetty, name: &String) -> Result<()> {
     let config = parse_to_file_map()?;
     for (path, mut asset_doc) in config {
         if asset_doc.remove_group_name(name)? {

@@ -34,6 +34,8 @@ use self::diff::{
 
 use super::new_groups::{get_group_capable_connectors, get_group_to_nodename_map, GroupYaml};
 
+pub(crate) use update::{remove_group_name, remove_user_name, update_group_name, update_user_name};
+
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub(crate) struct PolicyState {
     privileges: HashSet<String>,

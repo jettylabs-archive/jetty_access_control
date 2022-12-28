@@ -14,7 +14,7 @@ use super::{
     parser::read_config_file,
 };
 
-fn update_user_name(jetty: &Jetty, old: &String, new: &str) -> Result<()> {
+pub(crate) fn update_user_name(jetty: &Jetty, old: &String, new: &str) -> Result<()> {
     let validated_group_config = &new_groups::parse_and_validate_groups(&jetty)?;
     let mut config = get_validated_file_config_map(jetty, validated_group_config)?;
 
@@ -25,7 +25,7 @@ fn update_user_name(jetty: &Jetty, old: &String, new: &str) -> Result<()> {
     }
     Ok(())
 }
-fn remove_user_name(jetty: &Jetty, name: &String) -> Result<()> {
+pub(crate) fn remove_user_name(jetty: &Jetty, name: &String) -> Result<()> {
     let validated_group_config = &new_groups::parse_and_validate_groups(&jetty)?;
     let config = get_validated_file_config_map(jetty, validated_group_config)?;
 
@@ -37,7 +37,7 @@ fn remove_user_name(jetty: &Jetty, name: &String) -> Result<()> {
     }
     Ok(())
 }
-fn update_group_name(jetty: &Jetty, old: &String, new: &str) -> Result<()> {
+pub(crate) fn update_group_name(jetty: &Jetty, old: &String, new: &str) -> Result<()> {
     let validated_group_config = &new_groups::parse_and_validate_groups(&jetty)?;
     let mut config = get_validated_file_config_map(jetty, validated_group_config)?;
 
@@ -48,7 +48,7 @@ fn update_group_name(jetty: &Jetty, old: &String, new: &str) -> Result<()> {
     }
     Ok(())
 }
-fn remove_group_name(jetty: &Jetty, name: &String) -> Result<()> {
+pub(crate) fn remove_group_name(jetty: &Jetty, name: &String) -> Result<()> {
     let validated_group_config = &new_groups::parse_and_validate_groups(&jetty)?;
     let mut config = get_validated_file_config_map(jetty, validated_group_config)?;
 

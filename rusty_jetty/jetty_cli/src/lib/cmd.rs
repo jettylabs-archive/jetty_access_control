@@ -3,9 +3,10 @@
 
 use std::path::PathBuf;
 
-use clap::{self, Parser, Subcommand};
+use clap::{self, Parser, Subcommand, ValueEnum};
 
 use jetty_core::logging::LevelFilter;
+use serde::{Deserialize, Serialize};
 
 /// Jetty CLI: Open-source data access control for modern teams
 #[derive(Parser, Debug)]
@@ -91,4 +92,31 @@ pub(crate) enum JettyCommand {
         #[clap(short, long, value_parser, default_value = "1")]
         depth: usize,
     },
+    /// Remove references to a group or user from the configuration
+    Remove {
+        /// the type of node that is being modified
+        #[arg(value_enum)]
+        node_type: RemoveOrModifyNodeType,
+        /// the name of the user or group that is being removed
+        name: String,
+    },
+    /// Rename a group or user in the configuration configuration
+    Rename {
+        /// the type of node that is being modified
+        #[arg(value_enum)]
+        node_type: RemoveOrModifyNodeType,
+        /// the name of the user or group that will be updated
+        old: String,
+        /// the new name of that user or group
+        new: String,
+    },
+}
+
+/// The type of node being modified in the rename or remove commands
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, ValueEnum, Serialize, Deserialize)]
+pub enum RemoveOrModifyNodeType {
+    /// Modify a group
+    Group,
+    /// Modify a user
+    User,
 }

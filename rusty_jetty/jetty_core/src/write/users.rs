@@ -17,6 +17,7 @@ use crate::{access_graph::NodeName, jetty::ConnectorNamespace, project};
 
 pub use diff::get_membership_diffs;
 pub use parser::get_validated_file_config_map;
+pub(crate) use update::{remove_group_name, remove_user_name, update_group_name, update_user_name};
 
 use super::UpdateConfig;
 

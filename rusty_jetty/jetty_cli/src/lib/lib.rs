@@ -7,6 +7,8 @@ mod ascii;
 mod cmd;
 mod diff;
 mod init;
+mod remove;
+mod rename;
 mod tui;
 mod usage_stats;
 
@@ -99,6 +101,8 @@ pub async fn cli() -> Result<()> {
             JettyCommand::Plan { fetch } => UsageEvent::InvokedPlan { fetch },
             JettyCommand::Apply { no_fetch } => UsageEvent::InvokedApply { no_fetch },
             JettyCommand::Subgraph { depth, .. } => UsageEvent::InvokedSubgraph { depth },
+            JettyCommand::Remove { node_type, .. } => UsageEvent::InvokedRemove { node_type },
+            JettyCommand::Rename { node_type, .. } => UsageEvent::InvokedRename { node_type },
         };
         record_usage(event, &jetty_config)
             .await
@@ -190,6 +194,12 @@ pub async fn cli() -> Result<()> {
             let generated_dot = binding.dot();
             println!("{generated_dot:?}");
         }
+        JettyCommand::Remove { node_type, name } => remove::remove(node_type, name).await?,
+        JettyCommand::Rename {
+            node_type,
+            old,
+            new,
+        } => rename::rename(node_type, old, new).await?,
     }
 
     Ok(())

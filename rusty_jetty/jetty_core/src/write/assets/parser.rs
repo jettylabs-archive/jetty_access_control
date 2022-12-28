@@ -70,8 +70,10 @@ pub(crate) fn parse_to_file_map() -> Result<HashMap<PathBuf, YamlAssetDoc>> {
     let paths = get_config_paths()?;
     for path in paths {
         let path = path?;
-        let doc = std::fs::read_to_string(&path)?;
-        let parsed_doc = simple_parse(&doc)?;
+        let doc = std::fs::read_to_string(&path)
+            .context(format!("problem reading {}", path.display()))?;
+        let parsed_doc =
+            simple_parse(&doc).context(format!("problem parsing {}", path.display()))?;
         res.insert(path.to_owned(), parsed_doc);
     }
     Ok(res)

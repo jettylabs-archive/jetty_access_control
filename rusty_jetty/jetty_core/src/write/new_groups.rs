@@ -18,6 +18,7 @@ pub use bootstrap::write_env_config;
 pub(crate) use diff::get_group_capable_connectors;
 pub use diff::{generate_diffs, Diff};
 pub use parser::{get_group_to_nodename_map, parse_and_validate_groups};
+pub(crate) use update::{remove_group_name, remove_user_name, update_group_name, update_user_name};
 
 use super::UpdateConfig;
 
