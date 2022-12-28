@@ -15,7 +15,7 @@ impl UpdateConfig for YamlAssetDoc {
         let new_policies = policies
             .into_iter()
             .map(|mut p| -> Result<_> {
-                modified_policies = p.update_user_name(old, new)?;
+                modified_policies = p.update_user_name(old, new)? || modified_policies;
                 Ok(p)
             })
             .collect::<Result<BTreeSet<YamlPolicy>>>()?;
@@ -28,7 +28,8 @@ impl UpdateConfig for YamlAssetDoc {
         let new_default_policies = default_policies
             .into_iter()
             .map(|mut p| -> Result<_> {
-                modified_default_policies = p.update_user_name(old, new)?;
+                modified_default_policies =
+                    p.update_user_name(old, new)? || modified_default_policies;
                 Ok(p)
             })
             .collect::<Result<BTreeSet<YamlDefaultPolicy>>>()?;
@@ -45,8 +46,18 @@ impl UpdateConfig for YamlAssetDoc {
         let new_policies = policies
             .into_iter()
             .map(|mut p| -> Result<_> {
-                modified_policies = p.remove_user_name(name)?;
+                modified_policies = p.remove_user_name(name)? || modified_policies;
                 Ok(p)
+            })
+            .filter(|p| match p {
+                Ok(p) => {
+                    if p.users.is_none() && p.groups.is_none() {
+                        false
+                    } else {
+                        true
+                    }
+                }
+                Err(_) => true,
             })
             .collect::<Result<BTreeSet<YamlPolicy>>>()?;
         if modified_policies {
@@ -58,8 +69,18 @@ impl UpdateConfig for YamlAssetDoc {
         let new_default_policies = default_policies
             .into_iter()
             .map(|mut p| -> Result<_> {
-                modified_default_policies = p.remove_user_name(name)?;
+                modified_default_policies = p.remove_user_name(name)? || modified_default_policies;
                 Ok(p)
+            })
+            .filter(|p| match p {
+                Ok(p) => {
+                    if p.users.is_none() && p.groups.is_none() {
+                        false
+                    } else {
+                        true
+                    }
+                }
+                Err(_) => true,
             })
             .collect::<Result<BTreeSet<YamlDefaultPolicy>>>()?;
         if modified_default_policies {
@@ -75,7 +96,7 @@ impl UpdateConfig for YamlAssetDoc {
         let new_policies = policies
             .into_iter()
             .map(|mut p| -> Result<_> {
-                modified_policies = p.update_group_name(old, new)?;
+                modified_policies = p.update_group_name(old, new)? || modified_policies;
                 Ok(p)
             })
             .collect::<Result<BTreeSet<YamlPolicy>>>()?;
@@ -88,7 +109,8 @@ impl UpdateConfig for YamlAssetDoc {
         let new_default_policies = default_policies
             .into_iter()
             .map(|mut p| -> Result<_> {
-                modified_default_policies = p.update_group_name(old, new)?;
+                modified_default_policies =
+                    p.update_group_name(old, new)? || modified_default_policies;
                 Ok(p)
             })
             .collect::<Result<BTreeSet<YamlDefaultPolicy>>>()?;
@@ -108,6 +130,16 @@ impl UpdateConfig for YamlAssetDoc {
                 modified_policies = p.remove_group_name(name)? || modified_policies;
                 Ok(p)
             })
+            .filter(|p| match p {
+                Ok(p) => {
+                    if p.users.is_none() && p.groups.is_none() {
+                        false
+                    } else {
+                        true
+                    }
+                }
+                Err(_) => true,
+            })
             .collect::<Result<BTreeSet<YamlPolicy>>>()?;
         if modified_policies {
             self.policies = new_policies;
@@ -120,6 +152,16 @@ impl UpdateConfig for YamlAssetDoc {
             .map(|mut p| -> Result<_> {
                 modified_default_policies = p.remove_group_name(name)? || modified_default_policies;
                 Ok(p)
+            })
+            .filter(|p| match p {
+                Ok(p) => {
+                    if p.users.is_none() && p.groups.is_none() {
+                        false
+                    } else {
+                        true
+                    }
+                }
+                Err(_) => true,
             })
             .collect::<Result<BTreeSet<YamlDefaultPolicy>>>()?;
         if modified_default_policies {
