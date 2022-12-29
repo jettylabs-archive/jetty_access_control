@@ -35,7 +35,7 @@ impl FutureGrant {
         all_privileges: HashSet<String>,
     ) -> nodes::RawDefaultPolicy {
         let stripped_name = self.name.split_once('<').unwrap().0.trim_end_matches('.');
-        let cual = cual_from_snowflake_obj_name(stripped_name).unwrap();
+        let cual = cual_from_snowflake_obj_name(stripped_name, self.grant_on()).unwrap();
 
         let wildcard_path = if self.grant_on == "SCHEMA" {
             "/*"

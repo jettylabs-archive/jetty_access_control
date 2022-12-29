@@ -9,6 +9,15 @@ pub enum ObjectKind {
     #[serde(rename = "VIEW")]
     View,
 }
+
+impl ToString for ObjectKind {
+    fn to_string(&self) -> String {
+        match self {
+            ObjectKind::Table => "TABLE".to_string(),
+            ObjectKind::View => "VIEW".to_string(),
+        }
+    }
+}
 /// Snowflake Table entry.
 #[derive(Clone, Default, Deserialize, Serialize, Debug)]
 pub struct Object {

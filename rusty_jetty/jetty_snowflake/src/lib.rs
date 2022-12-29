@@ -597,6 +597,15 @@ pub(crate) fn strip_snowflake_quotes(object: String, capitalize: bool) -> String
     }
 }
 
+/// A Snowflake Asset. Inner value is the fully-qualified snowflake name.
+#[derive(PartialEq, Debug)]
+enum SnowflakeAsset {
+    Table(String),
+    View(String),
+    Schema(String),
+    Database(String),
+}
+
 pub(crate) fn strip_quotes_and_deserialize<'de, D>(deserializer: D) -> Result<String, D::Error>
 where
     D: Deserializer<'de>,

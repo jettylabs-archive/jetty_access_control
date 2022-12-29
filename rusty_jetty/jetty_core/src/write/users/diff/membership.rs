@@ -49,7 +49,6 @@ pub fn get_membership_diffs(
     let env_state = get_membership_env_state(jetty)?;
     let config_state =
         get_membership_config_state(jetty, validated_user_config, validated_group_config)?;
-
     // we know that the env and config keys will match 1:1 - that's part of parser validation
     Ok(config_state
         .into_iter()
