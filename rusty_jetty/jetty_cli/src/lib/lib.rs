@@ -174,7 +174,7 @@ pub async fn cli() -> Result<()> {
             } else {
                 println!("Generating plan based off existing data. Run `jetty plan -f` to fetch before generating the plan.")
             };
-            plan().await?;
+            plan::plan().await?;
         }
         JettyCommand::Apply { no_fetch } => {
             if !*no_fetch {
