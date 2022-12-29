@@ -25,9 +25,10 @@ use crate::{
     Jetty,
 };
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use bimap;
 use serde::{Deserialize, Serialize};
+use url::Url;
 
 /// Struct to translate local data to global data and back again
 /// Eventually, this will need to be persisted with the graph to enable the write path
@@ -519,6 +520,35 @@ impl Translator {
         })
     }
 
+    /// Convert a NodeName::Asset to cual
+    pub fn asset_name_to_cual(&self, asset_name: &NodeName) -> Result<Cual> {
+        match asset_name {
+            NodeName::Asset {
+                connector,
+                asset_type,
+                path,
+            } => {
+                let prefix = self
+                    .cual_prefix_to_namespace
+                    .get_by_right(&connector)
+                    .context("unable to find cual prefix")?
+                    .to_owned()
+                    .unwrap_or_default();
+                let path = path.components().join("/");
+
+                let mut uri = Url::parse(format!("{prefix}/{path}").as_str())?;
+                match asset_type {
+                    Some(asset_type) => {
+                        uri.set_query(Some(format!("type={asset_type:?}").as_str()))
+                    }
+                    None => (),
+                }
+                Ok(Cual::new(uri.as_str()))
+            }
+            _ => bail!("cannot convert non-asset to cual"),
+        }
+    }
+
     pub(crate) fn translate_node_name_to_local(
         &self,
         node_name: &NodeName,
@@ -552,7 +582,7 @@ impl Translator {
                 .get(connector)
                 .ok_or(anyhow!("unable to find connector for node translation"))?
                 .get(node_name)
-                .ok_or(anyhow!("unable to find username for collection"))?
+                .ok_or(anyhow!("unable to find username for connection"))?
                 .to_owned(),
             // There may be groups that don't exist yet, so we'll just use the group name without the origin
             NodeName::Group { name, .. } => name.to_owned(),

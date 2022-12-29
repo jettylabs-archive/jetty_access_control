@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::{
     access_graph::{translate::Translator, NodeName},
+    cual::Cual,
     jetty::ConnectorNamespace,
     write,
 };
@@ -10,7 +11,7 @@ use crate::{
 /// A group-specific local diff
 pub struct LocalDiff {
     /// the asset being diffed
-    pub asset: String,
+    pub asset: Cual,
     /// a map of users and user-specific changes for the asset
     pub users: HashMap<String, write::assets::diff::policies::DiffDetails>,
     /// a map of groups and group-specific changes for the asset
@@ -23,7 +24,7 @@ impl Translator {
         global_diff: &write::assets::diff::policies::PolicyDiff,
     ) -> LocalDiff {
         LocalDiff {
-            asset: self.translate_node_name_to_local(&global_diff.asset, &global_diff.connector),
+            asset: self.asset_name_to_cual(&global_diff.asset).unwrap(),
             users: global_diff
                 .users
                 .iter()

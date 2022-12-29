@@ -131,6 +131,14 @@ impl Cualable for Database {
     }
 }
 
+fn cual_to_string_name(cual: &Cual) -> String {
+    let path = cual.asset_path().components().to_owned();
+    path.into_iter()
+        .map(|segment| format!("\"{}\"", urlencoding::decode(segment.as_str()).unwrap()))
+        .collect::<Vec<_>>()
+        .join(".")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -201,5 +209,27 @@ mod tests {
             cual,
             Cual::new("snowflake://account.snowflakecomputing.com/my_db")
         )
+    }
+
+    #[test]
+    fn cual_to_string_name_works_table() -> Result<()> {
+        assert_eq!(
+            cual_to_string_name(&Cual::new(
+                "snowflake://account.snowflakecomputing.com/database/schema/my_table",
+            )),
+            "\"database\".\"schema\".\"my_table\"".to_owned()
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn cual_to_string_name_works_db() -> Result<()> {
+        assert_eq!(
+            cual_to_string_name(&Cual::new(
+                "snowflake://account.snowflakecomputing.com/databasE?type=db",
+            )),
+            "\"databasE\"".to_owned()
+        );
+        Ok(())
     }
 }

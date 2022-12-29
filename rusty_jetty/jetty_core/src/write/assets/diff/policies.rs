@@ -38,12 +38,18 @@ impl SplitByConnector for PolicyDiff {
 /// Details of policy diff
 #[derive(Debug, Clone)]
 pub enum DiffDetails {
+    /// Add an agent to the policy
     AddAgent {
+        /// The new policy state
         add: PolicyState,
     },
+    /// Remove an agent from the policy
     RemoveAgent,
+    /// Change policy state
     ModifyAgent {
+        /// What's being added
         add: PolicyState,
+        /// What's being removed
         remove: PolicyState,
     },
 }
