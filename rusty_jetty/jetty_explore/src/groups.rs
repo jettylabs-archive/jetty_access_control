@@ -2,10 +2,7 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use axum::{extract::Path, routing::get, Extension, Json, Router};
-use jetty_core::{
-    access_graph::{self, EdgeType, JettyNode, NodeName},
-    jetty::ConnectorNamespace,
-};
+use jetty_core::access_graph::{self, EdgeType, JettyNode};
 
 use uuid::Uuid;
 
@@ -42,7 +39,7 @@ async fn direct_groups_handler(
         .context("fetching group node")
         .unwrap();
 
-    let group_nodes = ag.get_matching_children(
+    let group_nodes = ag.get_matching_descendants(
         from,
         |n| matches!(n, EdgeType::MemberOf),
         |n| matches!(n, JettyNode::Group(_)),
@@ -80,7 +77,7 @@ async fn inherited_groups_handler(
         .unwrap();
 
     // return simple paths to all group children
-    let res = ag.all_matching_simple_paths_to_children(
+    let res = ag.all_matching_simple_paths_to_descendants(
         from,
         |n| matches!(n, EdgeType::MemberOf),
         |n| matches!(n, JettyNode::Group(_)),
@@ -127,7 +124,7 @@ async fn direct_members_groups_handler(
         .context("fetching group node")
         .unwrap();
 
-    let group_nodes = ag.get_matching_children(
+    let group_nodes = ag.get_matching_descendants(
         from,
         |n| matches!(n, EdgeType::Includes),
         |n| matches!(n, JettyNode::Group(_)),
@@ -163,7 +160,7 @@ async fn direct_members_users_handler(
         .get_group_index_from_id(&node_id)
         .context("fetching group node")
         .unwrap();
-    let group_nodes = ag.get_matching_children(
+    let group_nodes = ag.get_matching_descendants(
         from,
         |n| matches!(n, EdgeType::Includes),
         |n| matches!(n, JettyNode::Group(_)),
@@ -199,7 +196,7 @@ async fn all_members_handler(
         .context("fetching group node")
         .unwrap();
 
-    let res = ag.all_matching_simple_paths_to_children(
+    let res = ag.all_matching_simple_paths_to_descendants(
         from,
         |n| matches!(n, EdgeType::Includes),
         |n| matches!(n, JettyNode::Group(_)),
@@ -231,13 +228,4 @@ async fn all_members_handler(
         })
         .collect::<Vec<_>>();
     Json(group_attributes)
-}
-
-/// Construct a NodeName::Group form the node_id url parameter
-fn group_name_from_url_param(node_id: String) -> NodeName {
-    let (origin, name) = node_id.split_once("::").unwrap();
-    NodeName::Group {
-        name: name.to_owned(),
-        origin: ConnectorNamespace(origin.to_owned()),
-    }
 }

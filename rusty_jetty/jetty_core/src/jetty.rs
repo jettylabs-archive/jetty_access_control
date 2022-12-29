@@ -1,18 +1,19 @@
 //! Jetty Module
 //!
+use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::{collections::HashMap, fmt::Display};
 
 use anyhow::{anyhow, bail, Context, Result};
 
-use log::{debug, info};
+use log::debug;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use yaml_peg::serde as yaml;
 
 use crate::access_graph::AccessGraph;
-use crate::connectors::ConnectorCapabilities;
+use crate::connectors::{AssetType, ConnectorCapabilities};
 use crate::{project, Connector};
 
 /// The user-defined namespace corresponding to the connector.
@@ -115,10 +116,13 @@ impl ConnectorConfig {
     }
 }
 
+#[derive(Default, Debug)]
 /// A struct representing the built-in characteristics of a connector.
 pub struct ConnectorManifest {
     /// The capabilities of the connector.
     pub capabilities: ConnectorCapabilities,
+    /// The asset type/privilege pairs that are allowed for a connector
+    pub asset_privileges: HashMap<AssetType, HashSet<String>>,
 }
 
 /// Alias for HashMap to hold credentials information.
@@ -141,7 +145,7 @@ pub struct Jetty {
     pub config: JettyConfig,
     // connector_config: HashMap<String, ConnectorCredentials>,
     /// The directory where data (such as the materialized graph) should be stored
-    data_dir: PathBuf,
+    _data_dir: PathBuf,
     /// The access graph, if it exists
     pub access_graph: Option<AccessGraph>,
     /// The connectors
@@ -163,7 +167,7 @@ impl Jetty {
 
         Ok(Jetty {
             config,
-            data_dir,
+            _data_dir: data_dir,
             access_graph: ag,
             connectors,
         })
@@ -180,7 +184,7 @@ impl Jetty {
 
         Ok(Jetty {
             config,
-            data_dir,
+            _data_dir: data_dir,
             access_graph: ag,
             connectors,
         })
@@ -200,6 +204,18 @@ impl Jetty {
             "unable to find an existing access graph; try running `jetty fetch`"
         ))
     }
+
+    /// Getter for a mutable reference to the access graph. Returns an error if no access graph has been created
+    pub fn try_access_graph_mut(&mut self) -> Result<&mut AccessGraph> {
+        self.access_graph.as_mut().ok_or(anyhow!(
+            "unable to find an existing access graph; try running `jetty fetch`"
+        ))
+    }
+
+    /// return whether a given connector name exists in the config
+    pub(crate) fn has_connector(&self, connector: &ConnectorNamespace) -> bool {
+        self.connectors.contains_key(&connector)
+    }
 }
 
 /// Load access graph from a file
@@ -218,7 +234,7 @@ fn load_access_graph() -> Result<Option<AccessGraph>> {
                     }
                     Err(e) => {
                         bail!(
-                            "found, but was unable to read {:?}\nerror: {}",
+                            "found tags file, but was unable to read {:?}\nerror: {}",
                             tags_path,
                             e
                         )
@@ -229,6 +245,6 @@ fn load_access_graph() -> Result<Option<AccessGraph>> {
             };
             Ok(Some(ag))
         }
-        Err(e) => Ok(None),
+        Err(_e) => Ok(None),
     }
 }

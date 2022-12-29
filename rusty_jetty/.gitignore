@@ -30,3 +30,5 @@ groups.yaml
 # Staging area for dev projects
 jetty_project/
 
+/*/assets/**/*.yaml
+/*/users/*.yaml

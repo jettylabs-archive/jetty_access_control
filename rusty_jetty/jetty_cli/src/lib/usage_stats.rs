@@ -11,6 +11,8 @@ use serde::{Deserialize, Serialize};
 use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 use uuid::Uuid;
 
+use crate::cmd::RemoveOrModifyNodeType;
+
 const SCHEMA_VERSION: &str = "0.0.1";
 const JETTY_VERSION: &str = env!("CARGO_PKG_VERSION");
 const FIRESTORE_URL: &str = "https://firestore.googleapis.com/v1/projects/jetty-cli-telemetry/databases/(default)/documents/";
@@ -196,6 +198,12 @@ pub enum UsageEvent {
     /// `jetty subgraph`
     #[serde(rename = "invoked_subgraph")]
     InvokedSubgraph { depth: usize },
+    /// `jetty remove`
+    #[serde(rename = "invoked_remove")]
+    InvokedRemove { node_type: RemoveOrModifyNodeType },
+    /// `jetty rename`
+    #[serde(rename = "invoked_rename")]
+    InvokedRename { node_type: RemoveOrModifyNodeType },
 }
 
 /// Given an event, record its usage to Jetty anonymous usage stats.

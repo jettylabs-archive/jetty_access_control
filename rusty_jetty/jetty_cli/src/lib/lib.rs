@@ -5,7 +5,10 @@
 
 mod ascii;
 mod cmd;
+mod diff;
 mod init;
+mod remove;
+mod rename;
 mod tui;
 mod usage_stats;
 
@@ -28,9 +31,18 @@ use jetty_core::{
     connectors::{ConnectorClient, NewConnector},
     fetch_credentials,
     jetty::{ConnectorNamespace, CredentialsMap, JettyConfig},
-    logging::{self, debug, error, info},
+    logging::{self, debug, error, info, warn},
     project::{self, groups_cfg_path_local},
-    write::Diffs,
+    write::{
+        assets::{
+            bootstrap::{update_asset_files, write_bootstrapped_asset_yaml},
+            get_default_policy_diffs, get_policy_diffs,
+        },
+        groups::parse_and_validate_groups,
+        new_groups,
+        users::bootstrap::{update_user_files, write_bootstrapped_user_yaml},
+        Diffs,
+    },
     Connector, Jetty,
 };
 
@@ -89,6 +101,8 @@ pub async fn cli() -> Result<()> {
             JettyCommand::Plan { fetch } => UsageEvent::InvokedPlan { fetch },
             JettyCommand::Apply { no_fetch } => UsageEvent::InvokedApply { no_fetch },
             JettyCommand::Subgraph { depth, .. } => UsageEvent::InvokedSubgraph { depth },
+            JettyCommand::Remove { node_type, .. } => UsageEvent::InvokedRemove { node_type },
+            JettyCommand::Rename { node_type, .. } => UsageEvent::InvokedRename { node_type },
         };
         record_usage(event, &jetty_config)
             .await
@@ -123,13 +137,8 @@ pub async fn cli() -> Result<()> {
                 info!("Fetching all data first.");
                 fetch(&None, &false).await?;
             }
-            let jetty = new_jetty_with_connectors().await.map_err(|_| {
-                anyhow!(
-                    "unable to find {} - make sure you are in a \
-                Jetty project directory, or create a new project by running `jetty init`",
-                    project::jetty_cfg_path_local().display()
-                )
-            })?;
+
+            let jetty = new_jetty_with_connectors().await?;
 
             jetty.try_access_graph()?;
             jetty_explore::explore_web_ui(Arc::from(jetty.access_graph.unwrap()), bind).await;
@@ -154,7 +163,7 @@ pub async fn cli() -> Result<()> {
             } else {
                 println!("Generating diff based off existing data. Run `jetty diff -f` to fetch before generating the diff.")
             };
-            diff().await?;
+            diff::diff().await?;
         }
         JettyCommand::Plan { fetch: fetch_first } => {
             if *fetch_first {
@@ -173,13 +182,7 @@ pub async fn cli() -> Result<()> {
             apply().await?;
         }
         JettyCommand::Subgraph { id, depth } => {
-            let jetty = new_jetty_with_connectors().await.map_err(|_| {
-                anyhow!(
-                    "unable to find {} - make sure you are in a \
-                Jetty project directory, or create a new project by running `jetty init`",
-                    project::jetty_cfg_path_local().display()
-                )
-            })?;
+            let jetty = new_jetty_with_connectors().await?;
 
             let ag = jetty.try_access_graph()?;
             let parsed_uuid = uuid::Uuid::from_str(id)?;
@@ -191,19 +194,19 @@ pub async fn cli() -> Result<()> {
             let generated_dot = binding.dot();
             println!("{generated_dot:?}");
         }
+        JettyCommand::Remove { node_type, name } => remove::remove(node_type, name).await?,
+        JettyCommand::Rename {
+            node_type,
+            old,
+            new,
+        } => rename::rename(node_type, old, new).await?,
     }
 
     Ok(())
 }
 
 async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()> {
-    let jetty = new_jetty_with_connectors().await.map_err(|_| {
-        anyhow!(
-            "unable to find {} - make sure you are in a \
-        Jetty project directory, or create a new project by running `jetty init`",
-            project::jetty_cfg_path_local().display()
-        )
-    })?;
+    let jetty = new_jetty_with_connectors().await?;
 
     let mut data_from_connectors = vec![];
 
@@ -237,11 +240,14 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
     let pb = basic_progress_bar("Creating access graph");
     let now = Instant::now();
 
-    let ag = AccessGraph::new_from_connector_data(data_from_connectors)?;
+    // the last jetty was partially consumed by the fetch, so re-instantiating here
+    let jetty = new_jetty_with_connectors().await?;
+
+    let ag = AccessGraph::new_from_connector_data(data_from_connectors, &jetty)?;
     ag.serialize_graph(project::data_dir().join(project::graph_filename()))?;
 
     pb.finish_with_message(format!(
-        "Access graph created in data took {:.1} seconds",
+        "Access graph created in {:.1} seconds",
         now.elapsed().as_secs_f32()
     ));
 
@@ -258,11 +264,18 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
         debug!("Skipping visualization.")
     };
 
+    if let Err(e) = update_asset_files(&jetty) {
+        warn!("failed to generate files for all assets: {}", e);
+    };
+    if let Err(e) = update_user_files(&jetty) {
+        warn!("failed to generate files for all users: {}", e);
+    };
+
     Ok(())
 }
 
 async fn bootstrap(overwrite: bool) -> Result<()> {
-    let mut jetty = new_jetty_with_connectors().await.map_err(|_| {
+    let jetty = &new_jetty_with_connectors().await.map_err(|_| {
         anyhow!(
             "unable to find {} - make sure you are in a \
         Jetty project directory, or create a new project by running `jetty init`",
@@ -274,60 +287,70 @@ async fn bootstrap(overwrite: bool) -> Result<()> {
     jetty.try_access_graph()?;
 
     // Build all the yaml first
-    let group_yaml = jetty.build_bootstrapped_group_yaml()?;
-    // TODO: Add Policy yaml
+    let group_yaml = new_groups::get_env_config(jetty)?;
+    let asset_yaml = jetty.generate_bootstrapped_policy_yaml()?;
+    let user_yaml = jetty.generate_bootstrapped_user_yaml()?;
 
     // Now check for all the files
     if !overwrite {
         if groups_cfg_path_local().exists() {
             bail!("{} already exists; run `jetty bootstrap --overwrite` to overwrite the existing configuration", groups_cfg_path_local().to_string_lossy())
         }
+        if project::assets_cfg_root_path_local().exists() {
+            bail!("{} already exists; run `jetty bootstrap --overwrite` to overwrite the existing configuration", project::assets_cfg_root_path_local().to_string_lossy())
+        }
+        if project::users_cfg_root_path_local().exists() {
+            bail!("{} already exists; run `jetty bootstrap --overwrite` to overwrite the existing configuration", project::users_cfg_root_path_local().to_string_lossy())
+        }
+    } else {
+        match fs::remove_file(groups_cfg_path_local()) {
+            Ok(_) => println!("removed existing groups file"),
+            Err(_) => (),
+        };
+        match fs::remove_dir_all(project::assets_cfg_root_path_local()) {
+            Ok(_) => println!("removed existing asset directory"),
+            Err(_) => (),
+        };
+        match fs::remove_dir_all(project::users_cfg_root_path_local()) {
+            Ok(_) => println!("removed existing users directory"),
+            Err(_) => (),
+        };
     }
 
     // Now write the yaml files
 
     // groups
-    fs::create_dir_all(groups_cfg_path_local().parent().unwrap()).unwrap(); // Create the parent dir, if needed
-    fs::write(groups_cfg_path_local(), group_yaml)?; // write the contents
-                                                     // sanity check - the diff should be empty at this point
-    if jetty_core::write::get_group_diff(&jetty)
-        .context("checking the generated group configuration")?
-        .len()
-        != 0
-    {
-        bail!("something went wrong - the configuration generated doesn't fully match the true state; please contact support: support@get-jetty.com")
+    if let Err(e) = new_groups::write_env_config(&group_yaml) {
+        warn!("failed to write groups file: {}", e);
     }
 
-    // TODO: Policies
-
-    Ok(())
-}
-
-async fn diff() -> Result<()> {
-    let mut jetty = new_jetty_with_connectors().await.map_err(|_| {
-        anyhow!(
-            "unable to find {} - make sure you are in a \
-        Jetty project directory, or create a new project by running `jetty init`",
-            project::jetty_cfg_path_local().display()
-        )
-    })?;
-
-    // make sure there's an existing access graph
-    jetty.try_access_graph()?;
-
-    // For now, we're just looking at group diffs
-    let group_diff = jetty_core::write::get_group_diff(&jetty)?;
-    if !group_diff.is_empty() {
-        group_diff.iter().for_each(|diff| println!("{diff}"));
-    } else {
-        println!("No changes found");
+    // assets
+    write_bootstrapped_asset_yaml(asset_yaml)?;
+    if let Err(e) = update_asset_files(&jetty) {
+        warn!("failed to generate files for all assets: {}", e);
     };
+
+    // users
+    write_bootstrapped_user_yaml(user_yaml)?;
+    if let Err(e) = update_user_files(&jetty) {
+        warn!("failed to generate files for all users: {}", e);
+    }
+
+    // sanity check - the diff should be empty at this point
+    // let validated_group_config = parse_and_validate_groups(&jetty)?;
+    // if jetty_core::write::get_group_diff(&validated_group_config, &jetty)
+    //     .context("checking the generated group configuration")?
+    //     .len()
+    //     != 0
+    // {
+    //     bail!("something went wrong - the configuration generated doesn't fully match the true state of your environment; please contact support: support@get-jetty.com")
+    // }
 
     Ok(())
 }
 
 async fn plan() -> Result<()> {
-    let mut jetty = new_jetty_with_connectors().await.map_err(|_| {
+    let jetty = new_jetty_with_connectors().await.map_err(|_| {
         anyhow!(
             "unable to find {} - make sure you are in a \
         Jetty project directory, or create a new project by running `jetty init`",
@@ -337,9 +360,10 @@ async fn plan() -> Result<()> {
 
     // make sure there's an existing access graph
     let ag = jetty.try_access_graph()?;
+    let validated_group_config = parse_and_validate_groups(&jetty)?;
 
     let diffs = Diffs {
-        groups: jetty_core::write::get_group_diff(&jetty)?,
+        groups: jetty_core::write::get_group_diff(&validated_group_config, &jetty)?,
     };
 
     let connector_specific_diffs = diffs.split_by_connector();
@@ -376,7 +400,7 @@ async fn plan() -> Result<()> {
 }
 
 async fn apply() -> Result<()> {
-    let mut jetty = new_jetty_with_connectors().await.map_err(|_| {
+    let jetty = new_jetty_with_connectors().await.map_err(|_| {
         anyhow!(
             "unable to find {} - make sure you are in a \
         Jetty project directory, or create a new project by running `jetty init`",
@@ -386,9 +410,10 @@ async fn apply() -> Result<()> {
 
     // make sure there's an existing access graph
     let ag = jetty.try_access_graph()?;
+    let validated_group_config = parse_and_validate_groups(&jetty)?;
 
     let diffs = Diffs {
-        groups: jetty_core::write::get_group_diff(&jetty)?,
+        groups: jetty_core::write::get_group_diff(&validated_group_config, &jetty)?,
     };
 
     let connector_specific_diffs = diffs.split_by_connector();
@@ -426,17 +451,14 @@ async fn apply() -> Result<()> {
     match fetch(&None, &false).await {
         Ok(_) => {
             // reload jetty to get the latest fetch
-            let jetty = new_jetty_with_connectors().await.map_err(|_| {
-                anyhow!(
-                    "unable to find {} - make sure you are in a \
-                Jetty project directory, or create a new project by running `jetty init`",
-                    project::jetty_cfg_path_local().display()
-                )
-            })?;
+
+            let jetty = new_jetty_with_connectors().await?;
 
             println!("Here is the current diff based on your configuration:");
             // For now, we're just looking at group diffs
-            let group_diff = jetty_core::write::get_group_diff(&jetty)?;
+
+            let validated_group_config = parse_and_validate_groups(&jetty)?;
+            let group_diff = jetty_core::write::get_group_diff(&validated_group_config, &jetty)?;
             if !group_diff.is_empty() {
                 group_diff.iter().for_each(|diff| println!("{diff}"));
                 println!(
@@ -532,8 +554,10 @@ async fn get_connectors(
 
 /// Create a new Jetty struct with all the connectors. Uses default locations for everything
 pub async fn new_jetty_with_connectors() -> Result<Jetty> {
-    let config = JettyConfig::read_from_file(project::jetty_cfg_path_local())
-        .context("Reading Jetty Config file")?;
+    let config = JettyConfig::read_from_file(project::jetty_cfg_path_local()).context(format!(
+        "unable to find Jetty Config file at {} - you can set this up by running `jetty init`",
+        project::jetty_cfg_path_local().to_string_lossy()
+    ))?;
 
     let creds = fetch_credentials(project::connector_cfg_path()).map_err(|_| {
         anyhow!(

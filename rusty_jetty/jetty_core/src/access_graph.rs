@@ -10,11 +10,12 @@ pub mod test_util;
 pub mod translate;
 
 use crate::connectors::nodes::{ConnectorData, EffectivePermission, SparseMatrix};
-use crate::connectors::processed_nodes::ProcessedConnectorData;
+use crate::connectors::processed_nodes::{ProcessedConnectorData, ProcessedDefaultPolicy};
 #[cfg(test)]
 use crate::cual::Cual;
+use crate::Jetty;
 
-use crate::connectors::AssetType;
+use crate::connectors::{AssetType, UserIdentifier};
 use crate::jetty::ConnectorNamespace;
 use crate::logging::debug;
 use crate::write::tag_parser::{parse_tags, tags_to_jetty_node_helpers};
@@ -26,8 +27,8 @@ use self::translate::Translator;
 use super::connectors;
 use core::hash::Hash;
 
-use std::collections::HashMap;
 use std::collections::HashSet;
+use std::collections::{BTreeSet, HashMap};
 use std::fmt::{Debug, Display};
 use std::fs::{self, File};
 use std::io::BufWriter;
@@ -77,9 +78,33 @@ impl UserAttributes {
         })
     }
 
-    /// Convenience constructor for testing
+    /// Generate new UserAttributes struct
+    pub(crate) fn new(
+        name: &NodeName,
+        identifiers: &HashSet<UserIdentifier>,
+        metadata: &HashMap<String, String>,
+        connector: Option<&ConnectorNamespace>,
+    ) -> Self {
+        UserAttributes {
+            name: name.to_owned(),
+            id: Uuid::new_v5(&Uuid::NAMESPACE_URL, name.to_string().as_bytes()),
+            identifiers: identifiers.to_owned(),
+            metadata: metadata.to_owned(),
+            connectors: connector
+                .map(|c| HashSet::from([c.to_owned()]))
+                .unwrap_or_default(),
+        }
+    }
+
+    /// users can only have at most one connector, so this makes things a bit easier.
+    /// While the graph is being created, it's possible that a user has 0 connectors, but that
+    /// should never be the case when this might be called
+    pub(crate) fn connectors(&self) -> &HashSet<ConnectorNamespace> {
+        &self.connectors
+    }
+
     #[cfg(test)]
-    fn new(name: String) -> Self {
+    fn simple_new(name: String) -> Self {
         Self {
             name: NodeName::User(name.to_owned()),
             id: Uuid::new_v5(
@@ -324,6 +349,26 @@ pub struct PolicyAttributes {
     pub connectors: HashSet<ConnectorNamespace>,
 }
 
+/// A struct describing the attributes of a policy
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DefaultPolicyAttributes {
+    /// Policy name
+    pub name: NodeName,
+    /// Node Id
+    pub id: Uuid,
+    /// Policy privileges
+    pub privileges: HashSet<String>,
+    /// The path that this policy should be applied to
+    pub matching_path: String,
+    /// Metadata associated with the policy
+    pub metadata: HashMap<String, String>,
+    /// The types of assets that this should be applied to. If None, it's applied to all types
+    pub types: BTreeSet<AssetType>,
+    /// Connectors for the default policy. Policies include a single asset and single grantee, so
+    /// this set should only ever include a single connector
+    pub connectors: HashSet<ConnectorNamespace>,
+}
+
 impl PolicyAttributes {
     fn merge_attributes(&self, new_attributes: &PolicyAttributes) -> Result<PolicyAttributes> {
         let name = merge_matched_field(&self.name, &new_attributes.name)
@@ -382,6 +427,18 @@ impl TryFrom<JettyNode> for PolicyAttributes {
     }
 }
 
+impl TryFrom<JettyNode> for DefaultPolicyAttributes {
+    type Error = anyhow::Error;
+
+    /// convert from a JettyNode to PolicyAttributes, if possible
+    fn try_from(value: JettyNode) -> Result<Self, Self::Error> {
+        match value {
+            JettyNode::DefaultPolicy(a) => Ok(a),
+            _ => bail!("not a policy node"),
+        }
+    }
+}
+
 /// Enum of node types
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum JettyNode {
@@ -395,6 +452,8 @@ pub enum JettyNode {
     Tag(TagAttributes),
     /// Policy node
     Policy(PolicyAttributes),
+    /// Default policy
+    DefaultPolicy(DefaultPolicyAttributes),
 }
 
 impl JettyNode {
@@ -406,6 +465,7 @@ impl JettyNode {
             JettyNode::Asset(a) => a.name.to_string(),
             JettyNode::Tag(t) => t.name.to_string(),
             JettyNode::Policy(p) => p.name.to_string(),
+            JettyNode::DefaultPolicy(p) => p.name.to_string(),
         }
     }
 
@@ -418,10 +478,10 @@ impl JettyNode {
             // Tags don't really have connectors at this point, so return an empty HashSet
             JettyNode::Tag(_t) => Default::default(),
             JettyNode::Policy(p) => p.connectors.to_owned(),
+            JettyNode::DefaultPolicy(p) => p.connectors.to_owned(),
         }
     }
 
-    #[allow(dead_code)]
     fn merge_nodes(&self, new_node: &JettyNode) -> Result<JettyNode> {
         match (&self, new_node) {
             (JettyNode::Group(a1), JettyNode::Group(a2)) => {
@@ -456,6 +516,7 @@ impl JettyNode {
             JettyNode::Policy(a) => a.name.to_owned(),
             JettyNode::Tag(a) => a.name.to_owned(),
             JettyNode::User(a) => a.name.to_owned(),
+            JettyNode::DefaultPolicy(a) => a.name.to_owned(),
         }
     }
 
@@ -467,6 +528,7 @@ impl JettyNode {
             JettyNode::Asset(n) => n.id,
             JettyNode::Tag(n) => n.id,
             JettyNode::Policy(n) => n.id,
+            JettyNode::DefaultPolicy(n) => n.id,
         }
     }
 }
@@ -502,6 +564,10 @@ pub enum EdgeType {
     RemovedFrom,
     /// asset -> had removed -> tag
     UntaggedAs,
+    /// default policy -> asset
+    ProvidedDefaultForChildren,
+    /// asset -> default policy
+    ReceivedChildrensDefaultFrom,
     /// anything else
     #[default]
     Other,
@@ -523,6 +589,8 @@ fn get_edge_type_pair(edge_type: &EdgeType) -> EdgeType {
         EdgeType::Governs => EdgeType::GovernedBy,
         EdgeType::RemovedFrom => EdgeType::UntaggedAs,
         EdgeType::UntaggedAs => EdgeType::RemovedFrom,
+        EdgeType::ProvidedDefaultForChildren => EdgeType::ReceivedChildrensDefaultFrom,
+        EdgeType::ReceivedChildrensDefaultFrom => EdgeType::ProvidedDefaultForChildren,
         EdgeType::Other => EdgeType::Other,
     }
 }
@@ -589,6 +657,17 @@ pub enum NodeName {
     },
     /// Tag node
     Tag(String),
+    /// Default Policy Node
+    DefaultPolicy {
+        /// Root of the default policy path (before any wildcards)
+        root_node: Box<NodeName>,
+        /// The path of wildcards
+        matching_path: String,
+        /// The types of assets the policy should be applied to
+        types: BTreeSet<AssetType>,
+        /// The group/user the policy is granted to
+        grantee: Box<NodeName>,
+    },
 }
 
 impl Default for NodeName {
@@ -608,16 +687,35 @@ impl Display for NodeName {
                 path,
             } => write!(
                 f,
-                "{}::{}::{}",
+                "{}::{}{}",
                 connector,
-                asset_type
-                    .as_ref()
-                    .unwrap_or(&AssetType("".to_string()))
-                    .to_string(),
-                path
+                path,
+                match asset_type {
+                    Some(t) => format!(" ({})", t.to_string()),
+                    None => "".to_string(),
+                }
             ),
             NodeName::Policy { name, origin } => write!(f, "{origin}::{name}"),
             NodeName::Tag(n) => write!(f, "{n}"),
+            NodeName::DefaultPolicy {
+                root_node,
+                matching_path,
+                types,
+                grantee,
+            } => {
+                write!(
+                    f,
+                    "{} -> {}/{} ({})",
+                    grantee,
+                    root_node,
+                    matching_path,
+                    types
+                        .iter()
+                        .map(|s| s.to_string())
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                )
+            }
         }
     }
 }
@@ -634,6 +732,14 @@ impl NodeName {
                 format!("{connector}::{path}")
             }
             _ => todo!(),
+        }
+    }
+
+    /// This function gets the origin for a given group nodename, and fails if the nodename isn't for a group
+    pub(crate) fn get_group_origin(&self) -> Result<&ConnectorNamespace> {
+        match self {
+            NodeName::Group { origin, .. } => Ok(origin),
+            _ => bail!("expected a group nodename"),
         }
     }
 }
@@ -711,6 +817,12 @@ impl AccessGraph {
         ag.add_nodes(&connector_data)?;
         ag.add_edges()?;
 
+        // Add default policies after the rest of the graph is created. This is necessary because
+        // these policies depend on hierarchy, which isn't really established until this point.
+        ag.register_default_policy_nodes_and_edges(&connector_data.default_policies)?;
+        // Add the newly created edges
+        ag.add_edges()?;
+
         // Merge effective permissions into the access graph
         ag.effective_permissions = ag.translate_effective_permissions_to_global_indices(
             connector_data.effective_permissions,
@@ -723,9 +835,10 @@ impl AccessGraph {
     /// This handles the translation from connectors local state to a global state
     pub fn new_from_connector_data(
         connector_data: Vec<(ConnectorData, ConnectorNamespace)>,
+        jetty: &Jetty,
     ) -> Result<Self> {
         // Build the translator
-        let tr = Translator::new(&connector_data);
+        let tr = Translator::new(&connector_data, jetty)?;
         // Process the connector data
         let pcd = tr.local_to_processed_connector_data(connector_data);
         let ag_res = AccessGraph::new(pcd.to_owned(), Some(tr));
@@ -739,6 +852,11 @@ impl AccessGraph {
     /// Return the translator
     pub fn translator(&self) -> &Translator {
         &self.translator
+    }
+
+    /// Return a mutable reference to the translator
+    pub fn translator_mut(&mut self) -> &mut Translator {
+        &mut self.translator
     }
 
     /// This translate effective permissions from using node names for indices to using
@@ -763,38 +881,38 @@ impl AccessGraph {
 
     // Get indices by id
 
-    #[deprecated = "please transition to referencing nodes by their id rather than their name"]
-    /// Get the untyped node index for a given NodeName
+    /// Get the untyped node index for a given NodeName.
+    /// **Always prefer the get_untyped_index_from_id function when possible**
     pub fn get_untyped_index_from_name(&self, node_name: &NodeName) -> Option<NodeIndex> {
         self.graph.get_untyped_node_index(node_name)
     }
 
-    #[deprecated = "please transition to referencing nodes by their id rather than their name"]
-    /// Get the typed node index for a given NodeName
+    /// Get the typed node index for a given NodeName.
+    /// **Always prefer the get_asset_index_from_id function when possible**
     pub fn get_asset_index_from_name(&self, node_name: &NodeName) -> Option<AssetIndex> {
         self.graph.get_asset_node_index(node_name)
     }
 
-    #[deprecated = "please transition to referencing nodes by their id rather than their name"]
-    /// Get the untyped node index for a given NodeName
+    /// Get the untyped node index for a given NodeName.
+    /// **Always prefer the get_user_index_from_id function when possible**
     pub fn get_user_index_from_name(&self, node_name: &NodeName) -> Option<UserIndex> {
         self.graph.get_user_node_index(node_name)
     }
 
-    #[deprecated = "please transition to referencing nodes by their id rather than their name"]
-    /// Get the untyped node index for a given NodeName
+    /// Get the untyped node index for a given NodeName.
+    /// **Always prefer the get_tag_index_from_id function when possible**
     pub fn get_tag_index_from_name(&self, node_name: &NodeName) -> Option<TagIndex> {
         self.graph.get_tag_node_index(node_name)
     }
 
-    #[deprecated = "please transition to referencing nodes by their id rather than their name"]
-    /// Get the untyped node index for a given NodeName
+    /// Get the untyped node index for a given NodeName.
+    /// **Always prefer the get_policy_index_from_id function when possible**
     pub fn get_policy_index_from_name(&self, node_name: &NodeName) -> Option<PolicyIndex> {
         self.graph.get_policy_node_index(node_name)
     }
 
-    #[deprecated = "please transition to referencing nodes by their id rather than their name"]
-    /// Get the untyped node index for a given NodeName
+    /// Get the untyped node index for a given NodeName.
+    /// **Always prefer the get_group_index_from_id function when possible**
     pub fn get_group_index_from_name(&self, node_name: &NodeName) -> Option<GroupIndex> {
         self.graph.get_group_node_index(node_name)
     }
@@ -846,6 +964,9 @@ impl AccessGraph {
         self.last_modified
     }
 
+    /// Go through the connector data an add nodes and edges for most node types.
+    /// **This intentionally excludes default policies. They must be handled separately
+    /// after other nodes are added**
     pub(crate) fn add_nodes(&mut self, data: &ProcessedConnectorData) -> Result<()> {
         self.register_nodes_and_edges(&data.groups)?;
         self.register_nodes_and_edges(&data.users)?;
@@ -880,6 +1001,23 @@ impl AccessGraph {
         Ok(())
     }
 
+    fn register_default_policy_nodes_and_edges(
+        &mut self,
+        nodes: &Vec<ProcessedDefaultPolicy>,
+    ) -> Result<()> {
+        for n in nodes {
+            let edges = n.get_edges(self);
+            self.edge_cache.extend(edges);
+
+            if let Some(node) = n.get_node() {
+                self.graph.add_node(&node)?;
+            } else {
+                bail!("unable to add default policy node")
+            }
+        }
+        Ok(())
+    }
+
     /// Convenience fn to visualize the graph.
     pub fn visualize(&self, path: &str) -> Result<String> {
         self.graph.visualize(path)
@@ -909,8 +1047,9 @@ impl AccessGraph {
     }
     /// add tags and appropriate edges from a configuration file to the graph
     pub fn add_tags(&mut self, config: &String) -> Result<()> {
-        let parsed_tags = parse_tags(config)?;
-        let tags = tags_to_jetty_node_helpers(parsed_tags, self, config)?;
+        let parsed_tags = parse_tags(config).context("unable to parse tags")?;
+        let tags = tags_to_jetty_node_helpers(parsed_tags, self, config)
+            .context("unable to add tags to your environment")?;
         self.add_nodes(&ProcessedConnectorData {
             tags,
             ..Default::default()
@@ -919,6 +1058,38 @@ impl AccessGraph {
         // add edges from the cache
         self.add_edges()?;
 
+        Ok(())
+    }
+
+    // Given a node index and a connector, add that connector to the specified asset in the graph
+    pub(crate) fn add_connector_to_user<T>(
+        &mut self,
+        user_idx: T,
+        connector: &ConnectorNamespace,
+    ) -> Result<()>
+    where
+        T: Into<NodeIndex> + Copy,
+    {
+        match &mut self[user_idx.into()] {
+            JettyNode::User(attributes) => attributes.connectors.insert(connector.to_owned()),
+            _ => bail!("requires a node type"),
+        };
+        Ok(())
+    }
+
+    // Given a node index and a connector, remove that connector from the specified asset in the graph
+    pub(crate) fn remove_connector_from_user<T>(
+        &mut self,
+        user_idx: T,
+        connector: &ConnectorNamespace,
+    ) -> Result<()>
+    where
+        T: Into<NodeIndex> + Copy,
+    {
+        match &mut self[user_idx.into()] {
+            JettyNode::User(attributes) => attributes.connectors.remove(connector),
+            _ => bail!("requires a node type"),
+        };
         Ok(())
     }
 }
@@ -949,7 +1120,7 @@ where
 }
 
 #[allow(dead_code)]
-fn merge_map<K, V>(m1: &HashMap<K, V>, m2: &HashMap<K, V>) -> Result<HashMap<K, V>>
+pub(crate) fn merge_map<K, V>(m1: &HashMap<K, V>, m2: &HashMap<K, V>) -> Result<HashMap<K, V>>
 where
     K: Debug + Clone + Hash + std::cmp::Eq,
     V: Debug + Clone + std::cmp::PartialEq,

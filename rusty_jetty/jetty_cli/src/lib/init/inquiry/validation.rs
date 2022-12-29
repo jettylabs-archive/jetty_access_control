@@ -34,11 +34,13 @@ pub(crate) fn project_dir_does_not_exist_validator(
 #[derive(Clone, Debug)]
 pub(crate) enum PathType {
     File,
+    #[allow(dead_code)]
     Dir,
 }
 
 #[derive(Clone, Debug)]
 pub(crate) enum FilepathValidatorMode {
+    #[allow(dead_code)]
     /// Only allow existing paths.
     Strict,
     /// Allow empty paths to be replaced with a defualt.

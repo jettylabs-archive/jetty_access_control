@@ -26,28 +26,6 @@ pub(crate) struct Datasource {
     pub permissions: Vec<super::Permission>,
 }
 
-impl Datasource {
-    pub(crate) fn new(
-        id: String,
-        name: String,
-        updated_at: String,
-        project_id: ProjectId,
-        owner_id: String,
-        sources: HashSet<SourceOrigin>,
-        permissions: Vec<super::Permission>,
-    ) -> Self {
-        Self {
-            id,
-            name,
-            updated_at,
-            project_id,
-            owner_id,
-            sources,
-            permissions,
-        }
-    }
-}
-
 impl Downloadable for Datasource {
     /// URI Path for asset download
     fn get_path(&self) -> String {

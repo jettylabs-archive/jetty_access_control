@@ -6,8 +6,8 @@ use std::{collections::HashMap, fs, io};
 
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
-use futures::join;
 use futures::StreamExt;
+use futures::{join, Future};
 use jetty_core::logging::error;
 use serde::{Deserialize, Serialize};
 
@@ -243,19 +243,42 @@ impl Coordinator {
         ];
 
         // Permission fetches
-        futures::stream::iter(permission_futures.into_iter().flatten())
+        let fetch_results = futures::stream::iter(permission_futures.into_iter().flatten())
             .buffer_unordered(CONCURRENT_METADATA_FETCHES)
             .collect::<Vec<_>>()
             .await;
+
+        fetch_results.into_iter().for_each(|r| match r {
+            Ok(_) => (),
+            Err(e) => error!("problem fetching tableau permissions: {e}"),
+        });
+
+        // Default permission fetches
+        let fetch_results = futures::stream::iter(
+            self.get_default_permission_futures_for_projects(&mut new_env.projects, &new_env_clone),
+        )
+        .buffer_unordered(CONCURRENT_METADATA_FETCHES)
+        .collect::<Vec<_>>()
+        .await;
+
+        fetch_results.into_iter().for_each(|r| match r {
+            Ok(_) => (),
+            Err(e) => error!("problem fetching tableau default permissions: {e}"),
+        });
 
         // get group membership
         let group_membership_futures =
             self.get_groups_users(&mut new_env.groups, &new_env_clone.users);
 
-        futures::stream::iter(group_membership_futures)
+        let fetch_results = futures::stream::iter(group_membership_futures)
             .buffer_unordered(CONCURRENT_METADATA_FETCHES)
             .collect::<Vec<_>>()
             .await;
+
+        fetch_results.into_iter().for_each(|r| match r {
+            Ok(_) => (),
+            Err(e) => error!("problem fetching tableau groups: {e}"),
+        });
 
         // update self.env
         self.env = new_env;
@@ -327,6 +350,19 @@ impl Coordinator {
             .collect::<Vec<_>>();
         fetches
     }
+
+    /// Return a Vec of futures that will request permissions for a collection of assets
+    fn get_default_permission_futures_for_projects<'a>(
+        &'a self,
+        projects: &'a mut HashMap<String, nodes::Project>,
+        env: &'a Environment,
+    ) -> Vec<impl Future<Output = Result<(), anyhow::Error>> + 'a> {
+        let fetches = projects
+            .values_mut()
+            .map(|v| v.update_default_permissions(&self.rest_client, env))
+            .collect::<Vec<_>>();
+        fetches
+    }
 }
 
 /// Read and parse the saved Tableau environment asset information
@@ -361,6 +397,8 @@ mod test {
                     Some(ProjectId("project1".to_owned())),
                     None,
                     vec![],
+                    Default::default(),
+                    Default::default(),
                 ),
             ),
             (
@@ -372,6 +410,8 @@ mod test {
                     Some(ProjectId("project2".to_owned())),
                     None,
                     vec![],
+                    Default::default(),
+                    Default::default(),
                 ),
             ),
             (
@@ -383,6 +423,8 @@ mod test {
                     None,
                     None,
                     vec![],
+                    Default::default(),
+                    Default::default(),
                 ),
             ),
         ]);

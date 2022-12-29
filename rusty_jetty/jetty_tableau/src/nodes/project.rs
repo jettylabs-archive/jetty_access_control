@@ -6,16 +6,39 @@ use super::{
 use crate::{
     coordinator::Environment,
     nodes::SerializedPermission,
+    permissions::consts::{self},
     rest::{self, get_tableau_cual, FetchJson, TableauAssetType},
 };
 
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use jetty_core::{
-    connectors::{nodes as jetty_nodes, AssetType},
+    connectors::{
+        nodes::{self as jetty_nodes, RawDefaultPolicy, RawPolicyGrantee},
+        AssetType,
+    },
     logging::debug,
 };
+use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
+
+lazy_static! {
+    // This determines the applicable types of the default policies that are fetched.
+    // Some are commented out because we don't support the Tableau Catalog yet.
+    static ref DEFAULT_POLICY_TYPE_CONVERSION: HashMap<String, String> = [
+        ("workbooks", "workbook"),
+        ("datasources", "datasource"),
+        // ("dataroles", "datarole"),
+        ("lenses", "lens"),
+        ("flows", "flow"),
+        ("metrics", "metric"),
+        // ("databases", "database"),
+        // ("tables", "table"),
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.to_owned(), v.to_owned()))
+    .collect();
+}
 
 /// Representation of a Tableau Project
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
@@ -26,6 +49,33 @@ pub(crate) struct Project {
     pub parent_project_id: Option<ProjectId>,
     pub controlling_permissions_project_id: Option<ProjectId>,
     pub permissions: Vec<Permission>,
+    pub content_permissions: ContentPermissions,
+    /// Map of <Asset Type, Set<Capability>>
+    pub default_permissions: HashMap<String, Vec<Permission>>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub(crate) enum ContentPermissions {
+    LockedToProject,
+    LockedToProjectWithoutNested,
+    ManagedByOwner,
+}
+impl Default for ContentPermissions {
+    fn default() -> Self {
+        ContentPermissions::ManagedByOwner
+    }
+}
+
+impl ToString for ContentPermissions {
+    fn to_string(&self) -> String {
+        match self {
+            ContentPermissions::LockedToProject => "LockedToProject".to_string(),
+            ContentPermissions::LockedToProjectWithoutNested => {
+                "LockedToProjectWithoutNested".to_string()
+            }
+            ContentPermissions::ManagedByOwner => "ManagedByOwner".to_string(),
+        }
+    }
 }
 
 impl Project {
@@ -36,6 +86,8 @@ impl Project {
         parent_project_id: Option<ProjectId>,
         controlling_permissions_project_id: Option<ProjectId>,
         permissions: Vec<Permission>,
+        default_permissions: HashMap<String, Vec<Permission>>,
+        content_permissions: ContentPermissions,
     ) -> Self {
         Self {
             id,
@@ -44,6 +96,8 @@ impl Project {
             parent_project_id,
             controlling_permissions_project_id,
             permissions,
+            content_permissions,
+            default_permissions,
         }
     }
 
@@ -52,6 +106,114 @@ impl Project {
         self.permissions.iter().any(|p| {
             p.has_capability("ProjectLeader", "Allow") && p.grantee_user_ids().contains(&user.id)
         })
+    }
+
+    /// Get the default permissions for the project
+    pub(crate) async fn update_default_permissions(
+        &mut self,
+        tc: &crate::TableauRestClient,
+        env: &Environment,
+    ) -> Result<()> {
+        // first add the default project permissions (that's the easy one)
+        self.default_permissions
+            .insert("project".to_owned(), self.permissions.to_owned());
+
+        for asset_type in DEFAULT_POLICY_TYPE_CONVERSION.keys() {
+            let req = tc.build_request(
+                format!("projects/{}/default-permissions/{asset_type}", self.id.0),
+                None,
+                reqwest::Method::GET,
+            )?;
+
+            let resp = req.fetch_json_response(None).await?;
+
+            let permissions_array = rest::get_json_from_path(
+                &resp,
+                &vec!["permissions".to_owned(), "granteeCapabilities".to_owned()],
+            )?;
+
+            // default project, no parent project, user permission
+
+            let final_permissions = if matches!(permissions_array, serde_json::Value::Array(_)) {
+                let permissions: Vec<SerializedPermission> =
+                    serde_json::from_value(permissions_array)?;
+                permissions
+                    .iter()
+                    .map(|p| {
+                        p.to_owned()
+                            .into_permission(env)
+                            .expect("Couldn't understand Tableau permission response.")
+                    })
+                    .collect::<Vec<_>>()
+            } else {
+                bail!("unable to parse permissions")
+            };
+            self.default_permissions.insert(
+                DEFAULT_POLICY_TYPE_CONVERSION[asset_type].to_owned(),
+                final_permissions.to_owned(),
+            );
+
+            // View permissions are the same as workbook permissions, so add them here
+            if asset_type == "workbooks" {
+                self.default_permissions.insert(
+                    "view".to_owned(),
+                    final_permissions
+                        .iter()
+                        .map(|p| convert_workbook_permission_to_view_permissions(p))
+                        .collect(),
+                );
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Take a Project and generate default policies from it
+    pub(crate) fn get_default_policies(
+        &self,
+        env: &Environment,
+    ) -> Vec<jetty_nodes::RawDefaultPolicy> {
+        let mut res = Vec::new();
+        let root_cual = get_tableau_cual(
+            TableauAssetType::Project,
+            &self.name,
+            self.parent_project_id.as_ref(),
+            None,
+            env,
+        )
+        .expect("Generating cual from project");
+
+        for (asset_type, permissions) in &self.default_permissions {
+            for permission in permissions {
+                // get the raw policy
+                let raw: jetty_nodes::RawPolicy = permission.to_owned().into();
+                let mut grantees: HashSet<_> = raw
+                    .granted_to_users
+                    .into_iter()
+                    .map(RawPolicyGrantee::User)
+                    .collect();
+                grantees.extend(
+                    raw.granted_to_groups
+                        .into_iter()
+                        .map(RawPolicyGrantee::Group),
+                );
+                for grantee in grantees {
+                    res.push(RawDefaultPolicy {
+                        privileges: raw.privileges.to_owned(),
+                        root_asset: root_cual.to_owned(),
+                        wildcard_path: "/**".to_owned(),
+                        target_types: [AssetType(asset_type.to_owned())].into(),
+                        grantee,
+                        metadata: [(
+                            "Tableau Content Permissions".to_owned(),
+                            self.content_permissions.to_string(),
+                        )]
+                        .into(),
+                    });
+                }
+            }
+        }
+        res
     }
 }
 
@@ -66,6 +228,7 @@ fn to_node(val: &serde_json::Value) -> Result<super::Project> {
         parent_project_id: Option<String>,
         controlling_permissions_project_id: Option<String>,
         updated_at: String,
+        content_permissions: ContentPermissions,
     }
 
     let project_info: ProjectInfo =
@@ -80,6 +243,8 @@ fn to_node(val: &serde_json::Value) -> Result<super::Project> {
             .controlling_permissions_project_id
             .map(ProjectId),
         permissions: Default::default(),
+        default_permissions: Default::default(),
+        content_permissions: project_info.content_permissions,
     })
 }
 
@@ -169,7 +334,7 @@ impl FromTableau<Project> for jetty_nodes::RawAsset {
             None,
             env,
         )
-        .expect("Generating cual from flow");
+        .expect("Generating cual from project");
         let parent_cuals = val
             .get_parent_project_cual(env)
             .map_or_else(HashSet::new, |c| HashSet::from([c.uri()]));
@@ -197,5 +362,18 @@ impl FromTableau<Project> for jetty_nodes::RawAsset {
 impl TableauAsset for Project {
     fn get_asset_type(&self) -> TableauAssetType {
         TableauAssetType::Project
+    }
+}
+
+fn convert_workbook_permission_to_view_permissions(permission: &Permission) -> Permission {
+    let mut new_capabilities = HashMap::new();
+    for (capability, mode) in &permission.capabilities {
+        if consts::VIEW_CAPABILITIES.contains(&capability.as_str()) {
+            new_capabilities.insert(capability.to_owned(), mode.to_owned());
+        }
+    }
+    Permission {
+        grantee: permission.grantee.to_owned(),
+        capabilities: new_capabilities,
     }
 }

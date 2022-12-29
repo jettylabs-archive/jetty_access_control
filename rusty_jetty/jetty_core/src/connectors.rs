@@ -14,7 +14,6 @@ use crate::{
     access_graph::translate::diffs::LocalDiffs,
     connectors::nodes::ConnectorData,
     jetty::{ConnectorConfig, ConnectorManifest, CredentialsMap},
-    write,
 };
 
 /// Client using the connector
@@ -59,6 +58,7 @@ pub trait NewConnector {
     ) -> Result<Box<Self>>;
 }
 
+#[derive(Default, Debug)]
 /// The capabilities of a connector
 pub struct ConnectorCapabilities {
     /// The write capabilities of the connector. Right now these can include:
@@ -81,7 +81,10 @@ pub enum ReadCapabilities {
     /// Read users
     Users,
     /// Read policies
-    Policies,
+    Policies {
+        /// Connector support for default/wildcard policies
+        default_policies: bool,
+    },
 }
 
 #[derive(Hash, PartialEq, Eq, Clone, Debug)]
@@ -93,7 +96,10 @@ pub enum WriteCapabilities {
         nested: bool,
     },
     /// Write Policies
-    Policies,
+    Policies {
+        /// Connector support for default/wildcard policies
+        default_policies: bool,
+    },
     /// Add Users
     Users,
 }

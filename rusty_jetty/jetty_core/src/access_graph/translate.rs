@@ -3,28 +3,29 @@
 
 pub mod diffs;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 
 use super::NodeName;
 use crate::{
     connectors::{
         nodes::{
-            ConnectorData, EffectivePermission, RawAsset, RawAssetReference, RawGroup, RawPolicy,
-            RawTag, RawUser, SparseMatrix,
+            ConnectorData, EffectivePermission, RawAsset, RawAssetReference, RawDefaultPolicy,
+            RawGroup, RawPolicy, RawPolicyGrantee, RawTag, RawUser, SparseMatrix,
         },
         processed_nodes::{
-            ProcessedAsset, ProcessedAssetReference, ProcessedConnectorData, ProcessedGroup,
-            ProcessedPolicy, ProcessedTag, ProcessedUser,
+            ProcessedAsset, ProcessedAssetReference, ProcessedConnectorData,
+            ProcessedDefaultPolicy, ProcessedGroup, ProcessedPolicy, ProcessedTag, ProcessedUser,
         },
         UserIdentifier,
     },
-    cual::{self, Cual},
+    cual::Cual,
     jetty::ConnectorNamespace,
     permissions::matrix::{DoubleInsert, InsertOrMerge},
-    write::Diffs,
+    write::{new_groups::parse_and_validate_groups, users},
+    Jetty,
 };
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use bimap;
 use serde::{Deserialize, Serialize};
 
@@ -53,18 +54,18 @@ pub(crate) struct LocalToGlobalIdentifiers {
 
 impl Translator {
     /// Use the ConnectorData from all connectors to populate the mappings
-    pub fn new(data: &[(ConnectorData, ConnectorNamespace)]) -> Self {
+    pub fn new(data: &[(ConnectorData, ConnectorNamespace)], jetty: &Jetty) -> Result<Self> {
         let mut t = Translator::default();
 
         // build the namespace mapping
         t.build_cual_namespace_map(data);
 
         // Start by pulling out all the user nodes and resolving them to single identities
-        t.resolve_users(data);
+        t.resolve_users(data, jetty)?;
         t.resolve_groups(data);
         t.resolve_policies(data);
 
-        t
+        Ok(t)
     }
 
     fn build_cual_namespace_map(&mut self, data: &[(ConnectorData, ConnectorNamespace)]) {
@@ -74,19 +75,39 @@ impl Translator {
         }
     }
 
-    /// This is entity resolution for users. Right now it is very simple, but it can be built out as needed
-    fn resolve_users(&mut self, data: &[(ConnectorData, ConnectorNamespace)]) {
+    // This is entity resolution for users. Right now it is very simple, but it can be built out as needed
+    fn resolve_users(
+        &mut self,
+        data: &[(ConnectorData, ConnectorNamespace)],
+        jetty: &Jetty,
+    ) -> Result<()> {
         let user_data: Vec<_> = data.iter().map(|(c, n)| (&c.users, n)).collect();
+        // get all the users in the config
+        // FUTURE: We end up parsing the group config too many times. Try to centralize this, perhaps as part of the Jetty struct
+        let validated_group_config = &parse_and_validate_groups(jetty)?;
+        let user_config_id_map =
+            users::parser::get_validated_nodename_local_id_map(jetty, validated_group_config)?;
         // for each connector, look over all the users.
         for (users, namespace) in user_data {
             for user in users {
-                let mut node_name = NodeName::User(user.name.to_owned());
-                for id in &user.identifiers {
-                    //If they have an Email address, make that the identifier.
-                    if let UserIdentifier::Email(email) = id {
-                        node_name = NodeName::User(email.to_owned())
-                    }
+                // if a user exists in the config, just use that mapping
+                let node_name = if let Some(name) = user_config_id_map
+                    .get(namespace)
+                    .and_then(|m| m.get_by_right(&user.name))
+                {
+                    name.to_owned()
                 }
+                // if no user exists in the config, use their email if possible, or just the connector_specific id
+                else {
+                    let mut node_name = NodeName::User(user.name.to_owned());
+                    for id in &user.identifiers {
+                        //If they have an Email address, make that the identifier.
+                        if let UserIdentifier::Email(email) = id {
+                            node_name = NodeName::User(email.to_owned())
+                        }
+                    }
+                    node_name
+                };
 
                 self.local_to_global.users.double_insert(
                     namespace.to_owned(),
@@ -100,6 +121,7 @@ impl Translator {
                 );
             }
         }
+        Ok(())
     }
 
     /// This resolves groups. When we start allowing cross-platform Jetty groups, this will need an update.
@@ -210,6 +232,13 @@ impl Translator {
                         self.translate_asset_reference_to_global(a, namespace.to_owned())
                     })
                     .collect::<Vec<ProcessedAssetReference>>(),
+            );
+            // convert the default policies
+            result.default_policies.extend(
+                cd.default_policies
+                    .into_iter()
+                    .map(|a| self.translate_default_policy_to_global(a, namespace.to_owned()))
+                    .collect::<Vec<ProcessedDefaultPolicy>>(),
             );
         }
 
@@ -410,6 +439,44 @@ impl Translator {
         }
     }
 
+    /// Convert node from raw to processed default policy
+    fn translate_default_policy_to_global(
+        &self,
+        policy: RawDefaultPolicy,
+        connector: ConnectorNamespace,
+    ) -> ProcessedDefaultPolicy {
+        let root_node = self.cual_to_asset_name(policy.root_asset).unwrap();
+        let types: BTreeSet<_> = policy.target_types.into_iter().collect();
+        let grantee = match policy.grantee {
+            RawPolicyGrantee::Group(g) => self.local_to_global.groups[&connector][&g].to_owned(),
+            RawPolicyGrantee::User(u) => {
+                match self.local_to_global.users.get(&connector) {
+                    Some(m) => match m.get(&u) {
+                        Some(_) => (),
+                        None => println!("Unable to find user {u} in map: {m:?}"),
+                    },
+                    None => println!("Unable to find connector {connector}"),
+                }
+                self.local_to_global.users[&connector][&u].to_owned()
+            }
+        };
+        ProcessedDefaultPolicy {
+            name: NodeName::DefaultPolicy {
+                root_node: Box::new(root_node.to_owned()),
+                matching_path: policy.wildcard_path.to_owned(),
+                types: types.to_owned(),
+                grantee: Box::new(grantee.to_owned()),
+            },
+            privileges: policy.privileges,
+            root_node: root_node,
+            matching_path: policy.wildcard_path,
+            types,
+            grantee,
+            connector,
+            metadata: policy.metadata.to_owned(),
+        }
+    }
+
     /// Take the permissions from a connector and convert them to a single matrix using
     /// NodeNames. After this conversion there is still one more step - they need to be converted
     /// into a NodeIndex-axis matrix.
@@ -458,16 +525,110 @@ impl Translator {
         connector: &ConnectorNamespace,
     ) -> String {
         match &node_name {
-            NodeName::User(n) => self.global_to_local.users[&connector][&node_name].to_owned(),
+            NodeName::User(_n) => self.global_to_local.users[connector][node_name].to_owned(),
             // There may be groups that don't exist yet, so we'll just use the group name without the origin
             NodeName::Group { name, .. } => name.to_owned(),
             NodeName::Asset { .. } => {
                 todo!()
             }
             NodeName::Policy { .. } => {
-                self.global_to_local.policies[&connector][&node_name].to_owned()
+                self.global_to_local.policies[connector][node_name].to_owned()
             }
             NodeName::Tag(t) => t.to_owned(),
+            // Default policies don't have names
+            NodeName::DefaultPolicy { .. } => "".into(),
         }
+    }
+
+    pub(crate) fn try_translate_node_name_to_local(
+        &self,
+        node_name: &NodeName,
+        connector: &ConnectorNamespace,
+    ) -> Result<String> {
+        Ok(match &node_name {
+            NodeName::User(_n) => self
+                .global_to_local
+                .users
+                .get(connector)
+                .ok_or(anyhow!("unable to find connector for node translation"))?
+                .get(node_name)
+                .ok_or(anyhow!("unable to find username for collection"))?
+                .to_owned(),
+            // There may be groups that don't exist yet, so we'll just use the group name without the origin
+            NodeName::Group { name, .. } => name.to_owned(),
+            NodeName::Asset { .. } => {
+                todo!()
+            }
+            NodeName::Policy { .. } => self
+                .global_to_local
+                .policies
+                .get(connector)
+                .ok_or(anyhow!("unable to find connector for node translation"))?
+                .get(node_name)
+                .ok_or(anyhow!("unable to find username for collection"))?
+                .to_owned(),
+            NodeName::Tag(t) => t.to_owned(),
+            // Default policies don't have names
+            NodeName::DefaultPolicy { .. } => "".into(),
+        })
+    }
+
+    pub(crate) fn get_all_local_users(&self) -> HashMap<(ConnectorNamespace, String), NodeName> {
+        self.local_to_global
+            .users
+            .iter()
+            .map(|(connector, user_map)| {
+                user_map.iter().map(|(k, node_name)| {
+                    ((connector.to_owned(), k.to_owned()), node_name.to_owned())
+                })
+            })
+            .flatten()
+            .collect()
+    }
+
+    /// update the translator to reflect the new mapping of a local name to a jetty name
+    /// This can be used whether the node exists already or is entirely new
+    pub(crate) fn modify_user_mapping(
+        &mut self,
+        connector: &ConnectorNamespace,
+        local_name: &String,
+        old_node: &NodeName,
+        new_node: &NodeName,
+    ) -> Result<()> {
+        let global_to_local = self
+            .global_to_local
+            .users
+            .get_mut(connector)
+            .ok_or(anyhow!("unable to find connector for user map update"))?;
+        global_to_local.remove(old_node);
+        global_to_local.insert(new_node.to_owned(), local_name.to_owned());
+
+        let local_to_global = self
+            .local_to_global
+            .users
+            .get_mut(connector)
+            .ok_or(anyhow!("unable to find connector for user map update"))?;
+        local_to_global.remove(local_name);
+        local_to_global.insert(local_name.to_owned(), new_node.to_owned());
+
+        Ok(())
+    }
+
+    /// This will entirely remove a user from both the local and global translator mapping
+    pub(crate) fn remove_user_from_mapping(&mut self, node_name: &NodeName) -> Result<()> {
+        for (conn, map) in self.global_to_local.users.iter_mut() {
+            // get the connector and local name from here, use it to delete in the other map as well
+            match map.remove(node_name) {
+                Some(local_name) => {
+                    self.local_to_global
+                        .users
+                        .get_mut(conn)
+                        .unwrap()
+                        .remove(&local_name);
+                }
+                None => (),
+            };
+        }
+        Ok(())
     }
 }

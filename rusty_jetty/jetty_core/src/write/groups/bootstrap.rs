@@ -6,7 +6,7 @@ use anyhow::{anyhow, bail, Result};
 use serde::Serialize;
 
 use crate::{
-    access_graph::{AccessGraph, EdgeType, GroupAttributes, JettyEdge, JettyNode, NodeName},
+    access_graph::{EdgeType, JettyNode, NodeName},
     Jetty,
 };
 
@@ -38,7 +38,7 @@ impl Jetty {
                 bail!("group index doesn't point to a group")
             }
 
-            let members = &ag.get_matching_children(
+            let members = &ag.get_matching_descendants(
                 *idx,
                 |e| matches!(e, EdgeType::Includes),
                 |_| false,
@@ -85,7 +85,7 @@ impl Jetty {
     }
 
     /// Generate the YAML for a bootstrapped group configuration
-    pub fn build_bootstrapped_group_yaml(&self) -> Result<String> {
+    pub fn generate_bootstrapped_group_yaml(&self) -> Result<String> {
         let config = self.build_bootstrapped_group_config()?;
         Ok(yaml_peg::serde::to_string(&config)?)
     }

@@ -18,7 +18,7 @@ impl AccessGraph {
     /// - `min_depth` is the minimum depth at which a target may be found
     /// - `max_depth` is how deep to search for children. If None, will continue until it runs out of children to visit.
 
-    pub fn get_matching_children<T: Into<NodeIndex>, X: FnOnce(&JettyNode) -> bool + Copy>(
+    pub fn get_matching_descendants<T: Into<NodeIndex>, X: FnOnce(&JettyNode) -> bool + Copy>(
         &self,
         from: T,
         edge_matcher: fn(&EdgeType) -> bool,
@@ -41,7 +41,7 @@ impl AccessGraph {
         let mut visited = HashSet::new();
         let mut results = vec![];
 
-        self.get_matching_children_recursive(
+        self.get_matching_descendants_recursive(
             idx,
             edge_matcher,
             passthrough_matcher,
@@ -58,12 +58,12 @@ impl AccessGraph {
 
     /// Start with a node, then get all of its children. If they're the target type, add them to the result.
     /// If not the target, keep going.
-    fn get_matching_children_recursive<X: FnOnce(&JettyNode) -> bool + Copy>(
+    fn get_matching_descendants_recursive<X: FnOnce(&JettyNode) -> bool + Copy>(
         &self,
         idx: NodeIndex,
         edge_matcher: fn(&EdgeType) -> bool,
         passthrough_matcher: fn(&JettyNode) -> bool,
-        mut target_matcher: X,
+        target_matcher: X,
         min_depth: usize,
         max_depth: usize,
         current_depth: usize,
@@ -103,7 +103,7 @@ impl AccessGraph {
 
             // Is it a passthrough type?
             if passthrough_matcher(node_weight) {
-                self.get_matching_children_recursive(
+                self.get_matching_descendants_recursive(
                     child,
                     edge_matcher,
                     passthrough_matcher,
@@ -116,6 +116,23 @@ impl AccessGraph {
                 );
             }
         }
+    }
+
+    /// Get adjacent nodes that match TargetMatcher that are connected by an edge matching edge_matcher
+    pub fn get_matching_children<T: Into<NodeIndex>, X: FnOnce(&JettyNode) -> bool + Copy>(
+        &self,
+        from: T,
+        edge_matcher: fn(&EdgeType) -> bool,
+        target_matcher: X,
+    ) -> Vec<NodeIndex> {
+        self.get_matching_descendants(
+            from,
+            edge_matcher,
+            |_| false,
+            target_matcher,
+            Some(1),
+            Some(1),
+        )
     }
 }
 
@@ -135,7 +152,7 @@ mod tests {
     fn get_matching_simple_paths_works() -> Result<()> {
         let ag = AccessGraph::new_dummy(
             &[
-                &JettyNode::User(UserAttributes::new("user".to_owned())),
+                &JettyNode::User(UserAttributes::simple_new("user".to_owned())),
                 &JettyNode::Group(GroupAttributes::new("group1".to_owned())),
                 &JettyNode::Group(GroupAttributes::new("group2".to_owned())),
                 &JettyNode::Group(GroupAttributes::new("group3".to_owned())),

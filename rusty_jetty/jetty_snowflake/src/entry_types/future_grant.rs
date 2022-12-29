@@ -1,12 +1,14 @@
 use std::collections::HashSet;
 
-use jetty_core::connectors::nodes;
+use anyhow::{bail, Result};
+use jetty_core::connectors::{
+    nodes::{self, RawPolicyGrantee},
+    AssetType,
+};
 
 use serde::{Deserialize, Serialize};
 
-use crate::{cual::cual_from_snowflake_obj_name, strip_quotes_and_deserialize};
-
-use super::grant::Grant;
+use crate::{consts, cual::cual_from_snowflake_obj_name};
 
 /// Snowflake future grant entry.
 ///
@@ -17,189 +19,79 @@ pub struct FutureGrant {
     /// The future grant name in Snowflake.
     /// This typically looks something like
     /// DB.<SCHEMA> for future schema grants and
-    /// DB.SCHEMA.<TABLE> or DB.SCHEMA.<VIEW>
+    /// DB.SCHEMA.<TABLE>, DB.SCHEMA.<VIEW>, DB.<TABLE>, or DB.<VIEW>
     /// for future table/view grants.
     name: String,
     privilege: String,
+    /// This would be SCHEMA, TABLE, VIEW, etc.
     grant_on: String,
     // The role the future grant will apply to
     grantee_name: String,
 }
 
-impl Grant for FutureGrant {
-    /// The formatted future object name.
-    fn granted_on_name(&self) -> &str {
+impl FutureGrant {
+    pub(crate) fn into_default_policy(
+        self,
+        all_privileges: HashSet<String>,
+    ) -> nodes::RawDefaultPolicy {
+        let stripped_name = self.name.split_once('<').unwrap().0.trim_end_matches('.');
+        let cual = cual_from_snowflake_obj_name(stripped_name).unwrap();
+
+        let wildcard_path = if self.grant_on == "SCHEMA" {
+            "/*"
+        } else {
+            // If it's Tables/views/other things, but set at the database level
+            // TODO This will break if there are any periods in the name of a database or schema
+            if stripped_name.split(".").collect::<Vec<_>>().len() == 1 {
+                "/*/*"
+            }
+            // Otherwise, it's tables, views, etc. Set at the schema level
+            else {
+                "/*"
+            }
+        }
+        .to_owned();
+
+        nodes::RawDefaultPolicy {
+            privileges: all_privileges,
+            root_asset: cual,
+            wildcard_path,
+            target_types: [convert_to_asset_type(&self.grant_on).unwrap()].into(),
+            // Snowflake only allows grants to roles
+            grantee: RawPolicyGrantee::Group(self.grantee_name),
+            // empty for now
+            metadata: Default::default(),
+        }
+    }
+
+    /// Get the asset type that the grant is applied to
+    pub(crate) fn grant_on(&self) -> &str {
+        &self.grant_on
+    }
+
+    /// Get the asset the grant is set on
+    pub(crate) fn granted_on_name(&self) -> &str {
         &self.name
     }
 
     /// grantee_name is the role that this privilege will be granted to
     /// when new objects within scope are created
-    fn role_name(&self) -> &str {
+    pub(crate) fn role_name(&self) -> &str {
         &self.grantee_name
     }
 
-    fn privilege(&self) -> &str {
+    /// privilege
+    pub(crate) fn privilege(&self) -> &str {
         &self.privilege
-    }
-
-    fn granted_on(&self) -> &str {
-        &self.grant_on
-    }
-
-    fn into_policy(self, all_privileges: HashSet<String>) -> nodes::RawPolicy {
-        // Modify the name to remove the angle-bracket portion.
-        // i.e. DB.SCHEMA.<TABLE> becomes DB.SCHEMA
-        // TODO: figure out if angle brackets are valid name characters. If so,
-        // we need to do something more robust here.
-        let stripped_name = self.name.split_once('<').unwrap().0.trim_end_matches('.');
-        let cual = cual_from_snowflake_obj_name(stripped_name).unwrap();
-        let mut joined_privileges: Vec<_> = all_privileges.iter().cloned().collect();
-        joined_privileges.sort();
-        nodes::RawPolicy::new(
-            // We add the `.future` to differentiate this policy from
-            // non-heirarchical ones
-            format!(
-                "snowflake.future.{}.{}.{stripped_name}",
-                self.grant_on, self.grantee_name
-            ),
-            all_privileges,
-            // Unwrap here is fine since we asserted that the set was not empty above.
-            HashSet::from([cual.uri()]),
-            HashSet::new(),
-            HashSet::from([self.role_name().to_owned()]),
-            // No direct user grants in Snowflake. Grants must pass through roles.
-            HashSet::new(),
-            // Defaults here for data read from Snowflake should be false.
-            true,
-            false,
-        )
-    }
-
-    fn jetty_name(&self) -> String {
-        format!(
-            "snowflake.future.{}.{}",
-            self.role_name(),
-            self.granted_on_name()
-        )
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use anyhow::Result;
-
-    use crate::cual::set_cual_account_name;
-
-    use super::*;
-
-    #[test]
-    fn jetty_name_works() {
-        let g = FutureGrant {
-            name: "db".to_owned(),
-            privilege: "priv".to_owned(),
-            grant_on: "TABLE".to_owned(),
-            grantee_name: "my_table".to_owned(),
-        };
-        assert_eq!(g.jetty_name(), "snowflake.future.my_table.db".to_owned());
-    }
-
-    #[test]
-    fn grant_into_policy_works() -> Result<()> {
-        set_cual_account_name("account");
-        let g = FutureGrant {
-            name: "db.<SCHEMA>".to_owned(),
-            privilege: "priv".to_owned(),
-            grant_on: "grant_on".to_owned(),
-            grantee_name: "grantee_name".to_owned(),
-        };
-        let p: nodes::RawPolicy = g.into_policy(HashSet::from(["priv".to_owned()]));
-        assert_eq!(
-            p,
-            nodes::RawPolicy::new(
-                "snowflake.future.grant_on.grantee_name.db".to_owned(),
-                HashSet::from(["priv".to_owned()]),
-                HashSet::from([cual_from_snowflake_obj_name("DB")?.uri()]),
-                HashSet::new(),
-                HashSet::from(["grantee_name".to_owned()]),
-                HashSet::new(),
-                true,
-                false,
-            ),
-        );
-        Ok(())
-    }
-
-    #[test]
-    fn future_grant_to_policy_results_in_idempotent_name() {
-        set_cual_account_name("account");
-        let g = FutureGrant {
-            name: "db.<SCHEMA>".to_owned(),
-            privilege: "priv".to_owned(),
-            grant_on: "grant_on".to_owned(),
-            grantee_name: "grantee_name".to_owned(),
-        };
-        let p: nodes::RawPolicy = g.clone().into_policy(HashSet::from(["priv".to_owned()]));
-        let p2: nodes::RawPolicy = g.clone().into_policy(HashSet::from(["priv".to_owned()]));
-        let p3: nodes::RawPolicy = g.into_policy(HashSet::from(["priv".to_owned()]));
-        assert_eq!(p.name, "snowflake.future.grant_on.grantee_name.db");
-        assert_eq!(p2.name, p.name);
-        assert_eq!(p3.name, p2.name);
-    }
-
-    #[test]
-    fn future_grant_to_policy_with_extra_privileges_works() {
-        set_cual_account_name("account");
-        let g = FutureGrant {
-            name: "db.<SCHEMA>".to_owned(),
-            privilege: "priv".to_owned(),
-            grant_on: "grant_on".to_owned(),
-            grantee_name: "grantee_name".to_owned(),
-        };
-        let p: nodes::RawPolicy =
-            g.into_policy(HashSet::from(["priv".to_owned(), "priv2".to_owned()]));
-        assert_eq!(p.name, "snowflake.future.grant_on.grantee_name.db");
-        assert_eq!(
-            p.privileges,
-            HashSet::from(["priv".to_owned(), "priv2".to_owned()])
-        );
-    }
-
-    #[test]
-    fn future_grant_table_into_policy_works() -> Result<()> {
-        set_cual_account_name("account");
-        let g = FutureGrant {
-            name: "db.schema.<TABLE>".to_owned(),
-            privilege: "priv".to_owned(),
-            grant_on: "TABLE".to_owned(),
-            grantee_name: "grantee_name".to_owned(),
-        };
-        let p: nodes::RawPolicy = g.into_policy(HashSet::from(["priv".to_owned()]));
-        assert_eq!(
-            p,
-            nodes::RawPolicy::new(
-                "snowflake.future.TABLE.grantee_name.db.schema".to_owned(),
-                HashSet::from(["priv".to_owned()]),
-                HashSet::from([cual_from_snowflake_obj_name("DB.SCHEMA")?.uri()]),
-                HashSet::new(),
-                HashSet::from(["grantee_name".to_owned()]),
-                HashSet::new(),
-                true,
-                false,
-            ),
-        );
-        Ok(())
-    }
-
-    #[test]
-    #[should_panic]
-    fn grant_into_policy_with_unstrippable_name_panics() {
-        let g = FutureGrant {
-            // Doesn't have the <TABLE> piece... not a valid future grant
-            name: "db.".to_owned(),
-            privilege: "priv".to_owned(),
-            grant_on: "grant_on".to_owned(),
-            grantee_name: "grantee_name".to_owned(),
-        };
-        g.into_policy(HashSet::from(["priv".to_owned()]));
-    }
+fn convert_to_asset_type(grant_on: &str) -> Result<AssetType> {
+    Ok(match grant_on {
+        "SCHEMA" => AssetType(consts::SCHEMA.to_owned()),
+        "TABLE" => AssetType(consts::TABLE.to_owned()),
+        "VIEW" => AssetType(consts::VIEW.to_owned()),
+        "DATABASE" => AssetType(consts::DATABASE.to_owned()),
+        o => bail!("unable to handle asset type: {o}"),
+    })
 }

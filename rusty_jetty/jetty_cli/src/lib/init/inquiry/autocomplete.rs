@@ -142,7 +142,10 @@ where
             return Some(p.to_path_buf());
         }
         if p == Path::new("~") {
-            return dirs::home_dir();
+            return dirs::home_dir().map(|mut x| {
+                x.push("");
+                x
+            });
         }
         dirs::home_dir().map(|mut h| {
             if h == Path::new("/") {
@@ -173,9 +176,8 @@ mod tests {
         println!("res: {:?}", res);
         println!("fpc: {:?}", fpc);
 
-        let homedir = std::env::var("HOME")?;
-        assert_eq!(fpc.paths, vec![format!("{}/", homedir)]);
-        assert_eq!(fpc.lcp, format!("{}/", homedir));
+        assert!(fpc.paths.is_empty());
+        assert!(fpc.lcp.is_empty());
         Ok(())
     }
 }

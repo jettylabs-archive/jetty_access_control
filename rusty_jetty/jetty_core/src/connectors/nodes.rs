@@ -9,6 +9,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::cual::Cual;
 
+use super::AssetType;
+
 /// Alias for a sparse matrix addressable by matrix\[x\]\[y\], where each entry is of type T.
 pub type SparseMatrix<X, Y, T> = HashMap<X, HashMap<Y, T>>;
 
@@ -132,6 +134,8 @@ pub struct ConnectorData {
     pub tags: Vec<RawTag>,
     /// All policies in the connector
     pub policies: Vec<RawPolicy>,
+    /// The default policies provided by the connector
+    pub default_policies: Vec<RawDefaultPolicy>,
     /// References to assets that are owned by another connector
     pub asset_references: Vec<RawAssetReference>,
     /// Mapping of all users to the assets they have permissions granted
@@ -153,6 +157,7 @@ impl ConnectorData {
         assets: Vec<RawAsset>,
         tags: Vec<RawTag>,
         policies: Vec<RawPolicy>,
+        default_policies: Vec<RawDefaultPolicy>,
         asset_references: Vec<RawAssetReference>,
         effective_permissions: SparseMatrix<UserName, Cual, HashSet<EffectivePermission>>,
         cual_prefix: Option<String>,
@@ -164,6 +169,7 @@ impl ConnectorData {
             asset_references,
             tags,
             policies,
+            default_policies,
             effective_permissions,
             cual_prefix,
         }
@@ -447,4 +453,34 @@ impl RawPolicy {
             pass_through_lineage,
         }
     }
+}
+
+/// Struct used to populate default policy nodes and edges in the graph. Must be returned
+/// from the connector as a single policy that can be keyed off the asset_path and
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RawDefaultPolicy {
+    /// Privileges applied as part of this policy
+    pub privileges: HashSet<String>,
+    /// The cual of the asset that the policy originates from
+    pub root_asset: Cual,
+    /// The wildcard path to assets that will be affected by this policy (e.g. "*/**" )
+    pub wildcard_path: String,
+    /// The types that the policy should be applied to
+    /// **Note:** for now, we're accepting only a single type here, rather than a policy with multiple types.
+    /// I think this will be the right way to go, but I'll wait to make the change
+    // FUTURE: Fix this
+    pub target_types: HashSet<AssetType>,
+    /// policy grantee
+    pub grantee: RawPolicyGrantee,
+    /// metadata for the policy
+    pub metadata: HashMap<String, String>,
+}
+
+/// Grantee of a policy
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum RawPolicyGrantee {
+    /// Grantee of a group
+    Group(String),
+    /// Grantee of a user
+    User(String),
 }

@@ -1,9 +1,9 @@
 use anyhow::{anyhow, bail, Context, Result};
 use petgraph::stable_graph::NodeIndex;
 
-use std::cmp::max;
+
 use std::collections::HashMap;
-use std::collections::{HashSet, VecDeque};
+use std::collections::{HashSet};
 use std::fmt::Display;
 
 use yaml_peg::{parse, repr::RcRepr, NodeRc};

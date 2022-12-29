@@ -14,7 +14,7 @@ use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
 
 use coordinator::Environment;
-use futures::{future::BoxFuture, Future, StreamExt, TryFutureExt};
+use futures::{future::BoxFuture, Future, StreamExt};
 use reqwest::RequestBuilder;
 use rest::get_cual_prefix;
 pub use rest::TableauRestClient;
@@ -26,7 +26,8 @@ use jetty_core::{
     connectors::{
         nodes::ConnectorData,
         nodes::{self as jetty_nodes, EffectivePermission, SparseMatrix},
-        ConnectorCapabilities, ConnectorClient, NewConnector, ReadCapabilities, WriteCapabilities,
+        AssetType, ConnectorCapabilities, ConnectorClient, NewConnector, ReadCapabilities,
+        WriteCapabilities,
     },
     cual::Cual,
     jetty::{ConnectorConfig, ConnectorManifest, CredentialsMap},
@@ -36,7 +37,13 @@ use jetty_core::{
 };
 
 use nodes::{asset_to_policy::env_to_jetty_policies, FromTableau};
-use permissions::PermissionManager;
+use permissions::{
+    consts::{
+        DATASOURCE_CAPABILITIES, FLOW_CAPABILITIES, LENS_CAPABILITIES, METRIC_CAPABILITIES,
+        PROJECT_CAPABILITIES, VIEW_CAPABILITIES, WORKBOOK_CAPABILITIES,
+    },
+    PermissionManager,
+};
 
 use std::{
     collections::{HashMap, HashSet},
@@ -139,6 +146,7 @@ impl TableauConnector {
         Vec<jetty_nodes::RawAsset>,
         Vec<jetty_nodes::RawTag>,
         Vec<jetty_nodes::RawPolicy>,
+        Vec<jetty_nodes::RawDefaultPolicy>,
     ) {
         // Transform assets
         let flows: Vec<jetty_nodes::RawAsset> =
@@ -165,12 +173,22 @@ impl TableauConnector {
         // Transform policies
         let all_policies = env_to_jetty_policies(&self.coordinator.env);
 
+        // Get default policies for each project
+        let default_policies = self
+            .coordinator
+            .env
+            .projects
+            .iter()
+            .flat_map(|(_, project)| project.get_default_policies(&self.coordinator.env))
+            .collect();
+
         (
             self.to_jetty(&self.coordinator.env.groups),
             self.to_jetty(&self.coordinator.env.users),
             all_assets,
             vec![], // self.object_to_jetty(&self.coordinator.env.tags);
             all_policies,
+            default_policies,
         )
     }
 
@@ -330,7 +348,7 @@ body:
             .env
             .groups
             .iter()
-            .map(|(name, g)| (g.name.to_owned(), g.id.to_owned()))
+            .map(|(_name, g)| (g.name.to_owned(), g.id.to_owned()))
             .collect();
 
         let group_map_mutex = Arc::new(Mutex::new(group_map));
@@ -404,7 +422,7 @@ body:
     ) -> Result<()> {
         let req_body = json!({"group": { "name": group_name }});
         let req = self.coordinator.rest_client.build_request(
-            format!("groups/"),
+            "groups/".to_string(),
             Some(req_body),
             reqwest::Method::POST,
         )?;
@@ -417,7 +435,7 @@ body:
 
         // update the environment so that when users look for this group in the future, they are able to find it!
         let mut locked_group_map = group_map.lock().unwrap();
-        locked_group_map.insert(group_name.to_owned(), group_id.to_owned());
+        locked_group_map.insert(group_name.to_owned(), group_id);
         Ok(())
     }
 
@@ -441,8 +459,7 @@ body:
 
         // Add the user
         let req_body = json!({"user": {"id": user}});
-        let _ = self
-            .coordinator
+        self.coordinator
             .rest_client
             .build_request(
                 format!("groups/{group_id}/users"),
@@ -492,40 +509,99 @@ impl Connector for TableauConnector {
     }
 
     async fn get_data(&mut self) -> ConnectorData {
-        self.setup().await;
-        let (groups, users, assets, tags, policies) = self.env_to_jetty_all();
+        self.setup().await.unwrap();
+        let (groups, users, assets, tags, policies, default_policies) = self.env_to_jetty_all();
         let effective_permissions = self.get_effective_permissions();
-        ConnectorData::new(
+        ConnectorData {
             groups,
             users,
             assets,
             tags,
             policies,
-            Default::default(),
+            default_policies,
+            asset_references: Default::default(),
             effective_permissions,
-            Some(
+            cual_prefix: Some(
                 get_cual_prefix()
                     .context("tableau cual prefix not yet set")
                     .unwrap()
                     .to_owned(),
             ),
-        )
+        }
     }
 
     fn get_manifest(&self) -> ConnectorManifest {
+        let asset_privileges = [
+            (
+                AssetType("workbook".to_owned()),
+                WORKBOOK_CAPABILITIES
+                    .iter()
+                    .flat_map(|v| [format!("Allow{v}"), format!("Deny{v}")])
+                    .collect(),
+            ),
+            (
+                AssetType("lens".to_owned()),
+                LENS_CAPABILITIES
+                    .iter()
+                    .flat_map(|v| [format!("Allow{v}"), format!("Deny{v}")])
+                    .collect(),
+            ),
+            (
+                AssetType("datasource".to_owned()),
+                DATASOURCE_CAPABILITIES
+                    .iter()
+                    .flat_map(|v| [format!("Allow{v}"), format!("Deny{v}")])
+                    .collect(),
+            ),
+            (
+                AssetType("flow".to_owned()),
+                FLOW_CAPABILITIES
+                    .iter()
+                    .flat_map(|v| [format!("Allow{v}"), format!("Deny{v}")])
+                    .collect(),
+            ),
+            (
+                AssetType("metric".to_owned()),
+                METRIC_CAPABILITIES
+                    .iter()
+                    .flat_map(|v| [format!("Allow{v}"), format!("Deny{v}")])
+                    .collect(),
+            ),
+            (
+                AssetType("project".to_owned()),
+                PROJECT_CAPABILITIES
+                    .iter()
+                    .flat_map(|v| [format!("Allow{v}"), format!("Deny{v}")])
+                    .collect(),
+            ),
+            (
+                AssetType("view".to_owned()),
+                VIEW_CAPABILITIES
+                    .iter()
+                    .flat_map(|v| [format!("Allow{v}"), format!("Deny{v}")])
+                    .collect(),
+            ),
+        ]
+        .into();
+
         ConnectorManifest {
             capabilities: ConnectorCapabilities {
                 read: HashSet::from([
                     ReadCapabilities::Assets,
                     ReadCapabilities::Groups,
-                    ReadCapabilities::Policies,
+                    ReadCapabilities::Policies {
+                        default_policies: true,
+                    },
                     ReadCapabilities::Users,
                 ]),
                 write: HashSet::from([
                     WriteCapabilities::Groups { nested: false },
-                    WriteCapabilities::Policies,
+                    WriteCapabilities::Policies {
+                        default_policies: true,
+                    },
                 ]),
             },
+            asset_privileges,
         }
     }
 

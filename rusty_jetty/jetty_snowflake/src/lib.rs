@@ -28,14 +28,14 @@ pub use entry_types::{
     Asset, Database, Entry, FutureGrant, Grant, GrantOf, GrantType, Object, Role, RoleName, Schema,
     StandardGrant, Table, User, View, Warehouse,
 };
-use futures::{StreamExt, TryStreamExt};
+use futures::StreamExt;
 use jetty_core::access_graph::translate::diffs::{groups, LocalDiffs};
 use jetty_core::connectors::{
-    ConnectorCapabilities, NewConnector, ReadCapabilities, WriteCapabilities,
+    AssetType, ConnectorCapabilities, NewConnector, ReadCapabilities, WriteCapabilities,
 };
 use jetty_core::jetty::ConnectorManifest;
 use jetty_core::logging::error;
-use jetty_core::write::groups::DiffDetails;
+
 use rest::{SnowflakeRequestConfig, SnowflakeRestClient, SnowflakeRestConfig};
 use serde::de::value::MapDeserializer;
 
@@ -160,14 +160,99 @@ impl Connector for SnowflakeConnector {
                 read: HashSet::from([
                     ReadCapabilities::Assets,
                     ReadCapabilities::Groups,
-                    ReadCapabilities::Policies,
+                    ReadCapabilities::Policies {
+                        default_policies: true,
+                    },
                     ReadCapabilities::Users,
                 ]),
                 write: HashSet::from([
                     WriteCapabilities::Groups { nested: true },
-                    WriteCapabilities::Policies,
+                    WriteCapabilities::Policies {
+                        default_policies: true,
+                    },
                 ]),
             },
+            asset_privileges: [
+                (
+                    AssetType(consts::DATABASE.to_owned()),
+                    [
+                        "MODIFY",
+                        "MONITOR",
+                        "USAGE",
+                        "CREATE SCHEMA",
+                        "OWNERSHIP",
+                        "IMPORTED PRIVILEGES",
+                        "REFERENCE_USAGE",
+                    ]
+                    .into_iter()
+                    .map(|p| p.to_owned())
+                    .collect(),
+                ),
+                (
+                    AssetType(consts::SCHEMA.to_owned()),
+                    [
+                        "OWNERSHIP",
+                        "MODIFY",
+                        "MONITOR",
+                        "USAGE",
+                        "CREATE EXTERNAL TABLE",
+                        "CREATE FILE FORMAT",
+                        "CREATE FUNCTION",
+                        "CREATE MASKING POLICY",
+                        "CREATE MATERIALIZED VIEW",
+                        "CREATE PASSWORD POLICY",
+                        "CREATE PIPE",
+                        "CREATE PROCEDURE",
+                        "CREATE ROW ACCESS POLICY",
+                        "CREATE SESSION POLICY",
+                        "CREATE SEQUENCE",
+                        "CREATE STAGE",
+                        "CREATE STREAM",
+                        "CREATE TAG",
+                        "CREATE TABLE",
+                        "CREATE TASK",
+                        "CREATE VIEW",
+                        "ADD SEARCH OPTIMIZATION",
+                        "CREATE TEMPORARY TABLE",
+                    ]
+                    .into_iter()
+                    .map(|p| p.to_owned())
+                    .collect(),
+                ),
+                (
+                    AssetType(consts::TABLE.to_owned()),
+                    [
+                        "OWNERSHIP",
+                        "SELECT",
+                        "INSERT",
+                        "UPDATE",
+                        "DELETE",
+                        "TRUNCATE",
+                        "REFERENCES",
+                        "REBUILD",
+                    ]
+                    .into_iter()
+                    .map(|p| p.to_owned())
+                    .collect(),
+                ),
+                (
+                    AssetType(consts::VIEW.to_owned()),
+                    [
+                        "OWNERSHIP",
+                        "SELECT",
+                        "REFERENCES",
+                        "DELETE",
+                        "INSERT",
+                        "REBUILD",
+                        "TRUNCATE",
+                        "UPDATE",
+                    ]
+                    .into_iter()
+                    .map(|p| p.to_owned())
+                    .collect(),
+                ),
+            ]
+            .into(),
         }
     }
     fn plan_changes(&self, diffs: &LocalDiffs) -> Vec<std::string::String> {
@@ -377,6 +462,7 @@ impl SnowflakeConnector {
             // TODO: Determine whether this is actually okay behavior.
             return Ok(vec![]);
         }
+
         let rows_value: JsonValue =
             serde_json::from_str(&result).context("failed to deserialize")?;
         if let Some(info) = rows_value.get("partitionInfo") {
@@ -439,6 +525,55 @@ impl SnowflakeConnector {
                 let privileges: HashSet<String> =
                     grants.iter().map(|g| g.privilege().to_owned()).collect();
                 Some(final_grant.into_policy(privileges))
+            })
+            .collect::<Vec<_>>()
+    }
+
+    /// Convert future grants into default policies. This is called for each role, so grants contains only policies
+    /// for a single role.
+    fn future_grants_to_default_policies(
+        &self,
+        grants: &[FutureGrant],
+    ) -> Vec<nodes::RawDefaultPolicy> {
+        grants
+            .iter()
+            // filter down to the asset types we support
+            .filter(|g| consts::ASSET_TYPES.contains(&g.grant_on()))
+            // Collect policies by asset name and grant_on (asset type). Asset type and role combined give a path, so this will give us a single policy
+            // for each combo of (Asset, Path, Asset Type, and Agent)
+            .fold(
+                HashMap::new(),
+                |mut asset_map: HashMap<(String, String), HashSet<FutureGrant>>, g| {
+                    if let Some(asset_privileges) = asset_map
+                        .get_mut(&(g.granted_on_name().to_owned(), g.grant_on().to_owned()))
+                    {
+                        asset_privileges.insert(g.clone());
+                    } else {
+                        asset_map.insert(
+                            (g.granted_on_name().to_owned(), g.grant_on().to_owned()),
+                            HashSet::from([g.clone()]),
+                        );
+                    }
+                    asset_map
+                },
+            )
+            .iter()
+            .filter_map(|(_asset_name, grants)| {
+                // When we read, a policy will get created for each unique
+                // role/user, root asset, type combination. All privileges will be bunched together
+                // for that combination.
+                if grants.is_empty() {
+                    // No privileges.
+                    return None;
+                }
+                // Each set of grants should be exactly the same except for privileges.
+                // We will take the first one...
+                let final_grant = grants.iter().next().cloned().unwrap();
+                // ...and now we'll combine all of the privileges from the
+                // grants into one policy.
+                let privileges: HashSet<String> =
+                    grants.iter().map(|g| g.privilege().to_owned()).collect();
+                Some(final_grant.into_default_policy(privileges))
             })
             .collect::<Vec<_>>()
     }

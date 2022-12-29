@@ -3,7 +3,7 @@
 
 use std::{
     cmp::Ordering,
-    collections::{HashMap, HashSet},
+    collections::{BTreeSet, HashMap, HashSet},
 };
 
 use uuid::Uuid;
@@ -11,13 +11,17 @@ use uuid::Uuid;
 use crate::{
     access_graph::{
         helpers::{insert_edge_pair, NodeHelper},
-        AssetAttributes, EdgeType, GroupAttributes, JettyEdge, JettyNode, NodeName,
-        PolicyAttributes, TagAttributes, UserAttributes,
+        AccessGraph, AssetAttributes, DefaultPolicyAttributes, EdgeType, GroupAttributes,
+        JettyEdge, JettyNode, NodeName, PolicyAttributes, TagAttributes, UserAttributes,
     },
     jetty::ConnectorNamespace,
+    logging::error,
 };
 
-use super::nodes::{EffectivePermission, SparseMatrix};
+use super::{
+    nodes::{EffectivePermission, SparseMatrix},
+    AssetType,
+};
 
 /// Container for all node data for a given connector
 #[derive(Debug, Default, PartialEq, Eq, Clone)]
@@ -32,6 +36,8 @@ pub struct ProcessedConnectorData {
     pub tags: Vec<ProcessedTag>,
     /// All policies in the connector
     pub policies: Vec<ProcessedPolicy>,
+    /// Default policies from the connector
+    pub default_policies: Vec<ProcessedDefaultPolicy>,
     /// All references to un-owned assets. Only necessary
     pub asset_references: Vec<ProcessedAssetReference>,
     /// Mapping of all users to the assets they have permissions granted
@@ -255,17 +261,38 @@ impl NodeHelper for ProcessedGroup {
     }
 }
 
+/// Struct used to populate default policy nodes and edges in the graph
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ProcessedDefaultPolicy {
+    /// Tricky one...
+    pub name: NodeName,
+    /// Privileges associated with the policy, scoped to
+    /// relevant context
+    pub privileges: HashSet<String>,
+    /// IDs of assets governed by the policy
+    pub root_node: NodeName,
+    /// Path to determine scope
+    pub matching_path: String,
+    /// The types of assets to apply this to
+    pub types: BTreeSet<AssetType>,
+    /// Who the privilege is granted to
+    pub grantee: NodeName,
+    /// The metadata associated with the policy
+    pub metadata: HashMap<String, String>,
+    /// Connector that the privilege exists in
+    pub connector: ConnectorNamespace,
+}
+
 /// Object used to populate user nodes and edges in the graph
 
 impl NodeHelper for ProcessedUser {
     fn get_node(&self) -> Option<JettyNode> {
-        Some(JettyNode::User(UserAttributes {
-            name: self.name.to_owned(),
-            id: Uuid::new_v5(&Uuid::NAMESPACE_URL, self.name.to_string().as_bytes()),
-            identifiers: self.identifiers.to_owned(),
-            metadata: self.metadata.to_owned(),
-            connectors: HashSet::from([self.connector.to_owned()]),
-        }))
+        Some(JettyNode::User(UserAttributes::new(
+            &self.name,
+            &self.identifiers,
+            &self.metadata,
+            Some(&self.connector),
+        )))
     }
 
     fn get_edges(&self) -> HashSet<JettyEdge> {
@@ -504,5 +531,66 @@ impl NodeHelper for ProcessedPolicy {
             );
         }
         hs
+    }
+}
+
+impl ProcessedDefaultPolicy {
+    /// Gets a jetty node, based on a ProcessedDefaultPolicy
+    pub(crate) fn get_node(&self) -> Option<JettyNode> {
+        Some(JettyNode::DefaultPolicy(DefaultPolicyAttributes {
+            name: NodeName::DefaultPolicy {
+                root_node: Box::new(self.root_node.to_owned()),
+                matching_path: self.matching_path.to_owned(),
+                types: self.types.to_owned(),
+                grantee: Box::new(self.grantee.to_owned()),
+            },
+            id: Uuid::new_v5(&Uuid::NAMESPACE_URL, self.name.to_string().as_bytes()),
+            privileges: self.privileges.to_owned(),
+            matching_path: self.matching_path.to_owned(),
+            types: self.types.to_owned(),
+            metadata: self.metadata.to_owned(),
+            connectors: [self.connector.to_owned()].into(),
+        }))
+    }
+
+    /// Gets all the edges needed to add a default policy to the graph. This requires graph traversal
+    /// because we add an edge between the DefaultPolicy and every policy that it could impact.
+    pub(crate) fn get_edges(&self, ag: &AccessGraph) -> HashSet<JettyEdge> {
+        let mut edges = HashSet::new();
+
+        // Insert an edge to the root node
+        insert_edge_pair(
+            &mut edges,
+            self.name.to_owned(),
+            self.root_node.to_owned(),
+            EdgeType::ProvidedDefaultForChildren,
+        );
+
+        // Insert edges to all the nodes governed by the policy
+        insert_edge_pair(
+            &mut edges,
+            self.name.to_owned(),
+            self.grantee.to_owned(),
+            EdgeType::GrantedTo,
+        );
+
+        // expand the path to get all relevant nodes
+        let target_node_indices = match ag.default_policy_targets(&self.name) {
+            Ok(i) => i,
+            Err(e) => {
+                error!("unable to properly build edges from default policies: {e}");
+                Default::default()
+            }
+        };
+        // Add edges to all target nodes
+        edges.extend(target_node_indices.into_iter().map(|t| {
+            JettyEdge::new(
+                self.name.to_owned(),
+                ag[t].get_node_name(),
+                EdgeType::Governs,
+            )
+        }));
+
+        edges
     }
 }

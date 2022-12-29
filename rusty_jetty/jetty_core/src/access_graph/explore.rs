@@ -3,11 +3,12 @@
 
 mod accessible_assets;
 mod asset_paths_for_tag;
+mod default_policy_targets;
 mod extract_graph;
 mod get_node;
-mod matching_children;
+mod matching_descendants;
 mod matching_paths;
-mod matching_paths_to_children;
+mod matching_paths_to_descendants;
 mod tags_for_asset;
 mod user_accessible_tags;
 
@@ -81,7 +82,7 @@ mod tests {
                     Default::default(),
                 )),
                 &JettyNode::Policy(PolicyAttributes::new("policy".to_owned())),
-                &JettyNode::User(UserAttributes::new("user".to_owned())),
+                &JettyNode::User(UserAttributes::simple_new("user".to_owned())),
             ],
             &[
                 (
@@ -104,7 +105,7 @@ mod tests {
         );
 
         // Test Edge Matching
-        let a = ag.get_matching_children(
+        let a = ag.get_matching_descendants(
             ag.get_untyped_index_from_name(&NodeName::User("user".to_owned()))
                 .unwrap(),
             |n| matches!(n, EdgeType::MemberOf),
@@ -116,7 +117,7 @@ mod tests {
         assert_eq!(a.len(), 0);
 
         // Test getting all children
-        let a = ag.get_matching_children(
+        let a = ag.get_matching_descendants(
             ag.get_untyped_index_from_name(&NodeName::User("user".to_owned()))
                 .unwrap(),
             |_| true,
@@ -128,7 +129,7 @@ mod tests {
         assert_eq!(a.len(), 3);
 
         // Test target matching
-        let a = ag.get_matching_children(
+        let a = ag.get_matching_descendants(
             ag.get_untyped_index_from_name(&NodeName::User("user".to_owned()))
                 .unwrap(),
             |_| true,
@@ -140,7 +141,7 @@ mod tests {
         assert_eq!(a.len(), 1);
 
         // Test passthrough matching
-        let a = ag.get_matching_children(
+        let a = ag.get_matching_descendants(
             ag.get_untyped_index_from_name(&NodeName::User("user".to_owned()))
                 .unwrap(),
             |_| true,
@@ -151,7 +152,7 @@ mod tests {
         );
         assert_eq!(a.len(), 1);
 
-        let a = ag.get_matching_children(
+        let a = ag.get_matching_descendants(
             ag.get_untyped_index_from_name(&NodeName::User("user".to_owned()))
                 .unwrap(),
             |n| matches!(n, EdgeType::Other),
@@ -168,7 +169,7 @@ mod tests {
     fn get_matching_simple_paths_works() -> Result<()> {
         let ag = AccessGraph::new_dummy(
             &[
-                &JettyNode::User(UserAttributes::new("user".to_owned())),
+                &JettyNode::User(UserAttributes::simple_new("user".to_owned())),
                 &JettyNode::Group(GroupAttributes::new("group1".to_owned())),
                 &JettyNode::Group(GroupAttributes::new("group2".to_owned())),
                 &JettyNode::Group(GroupAttributes::new("group3".to_owned())),

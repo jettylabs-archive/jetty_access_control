@@ -1,15 +1,20 @@
 //! Write user-configured groups and permissions back to the data stack.
 
+pub mod assets;
 pub mod groups;
+pub mod new_groups;
 mod parser_common;
-mod policies;
 pub(crate) mod tag_parser;
+pub mod users;
+mod utils;
+
+use anyhow::Result;
 
 use std::collections::HashMap;
 
 pub use groups::get_group_diff;
 
-use crate::jetty::ConnectorNamespace;
+use crate::{jetty::ConnectorNamespace, Jetty};
 
 /// A collection of diffs
 pub struct Diffs {
@@ -39,4 +44,43 @@ impl Diffs {
 
         res
     }
+}
+
+trait UpdateConfig {
+    fn update_user_name(&mut self, old: &String, new: &str) -> Result<bool>;
+    fn remove_user_name(&mut self, name: &String) -> Result<bool>;
+    fn update_group_name(&mut self, old: &String, new: &str) -> Result<bool>;
+    fn remove_group_name(&mut self, name: &String) -> Result<bool>;
+}
+
+/// update configuration files for the relvant node types
+pub fn remove_group_name(jetty: &Jetty, name: &String) -> Result<()> {
+    users::remove_group_name(jetty, name)?;
+    new_groups::remove_group_name(jetty, name)?;
+    assets::remove_group_name(jetty, name)?;
+    Ok(())
+}
+
+/// update configuration files for the relvant node types
+pub fn remove_user_name(jetty: &Jetty, name: &String) -> Result<()> {
+    users::remove_user_name(jetty, name)?;
+    new_groups::remove_user_name(jetty, name)?;
+    assets::remove_user_name(jetty, name)?;
+    Ok(())
+}
+
+/// update configuration files for the relvant node types
+pub fn update_group_name(jetty: &Jetty, old: &String, new: &String) -> Result<()> {
+    users::update_group_name(jetty, old, new)?;
+    new_groups::update_group_name(jetty, old, new)?;
+    assets::update_group_name(jetty, old, new)?;
+    Ok(())
+}
+
+/// update configuration files for the relvant node types
+pub fn update_user_name(jetty: &Jetty, old: &String, new: &String) -> Result<()> {
+    users::update_user_name(jetty, old, new)?;
+    new_groups::update_user_name(jetty, old, new)?;
+    assets::update_user_name(jetty, old, new)?;
+    Ok(())
 }

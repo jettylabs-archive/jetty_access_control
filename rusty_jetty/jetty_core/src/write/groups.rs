@@ -14,7 +14,7 @@ use colored::Colorize;
 use serde::Deserialize;
 
 use crate::{
-    access_graph::{AccessGraph, EdgeType, JettyNode, NodeName, PolicyAttributes},
+    access_graph::{EdgeType, JettyNode, NodeName},
     connectors::WriteCapabilities,
     jetty::ConnectorNamespace,
     project,
@@ -22,11 +22,9 @@ use crate::{
     Jetty,
 };
 
-use super::policies;
-
 /// group configuration, as represented in the yaml
 #[derive(Deserialize, Debug)]
-pub(crate) struct GroupConfig {
+pub struct GroupConfig {
     name: String,
     connector_names: Option<Vec<ConnectorName>>,
     members: GroupMembers,
@@ -235,7 +233,6 @@ fn generate_diff(
     jetty: &Jetty,
 ) -> Result<BTreeMap<NodeName, Diff>> {
     let mut group_diffs = BTreeMap::new();
-    let mut policy_diffs = Vec::new();
 
     let ag = jetty.access_graph.as_ref().ok_or_else(|| {
         anyhow!("jetty initialized without an access graph; try running `jetty fetch` first")
@@ -253,13 +250,13 @@ fn generate_diff(
                 .write
                 .contains(&WriteCapabilities::Groups { nested: true })
             {
-                Some((n.to_owned(), true))
+                Some((n, true))
             } else if m
                 .capabilities
                 .write
                 .contains(&WriteCapabilities::Groups { nested: false })
             {
-                Some((n.to_owned(), false))
+                Some((n, false))
             } else {
                 None
             }
@@ -267,7 +264,7 @@ fn generate_diff(
         .collect();
 
     let all_config_group_names =
-        get_all_group_names(&groups, jetty_connector_names.keys().collect())?;
+        get_all_group_names(groups, jetty_connector_names.keys().collect())?;
 
     for (group_name, group) in groups {
         // get all the node names for the given group. These would be the local names of the groups that need to be created
@@ -283,7 +280,7 @@ fn generate_diff(
             let legal_users = if jetty_connector_names[origin] {
                 users_to_node_names(&group.members.users)
             } else {
-                get_all_inherited_users(&groups, group_name)
+                get_all_inherited_users(groups, group_name)
                     .into_iter()
                     .collect()
             };
@@ -309,9 +306,9 @@ fn generate_diff(
             };
 
             // check if the group exists, removing the key if it does
-            if let Some(group_index) = ag_groups.remove(&node_name) {
+            if let Some(group_index) = ag_groups.remove(node_name) {
                 // get all the users in the existing group and diff them
-                let ag_member_users = ag.get_matching_children(
+                let ag_member_users = ag.get_matching_descendants(
                     group_index,
                     |e| matches!(e, EdgeType::Includes),
                     |_| false,
@@ -328,7 +325,7 @@ fn generate_diff(
                 let user_changes = diff_node_names(&old, &legal_users);
 
                 // get all the groups in the existing group and diff them
-                let ag_member_groups = ag.get_matching_children(
+                let ag_member_groups = ag.get_matching_descendants(
                     group_index,
                     |e| matches!(e, EdgeType::Includes),
                     |_| false,
@@ -409,7 +406,7 @@ fn generate_diff(
         );
 
         // Get all related policies and remove them as well
-        let remove_policies = ag.get_matching_children(
+        let _remove_policies = ag.get_matching_descendants(
             v,
             |e| matches!(e, EdgeType::GrantedFrom),
             |_| false,
@@ -417,33 +414,6 @@ fn generate_diff(
             None,
             Some(1),
         );
-
-        // Iterate over the policies that we need to remove
-        for policy_index in remove_policies {
-            let policy = match TryInto::<PolicyAttributes>::try_into(ag[policy_index].clone()) {
-                Ok(p) => p,
-                Err(_) => continue,
-            };
-
-            let policy_targets = ag.get_matching_children(
-                policy_index,
-                |e| matches!(e, EdgeType::Governs),
-                |_| false,
-                |n| matches!(n, JettyNode::Asset(_)),
-                None,
-                Some(1),
-            );
-
-            // iterate over the policy targets to build the diff structs
-            for target in policy_targets {
-                policy_diffs.push(policies::Diff {
-                    asset: ag[target].get_node_name(),
-                    agent: k.clone(),
-                    details: vec![policies::DiffDetails::RemovePolicy],
-                    connectors: policy.connectors.to_owned(),
-                });
-            }
-        }
     }
 
     Ok(group_diffs)
@@ -501,7 +471,7 @@ fn diff_node_names(old: &Vec<NodeName>, new: &Vec<NodeName>) -> NodeNameListDiff
 }
 
 /// Given a config, get all the final, connector-scoped node names for the groups.
-fn get_all_group_names(
+pub(crate) fn get_all_group_names(
     groups: &BTreeMap<String, GroupConfig>,
     jetty_connector_names: BTreeSet<&ConnectorNamespace>,
 ) -> Result<BTreeMap<String, BTreeMap<ConnectorNamespace, NodeName>>> {
@@ -581,8 +551,8 @@ fn get_all_inherited_users(
     res
 }
 
-/// Return the diff between the configuration and current state
-pub fn get_group_diff(jetty: &Jetty) -> Result<Vec<Diff>> {
+/// Parse and validate the group config, returning a map of <group name, group config>
+pub fn parse_and_validate_groups(jetty: &Jetty) -> Result<BTreeMap<String, GroupConfig>> {
     // first, read the config files
     let group_config = fs::read_to_string(project::groups_cfg_path_local())?;
     // parse
@@ -604,8 +574,15 @@ pub fn get_group_diff(jetty: &Jetty) -> Result<Vec<Diff>> {
             .join("\n\n");
         bail!(error_message);
     };
+    Ok(parsed_config)
+}
 
-    let mut diff_vec = generate_diff(&parsed_config, jetty)?
+/// Return the diff between a validated configuration map and current environment state
+pub fn get_group_diff(
+    parsed_config: &BTreeMap<String, GroupConfig>,
+    jetty: &Jetty,
+) -> Result<Vec<Diff>> {
+    let mut diff_vec = generate_diff(parsed_config, jetty)?
         .into_values()
         .collect::<Vec<_>>();
     diff_vec.sort_by(|a, b| {
@@ -627,11 +604,9 @@ mod tests {
 
     use crate::{
         access_graph::{
-            cual_to_asset_name_test, translate::diffs::LocalDiffs, AssetAttributes,
-            GroupAttributes, NodeName, TagAttributes, UserAttributes,
+            translate::diffs::LocalDiffs, AccessGraph, GroupAttributes, NodeName, UserAttributes,
         },
         connectors::ConnectorCapabilities,
-        cual::Cual,
         Connector,
     };
 
@@ -793,16 +768,17 @@ mod tests {
                     }]),
                     read: HashSet::new(),
                 },
+                ..Default::default()
             }
         }
 
-        fn plan_changes(&self, diffs: &LocalDiffs) -> Vec<String> {
+        fn plan_changes(&self, _diffs: &LocalDiffs) -> Vec<String> {
             todo!()
         }
 
         fn apply_changes<'life0, 'life1, 'async_trait>(
             &'life0 self,
-            diffs: &'life1 LocalDiffs,
+            _diffs: &'life1 LocalDiffs,
         ) -> core::pin::Pin<
             Box<
                 dyn core::future::Future<Output = Result<String>>

@@ -14,7 +14,7 @@ mod cual;
 mod manifest;
 
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{HashSet},
     path::{Path, PathBuf},
 };
 
@@ -100,19 +100,8 @@ impl Connector for DbtConnector {
             .map(|node| node.to_jetty_asset(&self.manifest))
             .collect();
         ConnectorData {
-            // No groups in dbt.
-            groups: vec![],
-            // No users in dbt.
-            users: vec![],
-            // No policies in dbt.
-            policies: vec![],
-            assets: vec![],
             asset_references: all_nodes_as_assets,
-            // TODO?
-            tags: vec![],
-            effective_permissions: HashMap::new(),
-            // Because dbt doesn't own any assets, it doesn't have a cual prefix
-            cual_prefix: None,
+            ..Default::default()
         }
     }
 
@@ -122,6 +111,7 @@ impl Connector for DbtConnector {
                 read: HashSet::from([ReadCapabilities::AssetLineage]),
                 write: HashSet::from([]),
             },
+            ..Default::default()
         }
     }
 

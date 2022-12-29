@@ -17,7 +17,7 @@ pub mod groups {
         jetty::ConnectorNamespace,
         write::groups::{self, GroupMemberChanges},
     };
-    use anyhow::Result;
+
     use std::collections::HashSet;
 
     #[derive(Debug)]
@@ -68,7 +68,7 @@ pub mod groups {
                 details: match &global_diff.details {
                     groups::DiffDetails::AddGroup { members } => LocalDiffDetails::AddGroup {
                         members: self.translate_group_member_changes_to_local(
-                            &members,
+                            members,
                             &global_diff.connector,
                         ),
                     },
@@ -76,11 +76,11 @@ pub mod groups {
                     groups::DiffDetails::ModifyGroup { add, remove } => {
                         LocalDiffDetails::ModifyGroup {
                             add: self.translate_group_member_changes_to_local(
-                                &add,
+                                add,
                                 &global_diff.connector,
                             ),
                             remove: self.translate_group_member_changes_to_local(
-                                &remove,
+                                remove,
                                 &global_diff.connector,
                             ),
                         }
@@ -98,12 +98,12 @@ pub mod groups {
                 users: global_changes
                     .users
                     .iter()
-                    .map(|user| self.translate_node_name_to_local(&user, &connector))
+                    .map(|user| self.translate_node_name_to_local(user, connector))
                     .collect(),
                 groups: global_changes
                     .groups
                     .iter()
-                    .map(|user| self.translate_node_name_to_local(&user, &connector))
+                    .map(|user| self.translate_node_name_to_local(user, connector))
                     .collect(),
             }
         }
