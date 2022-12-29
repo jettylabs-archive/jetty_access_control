@@ -734,6 +734,14 @@ impl NodeName {
             _ => todo!(),
         }
     }
+
+    /// This function gets the origin for a given group nodename, and fails if the nodename isn't for a group
+    pub(crate) fn get_group_origin(&self) -> Result<&ConnectorNamespace> {
+        match self {
+            NodeName::Group { origin, .. } => Ok(origin),
+            _ => bail!("expected a group nodename"),
+        }
+    }
 }
 
 #[derive(Hash, Eq, PartialEq, Debug, Clone, Serialize, Deserialize)]
