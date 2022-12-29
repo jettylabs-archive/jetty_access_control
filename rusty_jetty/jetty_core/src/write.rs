@@ -10,7 +10,7 @@ mod utils;
 
 use anyhow::Result;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 pub use groups::get_group_diff;
 
@@ -33,8 +33,52 @@ pub struct GlobalConnectorDiffs {
 impl GlobalConnectorDiffs {
     /// Split diffs into a HashMap of diffs, by connector
     pub fn split_by_connector(&self) -> HashMap<ConnectorNamespace, GlobalConnectorDiffs> {
-        todo!()
+        let user_map = split_diff_vec_by_connector(&self.users);
+        let group_map = split_diff_vec_by_connector(&self.groups);
+        let policy_map = split_diff_vec_by_connector(&self.policies);
+        let default_policy_map = split_diff_vec_by_connector(&self.default_policies);
+
+        let mut connectors: HashSet<_> = user_map.keys().collect();
+        connectors.extend(group_map.keys());
+        connectors.extend(policy_map.keys());
+        connectors.extend(default_policy_map.keys());
+
+        let mut res = HashMap::new();
+        for conn in connectors {
+            res.insert(
+                conn.to_owned(),
+                GlobalConnectorDiffs {
+                    groups: group_map.get(conn).cloned().unwrap_or_default(),
+                    users: user_map.get(conn).cloned().unwrap_or_default(),
+                    policies: policy_map.get(conn).cloned().unwrap_or_default(),
+                    default_policies: default_policy_map.get(conn).cloned().unwrap_or_default(),
+                },
+            );
+        }
+        res
     }
+}
+
+fn split_diff_vec_by_connector<T: Clone + SplitByConnector>(
+    obj: &Vec<T>,
+) -> HashMap<ConnectorNamespace, Vec<T>> {
+    let mut res: HashMap<ConnectorNamespace, Vec<T>> = HashMap::new();
+    for u in obj.iter() {
+        res = u
+            .split_by_connector()
+            .iter()
+            .fold(res, |mut acc, (conn, diff)| {
+                acc.entry(conn.to_owned())
+                    .or_insert_with(Default::default)
+                    .push(*diff.to_owned());
+                acc
+            })
+    }
+    res
+}
+
+trait SplitByConnector {
+    fn split_by_connector(&self) -> HashMap<ConnectorNamespace, Box<Self>>;
 }
 
 trait UpdateConfig {

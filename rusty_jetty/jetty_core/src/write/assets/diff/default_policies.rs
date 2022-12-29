@@ -14,6 +14,7 @@ use crate::{
     write::{
         assets::{CombinedPolicyState, DefaultPolicyState},
         utils::diff_btreeset,
+        SplitByConnector,
     },
     Connector,
 };
@@ -65,6 +66,12 @@ impl Display for DefaultPolicyDiff {
         }
 
         write!(f, "{text}")
+    }
+}
+
+impl SplitByConnector for DefaultPolicyDiff {
+    fn split_by_connector(&self) -> HashMap<ConnectorNamespace, Box<Self>> {
+        [(self.connector.to_owned(), Box::new(self.to_owned()))].into()
     }
 }
 

@@ -13,10 +13,11 @@ use crate::{
     write::{
         assets::{CombinedPolicyState, PolicyState},
         utils::diff_hashset,
+        SplitByConnector,
     },
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// A diff of assets
 pub struct PolicyDiff {
     /// The name of the asset being changed
@@ -26,6 +27,12 @@ pub struct PolicyDiff {
     /// Same, but for groups
     pub(crate) groups: BTreeMap<NodeName, DiffDetails>,
     pub(crate) connector: ConnectorNamespace,
+}
+
+impl SplitByConnector for PolicyDiff {
+    fn split_by_connector(&self) -> HashMap<ConnectorNamespace, Box<Self>> {
+        [(self.connector.to_owned(), Box::new(self.to_owned()))].into()
+    }
 }
 
 /// Details of policy diff

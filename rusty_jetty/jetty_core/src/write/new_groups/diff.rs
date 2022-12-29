@@ -9,8 +9,11 @@ use anyhow::Result;
 use colored::Colorize;
 
 use crate::{
-    access_graph::NodeName, connectors::WriteCapabilities, jetty::ConnectorNamespace,
-    write::utils::diff_hashset, Jetty,
+    access_graph::NodeName,
+    connectors::WriteCapabilities,
+    jetty::ConnectorNamespace,
+    write::{utils::diff_hashset, SplitByConnector},
+    Jetty,
 };
 
 use super::{bootstrap, get_group_to_nodename_map, GroupConfig};
@@ -24,6 +27,12 @@ pub struct Diff {
     pub details: DiffDetails,
     /// The connector the diff should be applied to
     pub connector: ConnectorNamespace,
+}
+
+impl SplitByConnector for Diff {
+    fn split_by_connector(&self) -> HashMap<ConnectorNamespace, Box<Self>> {
+        [(self.connector.to_owned(), Box::new(self.to_owned()))].into()
+    }
 }
 
 #[derive(Debug, Clone)]
