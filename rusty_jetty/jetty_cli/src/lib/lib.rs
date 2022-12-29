@@ -7,6 +7,7 @@ mod ascii;
 mod cmd;
 mod diff;
 mod init;
+mod plan;
 mod remove;
 mod rename;
 mod tui;
@@ -38,10 +39,11 @@ use jetty_core::{
             bootstrap::{update_asset_files, write_bootstrapped_asset_yaml},
             get_default_policy_diffs, get_policy_diffs,
         },
+        diff::get_diffs,
         groups::parse_and_validate_groups,
         new_groups,
         users::bootstrap::{update_user_files, write_bootstrapped_user_yaml},
-        GlobalConnectorDiffs,
+        GlobalDiffs,
     },
     Connector, Jetty,
 };
@@ -349,59 +351,8 @@ async fn bootstrap(overwrite: bool) -> Result<()> {
     Ok(())
 }
 
-async fn plan() -> Result<()> {
-    let jetty = new_jetty_with_connectors().await.map_err(|_| {
-        anyhow!(
-            "unable to find {} - make sure you are in a \
-        Jetty project directory, or create a new project by running `jetty init`",
-            project::jetty_cfg_path_local().display()
-        )
-    })?;
-
-    // make sure there's an existing access graph
-    let ag = jetty.try_access_graph()?;
-    let validated_group_config = parse_and_validate_groups(&jetty)?;
-
-    let diffs = GlobalConnectorDiffs(jetty_core::write::get_group_diff(
-        &validated_group_config,
-        &jetty,
-    )?);
-
-    let connector_specific_diffs = diffs.split_by_connector();
-
-    let tr = ag.translator();
-
-    let local_diffs = connector_specific_diffs
-        .iter()
-        .map(|(k, v)| (k.to_owned(), tr.translate_diffs_to_local(v)))
-        .collect::<HashMap<_, _>>();
-
-    // Exit early if there haven't been any changes
-    if local_diffs.is_empty() {
-        println!("No changes found");
-        return Ok(());
-    }
-
-    let plans: HashMap<_, _> = local_diffs
-        .iter()
-        .map(|(k, v)| (k.to_owned(), jetty.connectors[k].plan_changes(v)))
-        .collect();
-
-    for (c, plan) in plans {
-        println!("{c}:");
-        if !plan.is_empty() {
-            plan.iter()
-                .for_each(|s| println!("{}\n", textwrap::indent(s, "  ")));
-            println!("\n")
-        } else {
-            println!("  No changes planned\n");
-        }
-    }
-    Ok(())
-}
-
 async fn apply() -> Result<()> {
-    let jetty = new_jetty_with_connectors().await.map_err(|_| {
+    let jetty = &mut new_jetty_with_connectors().await.map_err(|_| {
         anyhow!(
             "unable to find {} - make sure you are in a \
         Jetty project directory, or create a new project by running `jetty init`",
@@ -409,22 +360,17 @@ async fn apply() -> Result<()> {
         )
     })?;
 
+    let diffs = get_diffs(jetty)?;
+
     // make sure there's an existing access graph
     let ag = jetty.try_access_graph()?;
-    let validated_group_config = parse_and_validate_groups(&jetty)?;
-
-    let diffs = GlobalConnectorDiffs(jetty_core::write::get_group_diff(
-        &validated_group_config,
-        &jetty,
-    )?);
-
     let connector_specific_diffs = diffs.split_by_connector();
 
     let tr = ag.translator();
 
     let local_diffs = connector_specific_diffs
         .iter()
-        .map(|(k, v)| (k.to_owned(), tr.translate_diffs_to_local(v)))
+        .map(|(k, v)| (k.to_owned(), tr.translate_diffs_to_local(v, k)))
         .collect::<HashMap<_, _>>();
 
     let mut results: HashMap<_, _> = HashMap::new();

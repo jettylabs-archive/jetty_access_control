@@ -1,6 +1,7 @@
 //! Write user-configured groups and permissions back to the data stack.
 
 pub mod assets;
+pub mod diff;
 pub mod groups;
 pub mod new_groups;
 mod parser_common;
@@ -19,7 +20,7 @@ use crate::{jetty::ConnectorNamespace, Jetty};
 use self::assets::diff::{default_policies::DefaultPolicyDiff, policies::PolicyDiff};
 
 /// A collection of diffs to be sent to the connectors
-pub struct GlobalConnectorDiffs {
+pub struct GlobalDiffs {
     /// All the group-level diffs
     pub groups: Vec<new_groups::Diff>,
     /// All the user-levelgroup membership diffs
@@ -30,9 +31,9 @@ pub struct GlobalConnectorDiffs {
     pub policies: Vec<PolicyDiff>,
 }
 
-impl GlobalConnectorDiffs {
+impl GlobalDiffs {
     /// Split diffs into a HashMap of diffs, by connector
-    pub fn split_by_connector(&self) -> HashMap<ConnectorNamespace, GlobalConnectorDiffs> {
+    pub fn split_by_connector(&self) -> HashMap<ConnectorNamespace, GlobalDiffs> {
         let user_map = split_diff_vec_by_connector(&self.users);
         let group_map = split_diff_vec_by_connector(&self.groups);
         let policy_map = split_diff_vec_by_connector(&self.policies);
@@ -47,7 +48,7 @@ impl GlobalConnectorDiffs {
         for conn in connectors {
             res.insert(
                 conn.to_owned(),
-                GlobalConnectorDiffs {
+                GlobalDiffs {
                     groups: group_map.get(conn).cloned().unwrap_or_default(),
                     users: user_map.get(conn).cloned().unwrap_or_default(),
                     policies: policy_map.get(conn).cloned().unwrap_or_default(),

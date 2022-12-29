@@ -243,176 +243,178 @@ impl TableauConnector {
     }
 
     fn generate_request_plan(&self, diffs: &LocalConnectorDiffs) -> Result<Vec<Vec<String>>> {
-        let mut batch1 = Vec::new();
-        let mut batch2 = Vec::new();
+        todo!()
+        //         let mut batch1 = Vec::new();
+        //         let mut batch2 = Vec::new();
 
-        let base_url = format![
-            "https://{}/api/{}/sites/{}/",
-            self.coordinator.rest_client.get_server_name(),
-            self.coordinator.rest_client.get_api_version(),
-            self.coordinator.rest_client.get_site_id()?,
-        ];
-        // Starting with groups
-        let group_diffs = &diffs.groups;
-        for diff in group_diffs {
-            match &diff.details {
-                groups::LocalDiffDetails::AddGroup { members } => {
-                    // Request to create the group
+        //         let base_url = format![
+        //             "https://{}/api/{}/sites/{}/",
+        //             self.coordinator.rest_client.get_server_name(),
+        //             self.coordinator.rest_client.get_api_version(),
+        //             self.coordinator.rest_client.get_site_id()?,
+        //         ];
+        //         // Starting with groups
+        //         let group_diffs = &diffs.groups;
+        //         for diff in group_diffs {
+        //             match &diff.details {
+        //                 groups::LocalDiffDetails::AddGroup { members } => {
+        //                     // Request to create the group
 
-                    batch1.push(format!(
-                        r#"POST {base_url}groups
-body:
-  {{
-    "group": {{
-      "name": {},
-    }}
-  }}"#,
-                        diff.group_name
-                    ));
+        //                     batch1.push(format!(
+        //                         r#"POST {base_url}groups
+        // body:
+        //   {{
+        //     "group": {{
+        //       "name": {},
+        //     }}
+        //   }}"#,
+        //                         diff.group_name
+        //                     ));
 
-                    // Requests to add users
-                    for user in &members.users {
-                        batch1.push(format!(
-                            r#"POST {base_url}groups/<new group_id for {}>/users
-body:
-  {{
-    "user": {{
-      "id": {user},
-    }}
-  }}"#,
-                            diff.group_name
-                        ));
-                    }
-                }
-                groups::LocalDiffDetails::RemoveGroup => {
-                    // get the group_id
-                    let group_id = self
-                        .coordinator
-                        .env
-                        .get_group_id_by_name(&diff.group_name)
-                        .ok_or(anyhow!(
-                            "can't delete group {}: group doesn't exist",
-                            &diff.group_name
-                        ))?;
+        //                     // Requests to add users
+        //                     for user in &members.users {
+        //                         batch1.push(format!(
+        //                             r#"POST {base_url}groups/<new group_id for {}>/users
+        // body:
+        //   {{
+        //     "user": {{
+        //       "id": {user},
+        //     }}
+        //   }}"#,
+        //                             diff.group_name
+        //                         ));
+        //                     }
+        //                 }
+        //                 groups::LocalDiffDetails::RemoveGroup => {
+        //                     // get the group_id
+        //                     let group_id = self
+        //                         .coordinator
+        //                         .env
+        //                         .get_group_id_by_name(&diff.group_name)
+        //                         .ok_or(anyhow!(
+        //                             "can't delete group {}: group doesn't exist",
+        //                             &diff.group_name
+        //                         ))?;
 
-                    batch1.push(format!(
-                        "DELETE {base_url}groups/{group_id}\n## {group_id} is the id for {}\n",
-                        diff.group_name
-                    ));
-                }
-                groups::LocalDiffDetails::ModifyGroup { add, remove } => {
-                    // get the group_id
-                    let group_id = self
-                        .coordinator
-                        .env
-                        .get_group_id_by_name(&diff.group_name)
-                        .ok_or(anyhow!(
-                            "can't delete group {}: group doesn't exist",
-                            &diff.group_name
-                        ))?;
+        //                     batch1.push(format!(
+        //                         "DELETE {base_url}groups/{group_id}\n## {group_id} is the id for {}\n",
+        //                         diff.group_name
+        //                     ));
+        //                 }
+        //                 groups::LocalDiffDetails::ModifyGroup { add, remove } => {
+        //                     // get the group_id
+        //                     let group_id = self
+        //                         .coordinator
+        //                         .env
+        //                         .get_group_id_by_name(&diff.group_name)
+        //                         .ok_or(anyhow!(
+        //                             "can't delete group {}: group doesn't exist",
+        //                             &diff.group_name
+        //                         ))?;
 
-                    // Add users
-                    for user in &add.users {
-                        batch2.push(format!(
-                            r#"POST {base_url}groups/{group_id}/users
-body:
-  {{
-    "user": {{
-      "id": {user},
-    }}
-  }}"#
-                        ));
-                    }
+        //                     // Add users
+        //                     for user in &add.users {
+        //                         batch2.push(format!(
+        //                             r#"POST {base_url}groups/{group_id}/users
+        // body:
+        //   {{
+        //     "user": {{
+        //       "id": {user},
+        //     }}
+        //   }}"#
+        //                         ));
+        //                     }
 
-                    // Remove users
-                    for user in &remove.users {
-                        batch2.push(format!(
-                            r#"DELETE {base_url}groups/{group_id}/users/{user}"#
-                        ));
-                    }
-                }
-            }
-        }
-        Ok(vec![batch1, batch2])
+        //                     // Remove users
+        //                     for user in &remove.users {
+        //                         batch2.push(format!(
+        //                             r#"DELETE {base_url}groups/{group_id}/users/{user}"#
+        //                         ));
+        //                     }
+        //                 }
+        //             }
+        //         }
+        //         Ok(vec![batch1, batch2])
     }
 
     fn generate_plan_futures<'a>(
         &'a self,
         diffs: &'a LocalConnectorDiffs,
     ) -> Result<Vec<Vec<Pin<Box<dyn Future<Output = Result<()>> + '_ + Send>>>>> {
-        let mut batch1: Vec<BoxFuture<_>> = Vec::new();
-        let mut batch2: Vec<BoxFuture<_>> = Vec::new();
+        todo!();
+        // let mut batch1: Vec<BoxFuture<_>> = Vec::new();
+        // let mut batch2: Vec<BoxFuture<_>> = Vec::new();
 
-        let group_map: HashMap<String, String> = self
-            .coordinator
-            .env
-            .groups
-            .iter()
-            .map(|(_name, g)| (g.name.to_owned(), g.id.to_owned()))
-            .collect();
+        // let group_map: HashMap<String, String> = self
+        //     .coordinator
+        //     .env
+        //     .groups
+        //     .iter()
+        //     .map(|(_name, g)| (g.name.to_owned(), g.id.to_owned()))
+        //     .collect();
 
-        let group_map_mutex = Arc::new(Mutex::new(group_map));
+        // let group_map_mutex = Arc::new(Mutex::new(group_map));
 
-        // Starting with groups
-        let group_diffs = &diffs.groups;
-        for diff in group_diffs {
-            match &diff.details {
-                groups::LocalDiffDetails::AddGroup { members } => {
-                    // start by creating the group
-                    batch1.push(Box::pin(self.create_group_and_add_to_env(
-                        &diff.group_name,
-                        group_map_mutex.clone(),
-                    )));
-                    for user in &members.users {
-                        batch2.push(Box::pin(self.add_user_to_group(
-                            user,
-                            &diff.group_name,
-                            Arc::clone(&group_map_mutex),
-                        )))
-                    }
-                }
-                groups::LocalDiffDetails::RemoveGroup => {
-                    // get the group_id
-                    let temp_group_map = group_map_mutex.lock().unwrap();
-                    let group_id = temp_group_map
-                        .get(&diff.group_name)
-                        .ok_or(anyhow!("Unable to find group id for {}", &diff.group_name))?;
+        // // Starting with groups
+        // let group_diffs = &diffs.groups;
+        // for diff in group_diffs {
+        //     match &diff.details {
+        //         groups::LocalDiffDetails::AddGroup { members } => {
+        //             // start by creating the group
+        //             batch1.push(Box::pin(self.create_group_and_add_to_env(
+        //                 &diff.group_name,
+        //                 group_map_mutex.clone(),
+        //             )));
+        //             for user in &members.users {
+        //                 batch2.push(Box::pin(self.add_user_to_group(
+        //                     user,
+        //                     &diff.group_name,
+        //                     Arc::clone(&group_map_mutex),
+        //                 )))
+        //             }
+        //         }
+        //         groups::LocalDiffDetails::RemoveGroup => {
+        //             // get the group_id
+        //             let temp_group_map = group_map_mutex.lock().unwrap();
+        //             let group_id = temp_group_map
+        //                 .get(&diff.group_name)
+        //                 .ok_or(anyhow!("Unable to find group id for {}", &diff.group_name))?;
 
-                    let req = self.coordinator.rest_client.build_request(
-                        format!("groups/{group_id}"),
-                        None,
-                        reqwest::Method::DELETE,
-                    )?;
-                    batch1.push(Box::pin(request_builder_to_unit_result(req)))
-                }
-                groups::LocalDiffDetails::ModifyGroup { add, remove } => {
-                    // Add users
-                    for user in &add.users {
-                        batch2.push(Box::pin(self.add_user_to_group(
-                            user,
-                            &diff.group_name,
-                            group_map_mutex.clone(),
-                        )))
-                    }
-                    // Remove users
-                    // get the group_id
-                    let temp_group_map = group_map_mutex.lock().unwrap();
-                    let group_id = temp_group_map
-                        .get(&diff.group_name)
-                        .ok_or(anyhow!("Unable to find group id for {}", &diff.group_name))?;
+        //             let req = self.coordinator.rest_client.build_request(
+        //                 format!("groups/{group_id}"),
+        //                 None,
+        //                 reqwest::Method::DELETE,
+        //             )?;
+        //             batch1.push(Box::pin(request_builder_to_unit_result(req)))
+        //         }
+        //         groups::LocalDiffDetails::ModifyGroup { add, remove } => {
+        //             // Add users
+        //             for user in &add.users {
+        //                 batch2.push(Box::pin(self.add_user_to_group(
+        //                     user,
+        //                     &diff.group_name,
+        //                     group_map_mutex.clone(),
+        //                 )))
+        //             }
+        //             // Remove users
+        //             // get the group_id
+        //             let temp_group_map = group_map_mutex.lock().unwrap();
+        //             let group_id = temp_group_map
+        //                 .get(&diff.group_name)
+        //                 .ok_or(anyhow!("Unable to find group id for {}", &diff.group_name))?;
 
-                    for user in &remove.users {
-                        let req = self.coordinator.rest_client.build_request(
-                            format!("groups/{group_id}/users/{user}"),
-                            None,
-                            reqwest::Method::DELETE,
-                        )?;
-                        batch1.push(Box::pin(request_builder_to_unit_result(req)))
-                    }
-                }
-            }
-        }
-        Ok(vec![batch1, batch2])
+        //             for user in &remove.users {
+        //                 let req = self.coordinator.rest_client.build_request(
+        //                     format!("groups/{group_id}/users/{user}"),
+        //                     None,
+        //                     reqwest::Method::DELETE,
+        //                 )?;
+        //                 batch1.push(Box::pin(request_builder_to_unit_result(req)))
+        //             }
+        //         }
+        //     }
+        // }
+        // Ok(vec![batch1, batch2])
     }
 
     async fn create_group_and_add_to_env(
