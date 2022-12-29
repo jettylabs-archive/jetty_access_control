@@ -100,7 +100,7 @@ fn print_diff_inner_details(
                 }
             }
             DefaultPolicyDiffDetails::RemoveDefaultPolicy => {
-                text += &format!("{}", format!("  - {}{}\n", prefix, name).as_str().red());
+                text += &format!("{}", format!("  - {prefix}{name}\n").as_str().red());
             }
             DefaultPolicyDiffDetails::ModifyDefaultPolicy {
                 add,
@@ -279,6 +279,7 @@ pub(crate) fn diff_default_policies(
 
     // Now iterate through whatever is left in the env_policies and add removal diffs
     for (env_key, _env_value) in &env_policies {
+        // These will always be connector managed, otherwise they wouldn't show up at all
         let diff_details = DefaultPolicyDiffDetails::RemoveDefaultPolicy;
         policy_diffs
             // add to the policy diff for the asset

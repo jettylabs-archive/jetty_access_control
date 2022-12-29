@@ -22,7 +22,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use jetty_core::{
-    access_graph::translate::diffs::{groups, LocalDiffs},
+    access_graph::translate::diffs::{groups, LocalConnectorDiffs},
     connectors::{
         nodes::ConnectorData,
         nodes::{self as jetty_nodes, EffectivePermission, SparseMatrix},
@@ -242,7 +242,7 @@ impl TableauConnector {
             .collect()
     }
 
-    fn generate_request_plan(&self, diffs: &LocalDiffs) -> Result<Vec<Vec<String>>> {
+    fn generate_request_plan(&self, diffs: &LocalConnectorDiffs) -> Result<Vec<Vec<String>>> {
         let mut batch1 = Vec::new();
         let mut batch2 = Vec::new();
 
@@ -338,7 +338,7 @@ body:
 
     fn generate_plan_futures<'a>(
         &'a self,
-        diffs: &'a LocalDiffs,
+        diffs: &'a LocalConnectorDiffs,
     ) -> Result<Vec<Vec<Pin<Box<dyn Future<Output = Result<()>> + '_ + Send>>>>> {
         let mut batch1: Vec<BoxFuture<_>> = Vec::new();
         let mut batch2: Vec<BoxFuture<_>> = Vec::new();
@@ -605,7 +605,7 @@ impl Connector for TableauConnector {
         }
     }
 
-    fn plan_changes(&self, diffs: &LocalDiffs) -> Vec<String> {
+    fn plan_changes(&self, diffs: &LocalConnectorDiffs) -> Vec<String> {
         match self.generate_request_plan(diffs) {
             Ok(plan) => plan.into_iter().flatten().collect(),
             Err(err) => {
@@ -615,7 +615,7 @@ impl Connector for TableauConnector {
         }
     }
 
-    async fn apply_changes(&self, diffs: &LocalDiffs) -> Result<String> {
+    async fn apply_changes(&self, diffs: &LocalConnectorDiffs) -> Result<String> {
         let mut success_counter = 0;
         let mut failure_counter = 0;
         // This is designed in such a way that each query_set may be run concurrently.

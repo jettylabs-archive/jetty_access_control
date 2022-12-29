@@ -36,17 +36,20 @@ use super::new_groups::{get_group_capable_connectors, get_group_to_nodename_map,
 
 pub(crate) use update::{remove_group_name, remove_user_name, update_group_name, update_user_name};
 
+/// Policy state
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
-pub(crate) struct PolicyState {
-    privileges: HashSet<String>,
-    metadata: HashMap<String, String>,
+pub struct PolicyState {
+    /// Included privileges
+    pub privileges: HashSet<String>,
+    /// Included metadata
+    pub metadata: HashMap<String, String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct DefaultPolicyState {
-    privileges: BTreeSet<String>,
-    metadata: HashMap<String, String>,
-    connector_managed: bool,
+    pub(crate) privileges: BTreeSet<String>,
+    pub(crate) metadata: HashMap<String, String>,
+    pub(crate) connector_managed: bool,
 }
 #[derive(Serialize, Deserialize, Debug, Default, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub(crate) struct YamlAssetDoc {

@@ -28,8 +28,9 @@ pub struct PolicyDiff {
     pub(crate) connector: ConnectorNamespace,
 }
 
+/// Details of policy diff
 #[derive(Debug, Clone)]
-pub(crate) enum DiffDetails {
+pub enum DiffDetails {
     AddAgent {
         add: PolicyState,
     },

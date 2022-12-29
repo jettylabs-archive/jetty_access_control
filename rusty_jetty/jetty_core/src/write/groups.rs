@@ -604,7 +604,8 @@ mod tests {
 
     use crate::{
         access_graph::{
-            translate::diffs::LocalDiffs, AccessGraph, GroupAttributes, NodeName, UserAttributes,
+            translate::diffs::LocalConnectorDiffs, AccessGraph, GroupAttributes, NodeName,
+            UserAttributes,
         },
         connectors::ConnectorCapabilities,
         Connector,
@@ -772,13 +773,13 @@ mod tests {
             }
         }
 
-        fn plan_changes(&self, _diffs: &LocalDiffs) -> Vec<String> {
+        fn plan_changes(&self, _diffs: &LocalConnectorDiffs) -> Vec<String> {
             todo!()
         }
 
         fn apply_changes<'life0, 'life1, 'async_trait>(
             &'life0 self,
-            _diffs: &'life1 LocalDiffs,
+            _diffs: &'life1 LocalConnectorDiffs,
         ) -> core::pin::Pin<
             Box<
                 dyn core::future::Future<Output = Result<String>>

@@ -41,7 +41,7 @@ use jetty_core::{
         groups::parse_and_validate_groups,
         new_groups,
         users::bootstrap::{update_user_files, write_bootstrapped_user_yaml},
-        Diffs,
+        GlobalConnectorDiffs,
     },
     Connector, Jetty,
 };
@@ -362,9 +362,10 @@ async fn plan() -> Result<()> {
     let ag = jetty.try_access_graph()?;
     let validated_group_config = parse_and_validate_groups(&jetty)?;
 
-    let diffs = Diffs {
-        groups: jetty_core::write::get_group_diff(&validated_group_config, &jetty)?,
-    };
+    let diffs = GlobalConnectorDiffs(jetty_core::write::get_group_diff(
+        &validated_group_config,
+        &jetty,
+    )?);
 
     let connector_specific_diffs = diffs.split_by_connector();
 
@@ -412,9 +413,10 @@ async fn apply() -> Result<()> {
     let ag = jetty.try_access_graph()?;
     let validated_group_config = parse_and_validate_groups(&jetty)?;
 
-    let diffs = Diffs {
-        groups: jetty_core::write::get_group_diff(&validated_group_config, &jetty)?,
-    };
+    let diffs = GlobalConnectorDiffs(jetty_core::write::get_group_diff(
+        &validated_group_config,
+        &jetty,
+    )?);
 
     let connector_specific_diffs = diffs.split_by_connector();
 

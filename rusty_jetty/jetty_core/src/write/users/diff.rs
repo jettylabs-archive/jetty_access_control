@@ -22,9 +22,9 @@ use self::{
 /// Complete diffs for users
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct CombinedUserDiff {
-    user: NodeName,
+    pub(crate) user: NodeName,
     identity: Option<IdentityDiffDetails>,
-    group_membership: Option<MembershipDiffDetails>,
+    pub(crate) group_membership: Option<MembershipDiffDetails>,
 }
 
 impl Display for CombinedUserDiff {

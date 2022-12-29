@@ -29,7 +29,7 @@ pub use entry_types::{
     StandardGrant, Table, User, View, Warehouse,
 };
 use futures::StreamExt;
-use jetty_core::access_graph::translate::diffs::{groups, LocalDiffs};
+use jetty_core::access_graph::translate::diffs::{groups, LocalConnectorDiffs};
 use jetty_core::connectors::{
     AssetType, ConnectorCapabilities, NewConnector, ReadCapabilities, WriteCapabilities,
 };
@@ -255,14 +255,14 @@ impl Connector for SnowflakeConnector {
             .into(),
         }
     }
-    fn plan_changes(&self, diffs: &LocalDiffs) -> Vec<std::string::String> {
+    fn plan_changes(&self, diffs: &LocalConnectorDiffs) -> Vec<std::string::String> {
         self.generate_diff_queries(diffs)
             .into_iter()
             .flatten()
             .collect()
     }
 
-    async fn apply_changes(&self, diffs: &LocalDiffs) -> Result<String> {
+    async fn apply_changes(&self, diffs: &LocalConnectorDiffs) -> Result<String> {
         let mut success_counter = 0;
         let mut failure_counter = 0;
         // This is designed in such a way that each query_set may be run concurrently.
@@ -578,7 +578,7 @@ impl SnowflakeConnector {
             .collect::<Vec<_>>()
     }
 
-    fn generate_diff_queries(&self, diffs: &LocalDiffs) -> Vec<Vec<String>> {
+    fn generate_diff_queries(&self, diffs: &LocalConnectorDiffs) -> Vec<Vec<String>> {
         let mut first_queries: Vec<String> = vec![];
         let mut second_queries: Vec<String> = vec![];
         let mut third_queries: Vec<String> = vec![];

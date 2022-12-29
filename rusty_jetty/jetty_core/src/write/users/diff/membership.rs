@@ -31,8 +31,9 @@ pub struct MembershipDiff {
     pub(crate) details: MembershipDiffDetails,
 }
 
+/// Details of the changes in group membership for a user
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub(crate) struct MembershipDiffDetails {
+pub struct MembershipDiffDetails {
     /// The groups that exist in the config, not in the environment
     pub(crate) add: BTreeSet<NodeName>,
     /// The groups that exist in the environment, not in the config

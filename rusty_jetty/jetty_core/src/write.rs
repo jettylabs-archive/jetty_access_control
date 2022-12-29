@@ -16,33 +16,24 @@ pub use groups::get_group_diff;
 
 use crate::{jetty::ConnectorNamespace, Jetty};
 
-/// A collection of diffs
-pub struct Diffs {
+use self::assets::diff::{default_policies::DefaultPolicyDiff, policies::PolicyDiff};
+
+/// A collection of diffs to be sent to the connectors
+pub struct GlobalConnectorDiffs {
     /// All the group-level diffs
-    pub groups: Vec<groups::Diff>,
+    pub groups: Vec<new_groups::Diff>,
+    /// All the user-levelgroup membership diffs
+    pub users: Vec<users::CombinedUserDiff>,
+    /// All the connector-managed default policies
+    pub default_policies: Vec<DefaultPolicyDiff>,
+    /// All the policies
+    pub policies: Vec<PolicyDiff>,
 }
 
-impl Diffs {
+impl GlobalConnectorDiffs {
     /// Split diffs into a HashMap of diffs, by connector
-    pub fn split_by_connector(&self) -> HashMap<ConnectorNamespace, Diffs> {
-        // go through each field of Diffs, starting with groups
-        let group_maps = self.groups.iter().fold(HashMap::new(), |mut acc, x| {
-            acc.entry(&x.connector)
-                .and_modify(|vec_diffs: &mut Vec<groups::Diff>| vec_diffs.push(x.to_owned()))
-                .or_insert(vec![x.to_owned()]);
-            acc
-        });
-
-        let mut res: HashMap<ConnectorNamespace, Diffs> = HashMap::new();
-
-        // now put the groups into the proper fields
-        for (conn, diffs) in group_maps {
-            res.entry(conn.clone())
-                .and_modify(|the_diff| the_diff.groups = diffs.clone())
-                .or_insert(Diffs { groups: diffs });
-        }
-
-        res
+    pub fn split_by_connector(&self) -> HashMap<ConnectorNamespace, GlobalConnectorDiffs> {
+        todo!()
     }
 }
 
