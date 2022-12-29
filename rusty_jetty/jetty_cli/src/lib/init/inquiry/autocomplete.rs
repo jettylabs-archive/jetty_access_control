@@ -21,8 +21,6 @@ impl FilepathCompleter {
 
         self.paths.clear();
 
-        // FUTURE: When expanding the tilde, homedir won't end in a slash, so
-        // partial matches will appear. This should be updated at some point.
         let input_path = std::path::PathBuf::from(input)
             .expand_tilde()
             .context("can't expand tilde")?;
@@ -144,7 +142,10 @@ where
             return Some(p.to_path_buf());
         }
         if p == Path::new("~") {
-            return dirs::home_dir();
+            return dirs::home_dir().map(|mut x| {
+                x.push("");
+                x
+            });
         }
         dirs::home_dir().map(|mut h| {
             if h == Path::new("/") {
@@ -175,9 +176,8 @@ mod tests {
         println!("res: {:?}", res);
         println!("fpc: {:?}", fpc);
 
-        let homedir = std::env::var("HOME")?;
-        assert_eq!(fpc.paths[0], format!("{}/", homedir));
-        assert_eq!(fpc.lcp, format!("{}/", homedir));
+        assert!(fpc.paths.is_empty());
+        assert!(fpc.lcp.is_empty());
         Ok(())
     }
 }
