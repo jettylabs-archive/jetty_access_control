@@ -62,7 +62,7 @@ pub(crate) const METRIC_CAPABILITIES: &[&str] = &[
 pub(crate) const PROJECT_CAPABILITIES: &[&str] = &[
     "Read",                   // View
     "Write",                  // Publish
-    "ProjectLeader",          // SPECIAL (not a real capability)
+    "ProjectLeader",          // Project Leader
     "InheritedProjectLeader", // SPECIAL (not a real capability)
 ];
 

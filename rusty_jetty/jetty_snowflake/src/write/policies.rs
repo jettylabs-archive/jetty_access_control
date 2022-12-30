@@ -4,7 +4,7 @@ use std::fmt::Display;
 
 use jetty_core::{access_graph::translate::diffs::policies, write::assets};
 
-use crate::{SnowflakeAsset, SnowflakeConnector};
+use crate::SnowflakeAsset;
 
 use super::PrioritizedQueries;
 
@@ -57,17 +57,30 @@ pub(crate) fn generate_queries_for_diff_details(
 ) -> Vec<String> {
     match details {
         assets::diff::policies::DiffDetails::AddAgent { add } => {
+            let add = &mut add.to_owned();
+            let mut res = Vec::new();
+
+            // FUTURE: How we handle ownership today may make double-applies necessary as it
+            // also affects other grants
+            if add.privileges.remove("OWNERSHIP") {
+                res.push(format!(
+                    "GRANT OWNERSHIP ON {} {} TO {agent_type} {agent} COPY CURRENT GRANTS",
+                    asset.asset_type(),
+                    asset.fqn()
+                ))
+            }
             let privileges = add
                 .privileges
                 .to_owned()
                 .into_iter()
                 .collect::<Vec<_>>()
                 .join(", ");
-            vec![format!(
+            res.push(format!(
                 "GRANT {privileges} ON {} {} TO {agent_type} {agent}",
                 asset.asset_type(),
                 asset.fqn()
-            )]
+            ));
+            res
         }
         assets::diff::policies::DiffDetails::RemoveAgent { .. } => {
             vec![format!(
@@ -77,19 +90,27 @@ pub(crate) fn generate_queries_for_diff_details(
             )]
         }
         assets::diff::policies::DiffDetails::ModifyAgent { add, remove } => {
+            let add = &mut add.to_owned();
             let mut res = Vec::new();
             if !add.privileges.is_empty() {
+                if add.privileges.remove("OWNERSHIP") {
+                    res.push(format!(
+                        "GRANT OWNERSHIP ON {} {} TO {agent_type} {agent} COPY CURRENT GRANTS",
+                        asset.asset_type(),
+                        asset.fqn()
+                    ))
+                }
                 let privileges = add
                     .privileges
                     .to_owned()
                     .into_iter()
                     .collect::<Vec<_>>()
                     .join(", ");
-                res = vec![format!(
+                res.push(format!(
                     "GRANT {privileges} ON {} {} TO {agent_type} {agent}",
                     asset.asset_type(),
                     asset.fqn()
-                )];
+                ));
             }
             if !remove.privileges.is_empty() {
                 let privileges = remove

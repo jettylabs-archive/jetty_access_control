@@ -374,7 +374,13 @@ impl From<Permission> for jetty_nodes::RawPolicy {
             Uuid::new_v4().to_string(),
             val.capabilities
                 .into_iter()
-                .map(|(capability, mode)| format!("{mode}{capability}"))
+                .filter_map(|(capability, mode)| {
+                    if &capability == "InheritedProjectLeader" {
+                        None
+                    } else {
+                        Some(format!("{mode}{capability}"))
+                    }
+                })
                 .collect(),
             // Handled by the caller.
             HashSet::new(),
