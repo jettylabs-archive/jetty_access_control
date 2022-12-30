@@ -1,6 +1,9 @@
 //! Functionality for handling group diffs in tableau
 
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 
 use anyhow::{anyhow, bail, Context, Result};
 
@@ -15,7 +18,7 @@ use crate::{
     TableauConnector,
 };
 
-use super::PrioritizedPlans;
+use super::{PrioritizedFutures, PrioritizedPlans};
 
 impl TableauConnector {
     pub(crate) fn prepare_default_policies_plan(
@@ -23,13 +26,6 @@ impl TableauConnector {
         policy_diffs: &Vec<default_policies::LocalDiff>,
     ) -> Result<PrioritizedPlans> {
         let mut plans = PrioritizedPlans::default();
-
-        let base_url = format![
-            "https://{}/api/{}/sites/{}",
-            self.coordinator.rest_client.get_server_name(),
-            self.coordinator.rest_client.get_api_version(),
-            self.coordinator.rest_client.get_site_id()?,
-        ];
 
         for diff in policy_diffs {
             let asset_reference = self.coordinator.env.cual_id_map.get(&diff.asset).unwrap();
@@ -189,6 +185,187 @@ impl TableauConnector {
             };
         }
         Ok(plans)
+    }
+
+    pub(crate) fn generate_default_policy_apply_futures(
+        &self,
+        policy_diffs: &Vec<default_policies::LocalDiff>,
+        group_map: Arc<Mutex<HashMap<String, String>>>,
+    ) -> Result<PrioritizedFutures> {
+        let mut futures = PrioritizedFutures::default();
+
+        for diff in policy_diffs {
+            let asset_reference = self.coordinator.env.cual_id_map.get(&diff.asset).unwrap();
+
+            if asset_reference.asset_type != TableauAssetType::Project {
+                bail!("problem generating plan for {}: default permissions can only be set at the project level", diff.asset.to_string());
+            };
+
+            let mut user_adds = HashMap::new();
+            let mut group_adds = HashMap::new();
+
+            try_wildcard_path_is_valid(&diff.path).context(format!(
+                "problem generating plan for {}",
+                &diff.asset.to_string()
+            ))?;
+
+            let asset_type = TableauAssetType::from_str(&diff.asset_type).context(format!(
+                "problem generating plan for {}",
+                &diff.asset.to_string()
+            ))?;
+
+            let mut set_tableau_content_permissions: Option<String> = None;
+
+            for (user, details) in &diff.users {
+                match details {
+                    jetty_core::write::assets::diff::policies::DiffDetails::AddAgent { add } => {
+                        user_adds.insert(
+                            user.to_owned(),
+                            add.privileges
+                                .iter()
+                                .map(|p| IndividualPermission::from_string(p))
+                                .collect::<Vec<_>>(),
+                        );
+
+                        // catch changes to content permissions and check for errors
+                        try_update_content_permissions(
+                            &diff.asset,
+                            &mut set_tableau_content_permissions,
+                            add,
+                        )?;
+                    }
+                    jetty_core::write::assets::diff::policies::DiffDetails::RemoveAgent {
+                        remove,
+                    } => self
+                        .build_delete_default_policy_requests(
+                            remove,
+                            asset_reference,
+                            user,
+                            "user",
+                            &asset_type,
+                        )?
+                        .into_iter()
+                        .for_each(|req| futures.1.push(Box::pin(self.execute_to_unit_result(req)))),
+                    jetty_core::write::assets::diff::policies::DiffDetails::ModifyAgent {
+                        add,
+                        remove,
+                    } => {
+                        // catch changes to content permissions and check for errors
+                        try_update_content_permissions(
+                            &diff.asset,
+                            &mut set_tableau_content_permissions,
+                            add,
+                        )?;
+
+                        user_adds.insert(
+                            user.to_owned(),
+                            add.privileges
+                                .iter()
+                                .map(|p| IndividualPermission::from_string(p))
+                                .collect::<Vec<_>>(),
+                        );
+                        self.build_delete_default_policy_requests(
+                            remove,
+                            asset_reference,
+                            user,
+                            "user",
+                            &asset_type,
+                        )?
+                        .into_iter()
+                        .for_each(|req| futures.1.push(Box::pin(self.execute_to_unit_result(req))));
+                    }
+                }
+            }
+            for (group, details) in &diff.groups {
+                // get the group_id
+                let temp_group_map = group_map.lock().unwrap();
+                let group_id = temp_group_map
+                    .get(group)
+                    .ok_or(anyhow!("Unable to find group id for {}", group))?;
+                match details {
+                    jetty_core::write::assets::diff::policies::DiffDetails::AddAgent { add } => {
+                        // catch changes to content permissions and check for errors
+                        try_update_content_permissions(
+                            &diff.asset,
+                            &mut set_tableau_content_permissions,
+                            add,
+                        )?;
+                        group_adds.insert(
+                            group_id.to_owned(),
+                            add.privileges
+                                .iter()
+                                .map(|p| IndividualPermission::from_string(p))
+                                .collect::<Vec<_>>(),
+                        );
+                    }
+                    jetty_core::write::assets::diff::policies::DiffDetails::RemoveAgent {
+                        remove,
+                    } => self
+                        .build_delete_default_policy_requests(
+                            remove,
+                            asset_reference,
+                            &group_id,
+                            "group",
+                            &asset_type,
+                        )?
+                        .into_iter()
+                        .for_each(|req| futures.1.push(Box::pin(self.execute_to_unit_result(req)))),
+                    jetty_core::write::assets::diff::policies::DiffDetails::ModifyAgent {
+                        add,
+                        remove,
+                    } => {
+                        // catch changes to content permissions and check for errors
+                        try_update_content_permissions(
+                            &diff.asset,
+                            &mut set_tableau_content_permissions,
+                            add,
+                        )?;
+                        if !add.privileges.is_empty() {
+                            group_adds.insert(
+                                group_id.to_owned(),
+                                add.privileges
+                                    .iter()
+                                    .map(|p| IndividualPermission::from_string(p))
+                                    .collect::<Vec<_>>(),
+                            );
+                        }
+                        if !remove.privileges.is_empty() {
+                            self.build_delete_default_policy_requests(
+                                remove,
+                                asset_reference,
+                                &group_id,
+                                "group",
+                                &asset_type,
+                            )?
+                            .into_iter()
+                            .for_each(|req| {
+                                futures.1.push(Box::pin(self.execute_to_unit_result(req)))
+                            });
+                        }
+                    }
+                }
+            }
+            if !user_adds.is_empty() || !group_adds.is_empty() {
+                futures.1.push(Box::pin(self.execute_to_unit_result(
+                    self.build_add_default_policy_request(
+                        asset_reference,
+                        user_adds,
+                        group_adds,
+                        &asset_type,
+                    )?,
+                )));
+            }
+
+            if let Some(content_permissions) = set_tableau_content_permissions {
+                futures.1.push(Box::pin(self.execute_to_unit_result(
+                    self.generate_content_permissions_request(
+                        asset_reference,
+                        &content_permissions,
+                    )?,
+                )));
+            };
+        }
+        Ok(futures)
     }
 
     fn build_delete_default_policy_requests(
