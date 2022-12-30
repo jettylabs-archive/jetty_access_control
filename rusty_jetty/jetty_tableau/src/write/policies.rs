@@ -177,23 +177,27 @@ fn generate_add_requests(
 
     request_text += "body:
   {
-    permissions: {\n";
+    \"permissions\": {\n";
     if !matches!(asset.asset_type, TableauAssetType::Project) {
         request_text += format!(
-            "      {}: {{ id: \"{}\" }},\n",
+            "      \"{}\": {{ \"id\": \"{}\" }},\n",
             asset.asset_type.as_str(),
             asset.id
         )
         .as_str();
     }
-    request_text += "      granteeCapabilities: [\n";
+    request_text += "      \"granteeCapabilities\": [\n";
     for (user_id, permissions) in user.iter() {
         request_text += "        {\n";
-        request_text += format!("          user: {{ id: \"{}\" }},\n", user_id.to_owned()).as_str();
-        request_text += "          capabilities: [\n";
+        request_text += format!(
+            "          \"user\": {{ \"id\": \"{}\" }},\n",
+            user_id.to_owned()
+        )
+        .as_str();
+        request_text += "          \"capabilities\": [\n";
         for permission in permissions {
             request_text += format!(
-                "            {{ capability: {{ name: \"{}\", mode: \"{}\" }} }}\n",
+                "            {{ \"capability\": {{ \"name\": \"{}\", \"mode\": \"{}\" }} }}\n",
                 &permission.capability,
                 &permission.mode.to_string()
             )
@@ -204,12 +208,15 @@ fn generate_add_requests(
     }
     for (group_id, permissions) in group.iter() {
         request_text += "        {\n";
-        request_text +=
-            format!("          group: {{ id: \"{}\" }},\n", group_id.to_owned()).as_str();
-        request_text += "          capabilities: [\n";
+        request_text += format!(
+            "          \"group\": {{ \"id\": \"{}\" }},\n",
+            group_id.to_owned()
+        )
+        .as_str();
+        request_text += "          \"capabilities\": [\n";
         for permission in permissions {
             request_text += format!(
-                "            {{ capability: {{ name: \"{}\", mode: \"{}\" }} }}\n",
+                "            {{ \"capability\": {{ \"name\": \"{}\", \"mode\": \"{}\" }} }}\n",
                 &permission.capability,
                 &permission.mode.to_string()
             )
