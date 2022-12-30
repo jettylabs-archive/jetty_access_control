@@ -61,7 +61,7 @@ impl TableauConnector {
         Ok(plans)
     }
 
-    async fn generate_group_apply_futures<'a>(
+    pub(super) fn generate_group_apply_futures<'a>(
         &'a self,
         group_diffs: &'a Vec<groups::LocalDiff>,
         group_map: Arc<Mutex<HashMap<String, String>>>,

@@ -131,7 +131,7 @@ impl TableauConnector {
         Ok(plans)
     }
 
-    async fn generate_policy_apply_futures<'a>(
+    pub(super) fn generate_policy_apply_futures<'a>(
         &'a self,
         policy_diffs: &'a Vec<policies::LocalDiff>,
         group_map: Arc<Mutex<HashMap<String, String>>>,

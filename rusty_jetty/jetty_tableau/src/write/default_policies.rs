@@ -187,7 +187,7 @@ impl TableauConnector {
         Ok(plans)
     }
 
-    pub(crate) fn generate_default_policy_apply_futures(
+    pub(super) fn generate_default_policy_apply_futures(
         &self,
         policy_diffs: &Vec<default_policies::LocalDiff>,
         group_map: Arc<Mutex<HashMap<String, String>>>,

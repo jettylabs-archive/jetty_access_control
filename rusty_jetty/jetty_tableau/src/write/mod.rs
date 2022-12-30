@@ -28,13 +28,11 @@ pub(crate) struct PrioritizedPlans(
 );
 
 impl PrioritizedPlans {
-    pub(crate) fn extend(&mut self, other: &Self) {
-        self.0
-            .extend(other.0.iter().map(|r| r.try_clone().unwrap()));
-        self.1
-            .extend(other.1.iter().map(|r| r.try_clone().unwrap()));
-        self.2
-            .extend(other.2.iter().map(|r| r.try_clone().unwrap()));
+    /// extend prioritized plans, consuming other
+    pub(crate) fn extend(&mut self, other: Self) {
+        self.0.extend(other.0.into_iter().map(|r| r));
+        self.1.extend(other.1.into_iter().map(|r| r));
+        self.2.extend(other.2.into_iter().map(|r| r));
     }
     pub(crate) fn flatten_to_string_vec(&self) -> Vec<String> {
         [&self.0, &self.1, &self.2]
@@ -51,6 +49,15 @@ pub(crate) struct PrioritizedFutures<'a>(
     pub(crate) Vec<BoxFuture<'a, Result<()>>>,
     pub(crate) Vec<BoxFuture<'a, Result<()>>>,
 );
+
+impl<'a> PrioritizedFutures<'a> {
+    /// extend prioritized futures, consuming other
+    pub(crate) fn extend(&mut self, other: Self) {
+        self.0.extend(other.0.into_iter().map(|r| r));
+        self.1.extend(other.1.into_iter().map(|r| r));
+        self.2.extend(other.2.into_iter().map(|r| r));
+    }
+}
 
 fn request_to_string(req: &reqwest::Request) -> String {
     let mut res = format!("{} {}\n", req.method(), req.url().path(),);
@@ -74,81 +81,36 @@ impl TableauConnector {
     pub(super) fn generate_plan_futures<'a>(
         &'a self,
         diffs: &'a LocalConnectorDiffs,
-    ) -> Result<Vec<Vec<Pin<Box<dyn Future<Output = Result<()>> + '_ + Send>>>>> {
-        todo!();
-        // let mut batch1: Vec<BoxFuture<_>> = Vec::new();
-        // let mut batch2: Vec<BoxFuture<_>> = Vec::new();
+    ) -> Result<PrioritizedFutures> {
+        let group_map: HashMap<String, String> = self
+            .coordinator
+            .env
+            .groups
+            .iter()
+            .map(|(_name, g)| (g.name.to_owned(), g.id.to_owned()))
+            .collect();
 
-        // let group_map: HashMap<String, String> = self
-        //     .coordinator
-        //     .env
-        //     .groups
-        //     .iter()
-        //     .map(|(_name, g)| (g.name.to_owned(), g.id.to_owned()))
-        //     .collect();
+        let group_map_mutex = Arc::new(Mutex::new(group_map));
 
-        // let group_map_mutex = Arc::new(Mutex::new(group_map));
+        let mut futures = PrioritizedFutures::default();
 
-        // // Starting with groups
-        // let group_diffs = &diffs.groups;
-        // for diff in group_diffs {
-        //     match &diff.details {
-        //         groups::LocalDiffDetails::AddGroup { members } => {
-        //             // start by creating the group
-        //             batch1.push(Box::pin(self.create_group_and_add_to_env(
-        //                 &diff.group_name,
-        //                 group_map_mutex.clone(),
-        //             )));
-        //             for user in &members.users {
-        //                 batch2.push(Box::pin(self.add_user_to_group(
-        //                     user,
-        //                     &diff.group_name,
-        //                     Arc::clone(&group_map_mutex),
-        //                 )))
-        //             }
-        //         }
-        //         groups::LocalDiffDetails::RemoveGroup => {
-        //             // get the group_id
-        //             let temp_group_map = group_map_mutex.lock().unwrap();
-        //             let group_id = temp_group_map
-        //                 .get(&diff.group_name)
-        //                 .ok_or(anyhow!("Unable to find group id for {}", &diff.group_name))?;
+        let group_futures =
+            self.generate_group_apply_futures(&diffs.groups, Arc::clone(&group_map_mutex))?;
+        let user_futures =
+            self.generate_user_apply_futures(&diffs.users, Arc::clone(&group_map_mutex))?;
+        let policy_futures =
+            self.generate_policy_apply_futures(&diffs.policies, Arc::clone(&group_map_mutex))?;
+        let default_policy_futures = self.generate_default_policy_apply_futures(
+            &diffs.default_policies,
+            Arc::clone(&group_map_mutex),
+        )?;
 
-        //             let req = self.coordinator.rest_client.build_request(
-        //                 format!("groups/{group_id}"),
-        //                 None,
-        //                 reqwest::Method::DELETE,
-        //             )?;
-        //             batch1.push(Box::pin(request_builder_to_unit_result(req)))
-        //         }
-        //         groups::LocalDiffDetails::ModifyGroup { add, remove } => {
-        //             // Add users
-        //             for user in &add.users {
-        //                 batch2.push(Box::pin(self.add_user_to_group(
-        //                     user,
-        //                     &diff.group_name,
-        //                     group_map_mutex.clone(),
-        //                 )))
-        //             }
-        //             // Remove users
-        //             // get the group_id
-        //             let temp_group_map = group_map_mutex.lock().unwrap();
-        //             let group_id = temp_group_map
-        //                 .get(&diff.group_name)
-        //                 .ok_or(anyhow!("Unable to find group id for {}", &diff.group_name))?;
+        futures.extend(group_futures);
+        futures.extend(user_futures);
+        futures.extend(policy_futures);
+        futures.extend(default_policy_futures);
 
-        //             for user in &remove.users {
-        //                 let req = self.coordinator.rest_client.build_request(
-        //                     format!("groups/{group_id}/users/{user}"),
-        //                     None,
-        //                     reqwest::Method::DELETE,
-        //                 )?;
-        //                 batch1.push(Box::pin(request_builder_to_unit_result(req)))
-        //             }
-        //         }
-        //     }
-        // }
-        // Ok(vec![batch1, batch2])
+        Ok(futures)
     }
 
     pub(super) fn generate_request_plan(
@@ -162,10 +124,10 @@ impl TableauConnector {
         let policy_plans = self.prepare_policies_plan(&diffs.policies)?;
         let default_policy_plans = self.prepare_default_policies_plan(&diffs.default_policies)?;
 
-        plans.extend(&group_plans);
-        plans.extend(&user_plans);
-        plans.extend(&policy_plans);
-        plans.extend(&default_policy_plans);
+        plans.extend(group_plans);
+        plans.extend(user_plans);
+        plans.extend(policy_plans);
+        plans.extend(default_policy_plans);
 
         Ok(plans)
     }

@@ -391,7 +391,9 @@ impl Connector for TableauConnector {
         let mut success_counter = 0;
         let mut failure_counter = 0;
         // This is designed in such a way that each query_set may be run concurrently.
-        for request_set in self.generate_plan_futures(diffs)? {
+        let futures = self.generate_plan_futures(diffs)?;
+
+        for request_set in [futures.0, futures.1, futures.2] {
             let results = futures::stream::iter(request_set)
                 .buffered(coordinator::CONCURRENT_METADATA_FETCHES)
                 .collect::<Vec<_>>()
