@@ -170,39 +170,6 @@ impl TableauConnector {
         Ok(plans)
     }
 
-    /// Function to add users to a group, deferring the group lookup until it's needed. This
-    /// allows it to work for new groups
-    async fn add_user_to_group(
-        &self,
-        user: &String,
-        group_name: &String,
-        group_map: Arc<Mutex<HashMap<String, String>>>,
-    ) -> Result<()> {
-        // get the group_id
-        let mut group_id = "".to_owned();
-        {
-            let temp_group_map = group_map.lock().unwrap();
-            group_id = temp_group_map
-                .get(group_name)
-                .ok_or(anyhow!("Unable to find group id for {}", group_name))?
-                .to_owned();
-        }
-
-        // Add the user
-        let req_body = json!({"user": {"id": user}});
-        self.coordinator
-            .rest_client
-            .build_request(
-                format!("groups/{group_id}/users"),
-                Some(req_body),
-                reqwest::Method::POST,
-            )?
-            .send()
-            .await?;
-
-        Ok(())
-    }
-
     /// Function to execute a request and return a unit response
     async fn execute_to_unit_result(&self, request: Request) -> Result<()> {
         let x = self.coordinator.rest_client.execute(request).await?;

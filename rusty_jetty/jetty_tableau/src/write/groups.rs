@@ -61,9 +61,9 @@ impl TableauConnector {
         Ok(plans)
     }
 
-    async fn generate_group_apply_futures(
-        &self,
-        group_diffs: &Vec<groups::LocalDiff>,
+    async fn generate_group_apply_futures<'a>(
+        &'a self,
+        group_diffs: &'a Vec<groups::LocalDiff>,
         group_map: Arc<Mutex<HashMap<String, String>>>,
     ) -> Result<PrioritizedFutures> {
         let mut futures = PrioritizedFutures::default();
@@ -102,7 +102,7 @@ impl TableauConnector {
                 }
             }
         }
-        todo!();
+        Ok(futures)
     }
 
     /// build a request to add a group
