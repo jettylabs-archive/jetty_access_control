@@ -77,28 +77,33 @@ pub(crate) fn generate_queries_for_diff_details(
             )]
         }
         assets::diff::policies::DiffDetails::ModifyAgent { add, remove } => {
-            let privileges = add
-                .privileges
-                .to_owned()
-                .into_iter()
-                .collect::<Vec<_>>()
-                .join(", ");
-            let mut res = vec![format!(
-                "GRANT {privileges} ON {} {} TO {agent_type} {agent}",
-                asset.asset_type(),
-                asset.fqn()
-            )];
-            let privileges = remove
-                .privileges
-                .to_owned()
-                .into_iter()
-                .collect::<Vec<_>>()
-                .join(", ");
-            res.push(format!(
-                "REVOKE {privileges} ON {} {} FROM {agent_type} {agent}",
-                asset.asset_type(),
-                asset.fqn()
-            ));
+            let mut res = Vec::new();
+            if !add.privileges.is_empty() {
+                let privileges = add
+                    .privileges
+                    .to_owned()
+                    .into_iter()
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                res = vec![format!(
+                    "GRANT {privileges} ON {} {} TO {agent_type} {agent}",
+                    asset.asset_type(),
+                    asset.fqn()
+                )];
+            }
+            if !remove.privileges.is_empty() {
+                let privileges = remove
+                    .privileges
+                    .to_owned()
+                    .into_iter()
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                res.push(format!(
+                    "REVOKE {privileges} ON {} {} FROM {agent_type} {agent}",
+                    asset.asset_type(),
+                    asset.fqn()
+                ));
+            }
             res
         }
     }

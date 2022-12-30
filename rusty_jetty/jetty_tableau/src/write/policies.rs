@@ -24,19 +24,14 @@ impl TableauConnector {
         let mut plans = PrioritizedPlans::default();
 
         let base_url = format![
-            "https://{}/api/{}/sites/{}/",
+            "https://{}/api/{}/sites/{}",
             self.coordinator.rest_client.get_server_name(),
             self.coordinator.rest_client.get_api_version(),
             self.coordinator.rest_client.get_site_id()?,
         ];
 
         for diff in policy_diffs {
-            let asset_reference = self
-                .coordinator
-                .env
-                .cual_id_map
-                .get_by_left(&diff.asset)
-                .unwrap();
+            let asset_reference = self.coordinator.env.cual_id_map.get(&diff.asset).unwrap();
 
             let mut user_adds = HashMap::new();
             let mut group_adds = HashMap::new();
@@ -111,30 +106,35 @@ impl TableauConnector {
                         add,
                         remove,
                     } => {
-                        group_adds.insert(
-                            group_id.to_owned(),
-                            add.privileges
-                                .iter()
-                                .map(|p| IndividualPermission::from_string(p))
-                                .collect::<Vec<_>>(),
-                        );
-                        plans.2.extend(generate_delete_requests(
-                            remove,
-                            &base_url,
-                            asset_reference,
-                            &group_id,
-                            "group",
-                        ));
+                        if !add.privileges.is_empty() {
+                            group_adds.insert(
+                                group_id.to_owned(),
+                                add.privileges
+                                    .iter()
+                                    .map(|p| IndividualPermission::from_string(p))
+                                    .collect::<Vec<_>>(),
+                            );
+                        }
+                        if !remove.privileges.is_empty() {
+                            plans.2.extend(generate_delete_requests(
+                                remove,
+                                &base_url,
+                                asset_reference,
+                                &group_id,
+                                "group",
+                            ));
+                        }
                     }
                 }
             }
-
-            plans.2.push(generate_add_requests(
-                &base_url,
-                asset_reference,
-                user_adds,
-                group_adds,
-            ));
+            if !user_adds.is_empty() || !group_adds.is_empty() {
+                plans.2.push(generate_add_requests(
+                    &base_url,
+                    asset_reference,
+                    user_adds,
+                    group_adds,
+                ));
+            }
         }
         Ok(plans)
     }
@@ -169,7 +169,7 @@ fn generate_add_requests(
     group: HashMap<String, Vec<IndividualPermission>>,
 ) -> String {
     let mut request_text = format!(
-        "PUT {}/{}/{}/permissions",
+        "PUT {}/{}/{}/permissions\n",
         base_url,
         asset.asset_type.as_category_str(),
         asset.id
@@ -193,7 +193,7 @@ fn generate_add_requests(
         request_text += "          capabilities: [\n";
         for permission in permissions {
             request_text += format!(
-                "{{ capability: {{ name: \"{}\", mode: \"{}\" }} }}",
+                "            {{ capability: {{ name: \"{}\", mode: \"{}\" }} }}\n",
                 &permission.capability,
                 &permission.mode.to_string()
             )
@@ -209,7 +209,7 @@ fn generate_add_requests(
         request_text += "          capabilities: [\n";
         for permission in permissions {
             request_text += format!(
-                "{{ capability: {{ name: \"{}\", mode: \"{}\" }} }}",
+                "            {{ capability: {{ name: \"{}\", mode: \"{}\" }} }}\n",
                 &permission.capability,
                 &permission.mode.to_string()
             )

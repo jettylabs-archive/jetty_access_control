@@ -12,6 +12,7 @@ use futures::{join, Future};
 use jetty_core::cual::Cual;
 use jetty_core::logging::error;
 use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 
 use crate::file_parse::origin::SourceOrigin;
 use crate::nodes::{self, Permissionable, ProjectId, TableauCualable};
@@ -28,6 +29,7 @@ const SERIALIZED_ENV_FILENAME: &str = "tableau_env.json";
 
 /// The state of a tableau site. We use this to persist state and
 /// enable incremental updates.
+#[serde_as]
 #[derive(Default, Deserialize, Serialize, Debug, Clone)]
 pub(crate) struct Environment {
     pub users: HashMap<String, nodes::User>,
@@ -39,7 +41,8 @@ pub(crate) struct Environment {
     pub metrics: HashMap<String, nodes::Metric>,
     pub views: HashMap<String, nodes::View>,
     pub workbooks: HashMap<String, nodes::Workbook>,
-    pub cual_id_map: bimap::BiHashMap<Cual, TableauAssetReference>,
+    #[serde_as(as = "HashMap<serde_with::json::JsonString, _>")]
+    pub cual_id_map: HashMap<Cual, TableauAssetReference>,
 }
 
 #[derive(Hash, Default, Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]

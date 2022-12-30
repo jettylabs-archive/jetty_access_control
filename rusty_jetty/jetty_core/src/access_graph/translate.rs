@@ -534,12 +534,17 @@ impl Translator {
                     .context("unable to find cual prefix")?
                     .to_owned()
                     .unwrap_or_default();
-                let path = path.components().join("/");
+                let path = path
+                    .components()
+                    .iter()
+                    .map(|c| urlencoding::encode(c))
+                    .collect::<Vec<_>>()
+                    .join("/");
 
                 let mut uri = Url::parse(format!("{prefix}/{path}").as_str())?;
                 match asset_type {
                     Some(asset_type) => {
-                        uri.set_query(Some(format!("type={asset_type:?}").as_str()))
+                        uri.set_query(Some(format!("type={}", asset_type.to_string()).as_str()))
                     }
                     None => (),
                 }
