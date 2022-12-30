@@ -30,28 +30,28 @@ pub(super) async fn diff() -> Result<()> {
     let diffs = get_diffs(jetty)?;
 
     // Now print out the diffs
-    println!("\nUSERS\n----------------");
+    println!("\nUSERS\n──────────────────");
     if !diffs.users.is_empty() {
         diffs.users.iter().for_each(|diff| println!("{diff}"));
     } else {
         println!("No changes found");
     };
 
-    println!("\nGROUPS\n----------------");
+    println!("\nGROUPS\n──────────────────");
     if !diffs.groups.is_empty() {
         diffs.groups.iter().for_each(|diff| println!("{diff}"));
     } else {
         println!("No changes found");
     };
 
-    println!("\nPOLICIES\n----------------");
+    println!("\nPOLICIES\n──────────────────");
     if !diffs.policies.is_empty() {
         diffs.policies.iter().for_each(|diff| println!("{diff}"));
     } else {
         println!("No changes found");
     };
 
-    println!("\nDEFAULT POLICIES\n----------------");
+    println!("\nDEFAULT POLICIES\n──────────────────");
     if !diffs.default_policies.is_empty() {
         diffs
             .default_policies

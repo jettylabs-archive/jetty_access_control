@@ -24,6 +24,7 @@ use std::{
 
 use anyhow::{anyhow, bail, Context, Result};
 use clap::Parser;
+use colored::Colorize;
 use human_panic::setup_panic;
 use indicatif::{ProgressBar, ProgressStyle};
 
@@ -338,15 +339,10 @@ async fn bootstrap(overwrite: bool) -> Result<()> {
         warn!("failed to generate files for all users: {}", e);
     }
 
-    // sanity check - the diff should be empty at this point
-    // let validated_group_config = parse_and_validate_groups(&jetty)?;
-    // if jetty_core::write::get_group_diff(&validated_group_config, &jetty)
-    //     .context("checking the generated group configuration")?
-    //     .len()
-    //     != 0
-    // {
-    //     bail!("something went wrong - the configuration generated doesn't fully match the true state of your environment; please contact support: support@get-jetty.com")
-    // }
+    println!(
+        "{}",
+        "\nSuccessfully bootstrapped your environment! 🎉🎉".green()
+    );
 
     Ok(())
 }
