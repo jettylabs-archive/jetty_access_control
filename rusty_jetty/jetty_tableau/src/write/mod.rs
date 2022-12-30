@@ -134,7 +134,7 @@ impl TableauConnector {
 
     /// Function to execute a request and return a unit response
     async fn execute_to_unit_result(&self, request: Request) -> Result<()> {
-        let x = self.coordinator.rest_client.execute(request).await?;
+        self.coordinator.rest_client.execute(request).await?;
         Ok(())
     }
 }
