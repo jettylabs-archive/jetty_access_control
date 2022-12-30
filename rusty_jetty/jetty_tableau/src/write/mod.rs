@@ -8,8 +8,9 @@ use std::{
 
 use anyhow::{anyhow, Context, Result};
 
-use futures::Future;
+use futures::{future::BoxFuture, Future};
 use jetty_core::access_graph::translate::diffs::LocalConnectorDiffs;
+use reqwest::Request;
 use serde_json::json;
 
 use crate::{rest, TableauConnector};
@@ -43,6 +44,13 @@ impl PrioritizedPlans {
             .collect::<Vec<_>>()
     }
 }
+
+#[derive(Default)]
+pub(crate) struct PrioritizedFutures<'a>(
+    pub(crate) Vec<BoxFuture<'a, Result<()>>>,
+    pub(crate) Vec<BoxFuture<'a, Result<()>>>,
+    pub(crate) Vec<BoxFuture<'a, Result<()>>>,
+);
 
 fn request_to_string(req: &reqwest::Request) -> String {
     let mut res = format!("{} {}\n", req.method(), req.url().path(),);
@@ -162,30 +170,6 @@ impl TableauConnector {
         Ok(plans)
     }
 
-    async fn create_group_and_add_to_env(
-        &self,
-        group_name: &String,
-        group_map: Arc<Mutex<HashMap<String, String>>>,
-    ) -> Result<()> {
-        let req_body = json!({"group": { "name": group_name }});
-        let req = self.coordinator.rest_client.build_request(
-            "groups/".to_string(),
-            Some(req_body),
-            reqwest::Method::POST,
-        )?;
-        let resp = req.send().await?.json::<serde_json::Value>().await?;
-
-        let group_id = rest::get_json_from_path(&resp, &vec!["group".to_owned(), "id".to_owned()])?
-            .as_str()
-            .ok_or_else(|| anyhow!["unable to get new id for {group_name}"])?
-            .to_string();
-
-        // update the environment so that when users look for this group in the future, they are able to find it!
-        let mut locked_group_map = group_map.lock().unwrap();
-        locked_group_map.insert(group_name.to_owned(), group_id);
-        Ok(())
-    }
-
     /// Function to add users to a group, deferring the group lookup until it's needed. This
     /// allows it to work for new groups
     async fn add_user_to_group(
@@ -216,6 +200,12 @@ impl TableauConnector {
             .send()
             .await?;
 
+        Ok(())
+    }
+
+    /// Function to execute a request and return a unit response
+    async fn execute_to_unit_result(&self, request: Request) -> Result<()> {
+        let x = self.coordinator.rest_client.execute(request).await?;
         Ok(())
     }
 }

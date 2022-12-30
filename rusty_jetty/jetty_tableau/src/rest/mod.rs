@@ -17,6 +17,7 @@ use anyhow::{bail, Context};
 use async_trait::async_trait;
 use bytes::Bytes;
 
+use reqwest::Request;
 use serde::Serialize;
 
 pub(crate) trait Downloadable {
@@ -51,6 +52,13 @@ impl TableauRestClient {
         };
         tc.fetch_token_and_site_id().await?;
         Ok(tc)
+    }
+
+    pub(crate) async fn execute(
+        &self,
+        request: Request,
+    ) -> Result<reqwest::Response, reqwest::Error> {
+        self.http_client.execute(request).await
     }
 
     /// Download a Tableau asset. Most Workbooks and Datasources can have a query parameter to exclude
