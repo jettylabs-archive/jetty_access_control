@@ -43,6 +43,20 @@ impl TableauAssetType {
         }
     }
 
+    /// Get an asset type from str
+    pub(crate) fn from_str(s: &str) -> Result<TableauAssetType> {
+        match s {
+            "project" => Ok(TableauAssetType::Project),
+            "datasource" => Ok(TableauAssetType::Datasource),
+            "flow" => Ok(TableauAssetType::Flow),
+            "workbook" => Ok(TableauAssetType::Workbook),
+            "lens" => Ok(TableauAssetType::Lens),
+            "metric" => Ok(TableauAssetType::Metric),
+            "view" => Ok(TableauAssetType::View),
+            _ => bail!("invalid asset type: {}", s),
+        }
+    }
+
     /// At times we need to compose a URL, so the category helps give us the right
     /// url information
     pub(crate) fn as_category_str(&self) -> &'static str {

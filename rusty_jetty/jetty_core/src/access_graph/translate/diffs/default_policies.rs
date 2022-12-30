@@ -20,7 +20,7 @@ pub struct LocalDiff {
     /// The type of asset that the policy applies to
     pub asset_type: String,
     /// a map of users and user-specific changes for the asset
-    /// Note: The type is the same as a regular policy becuase we don't need to
+    /// Note: The type is the same as a regular policy because we don't need to
     /// pass the extra info about whether this is connector_managed
     pub users: HashMap<String, write::assets::diff::policies::DiffDetails>,
     /// a map of groups and group-specific changes for the asset

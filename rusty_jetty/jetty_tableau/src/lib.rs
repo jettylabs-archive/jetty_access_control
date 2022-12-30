@@ -250,10 +250,12 @@ impl TableauConnector {
         let group_plans = self.prepare_groups_plan(&diffs.groups)?;
         let user_plans = self.prepare_users_plan(&diffs.users)?;
         let policy_plans = self.prepare_policies_plan(&diffs.policies)?;
+        let default_policy_plans = self.prepare_default_policies_plan(&diffs.default_policies)?;
 
         plans.extend(&group_plans);
         plans.extend(&user_plans);
         plans.extend(&policy_plans);
+        plans.extend(&default_policy_plans);
 
         Ok(plans)
     }

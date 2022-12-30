@@ -2,6 +2,7 @@
 
 use crate::TableauConnector;
 
+mod default_policies;
 mod groups;
 mod policies;
 mod users;
