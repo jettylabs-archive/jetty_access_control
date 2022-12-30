@@ -22,6 +22,7 @@ use self::typed_indices::DefaultPolicyIndex;
 use self::typed_indices::GroupIndex;
 use self::typed_indices::PolicyIndex;
 use self::typed_indices::TagIndex;
+use self::typed_indices::TypedIndex;
 use self::typed_indices::UserIndex;
 
 use super::{EdgeType, JettyNode, NodeName};
@@ -409,27 +410,63 @@ impl Graph {
 
     /// Add edges from cache. Return false if to/from doesn't exist
     pub(crate) fn add_edge(&mut self, edge: super::JettyEdge) -> bool {
-        let to = self.get_untyped_node_index(&edge.to).or_else(|| {
-            warn![
-                "Unable to find \"to\" node: {:?} for \"from\" {:?}",
-                &edge.to, &edge.from
-            ];
-            None
-        });
+        let to = self
+            .get_untyped_node_index(&edge.to)
+            .or_else(|| self.find_partially_matching_asset(&edge.to))
+            .or_else(|| {
+                warn![
+                    "Unable to find \"to\" node: {:?} for \"from\" {:?}",
+                    &edge.to, &edge.from
+                ];
+                None
+            });
 
-        let from = self.get_untyped_node_index(&edge.from).or_else(|| {
-            warn![
-                "Unable to find \"from\" node: {:?} for \"to\" {:?}",
-                &edge.from, &edge.to
-            ];
-            None
-        });
+        let from = self
+            .get_untyped_node_index(&edge.from)
+            .or_else(|| self.find_partially_matching_asset(&edge.from))
+            .or_else(|| {
+                warn![
+                    "Unable to find \"from\" node: {:?} for \"to\" {:?}",
+                    &edge.from, &edge.to
+                ];
+                None
+            });
 
         if let (Some(to), Some(from)) = (to, from) {
             self.graph.add_edge(from, to, edge.edge_type);
             true
         } else {
             false
+        }
+    }
+
+    /// check for a single asset with the correct connector and matching path (basically just ignoring the type).
+    /// this is a pretty expensive search right now, but it lets us link up dbt to snowflake
+    fn find_partially_matching_asset(&self, target: &NodeName) -> Option<NodeIndex> {
+        match target {
+            NodeName::Asset {
+                connector: target_connector,
+                path: target_path,
+                ..
+            } => {
+                let matches = self
+                    .nodes
+                    .assets
+                    .iter()
+                    .filter(|(n, _)| match n {
+                        NodeName::Asset {
+                            connector, path, ..
+                        } => connector == target_connector && path == target_path,
+                        _ => panic!("found a non-asset in the list of assets"),
+                    })
+                    .collect::<Vec<_>>();
+                if matches.len() == 1 {
+                    Some(matches[0].1.idx())
+                } else {
+                    None
+                }
+            }
+            _ => panic!("this function can only be used with assets"),
         }
     }
 }
