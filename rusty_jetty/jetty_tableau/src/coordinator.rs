@@ -229,19 +229,21 @@ impl Coordinator {
             cual_id_map: Default::default(),
         };
 
-        // Now, make sure that assets sources are all up to date
+        // FUTURE: put this back in. Right now, we don't fetch the sources well, so we'll just skip it. This needs to be
+        // reworked to use the metadata api
+        // // Now, make sure that assets sources are all up to date
 
-        let source_futures = vec![
-            self.get_source_futures_from_map(&mut new_env.flows, &self.env.flows),
-            self.get_source_futures_from_map(&mut new_env.datasources, &self.env.datasources),
-            self.get_source_futures_from_map(&mut new_env.workbooks, &self.env.workbooks),
-        ];
+        // let source_futures = vec![
+        //     self.get_source_futures_from_map(&mut new_env.flows, &self.env.flows),
+        //     self.get_source_futures_from_map(&mut new_env.datasources, &self.env.datasources),
+        //     self.get_source_futures_from_map(&mut new_env.workbooks, &self.env.workbooks),
+        // ];
 
-        // Source fetches
-        futures::stream::iter(source_futures.into_iter().flatten())
-            .buffer_unordered(CONCURRENT_ASSET_DOWNLOADS)
-            .collect::<Vec<_>>()
-            .await;
+        // // Source fetches
+        // futures::stream::iter(source_futures.into_iter().flatten())
+        //     .buffer_unordered(CONCURRENT_ASSET_DOWNLOADS)
+        //     .collect::<Vec<_>>()
+        //     .await;
 
         // Clone the env so we don't try to both immutably and mutably borrow at the same time.
         let new_env_clone = new_env.clone();
