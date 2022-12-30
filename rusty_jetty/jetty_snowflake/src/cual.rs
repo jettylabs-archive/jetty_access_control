@@ -137,7 +137,7 @@ impl Cualable for Database {
     }
 }
 
-fn cual_to_snowflake_asset(cual: &Cual) -> SnowflakeAsset {
+pub(crate) fn cual_to_snowflake_asset(cual: &Cual) -> SnowflakeAsset {
     let path = cual.asset_path().components().to_owned();
     let asset_type = cual.asset_type().unwrap();
     let fqn = path

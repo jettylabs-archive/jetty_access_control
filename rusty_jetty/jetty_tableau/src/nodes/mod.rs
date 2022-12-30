@@ -226,7 +226,7 @@ pub(crate) trait TableauCualable {
 macro_rules! impl_Cualable {
     (for $($t:tt),+) => {
         $(impl TableauCualable for $t {
-            fn cual(&self, env:&Environment) -> Cual{
+            fn cual(&self, env: &Environment) -> Cual{
                     get_tableau_cual(
                         TableauAssetType::$t,
                         &self.name,
@@ -290,6 +290,47 @@ impl TableauCualable for Lens {
 #[derive(Deserialize, Debug, Clone)]
 struct IdField {
     id: String,
+}
+
+pub(crate) struct IndividualPermission {
+    pub(crate) capability: String,
+    pub(crate) mode: TableauPermissionMode,
+}
+
+pub(crate) enum TableauPermissionMode {
+    Allow,
+    Deny,
+    Other,
+}
+
+impl ToString for TableauPermissionMode {
+    fn to_string(&self) -> String {
+        match self {
+            TableauPermissionMode::Allow => "Allow".to_owned(),
+            TableauPermissionMode::Deny => "Deny".to_owned(),
+            TableauPermissionMode::Other => "Other".to_owned(),
+        }
+    }
+}
+
+impl IndividualPermission {
+    pub(crate) fn from_string(val: &String) -> Self {
+        let mode = if val.starts_with("Allow") {
+            TableauPermissionMode::Allow
+        } else if val.starts_with("Deny") {
+            TableauPermissionMode::Deny
+        } else {
+            TableauPermissionMode::Other
+        };
+
+        let capability = val
+            .strip_prefix("Deny")
+            .unwrap_or(val)
+            .strip_prefix("Allow")
+            .unwrap_or(val)
+            .to_owned();
+        IndividualPermission { capability, mode }
+    }
 }
 
 /// Representation of Tableau permissions

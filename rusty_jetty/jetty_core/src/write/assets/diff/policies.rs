@@ -44,7 +44,10 @@ pub enum DiffDetails {
         add: PolicyState,
     },
     /// Remove an agent from the policy
-    RemoveAgent,
+    RemoveAgent {
+        /// The permissions being removed
+        remove: PolicyState,
+    },
     /// Change policy state
     ModifyAgent {
         /// What's being added
@@ -100,8 +103,20 @@ fn print_diff_inner_details(
                     }
                 }
             }
-            DiffDetails::RemoveAgent => {
+            DiffDetails::RemoveAgent { remove } => {
                 text += &format!("{}", format!("  - {}{}\n", prefix, name).as_str().red());
+                if !remove.privileges.is_empty() {
+                    text += "    privileges:\n";
+                    for privilege in &remove.privileges {
+                        text += &format!("{}", format!("      - {}\n", privilege).as_str().red());
+                    }
+                }
+                if !remove.metadata.is_empty() {
+                    text += "    metadata:\n";
+                    for (k, v) in &remove.metadata {
+                        text += &format!("{}", format!("{}{k}: {v}\n", "      - ").as_str().red());
+                    }
+                }
             }
             DiffDetails::ModifyAgent { add, remove } => {
                 text += &format!("{}", format!("  ~ {}{}\n", prefix, name).as_str().yellow());
@@ -203,7 +218,9 @@ pub(crate) fn diff_policies(
             continue;
         }
 
-        let diff_details = DiffDetails::RemoveAgent;
+        let diff_details = DiffDetails::RemoveAgent {
+            remove: env_value.to_owned(),
+        };
         policy_diffs
             // add to the policy diff for the asset
             .entry(env_key.0.to_owned())

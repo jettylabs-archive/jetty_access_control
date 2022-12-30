@@ -256,17 +256,15 @@ impl Connector for SnowflakeConnector {
         }
     }
     fn plan_changes(&self, diffs: &LocalConnectorDiffs) -> Vec<std::string::String> {
-        self.generate_diff_queries(diffs)
-            .into_iter()
-            .flatten()
-            .collect()
+        self.generate_diff_queries(diffs).flatten()
     }
 
     async fn apply_changes(&self, diffs: &LocalConnectorDiffs) -> Result<String> {
         let mut success_counter = 0;
         let mut failure_counter = 0;
         // This is designed in such a way that each query_set may be run concurrently.
-        for query_set in self.generate_diff_queries(diffs) {
+        let prepared_queries = self.generate_diff_queries(diffs);
+        for query_set in [prepared_queries.0, prepared_queries.1, prepared_queries.2] {
             let query_set_configs = query_set
                 .iter()
                 .map(|q| SnowflakeRequestConfig {
@@ -604,6 +602,28 @@ enum SnowflakeAsset {
     View(String),
     Schema(String),
     Database(String),
+}
+
+impl SnowflakeAsset {
+    /// Get the snowflake fully-qualified name for the asset
+    fn fqn(&self) -> &String {
+        match self {
+            SnowflakeAsset::Table(fqn) => fqn,
+            SnowflakeAsset::View(fqn) => fqn,
+            SnowflakeAsset::Schema(fqn) => fqn,
+            SnowflakeAsset::Database(fqn) => fqn,
+        }
+    }
+
+    /// Get the asset type as a &str
+    fn asset_type(&self) -> &str {
+        match self {
+            SnowflakeAsset::Table(_) => "TABLE",
+            SnowflakeAsset::View(_) => "VIEW",
+            SnowflakeAsset::Schema(_) => "SCHEMA",
+            SnowflakeAsset::Database(_) => "DATABASE",
+        }
+    }
 }
 
 pub(crate) fn strip_quotes_and_deserialize<'de, D>(deserializer: D) -> Result<String, D::Error>

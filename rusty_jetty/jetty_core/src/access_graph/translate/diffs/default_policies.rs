@@ -82,8 +82,10 @@ fn translate_diff_details(
                 add: translate_policy_state(add),
             }
         }
-        DefaultPolicyDiffDetails::RemoveDefaultPolicy => {
-            write::assets::diff::policies::DiffDetails::RemoveAgent
+        DefaultPolicyDiffDetails::RemoveDefaultPolicy { remove } => {
+            write::assets::diff::policies::DiffDetails::RemoveAgent {
+                remove: translate_policy_state(remove),
+            }
         }
         DefaultPolicyDiffDetails::ModifyDefaultPolicy {
             add,

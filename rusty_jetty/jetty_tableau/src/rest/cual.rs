@@ -1,4 +1,4 @@
-use std::{fmt::Display, sync::Once};
+use std::{default, fmt::Display, sync::Once};
 
 use anyhow::{bail, Context, Ok, Result};
 
@@ -10,8 +10,9 @@ use crate::{coordinator::Environment, nodes::ProjectId};
 static mut CUAL_PREFIX: String = String::new();
 static INIT_CUAL_PREFIX: Once = Once::new();
 
-#[derive(PartialEq, Eq, Hash, Clone, Debug, PartialOrd, Ord, Deserialize, Serialize)]
+#[derive(PartialEq, Eq, Hash, Clone, Debug, PartialOrd, Ord, Deserialize, Serialize, Default)]
 pub(crate) enum TableauAssetType {
+    #[default]
     Project,
     Datasource,
     Flow,
@@ -30,7 +31,7 @@ impl Display for TableauAssetType {
 impl TableauAssetType {
     /// Used for cual construction, the str representation of
     /// the asset type helps identify the asset within Tableau.
-    fn as_str(&self) -> &'static str {
+    pub(crate) fn as_str(&self) -> &'static str {
         match self {
             TableauAssetType::Project => "project",
             TableauAssetType::Datasource => "datasource",
@@ -39,6 +40,20 @@ impl TableauAssetType {
             TableauAssetType::Lens => "lens",
             TableauAssetType::Metric => "metric",
             TableauAssetType::View => "view",
+        }
+    }
+
+    /// At times we need to compose a URL, so the category helps give us the right
+    /// url information
+    pub(crate) fn as_category_str(&self) -> &'static str {
+        match self {
+            TableauAssetType::Project => "projects",
+            TableauAssetType::Datasource => "datasources",
+            TableauAssetType::Flow => "flows",
+            TableauAssetType::Workbook => "workbooks",
+            TableauAssetType::Lens => "lenses",
+            TableauAssetType::Metric => "metrics",
+            TableauAssetType::View => "views",
         }
     }
 }

@@ -6,7 +6,7 @@ use crate::SnowflakeConnector;
 
 use super::PrioritizedQueries;
 
-fn prepare_queries(
+pub(super) fn prepare_queries(
     group_diffs: &Vec<groups::LocalDiff>,
     snow: &SnowflakeConnector,
 ) -> PrioritizedQueries {

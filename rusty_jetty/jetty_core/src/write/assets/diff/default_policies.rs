@@ -24,7 +24,9 @@ pub(crate) enum DefaultPolicyDiffDetails {
     AddDefaultPolicy {
         add: DefaultPolicyState,
     },
-    RemoveDefaultPolicy,
+    RemoveDefaultPolicy {
+        remove: DefaultPolicyState,
+    },
     ModifyDefaultPolicy {
         add: DefaultPolicyState,
         remove: DefaultPolicyState,
@@ -106,8 +108,31 @@ fn print_diff_inner_details(
                     }
                 }
             }
-            DefaultPolicyDiffDetails::RemoveDefaultPolicy => {
+            DefaultPolicyDiffDetails::RemoveDefaultPolicy { remove } => {
                 text += &format!("{}", format!("  - {prefix}{name}\n").as_str().red());
+
+                text += &format!(
+                    "{}",
+                    format!(
+                        "{}connector-managed: {}\n",
+                        "    ", remove.connector_managed
+                    )
+                    .as_str()
+                    .green()
+                );
+
+                if !remove.privileges.is_empty() {
+                    text += "    privileges:\n";
+                    for privilege in &remove.privileges {
+                        text += &format!("{}", format!("      - {}\n", privilege).as_str().red());
+                    }
+                }
+                if !remove.metadata.is_empty() {
+                    text += "    metadata:\n";
+                    for (k, v) in &remove.metadata {
+                        text += &format!("{}", format!("{}{k}: {v}\n", "      - ").as_str().red());
+                    }
+                }
             }
             DefaultPolicyDiffDetails::ModifyDefaultPolicy {
                 add,
@@ -285,9 +310,11 @@ pub(crate) fn diff_default_policies(
     }
 
     // Now iterate through whatever is left in the env_policies and add removal diffs
-    for (env_key, _env_value) in &env_policies {
+    for (env_key, env_value) in &env_policies {
         // These will always be connector managed, otherwise they wouldn't show up at all
-        let diff_details = DefaultPolicyDiffDetails::RemoveDefaultPolicy;
+        let diff_details = DefaultPolicyDiffDetails::RemoveDefaultPolicy {
+            remove: env_value.to_owned(),
+        };
         policy_diffs
             // add to the policy diff for the asset
             .entry((

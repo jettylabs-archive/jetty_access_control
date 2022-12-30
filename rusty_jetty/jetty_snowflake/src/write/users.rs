@@ -6,7 +6,7 @@ use crate::SnowflakeConnector;
 
 use super::PrioritizedQueries;
 
-fn prepare_queries(user_diffs: &Vec<users::LocalDiff>) -> PrioritizedQueries {
+pub(super) fn prepare_queries(user_diffs: &Vec<users::LocalDiff>) -> PrioritizedQueries {
     let mut res = PrioritizedQueries::default();
 
     user_diffs.iter().for_each(|diff| {

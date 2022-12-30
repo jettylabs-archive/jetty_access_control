@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 
+use std::default;
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::{collections::HashMap, fs, io};
@@ -8,13 +9,14 @@ use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use futures::StreamExt;
 use futures::{join, Future};
+use jetty_core::cual::Cual;
 use jetty_core::logging::error;
 use serde::{Deserialize, Serialize};
 
 use crate::file_parse::origin::SourceOrigin;
-use crate::nodes::{self, Permissionable, ProjectId};
+use crate::nodes::{self, Permissionable, ProjectId, TableauCualable};
 
-use crate::rest;
+use crate::rest::{self, TableauAssetType};
 use crate::TableauCredentials;
 
 /// Number of assets to download concurrently
@@ -37,6 +39,13 @@ pub(crate) struct Environment {
     pub metrics: HashMap<String, nodes::Metric>,
     pub views: HashMap<String, nodes::View>,
     pub workbooks: HashMap<String, nodes::Workbook>,
+    pub cual_id_map: bimap::BiHashMap<Cual, TableauAssetReference>,
+}
+
+#[derive(Hash, Default, Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+pub(crate) struct TableauAssetReference {
+    pub(crate) asset_type: TableauAssetType,
+    pub(crate) id: String,
 }
 
 impl Environment {
@@ -213,6 +222,8 @@ impl Coordinator {
                 error!("unable to fetch groups: {}", e);
                 Default::default()
             }),
+            // FUTURE: update all calls to create a cual to just use this. Probably easier to have it centralized
+            cual_id_map: Default::default(),
         };
 
         // Now, make sure that assets sources are all up to date
@@ -280,6 +291,8 @@ impl Coordinator {
             Err(e) => error!("problem fetching tableau groups: {e}"),
         });
 
+        // update the cual map
+        build_cual_map(&mut new_env);
         // update self.env
         self.env = new_env;
 
@@ -376,6 +389,72 @@ fn read_environment_assets(data_dir: PathBuf) -> Result<Environment> {
 
     // Return the `Environment`.
     Ok(e)
+}
+
+fn build_cual_map(env: &mut Environment) {
+    for (id, node) in &env.projects {
+        env.cual_id_map.insert(
+            node.cual(env),
+            TableauAssetReference {
+                asset_type: TableauAssetType::Project,
+                id: id.to_owned(),
+            },
+        );
+    }
+    for (id, node) in &env.datasources {
+        env.cual_id_map.insert(
+            node.cual(env),
+            TableauAssetReference {
+                asset_type: TableauAssetType::Datasource,
+                id: id.to_owned(),
+            },
+        );
+    }
+    for (id, node) in &env.flows {
+        env.cual_id_map.insert(
+            node.cual(env),
+            TableauAssetReference {
+                asset_type: TableauAssetType::Flow,
+                id: id.to_owned(),
+            },
+        );
+    }
+    for (id, node) in &env.lenses {
+        env.cual_id_map.insert(
+            node.cual(env),
+            TableauAssetReference {
+                asset_type: TableauAssetType::Lens,
+                id: id.to_owned(),
+            },
+        );
+    }
+    for (id, node) in &env.metrics {
+        env.cual_id_map.insert(
+            node.cual(env),
+            TableauAssetReference {
+                asset_type: TableauAssetType::Metric,
+                id: id.to_owned(),
+            },
+        );
+    }
+    for (id, node) in &env.views {
+        env.cual_id_map.insert(
+            node.cual(env),
+            TableauAssetReference {
+                asset_type: TableauAssetType::View,
+                id: id.to_owned(),
+            },
+        );
+    }
+    for (id, node) in &env.workbooks {
+        env.cual_id_map.insert(
+            node.cual(env),
+            TableauAssetReference {
+                asset_type: TableauAssetType::Workbook,
+                id: id.to_owned(),
+            },
+        );
+    }
 }
 
 #[cfg(test)]

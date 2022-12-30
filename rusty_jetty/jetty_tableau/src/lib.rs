@@ -9,6 +9,7 @@ mod file_parse;
 mod nodes;
 mod permissions;
 mod rest;
+mod write;
 
 use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
@@ -44,6 +45,7 @@ use permissions::{
     },
     PermissionManager,
 };
+use write::PrioritizedPlans;
 
 use std::{
     collections::{HashMap, HashSet},
@@ -242,99 +244,18 @@ impl TableauConnector {
             .collect()
     }
 
-    fn generate_request_plan(&self, diffs: &LocalConnectorDiffs) -> Result<Vec<Vec<String>>> {
-        todo!()
-        //         let mut batch1 = Vec::new();
-        //         let mut batch2 = Vec::new();
+    fn generate_request_plan(&self, diffs: &LocalConnectorDiffs) -> Result<PrioritizedPlans> {
+        let mut plans = PrioritizedPlans::default();
 
-        //         let base_url = format![
-        //             "https://{}/api/{}/sites/{}/",
-        //             self.coordinator.rest_client.get_server_name(),
-        //             self.coordinator.rest_client.get_api_version(),
-        //             self.coordinator.rest_client.get_site_id()?,
-        //         ];
-        //         // Starting with groups
-        //         let group_diffs = &diffs.groups;
-        //         for diff in group_diffs {
-        //             match &diff.details {
-        //                 groups::LocalDiffDetails::AddGroup { members } => {
-        //                     // Request to create the group
+        let group_plans = self.prepare_groups_plan(&diffs.groups)?;
+        let user_plans = self.prepare_users_plan(&diffs.users)?;
+        let policy_plans = self.prepare_policies_plan(&diffs.policies)?;
 
-        //                     batch1.push(format!(
-        //                         r#"POST {base_url}groups
-        // body:
-        //   {{
-        //     "group": {{
-        //       "name": {},
-        //     }}
-        //   }}"#,
-        //                         diff.group_name
-        //                     ));
+        plans.extend(&group_plans);
+        plans.extend(&user_plans);
+        plans.extend(&policy_plans);
 
-        //                     // Requests to add users
-        //                     for user in &members.users {
-        //                         batch1.push(format!(
-        //                             r#"POST {base_url}groups/<new group_id for {}>/users
-        // body:
-        //   {{
-        //     "user": {{
-        //       "id": {user},
-        //     }}
-        //   }}"#,
-        //                             diff.group_name
-        //                         ));
-        //                     }
-        //                 }
-        //                 groups::LocalDiffDetails::RemoveGroup => {
-        //                     // get the group_id
-        //                     let group_id = self
-        //                         .coordinator
-        //                         .env
-        //                         .get_group_id_by_name(&diff.group_name)
-        //                         .ok_or(anyhow!(
-        //                             "can't delete group {}: group doesn't exist",
-        //                             &diff.group_name
-        //                         ))?;
-
-        //                     batch1.push(format!(
-        //                         "DELETE {base_url}groups/{group_id}\n## {group_id} is the id for {}\n",
-        //                         diff.group_name
-        //                     ));
-        //                 }
-        //                 groups::LocalDiffDetails::ModifyGroup { add, remove } => {
-        //                     // get the group_id
-        //                     let group_id = self
-        //                         .coordinator
-        //                         .env
-        //                         .get_group_id_by_name(&diff.group_name)
-        //                         .ok_or(anyhow!(
-        //                             "can't delete group {}: group doesn't exist",
-        //                             &diff.group_name
-        //                         ))?;
-
-        //                     // Add users
-        //                     for user in &add.users {
-        //                         batch2.push(format!(
-        //                             r#"POST {base_url}groups/{group_id}/users
-        // body:
-        //   {{
-        //     "user": {{
-        //       "id": {user},
-        //     }}
-        //   }}"#
-        //                         ));
-        //                     }
-
-        //                     // Remove users
-        //                     for user in &remove.users {
-        //                         batch2.push(format!(
-        //                             r#"DELETE {base_url}groups/{group_id}/users/{user}"#
-        //                         ));
-        //                     }
-        //                 }
-        //             }
-        //         }
-        //         Ok(vec![batch1, batch2])
+        Ok(plans)
     }
 
     fn generate_plan_futures<'a>(
@@ -609,7 +530,7 @@ impl Connector for TableauConnector {
 
     fn plan_changes(&self, diffs: &LocalConnectorDiffs) -> Vec<String> {
         match self.generate_request_plan(diffs) {
-            Ok(plan) => plan.into_iter().flatten().collect(),
+            Ok(plan) => plan.flatten(),
             Err(err) => {
                 error!("Unable to generate plan for Tableau: {err}");
                 vec![]

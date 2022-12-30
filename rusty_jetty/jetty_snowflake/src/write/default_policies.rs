@@ -2,13 +2,15 @@
 
 use std::fmt::Display;
 
-use jetty_core::{access_graph::translate::diffs::policies, write::assets};
+use jetty_core::{access_graph::translate::diffs::default_policies, write::assets};
 
 use crate::{SnowflakeAsset, SnowflakeConnector};
 
-use super::PrioritizedQueries;
+use super::{policies::AgentType, PrioritizedQueries};
 
-pub(super) fn prepare_queries(policy_diffs: &Vec<policies::LocalDiff>) -> PrioritizedQueries {
+pub(super) fn prepare_queries(
+    policy_diffs: &Vec<default_policies::LocalDiff>,
+) -> PrioritizedQueries {
     let mut res = PrioritizedQueries::default();
 
     for policy in policy_diffs {
@@ -17,6 +19,7 @@ pub(super) fn prepare_queries(policy_diffs: &Vec<policies::LocalDiff>) -> Priori
             res.2.extend(generate_queries_for_diff_details(
                 details,
                 &asset,
+                &policy.asset_type,
                 AgentType::User,
                 user,
             ))
@@ -26,6 +29,7 @@ pub(super) fn prepare_queries(policy_diffs: &Vec<policies::LocalDiff>) -> Priori
             res.2.extend(generate_queries_for_diff_details(
                 details,
                 &asset,
+                &policy.asset_type,
                 AgentType::Group,
                 group,
             ))
@@ -35,23 +39,10 @@ pub(super) fn prepare_queries(policy_diffs: &Vec<policies::LocalDiff>) -> Priori
     res
 }
 
-pub(crate) enum AgentType {
-    User,
-    Group,
-}
-
-impl Display for AgentType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            AgentType::User => write!(f, "USER"),
-            AgentType::Group => write!(f, "GROUP"),
-        }
-    }
-}
-
-pub(crate) fn generate_queries_for_diff_details(
+fn generate_queries_for_diff_details(
     details: &assets::diff::policies::DiffDetails,
     asset: &SnowflakeAsset,
+    asset_type: &String,
     agent_type: AgentType,
     agent: &String,
 ) -> Vec<String> {
@@ -64,14 +55,14 @@ pub(crate) fn generate_queries_for_diff_details(
                 .collect::<Vec<_>>()
                 .join(", ");
             vec![format!(
-                "GRANT {privileges} ON {} {} TO {agent_type} {agent}",
+                "GRANT {privileges} ON FUTURE {asset_type}S IN {} {} TO {agent_type} {agent}",
                 asset.asset_type(),
                 asset.fqn()
             )]
         }
         assets::diff::policies::DiffDetails::RemoveAgent { .. } => {
             vec![format!(
-                "REVOKE ALL ON {} {} FROM {agent_type} {agent}",
+                "REVOKE ALL ON FUTURE {asset_type}S IN {} {} FROM {agent_type} {agent}",
                 asset.asset_type(),
                 asset.fqn()
             )]
@@ -84,7 +75,7 @@ pub(crate) fn generate_queries_for_diff_details(
                 .collect::<Vec<_>>()
                 .join(", ");
             let mut res = vec![format!(
-                "GRANT {privileges} ON {} {} TO {agent_type} {agent}",
+                "GRANT {privileges} ON FUTURE {asset_type}S IN {} {} TO {agent_type} {agent}",
                 asset.asset_type(),
                 asset.fqn()
             )];
@@ -95,7 +86,7 @@ pub(crate) fn generate_queries_for_diff_details(
                 .collect::<Vec<_>>()
                 .join(", ");
             res.push(format!(
-                "REVOKE {privileges} ON {} {} FROM {agent_type} {agent}",
+                "REVOKE {privileges} ON FUTURE {asset_type}S IN {} {} FROM {agent_type} {agent}",
                 asset.asset_type(),
                 asset.fqn()
             ));
