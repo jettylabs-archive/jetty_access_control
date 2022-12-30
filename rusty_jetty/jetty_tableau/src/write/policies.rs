@@ -1,6 +1,9 @@
 //! Functionality for handling group diffs in tableau
 
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 
 use anyhow::{anyhow, Context, Result};
 
@@ -15,7 +18,7 @@ use crate::{
     TableauConnector,
 };
 
-use super::PrioritizedPlans;
+use super::{PrioritizedFutures, PrioritizedPlans};
 
 impl TableauConnector {
     pub(crate) fn prepare_policies_plan(
@@ -23,13 +26,6 @@ impl TableauConnector {
         policy_diffs: &Vec<policies::LocalDiff>,
     ) -> Result<PrioritizedPlans> {
         let mut plans = PrioritizedPlans::default();
-
-        let base_url = format![
-            "https://{}/api/{}/sites/{}",
-            self.coordinator.rest_client.get_server_name(),
-            self.coordinator.rest_client.get_api_version(),
-            self.coordinator.rest_client.get_site_id()?,
-        ];
 
         for diff in policy_diffs {
             let asset_reference = self.coordinator.env.cual_id_map.get(&diff.asset).unwrap();
@@ -133,6 +129,115 @@ impl TableauConnector {
             }
         }
         Ok(plans)
+    }
+
+    async fn generate_policy_apply_futures<'a>(
+        &'a self,
+        policy_diffs: &'a Vec<policies::LocalDiff>,
+        group_map: Arc<Mutex<HashMap<String, String>>>,
+    ) -> Result<PrioritizedFutures> {
+        let mut futures = PrioritizedFutures::default();
+
+        for diff in policy_diffs {
+            let asset_reference = self.coordinator.env.cual_id_map.get(&diff.asset).unwrap();
+
+            let mut user_adds = HashMap::new();
+            let mut group_adds = HashMap::new();
+
+            for (user, details) in &diff.users {
+                match details {
+                    jetty_core::write::assets::diff::policies::DiffDetails::AddAgent { add } => {
+                        user_adds.insert(
+                            user.to_owned(),
+                            add.privileges
+                                .iter()
+                                .map(|p| IndividualPermission::from_string(p))
+                                .collect::<Vec<_>>(),
+                        );
+                    }
+                    jetty_core::write::assets::diff::policies::DiffDetails::RemoveAgent {
+                        remove,
+                    } => self
+                        .build_delete_policy_requests(remove, asset_reference, user, "user")?
+                        .into_iter()
+                        .for_each(|req| futures.1.push(Box::pin(self.execute_to_unit_result(req)))),
+                    jetty_core::write::assets::diff::policies::DiffDetails::ModifyAgent {
+                        add,
+                        remove,
+                    } => {
+                        user_adds.insert(
+                            user.to_owned(),
+                            add.privileges
+                                .iter()
+                                .map(|p| IndividualPermission::from_string(p))
+                                .collect::<Vec<_>>(),
+                        );
+                        self.build_delete_policy_requests(remove, asset_reference, user, "user")?
+                            .into_iter()
+                            .for_each(|req| {
+                                futures.1.push(Box::pin(self.execute_to_unit_result(req)))
+                            });
+                    }
+                }
+            }
+            for (group, details) in &diff.groups {
+                // get the group_id
+                let temp_group_map = group_map.lock().unwrap();
+                let group_id = temp_group_map
+                    .get(group)
+                    .ok_or(anyhow!("Unable to find group id for {}", group))?;
+                match details {
+                    jetty_core::write::assets::diff::policies::DiffDetails::AddAgent { add } => {
+                        group_adds.insert(
+                            group_id.to_owned(),
+                            add.privileges
+                                .iter()
+                                .map(|p| IndividualPermission::from_string(p))
+                                .collect::<Vec<_>>(),
+                        );
+                    }
+                    jetty_core::write::assets::diff::policies::DiffDetails::RemoveAgent {
+                        remove,
+                    } => self
+                        .build_delete_policy_requests(remove, asset_reference, &group_id, "group")?
+                        .into_iter()
+                        .for_each(|req| futures.1.push(Box::pin(self.execute_to_unit_result(req)))),
+
+                    jetty_core::write::assets::diff::policies::DiffDetails::ModifyAgent {
+                        add,
+                        remove,
+                    } => {
+                        if !add.privileges.is_empty() {
+                            group_adds.insert(
+                                group_id.to_owned(),
+                                add.privileges
+                                    .iter()
+                                    .map(|p| IndividualPermission::from_string(p))
+                                    .collect::<Vec<_>>(),
+                            );
+                        }
+                        if !remove.privileges.is_empty() {
+                            self.build_delete_policy_requests(
+                                remove,
+                                asset_reference,
+                                &group_id,
+                                "group",
+                            )?
+                            .into_iter()
+                            .for_each(|req| {
+                                futures.1.push(Box::pin(self.execute_to_unit_result(req)))
+                            });
+                        }
+                    }
+                }
+            }
+            if !user_adds.is_empty() || !group_adds.is_empty() {
+                futures.1.push(Box::pin(self.execute_to_unit_result(
+                    self.build_add_policy_request(asset_reference, user_adds, group_adds)?,
+                )));
+            }
+        }
+        Ok(futures)
     }
 
     pub(crate) fn build_add_policy_request(
