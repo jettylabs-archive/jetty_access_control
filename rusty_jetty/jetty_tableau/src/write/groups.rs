@@ -1,8 +1,9 @@
 //! Functionality for handling group diffs in tableau
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 
 use jetty_core::access_graph::translate::diffs::groups;
+use serde_json::json;
 
 use crate::TableauConnector;
 
@@ -26,21 +27,14 @@ impl TableauConnector {
         for diff in group_diffs {
             match &diff.details {
                 groups::LocalDiffDetails::AddGroup { member_of } => {
-                    // Request to create the group
-
-                    plans.0.push(format!(
-                        r#"POST {base_url}groups
-        body:
-          {{
-            "group": {{
-              "name": {},
-            }}
-          }}"#,
-                        diff.group_name
-                    ));
                     if !member_of.is_empty() {
                         panic!("tableau does not support nested groups")
                     }
+
+                    // Request to create the group
+                    plans
+                        .0
+                        .push(self.build_add_group_request(&diff.group_name)?);
                 }
                 groups::LocalDiffDetails::RemoveGroup => {
                     // get the group_id
@@ -53,16 +47,13 @@ impl TableauConnector {
                             &diff.group_name
                         ))?;
 
-                    plans.0.push(format!(
-                        "DELETE {base_url}groups/{group_id}\n## {group_id} is the id for {}\n",
-                        diff.group_name
-                    ));
+                    plans.0.push(self.build_delete_group_request(&group_id)?);
                 }
                 groups::LocalDiffDetails::ModifyGroup {
                     add_member_of,
                     remove_member_of,
                 } => {
-                    // This only modifies group hierarcy, which Tableau doesn't have.
+                    // This only modifies group hierarchy, which Tableau doesn't have.
                     if !add_member_of.is_empty() || !remove_member_of.is_empty() {
                         panic!("tableau does not support nested groups")
                     }
@@ -70,5 +61,31 @@ impl TableauConnector {
             }
         }
         Ok(plans)
+    }
+
+    /// build a request to add a group
+    fn build_add_group_request(&self, group_name: &String) -> Result<reqwest::Request> {
+        // Add the user
+        let req_body = json!(
+            {
+                "group": {
+                  "name": group_name,
+                }
+            }
+        );
+        self.coordinator
+            .rest_client
+            .build_request("groups".to_string(), Some(req_body), reqwest::Method::POST)?
+            .build()
+            .context("building request")
+    }
+
+    /// build a request to remove a group
+    fn build_delete_group_request(&self, group_id: &String) -> Result<reqwest::Request> {
+        self.coordinator
+            .rest_client
+            .build_request(format!("groups/{group_id}"), None, reqwest::Method::DELETE)?
+            .build()
+            .context("building request")
     }
 }

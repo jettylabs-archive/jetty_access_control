@@ -8,7 +8,7 @@ mod coordinator;
 mod file_parse;
 mod nodes;
 mod permissions;
-mod rest;
+pub(crate) mod rest;
 mod write;
 
 use anyhow::{anyhow, Context, Result};
@@ -243,159 +243,6 @@ impl TableauConnector {
             .map(|x| J::from(x.clone(), env))
             .collect()
     }
-
-    fn generate_request_plan(&self, diffs: &LocalConnectorDiffs) -> Result<PrioritizedPlans> {
-        let mut plans = PrioritizedPlans::default();
-
-        let group_plans = self.prepare_groups_plan(&diffs.groups)?;
-        let user_plans = self.prepare_users_plan(&diffs.users)?;
-        let policy_plans = self.prepare_policies_plan(&diffs.policies)?;
-        let default_policy_plans = self.prepare_default_policies_plan(&diffs.default_policies)?;
-
-        plans.extend(&group_plans);
-        plans.extend(&user_plans);
-        plans.extend(&policy_plans);
-        plans.extend(&default_policy_plans);
-
-        Ok(plans)
-    }
-
-    fn generate_plan_futures<'a>(
-        &'a self,
-        diffs: &'a LocalConnectorDiffs,
-    ) -> Result<Vec<Vec<Pin<Box<dyn Future<Output = Result<()>> + '_ + Send>>>>> {
-        todo!();
-        // let mut batch1: Vec<BoxFuture<_>> = Vec::new();
-        // let mut batch2: Vec<BoxFuture<_>> = Vec::new();
-
-        // let group_map: HashMap<String, String> = self
-        //     .coordinator
-        //     .env
-        //     .groups
-        //     .iter()
-        //     .map(|(_name, g)| (g.name.to_owned(), g.id.to_owned()))
-        //     .collect();
-
-        // let group_map_mutex = Arc::new(Mutex::new(group_map));
-
-        // // Starting with groups
-        // let group_diffs = &diffs.groups;
-        // for diff in group_diffs {
-        //     match &diff.details {
-        //         groups::LocalDiffDetails::AddGroup { members } => {
-        //             // start by creating the group
-        //             batch1.push(Box::pin(self.create_group_and_add_to_env(
-        //                 &diff.group_name,
-        //                 group_map_mutex.clone(),
-        //             )));
-        //             for user in &members.users {
-        //                 batch2.push(Box::pin(self.add_user_to_group(
-        //                     user,
-        //                     &diff.group_name,
-        //                     Arc::clone(&group_map_mutex),
-        //                 )))
-        //             }
-        //         }
-        //         groups::LocalDiffDetails::RemoveGroup => {
-        //             // get the group_id
-        //             let temp_group_map = group_map_mutex.lock().unwrap();
-        //             let group_id = temp_group_map
-        //                 .get(&diff.group_name)
-        //                 .ok_or(anyhow!("Unable to find group id for {}", &diff.group_name))?;
-
-        //             let req = self.coordinator.rest_client.build_request(
-        //                 format!("groups/{group_id}"),
-        //                 None,
-        //                 reqwest::Method::DELETE,
-        //             )?;
-        //             batch1.push(Box::pin(request_builder_to_unit_result(req)))
-        //         }
-        //         groups::LocalDiffDetails::ModifyGroup { add, remove } => {
-        //             // Add users
-        //             for user in &add.users {
-        //                 batch2.push(Box::pin(self.add_user_to_group(
-        //                     user,
-        //                     &diff.group_name,
-        //                     group_map_mutex.clone(),
-        //                 )))
-        //             }
-        //             // Remove users
-        //             // get the group_id
-        //             let temp_group_map = group_map_mutex.lock().unwrap();
-        //             let group_id = temp_group_map
-        //                 .get(&diff.group_name)
-        //                 .ok_or(anyhow!("Unable to find group id for {}", &diff.group_name))?;
-
-        //             for user in &remove.users {
-        //                 let req = self.coordinator.rest_client.build_request(
-        //                     format!("groups/{group_id}/users/{user}"),
-        //                     None,
-        //                     reqwest::Method::DELETE,
-        //                 )?;
-        //                 batch1.push(Box::pin(request_builder_to_unit_result(req)))
-        //             }
-        //         }
-        //     }
-        // }
-        // Ok(vec![batch1, batch2])
-    }
-
-    async fn create_group_and_add_to_env(
-        &self,
-        group_name: &String,
-        group_map: Arc<Mutex<HashMap<String, String>>>,
-    ) -> Result<()> {
-        let req_body = json!({"group": { "name": group_name }});
-        let req = self.coordinator.rest_client.build_request(
-            "groups/".to_string(),
-            Some(req_body),
-            reqwest::Method::POST,
-        )?;
-        let resp = req.send().await?.json::<serde_json::Value>().await?;
-
-        let group_id = rest::get_json_from_path(&resp, &vec!["group".to_owned(), "id".to_owned()])?
-            .as_str()
-            .ok_or_else(|| anyhow!["unable to get new id for {group_name}"])?
-            .to_string();
-
-        // update the environment so that when users look for this group in the future, they are able to find it!
-        let mut locked_group_map = group_map.lock().unwrap();
-        locked_group_map.insert(group_name.to_owned(), group_id);
-        Ok(())
-    }
-
-    /// Function to add users to a group, deferring the group lookup until it's needed. This
-    /// allows it to work for new groups
-    async fn add_user_to_group(
-        &self,
-        user: &String,
-        group_name: &String,
-        group_map: Arc<Mutex<HashMap<String, String>>>,
-    ) -> Result<()> {
-        // get the group_id
-        let mut group_id = "".to_owned();
-        {
-            let temp_group_map = group_map.lock().unwrap();
-            group_id = temp_group_map
-                .get(group_name)
-                .ok_or(anyhow!("Unable to find group id for {}", group_name))?
-                .to_owned();
-        }
-
-        // Add the user
-        let req_body = json!({"user": {"id": user}});
-        self.coordinator
-            .rest_client
-            .build_request(
-                format!("groups/{group_id}/users"),
-                Some(req_body),
-                reqwest::Method::POST,
-            )?
-            .send()
-            .await?;
-
-        Ok(())
-    }
 }
 
 async fn request_builder_to_unit_result(req: RequestBuilder) -> Result<()> {
@@ -532,7 +379,7 @@ impl Connector for TableauConnector {
 
     fn plan_changes(&self, diffs: &LocalConnectorDiffs) -> Vec<String> {
         match self.generate_request_plan(diffs) {
-            Ok(plan) => plan.flatten(),
+            Ok(plan) => plan.flatten_to_string_vec(),
             Err(err) => {
                 error!("Unable to generate plan for Tableau: {err}");
                 vec![]

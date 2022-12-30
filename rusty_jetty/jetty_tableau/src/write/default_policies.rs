@@ -7,6 +7,8 @@ use anyhow::{anyhow, bail, Context, Result};
 use jetty_core::{
     access_graph::translate::diffs::default_policies, cual::Cual, write::assets::PolicyState,
 };
+use reqwest::Request;
+use serde_json::json;
 
 use crate::{
     coordinator::TableauAssetReference, nodes::IndividualPermission, rest::TableauAssetType,
@@ -71,14 +73,13 @@ impl TableauConnector {
                     }
                     jetty_core::write::assets::diff::policies::DiffDetails::RemoveAgent {
                         remove,
-                    } => plans.1.extend(generate_delete_requests(
+                    } => plans.1.extend(self.build_delete_default_policy_requests(
                         remove,
-                        &base_url,
                         asset_reference,
                         user,
                         "user",
                         &asset_type,
-                    )),
+                    )?),
                     jetty_core::write::assets::diff::policies::DiffDetails::ModifyAgent {
                         add,
                         remove,
@@ -97,14 +98,13 @@ impl TableauConnector {
                                 .map(|p| IndividualPermission::from_string(p))
                                 .collect::<Vec<_>>(),
                         );
-                        plans.1.extend(generate_delete_requests(
+                        plans.1.extend(self.build_delete_default_policy_requests(
                             remove,
-                            &base_url,
                             asset_reference,
                             user,
                             "user",
                             &asset_type,
-                        ));
+                        )?);
                     }
                 }
             }
@@ -132,14 +132,13 @@ impl TableauConnector {
                     }
                     jetty_core::write::assets::diff::policies::DiffDetails::RemoveAgent {
                         remove,
-                    } => plans.1.extend(generate_delete_requests(
+                    } => plans.1.extend(self.build_delete_default_policy_requests(
                         remove,
-                        &base_url,
                         asset_reference,
                         &group_id,
                         "group",
                         &asset_type,
-                    )),
+                    )?),
                     jetty_core::write::assets::diff::policies::DiffDetails::ModifyAgent {
                         add,
                         remove,
@@ -160,85 +159,140 @@ impl TableauConnector {
                             );
                         }
                         if !remove.privileges.is_empty() {
-                            plans.1.extend(generate_delete_requests(
+                            plans.1.extend(self.build_delete_default_policy_requests(
                                 remove,
-                                &base_url,
                                 asset_reference,
                                 &group_id,
                                 "group",
                                 &asset_type,
-                            ));
+                            )?);
                         }
                     }
                 }
             }
             if !user_adds.is_empty() || !group_adds.is_empty() {
-                plans.1.push(generate_add_requests(
-                    &base_url,
+                plans.1.push(self.build_add_default_policy_request(
                     asset_reference,
                     user_adds,
                     group_adds,
                     &asset_type,
-                ));
+                )?);
             }
 
             if let Some(content_permissions) = set_tableau_content_permissions {
-                plans.1.push(generate_content_permissions_request(
-                    &base_url,
-                    asset_reference,
-                    &content_permissions,
-                ))
+                plans.1.push(
+                    self.generate_content_permissions_request(
+                        asset_reference,
+                        &content_permissions,
+                    )?,
+                )
             };
         }
         Ok(plans)
     }
-}
 
-fn generate_delete_requests(
-    state: &PolicyState,
-    base_url: &String,
-    asset: &TableauAssetReference,
-    grantee_id: &String,
-    grantee_type: &str,
-    applied_to_asset_type: &TableauAssetType,
-) -> Vec<String> {
-    let mut res = Vec::new();
-    for privilege in state.privileges.iter() {
-        let permission = IndividualPermission::from_string(privilege);
-        let url = format!(
-            "{base_url}/projects/{}/default-permissions/{}/{grantee_type}/{grantee_id}/{}/{}",
-            &asset.id,
-            applied_to_asset_type.as_category_str(),
-            &permission.capability,
-            &permission.mode.to_string()
-        );
-        res.push(format!(r"DELETE {url}",))
+    fn build_delete_default_policy_requests(
+        &self,
+        state: &PolicyState,
+        asset: &TableauAssetReference,
+        grantee_id: &String,
+        grantee_type: &str,
+        applied_to_asset_type: &TableauAssetType,
+    ) -> Result<Vec<Request>> {
+        if applied_to_asset_type == &TableauAssetType::Project {
+            return self.build_delete_policy_requests(state, asset, grantee_id, grantee_type);
+        }
+        state
+            .privileges
+            .iter()
+            .map(|p| {
+                let permission = IndividualPermission::from_string(p);
+                self.coordinator
+                    .rest_client
+                    .build_request(
+                        format!(
+                            "projects/{}/default-permissions/{}/{grantee_type}/{grantee_id}/{}/{}",
+                            &asset.id,
+                            applied_to_asset_type.as_category_str(),
+                            &permission.capability,
+                            &permission.mode.to_string()
+                        ),
+                        None,
+                        reqwest::Method::DELETE,
+                    )?
+                    .build()
+                    .context("building request")
+            })
+            .collect()
     }
-    res
+
+    fn generate_content_permissions_request(
+        &self,
+        asset: &TableauAssetReference,
+        content_permissions: &String,
+    ) -> Result<Request> {
+        self.coordinator
+            .rest_client
+            .build_request(
+                format!("projects/{}", asset.id,),
+                Some(json!( {
+                    "project": {
+                        "contentPermissions": content_permissions
+                    }
+                })),
+                reqwest::Method::PUT,
+            )?
+            .build()
+            .context("building request")
+    }
+
+    fn build_add_default_policy_request(
+        &self,
+        asset: &TableauAssetReference,
+        user: HashMap<String, Vec<IndividualPermission>>,
+        group: HashMap<String, Vec<IndividualPermission>>,
+        applied_to_asset_type: &TableauAssetType,
+    ) -> Result<reqwest::Request> {
+        // project default policies are just regular policies
+        if applied_to_asset_type == &TableauAssetType::Project {
+            return self.build_add_policy_request(asset, user, group);
+        }
+        let req_body = generate_add_default_privileges_request_body(
+            asset,
+            user,
+            group,
+            applied_to_asset_type,
+        )?;
+        self.coordinator
+            .rest_client
+            .build_request(
+                format!(
+                    "projects/{}/default-permissions/{}",
+                    asset.id,
+                    applied_to_asset_type.as_category_str()
+                ),
+                Some(req_body),
+                reqwest::Method::PUT,
+            )?
+            .build()
+            .context("building request")
+    }
 }
 
-fn generate_add_requests(
-    base_url: &String,
+fn generate_add_default_privileges_request_body(
     asset: &TableauAssetReference,
     user: HashMap<String, Vec<IndividualPermission>>,
     group: HashMap<String, Vec<IndividualPermission>>,
     applied_to_asset_type: &TableauAssetType,
-) -> String {
+) -> Result<serde_json::Value> {
     // project default policies are just regular policies
     if applied_to_asset_type == &TableauAssetType::Project {
-        return super::policies::generate_add_requests(base_url, asset, user, group);
+        return super::policies::generate_add_privileges_request_body(asset, user, group);
     }
 
-    let mut request_text = format!(
-        "PUT {}/projects/{}/default-permissions/{}\n",
-        base_url,
-        asset.id,
-        applied_to_asset_type.as_category_str()
-    );
-
-    request_text += "body:
-  {
-    \"permissions\": {\n";
+    let mut request_text = "{
+    \"permissions\": {\n"
+        .to_owned();
     request_text += "      \"granteeCapabilities\": [\n";
     for (user_id, permissions) in user.iter() {
         request_text += "        {\n";
@@ -282,7 +336,7 @@ fn generate_add_requests(
     request_text += "    }\n";
     request_text += "  }\n";
 
-    request_text
+    serde_json::from_str(&request_text).context("building request body")
 }
 
 /// Ensure that the connector-managed wildcard is legal
@@ -324,20 +378,4 @@ fn try_update_content_permissions(
         None => (),
     }
     Ok(())
-}
-
-fn generate_content_permissions_request(
-    base_url: &String,
-    asset: &TableauAssetReference,
-    content_permissions: &String,
-) -> String {
-    let mut request_text = format!("PUT {}/projects/{}\n", base_url, asset.id);
-
-    request_text += "body:\n";
-
-    request_text +=
-        format!("  {{\"project\": {{\"contentPermissions\": \"{content_permissions}\"}} }}")
-            .as_str();
-
-    request_text
 }

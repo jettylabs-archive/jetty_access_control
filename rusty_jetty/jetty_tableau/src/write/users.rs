@@ -1,8 +1,9 @@
 //! Functionality for handling group diffs in tableau
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 
 use jetty_core::access_graph::translate::diffs::users;
+use serde_json::json;
 
 use crate::TableauConnector;
 
@@ -29,17 +30,10 @@ impl TableauConnector {
                     .coordinator
                     .env
                     .get_group_id_by_name(group)
-                    .unwrap_or(format!("<group_id name for new group: {}>", group));
-                plans.1.push(format!(
-                    r#"POST {base_url}groups/{group_id}/users
-body:
-  {{
-  "user": {{
-    "id": {},
-  }}
-  }}"#,
-                    diff.user
-                ));
+                    .unwrap_or(format!("group_id_for_new_group_{}", group));
+                plans
+                    .1
+                    .push(self.build_add_user_request(&group_id, &diff.user)?);
             }
             for group in &diff.group_membership.remove {
                 // get the group_id
@@ -47,13 +41,54 @@ body:
                     .coordinator
                     .env
                     .get_group_id_by_name(group)
-                    .unwrap_or(format!("<group_id name for new group: {}>", group));
-                plans.1.push(format!(
-                    r#"DELETE {base_url}groups/{group_id}/users/{}"#,
-                    diff.user
-                ));
+                    .unwrap_or(format!("group_id_for_new_group_{}", group));
+                plans
+                    .1
+                    .push(self.build_remove_user_request(&group_id, &diff.user)?);
             }
         }
         Ok(plans)
+    }
+
+    /// build a request to add a group
+    fn build_add_user_request(
+        &self,
+        group_id: &String,
+        user_id: &String,
+    ) -> Result<reqwest::Request> {
+        // Add the user
+        let req_body = json!(
+            {
+                "user": {
+                  "id": user_id,
+                }
+            }
+        );
+        self.coordinator
+            .rest_client
+            .build_request(
+                format!("groups/{group_id}/users").to_string(),
+                Some(req_body),
+                reqwest::Method::POST,
+            )?
+            .build()
+            .context("building request")
+    }
+
+    /// build a request to remove a group
+    fn build_remove_user_request(
+        &self,
+        group_id: &String,
+        user_id: &String,
+    ) -> Result<reqwest::Request> {
+        self.coordinator
+            .rest_client
+            .build_request(
+                format!("groups/{group_id}/users/{}", user_id),
+                None,
+                reqwest::Method::DELETE,
+            )?
+            .build()
+            .context("building request")
     }
 }

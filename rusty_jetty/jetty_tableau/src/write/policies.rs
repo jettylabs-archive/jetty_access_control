@@ -2,12 +2,13 @@
 
 use std::collections::HashMap;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 
 use jetty_core::{
     access_graph::translate::diffs::{policies, users},
     write::assets::PolicyState,
 };
+use reqwest::Request;
 
 use crate::{
     coordinator::TableauAssetReference, nodes::IndividualPermission, rest::TableauAssetType,
@@ -49,13 +50,12 @@ impl TableauConnector {
                     }
                     jetty_core::write::assets::diff::policies::DiffDetails::RemoveAgent {
                         remove,
-                    } => plans.1.extend(generate_delete_requests(
+                    } => plans.1.extend(self.build_delete_policy_requests(
                         remove,
-                        &base_url,
                         asset_reference,
                         user,
                         "user",
-                    )),
+                    )?),
                     jetty_core::write::assets::diff::policies::DiffDetails::ModifyAgent {
                         add,
                         remove,
@@ -67,13 +67,12 @@ impl TableauConnector {
                                 .map(|p| IndividualPermission::from_string(p))
                                 .collect::<Vec<_>>(),
                         );
-                        plans.1.extend(generate_delete_requests(
+                        plans.1.extend(self.build_delete_policy_requests(
                             remove,
-                            &base_url,
                             asset_reference,
                             user,
                             "user",
-                        ));
+                        )?);
                     }
                 }
             }
@@ -95,13 +94,12 @@ impl TableauConnector {
                     }
                     jetty_core::write::assets::diff::policies::DiffDetails::RemoveAgent {
                         remove,
-                    } => plans.1.extend(generate_delete_requests(
+                    } => plans.1.extend(self.build_delete_policy_requests(
                         remove,
-                        &base_url,
                         asset_reference,
                         &group_id,
                         "group",
-                    )),
+                    )?),
                     jetty_core::write::assets::diff::policies::DiffDetails::ModifyAgent {
                         add,
                         remove,
@@ -116,77 +114,99 @@ impl TableauConnector {
                             );
                         }
                         if !remove.privileges.is_empty() {
-                            plans.1.extend(generate_delete_requests(
+                            plans.1.extend(self.build_delete_policy_requests(
                                 remove,
-                                &base_url,
                                 asset_reference,
                                 &group_id,
                                 "group",
-                            ));
+                            )?);
                         }
                     }
                 }
             }
             if !user_adds.is_empty() || !group_adds.is_empty() {
-                plans.1.push(generate_add_requests(
-                    &base_url,
+                plans.1.push(self.build_add_policy_request(
                     asset_reference,
                     user_adds,
                     group_adds,
-                ));
+                )?);
             }
         }
         Ok(plans)
     }
-}
 
-fn generate_delete_requests(
-    state: &PolicyState,
-    base_url: &String,
-    asset: &TableauAssetReference,
-    grantee_id: &String,
-    grantee_type: &str,
-) -> Vec<String> {
-    let mut res = Vec::new();
-    for privilege in state.privileges.iter() {
-        let permission = IndividualPermission::from_string(privilege);
-        let url = format!(
-            "{base_url}/{}/{}/permissions/{grantee_type}/{grantee_id}/{}/{}",
-            asset.asset_type.as_category_str(),
-            &asset.id,
-            &permission.capability,
-            &permission.mode.to_string()
-        );
-        res.push(format!(r"DELETE {url}",))
+    pub(crate) fn build_add_policy_request(
+        &self,
+        asset: &TableauAssetReference,
+        user: HashMap<String, Vec<IndividualPermission>>,
+        group: HashMap<String, Vec<IndividualPermission>>,
+    ) -> Result<reqwest::Request> {
+        // Add the user
+        let req_body = generate_add_privileges_request_body(asset, user, group)?;
+        self.coordinator
+            .rest_client
+            .build_request(
+                format!(
+                    "{}/{}/permissions",
+                    asset.asset_type.as_category_str(),
+                    asset.id
+                ),
+                Some(req_body),
+                reqwest::Method::PUT,
+            )?
+            .build()
+            .context("building request")
     }
-    res
+
+    pub(crate) fn build_delete_policy_requests(
+        &self,
+        state: &PolicyState,
+        asset: &TableauAssetReference,
+        grantee_id: &String,
+        grantee_type: &str,
+    ) -> Result<Vec<Request>> {
+        state
+            .privileges
+            .iter()
+            .map(|p| {
+                let permission = IndividualPermission::from_string(p);
+                self.coordinator
+                    .rest_client
+                    .build_request(
+                        format!(
+                            "{}/{}/permissions/{grantee_type}/{grantee_id}/{}/{}",
+                            asset.asset_type.as_category_str(),
+                            &asset.id,
+                            permission.capability,
+                            permission.mode.to_string()
+                        ),
+                        None,
+                        reqwest::Method::DELETE,
+                    )?
+                    .build()
+                    .context("building request")
+            })
+            .collect()
+    }
 }
 
-pub(super) fn generate_add_requests(
-    base_url: &String,
+pub(super) fn generate_add_privileges_request_body(
     asset: &TableauAssetReference,
     user: HashMap<String, Vec<IndividualPermission>>,
     group: HashMap<String, Vec<IndividualPermission>>,
-) -> String {
-    let mut request_text = format!(
-        "PUT {}/{}/{}/permissions\n",
-        base_url,
-        asset.asset_type.as_category_str(),
-        asset.id
-    );
-
-    request_text += "body:
-  {
-    \"permissions\": {\n";
+) -> Result<serde_json::Value> {
+    let mut request_text = "".to_owned();
+    request_text += "
+  { \"permissions\": {\n";
     if !matches!(asset.asset_type, TableauAssetType::Project) {
         request_text += format!(
-            "      \"{}\": {{ \"id\": \"{}\" }},\n",
+            "\"{}\": {{ \"id\": \"{}\" }},\n",
             asset.asset_type.as_str(),
             asset.id
         )
         .as_str();
     }
-    request_text += "      \"granteeCapabilities\": [\n";
+    request_text += "\"granteeCapabilities\": [\n";
     for (user_id, permissions) in user.iter() {
         request_text += "        {\n";
         request_text += format!(
@@ -203,17 +223,13 @@ pub(super) fn generate_add_requests(
             )
             .as_str()
         }
-        request_text += "          ]\n";
-        request_text += "        }\n"
+        request_text += "]\n";
+        request_text += "}\n"
     }
     for (group_id, permissions) in group.iter() {
-        request_text += "        {\n";
-        request_text += format!(
-            "          \"group\": {{ \"id\": \"{}\" }},\n",
-            group_id.to_owned()
-        )
-        .as_str();
-        request_text += "          \"capabilities\": [\n";
+        request_text += "{";
+        request_text += format!("\"group\": {{ \"id\": \"{}\" }},\n", group_id.to_owned()).as_str();
+        request_text += "\"capabilities\": [\n";
         for permission in permissions {
             request_text += format!(
                 "            {{ \"capability\": {{ \"name\": \"{}\", \"mode\": \"{}\" }} }}\n",
@@ -222,12 +238,12 @@ pub(super) fn generate_add_requests(
             )
             .as_str()
         }
-        request_text += "          ]\n";
-        request_text += "        }\n"
+        request_text += "\n";
+        request_text += "}\n"
     }
-    request_text += "      ]\n";
-    request_text += "    }\n";
-    request_text += "  }\n";
+    request_text += "]\n";
+    request_text += "}\n";
+    request_text += "}\n";
 
-    request_text
+    serde_json::from_str(&request_text).context("building request body")
 }
