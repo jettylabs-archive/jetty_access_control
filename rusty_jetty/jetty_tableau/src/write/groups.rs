@@ -12,16 +12,16 @@ use serde_json::json;
 
 use crate::{rest, TableauConnector};
 
-use super::{PrioritizedFutures, PrioritizedPlans};
+use super::{SequencedFutures, SequencedPlans};
 
 impl TableauConnector {
+    /// prepare the plans for group changes (for jetty plan)
     pub(crate) fn prepare_groups_plan(
         &self,
         group_diffs: &Vec<groups::LocalDiff>,
-    ) -> Result<PrioritizedPlans> {
-        let mut plans = PrioritizedPlans::default();
+    ) -> Result<SequencedPlans> {
+        let mut plans = SequencedPlans::default();
 
-        // Starting with groups
         for diff in group_diffs {
             match &diff.details {
                 groups::LocalDiffDetails::AddGroup { member_of } => {
@@ -61,12 +61,13 @@ impl TableauConnector {
         Ok(plans)
     }
 
+    /// Generate futures for the requests to be executed as part of `jetty apply`
     pub(super) fn generate_group_apply_futures<'a>(
         &'a self,
         group_diffs: &'a Vec<groups::LocalDiff>,
         group_map: Arc<Mutex<HashMap<String, String>>>,
-    ) -> Result<PrioritizedFutures> {
-        let mut futures = PrioritizedFutures::default();
+    ) -> Result<SequencedFutures> {
+        let mut futures = SequencedFutures::default();
 
         for diff in group_diffs {
             match &diff.details {
@@ -81,15 +82,12 @@ impl TableauConnector {
                     ));
                 }
                 groups::LocalDiffDetails::RemoveGroup => {
-                    // get the group_id
-                    let temp_group_map = group_map.lock().unwrap();
-                    let group_id = temp_group_map
-                        .get(&diff.group_name)
-                        .ok_or(anyhow!("Unable to find group id for {}", &diff.group_name))?;
-
-                    futures.0.push(Box::pin(
-                        self.execute_to_unit_result(self.build_delete_group_request(&group_id)?),
-                    ));
+                    futures
+                        .0
+                        .push(Box::pin(self.execute_delete_group_with_deferred_lookup(
+                            &diff.group_name,
+                            Arc::clone(&group_map),
+                        )));
                 }
                 groups::LocalDiffDetails::ModifyGroup {
                     add_member_of,
@@ -103,6 +101,18 @@ impl TableauConnector {
             }
         }
         Ok(futures)
+    }
+
+    /// Async function that deletes a group, deferring the lookup of the group id until
+    /// the function is awaited
+    async fn execute_delete_group_with_deferred_lookup(
+        &self,
+        group_name: &String,
+        group_map: Arc<Mutex<HashMap<String, String>>>,
+    ) -> Result<()> {
+        let group_id = &super::group_lookup_from_mutex(group_map, group_name)?;
+        self.execute_to_unit_result(self.build_delete_group_request(group_id)?)
+            .await
     }
 
     /// build a request to add a group
@@ -131,6 +141,7 @@ impl TableauConnector {
             .context("building request")
     }
 
+    /// Async function to create a new group in tableau, and then add it to the group map for future lookup.
     async fn create_group_and_add_to_env(
         &self,
         group_name: &String,
@@ -152,7 +163,9 @@ impl TableauConnector {
 
         // update the environment so that when users look for this group in the future, they are able to find it!
         let mut locked_group_map = group_map.lock().unwrap();
+        dbg!(&group_name, &group_id);
         locked_group_map.insert(group_name.to_owned(), group_id);
+
         Ok(())
     }
 }

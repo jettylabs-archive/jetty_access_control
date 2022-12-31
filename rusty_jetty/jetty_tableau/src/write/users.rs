@@ -12,14 +12,15 @@ use serde_json::json;
 
 use crate::TableauConnector;
 
-use super::{PrioritizedFutures, PrioritizedPlans};
+use super::{SequencedFutures, SequencedPlans};
 
 impl TableauConnector {
+    /// plan requests for `jetty plan`
     pub(crate) fn prepare_users_plan(
         &self,
         user_diffs: &Vec<users::LocalDiff>,
-    ) -> Result<PrioritizedPlans> {
-        let mut plans = PrioritizedPlans::default();
+    ) -> Result<SequencedPlans> {
+        let mut plans = SequencedPlans::default();
 
         for diff in user_diffs {
             for group in &diff.group_membership.add {
@@ -48,37 +49,62 @@ impl TableauConnector {
         Ok(plans)
     }
 
+    /// generate request futures that are needed for `jetty apply`
     pub(super) fn generate_user_apply_futures<'a>(
         &'a self,
         user_diffs: &'a Vec<users::LocalDiff>,
         group_map: Arc<Mutex<HashMap<String, String>>>,
-    ) -> Result<PrioritizedFutures> {
-        let mut futures = PrioritizedFutures::default();
+    ) -> Result<SequencedFutures> {
+        let mut futures = SequencedFutures::default();
 
         for diff in user_diffs {
             for group in &diff.group_membership.add {
-                // get the group_id
-                let temp_group_map = group_map.lock().unwrap();
-                let group_id = temp_group_map
-                    .get(group)
-                    .ok_or(anyhow!("Unable to find group id for {}", group))?;
-                futures.1.push(Box::pin(self.execute_to_unit_result(
-                    self.build_add_user_request(&group_id, &diff.user)?,
-                )));
+                futures
+                    .1
+                    .push(Box::pin(self.execute_add_user_with_deferred_lookup(
+                        group,
+                        &diff.user,
+                        Arc::clone(&group_map),
+                    )));
             }
             for group in &diff.group_membership.remove {
-                // get the group_id
-                let temp_group_map = group_map.lock().unwrap();
-                let group_id = temp_group_map
-                    .get(group)
-                    .ok_or(anyhow!("Unable to find group id for {}", group))?;
-                futures.1.push(Box::pin(self.execute_to_unit_result(
-                    self.build_remove_user_request(&group_id, &diff.user)?,
-                )));
+                futures
+                    .1
+                    .push(Box::pin(self.execute_remove_user_with_deferred_lookup(
+                        group,
+                        &diff.user,
+                        Arc::clone(&group_map),
+                    )));
             }
         }
 
         Ok(futures)
+    }
+
+    /// Async function to add user to a group, deferring group id lookup until the function
+    /// is awaited
+    async fn execute_add_user_with_deferred_lookup(
+        &self,
+        group_name: &String,
+        user_id: &String,
+        group_map: Arc<Mutex<HashMap<String, String>>>,
+    ) -> Result<()> {
+        let group_id = &super::group_lookup_from_mutex(group_map, group_name)?;
+        self.execute_to_unit_result(self.build_add_user_request(&group_id, user_id)?)
+            .await
+    }
+
+    /// Async function to remove a user from a group, deferring group id lookup until the function
+    /// is awaited
+    async fn execute_remove_user_with_deferred_lookup(
+        &self,
+        group_name: &String,
+        user_id: &String,
+        group_map: Arc<Mutex<HashMap<String, String>>>,
+    ) -> Result<()> {
+        let group_id = &super::group_lookup_from_mutex(group_map, group_name)?;
+        self.execute_to_unit_result(self.build_remove_user_request(&group_id, user_id)?)
+            .await
     }
 
     /// build a request to add a group

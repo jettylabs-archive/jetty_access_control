@@ -26,7 +26,7 @@ pub(super) fn prepare_queries(
                 // Drop roles. This will transfer all ownership to the Jetty role. If there are grants that are owned by the role that is dropped, those grants are dropped too.
                 // because of this, it may be necessary to run a double-apply.
                 res.0.push(format!(
-                    "GRANT OWNERSHIP ON ROLE \"{}\" TO {}; --Only the owner of a role can drop it",
+                    "GRANT OWNERSHIP ON ROLE \"{}\" TO \"{}\"; --Only the owner of a role can drop it",
                     diff.group_name,
                     snow.rest_client.get_snowflake_role()
                 ));
@@ -44,7 +44,7 @@ pub(super) fn prepare_queries(
                 }
                 for group in remove_member_of {
                     res.2.push(format!(
-                        "REVOKE ROLE {} FROM ROLE {};",
+                        "REVOKE ROLE \"{}\" FROM ROLE \"{}\";",
                         diff.group_name, group
                     ))
                 }

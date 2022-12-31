@@ -44,7 +44,7 @@ impl Display for AgentType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             AgentType::User => write!(f, "USER"),
-            AgentType::Group => write!(f, "GROUP"),
+            AgentType::Group => write!(f, "ROLE"),
         }
     }
 }
@@ -64,7 +64,7 @@ pub(crate) fn generate_queries_for_diff_details(
             // also affects other grants
             if add.privileges.remove("OWNERSHIP") {
                 res.push(format!(
-                    "GRANT OWNERSHIP ON {} {} TO {agent_type} {agent} COPY CURRENT GRANTS",
+                    "GRANT OWNERSHIP ON {} {} TO {agent_type} \"{agent}\" COPY CURRENT GRANTS",
                     asset.asset_type(),
                     asset.fqn()
                 ))
@@ -76,7 +76,7 @@ pub(crate) fn generate_queries_for_diff_details(
                 .collect::<Vec<_>>()
                 .join(", ");
             res.push(format!(
-                "GRANT {privileges} ON {} {} TO {agent_type} {agent}",
+                "GRANT {privileges} ON {} {} TO {agent_type} \"{agent}\"",
                 asset.asset_type(),
                 asset.fqn()
             ));
@@ -84,7 +84,7 @@ pub(crate) fn generate_queries_for_diff_details(
         }
         assets::diff::policies::DiffDetails::RemoveAgent { .. } => {
             vec![format!(
-                "REVOKE ALL ON {} {} FROM {agent_type} {agent}",
+                "REVOKE ALL ON {} {} FROM {agent_type} \"{agent}\"",
                 asset.asset_type(),
                 asset.fqn()
             )]
@@ -95,7 +95,7 @@ pub(crate) fn generate_queries_for_diff_details(
             if !add.privileges.is_empty() {
                 if add.privileges.remove("OWNERSHIP") {
                     res.push(format!(
-                        "GRANT OWNERSHIP ON {} {} TO {agent_type} {agent} COPY CURRENT GRANTS",
+                        "GRANT OWNERSHIP ON {} {} TO {agent_type} \"{agent}\" COPY CURRENT GRANTS",
                         asset.asset_type(),
                         asset.fqn()
                     ))
@@ -107,7 +107,7 @@ pub(crate) fn generate_queries_for_diff_details(
                     .collect::<Vec<_>>()
                     .join(", ");
                 res.push(format!(
-                    "GRANT {privileges} ON {} {} TO {agent_type} {agent}",
+                    "GRANT {privileges} ON {} {} TO {agent_type} \"{agent}\"",
                     asset.asset_type(),
                     asset.fqn()
                 ));
@@ -120,7 +120,7 @@ pub(crate) fn generate_queries_for_diff_details(
                     .collect::<Vec<_>>()
                     .join(", ");
                 res.push(format!(
-                    "REVOKE {privileges} ON {} {} FROM {agent_type} {agent}",
+                    "REVOKE {privileges} ON {} {} FROM {agent_type} \"{agent}\"",
                     asset.asset_type(),
                     asset.fqn()
                 ));

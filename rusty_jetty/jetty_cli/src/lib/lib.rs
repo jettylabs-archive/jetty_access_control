@@ -384,14 +384,6 @@ async fn apply() -> Result<()> {
         now.elapsed().as_secs_f32()
     ));
 
-    // Look at the updated data to see if the apply was successful
-    println!("Waiting 5 seconds then fetching updated access information");
-    timer_with_spinner(
-        5,
-        "Giving your tools a chance to update",
-        "Done - beginning fetch",
-    );
-
     match fetch(&None, &false).await {
         Ok(_) => {
             // reload jetty to get the latest fetch
@@ -401,19 +393,7 @@ async fn apply() -> Result<()> {
             println!("Here is the current diff based on your configuration:");
             // For now, we're just looking at group diffs
 
-            let validated_group_config = parse_and_validate_groups(&jetty)?;
-            let group_diff = jetty_core::write::get_group_diff(&validated_group_config, &jetty)?;
-            if !group_diff.is_empty() {
-                group_diff.iter().for_each(|diff| println!("{diff}"));
-                println!(
-                    r#"You might see outstanding changes for a couple of reasons:
-    1. The underlying system is still updating (this is often the case with Tableau)
-    2. The changes had side-effects. This is expected for some changes.
-       You can run `jetty apply` again to make the necessary updates"#
-                )
-            } else {
-                println!("No changes found");
-            };
+            diff::diff().await?;
         }
         Err(_) => {
             error!("unable to perform fetch");

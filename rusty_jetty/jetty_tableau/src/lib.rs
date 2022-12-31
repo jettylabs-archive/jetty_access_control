@@ -45,7 +45,7 @@ use permissions::{
     },
     PermissionManager,
 };
-use write::PrioritizedPlans;
+use write::SequencedPlans;
 
 use std::{
     collections::{HashMap, HashSet},

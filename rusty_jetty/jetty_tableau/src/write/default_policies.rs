@@ -7,6 +7,7 @@ use std::{
 
 use anyhow::{anyhow, bail, Context, Result};
 
+use futures::future::BoxFuture;
 use jetty_core::{
     access_graph::translate::diffs::default_policies, cual::Cual, write::assets::PolicyState,
 };
@@ -18,14 +19,15 @@ use crate::{
     TableauConnector,
 };
 
-use super::{PrioritizedFutures, PrioritizedPlans};
+use super::{SequencedFutures, SequencedPlans};
 
 impl TableauConnector {
+    /// Generate sequenced plan for changes (as part of `jetty plan` execution path)
     pub(crate) fn prepare_default_policies_plan(
         &self,
         policy_diffs: &Vec<default_policies::LocalDiff>,
-    ) -> Result<PrioritizedPlans> {
-        let mut plans = PrioritizedPlans::default();
+    ) -> Result<SequencedPlans> {
+        let mut plans = SequencedPlans::default();
 
         for diff in policy_diffs {
             let asset_reference = self.coordinator.env.cual_id_map.get(&diff.asset).unwrap();
@@ -187,12 +189,16 @@ impl TableauConnector {
         Ok(plans)
     }
 
-    pub(super) fn generate_default_policy_apply_futures(
-        &self,
-        policy_diffs: &Vec<default_policies::LocalDiff>,
+    /// Generate the actual request futures for changes to be applied as part of `jetty apply`
+    /// This is very similar to prepare_default_policies_plan(), but requires extra care because it needs
+    /// to handle the id's of newly created groups. That means that the actual creation of must requests
+    /// must be deferred.
+    pub(super) fn generate_default_policy_apply_futures<'a>(
+        &'a self,
+        policy_diffs: &'a Vec<default_policies::LocalDiff>,
         group_map: Arc<Mutex<HashMap<String, String>>>,
-    ) -> Result<PrioritizedFutures> {
-        let mut futures = PrioritizedFutures::default();
+    ) -> Result<SequencedFutures> {
+        let mut futures = SequencedFutures::default();
 
         for diff in policy_diffs {
             let asset_reference = self.coordinator.env.cual_id_map.get(&diff.asset).unwrap();
@@ -216,11 +222,11 @@ impl TableauConnector {
 
             let mut set_tableau_content_permissions: Option<String> = None;
 
-            for (user, details) in &diff.users {
+            for (user_id, details) in &diff.users {
                 match details {
                     jetty_core::write::assets::diff::policies::DiffDetails::AddAgent { add } => {
                         user_adds.insert(
-                            user.to_owned(),
+                            user_id.to_owned(),
                             add.privileges
                                 .iter()
                                 .map(|p| IndividualPermission::from_string(p))
@@ -237,15 +243,17 @@ impl TableauConnector {
                     jetty_core::write::assets::diff::policies::DiffDetails::RemoveAgent {
                         remove,
                     } => self
-                        .build_delete_default_policy_requests(
+                        .build_delete_default_policy_request_futures(
                             remove,
                             asset_reference,
-                            user,
+                            user_id,
                             "user",
                             &asset_type,
+                            group_map.clone(),
                         )?
                         .into_iter()
-                        .for_each(|req| futures.1.push(Box::pin(self.execute_to_unit_result(req)))),
+                        .for_each(|f| futures.1.push(f)),
+
                     jetty_core::write::assets::diff::policies::DiffDetails::ModifyAgent {
                         add,
                         remove,
@@ -258,30 +266,26 @@ impl TableauConnector {
                         )?;
 
                         user_adds.insert(
-                            user.to_owned(),
+                            user_id.to_owned(),
                             add.privileges
                                 .iter()
                                 .map(|p| IndividualPermission::from_string(p))
                                 .collect::<Vec<_>>(),
                         );
-                        self.build_delete_default_policy_requests(
+                        self.build_delete_default_policy_request_futures(
                             remove,
                             asset_reference,
-                            user,
+                            user_id,
                             "user",
                             &asset_type,
+                            group_map.clone(),
                         )?
                         .into_iter()
-                        .for_each(|req| futures.1.push(Box::pin(self.execute_to_unit_result(req))));
+                        .for_each(|f| futures.1.push(f));
                     }
                 }
             }
-            for (group, details) in &diff.groups {
-                // get the group_id
-                let temp_group_map = group_map.lock().unwrap();
-                let group_id = temp_group_map
-                    .get(group)
-                    .ok_or(anyhow!("Unable to find group id for {}", group))?;
+            for (group_name, details) in &diff.groups {
                 match details {
                     jetty_core::write::assets::diff::policies::DiffDetails::AddAgent { add } => {
                         // catch changes to content permissions and check for errors
@@ -291,7 +295,7 @@ impl TableauConnector {
                             add,
                         )?;
                         group_adds.insert(
-                            group_id.to_owned(),
+                            group_name.to_owned(),
                             add.privileges
                                 .iter()
                                 .map(|p| IndividualPermission::from_string(p))
@@ -301,15 +305,16 @@ impl TableauConnector {
                     jetty_core::write::assets::diff::policies::DiffDetails::RemoveAgent {
                         remove,
                     } => self
-                        .build_delete_default_policy_requests(
+                        .build_delete_default_policy_request_futures(
                             remove,
                             asset_reference,
-                            &group_id,
+                            group_name,
                             "group",
                             &asset_type,
+                            group_map.clone(),
                         )?
                         .into_iter()
-                        .for_each(|req| futures.1.push(Box::pin(self.execute_to_unit_result(req)))),
+                        .for_each(|f| futures.1.push(f)),
                     jetty_core::write::assets::diff::policies::DiffDetails::ModifyAgent {
                         add,
                         remove,
@@ -322,7 +327,7 @@ impl TableauConnector {
                         )?;
                         if !add.privileges.is_empty() {
                             group_adds.insert(
-                                group_id.to_owned(),
+                                group_name.to_owned(),
                                 add.privileges
                                     .iter()
                                     .map(|p| IndividualPermission::from_string(p))
@@ -330,30 +335,30 @@ impl TableauConnector {
                             );
                         }
                         if !remove.privileges.is_empty() {
-                            self.build_delete_default_policy_requests(
+                            self.build_delete_default_policy_request_futures(
                                 remove,
                                 asset_reference,
-                                &group_id,
+                                group_name,
                                 "group",
                                 &asset_type,
+                                group_map.clone(),
                             )?
                             .into_iter()
-                            .for_each(|req| {
-                                futures.1.push(Box::pin(self.execute_to_unit_result(req)))
-                            });
+                            .for_each(|f| futures.1.push(f));
                         }
                     }
                 }
             }
             if !user_adds.is_empty() || !group_adds.is_empty() {
-                futures.1.push(Box::pin(self.execute_to_unit_result(
-                    self.build_add_default_policy_request(
+                futures.1.push(Box::pin(
+                    self.execute_add_default_policy_with_deferred_lookup(
                         asset_reference,
                         user_adds,
                         group_adds,
-                        &asset_type,
-                    )?,
-                )));
+                        asset_type.to_owned(),
+                        group_map.clone(),
+                    ),
+                ));
             }
 
             if let Some(content_permissions) = set_tableau_content_permissions {
@@ -368,6 +373,35 @@ impl TableauConnector {
         Ok(futures)
     }
 
+    /// Creates and executes a request to add to defualt policies after looking up the relevant group id.
+    async fn execute_add_default_policy_with_deferred_lookup(
+        &self,
+        asset: &TableauAssetReference,
+        user: HashMap<String, Vec<IndividualPermission>>,
+        mut group: HashMap<String, Vec<IndividualPermission>>,
+        applied_to_asset_type: TableauAssetType,
+        group_map: Arc<Mutex<HashMap<String, String>>>,
+    ) -> Result<()> {
+        // convert group name to group id
+        group = group
+            .into_iter()
+            .map(|(k, v)| -> Result<_> {
+                Ok((
+                    super::group_lookup_from_mutex(Arc::clone(&group_map), &k)?,
+                    v,
+                ))
+            })
+            .collect::<Result<HashMap<_, _>>>()?;
+        self.execute_to_unit_result(self.build_add_default_policy_request(
+            asset,
+            user,
+            group,
+            &applied_to_asset_type,
+        )?)
+        .await
+    }
+
+    /// Build requests that will delete privileges
     fn build_delete_default_policy_requests(
         &self,
         state: &PolicyState,
@@ -383,26 +417,45 @@ impl TableauConnector {
             .privileges
             .iter()
             .map(|p| {
-                let permission = IndividualPermission::from_string(p);
-                self.coordinator
-                    .rest_client
-                    .build_request(
-                        format!(
-                            "projects/{}/default-permissions/{}/{grantee_type}/{grantee_id}/{}/{}",
-                            &asset.id,
-                            applied_to_asset_type.as_category_str(),
-                            &permission.capability,
-                            &permission.mode.to_string()
-                        ),
-                        None,
-                        reqwest::Method::DELETE,
-                    )?
-                    .build()
-                    .context("building request")
+                self.generate_delete_default_privilege_request(
+                    p,
+                    asset,
+                    grantee_id,
+                    grantee_type,
+                    applied_to_asset_type,
+                )
             })
             .collect()
     }
 
+    /// generate the actual request to delete a default privilege
+    fn generate_delete_default_privilege_request(
+        &self,
+        privilege: &String,
+        asset: &TableauAssetReference,
+        grantee_id: &String,
+        grantee_type: &str,
+        applied_to_asset_type: &TableauAssetType,
+    ) -> Result<Request> {
+        let permission = IndividualPermission::from_string(privilege);
+        self.coordinator
+            .rest_client
+            .build_request(
+                format!(
+                    "projects/{}/default-permissions/{}/{grantee_type}/{grantee_id}/{}/{}",
+                    &asset.id,
+                    applied_to_asset_type.as_category_str(),
+                    &permission.capability,
+                    &permission.mode.to_string()
+                ),
+                None,
+                reqwest::Method::DELETE,
+            )?
+            .build()
+            .context("building request")
+    }
+
+    /// build request to update content permissions
     fn generate_content_permissions_request(
         &self,
         asset: &TableauAssetReference,
@@ -423,6 +476,7 @@ impl TableauConnector {
             .context("building request")
     }
 
+    /// Build a request to update default permissions
     fn build_add_default_policy_request(
         &self,
         asset: &TableauAssetReference,
@@ -454,8 +508,77 @@ impl TableauConnector {
             .build()
             .context("building request")
     }
+
+    /// Build futures that will delete privileges
+    pub(crate) fn build_delete_default_policy_request_futures<'a>(
+        &'a self,
+        state: &PolicyState,
+        asset: &TableauAssetReference,
+        user_id_or_group_name: &'a String,
+        grantee_type: &'a str,
+        applied_to_asset_type: &TableauAssetType,
+        group_map: Arc<Mutex<HashMap<String, String>>>,
+    ) -> Result<Vec<BoxFuture<Result<()>>>> {
+        // If it's a project, just generate the same request for a non-default policy
+        if applied_to_asset_type == &TableauAssetType::Project {
+            return self.build_delete_policy_request_futures(
+                state,
+                asset,
+                user_id_or_group_name,
+                grantee_type,
+                group_map,
+            );
+        }
+
+        let mut res: Vec<BoxFuture<Result<()>>> = Vec::new();
+        for privilege in &state.privileges {
+            res.push(Box::pin(
+                self.build_and_execute_delete_default_policy_request(
+                    privilege.to_owned(),
+                    asset.to_owned(),
+                    user_id_or_group_name.to_owned(),
+                    grantee_type.to_owned(),
+                    applied_to_asset_type.to_owned(),
+                    Arc::clone(&group_map),
+                ),
+            ));
+        }
+
+        Ok(res)
+    }
+
+    /// Look up the relevant grantee ids, generate a request and execute that request
+    /// to remove privileges.
+    async fn build_and_execute_delete_default_policy_request(
+        &self,
+        privilege: String,
+        asset: TableauAssetReference,
+        user_id_or_group_name: String,
+        grantee_type: String,
+        applied_to_asset_type: TableauAssetType,
+        group_map: Arc<Mutex<HashMap<String, String>>>,
+    ) -> Result<()> {
+        let mut grantee_id = user_id_or_group_name.to_owned();
+
+        if grantee_type == "group".to_owned() {
+            grantee_id = super::group_lookup_from_mutex(group_map, &grantee_id)?;
+        }
+
+        let permission = IndividualPermission::from_string(&privilege);
+
+        let request = self.generate_delete_default_privilege_request(
+            &privilege,
+            &asset,
+            &grantee_id,
+            &grantee_type,
+            &applied_to_asset_type,
+        )?;
+
+        self.execute_to_unit_result(request).await
+    }
 }
 
+/// Generate the request body needed to generate and add default permissions
 fn generate_add_default_privileges_request_body(
     asset: &TableauAssetReference,
     user: HashMap<String, Vec<IndividualPermission>>,

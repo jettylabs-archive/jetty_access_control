@@ -55,7 +55,7 @@ fn generate_queries_for_diff_details(
             // also affects other grants
             if add.privileges.remove("OWNERSHIP") {
                 res.push(format!(
-                    "GRANT OWNERSHIP ON FUTURE {asset_type}s in {} {} TO {agent_type} {agent} COPY CURRENT GRANTS",
+                    "GRANT OWNERSHIP ON FUTURE {asset_type}s in {} {} TO {agent_type} \"{agent}\" COPY CURRENT GRANTS",
                     asset.asset_type(),
                     asset.fqn()
                 ))
@@ -67,7 +67,7 @@ fn generate_queries_for_diff_details(
                 .collect::<Vec<_>>()
                 .join(", ");
             res.push(format!(
-                "GRANT {privileges} ON FUTURE {asset_type}S IN {} {} TO {agent_type} {agent}",
+                "GRANT {privileges} ON FUTURE {asset_type}s IN {} {} TO {agent_type} \"{agent}\"",
                 asset.asset_type(),
                 asset.fqn()
             ));
@@ -75,7 +75,7 @@ fn generate_queries_for_diff_details(
         }
         assets::diff::policies::DiffDetails::RemoveAgent { .. } => {
             vec![format!(
-                "REVOKE ALL ON FUTURE {asset_type}S IN {} {} FROM {agent_type} {agent}",
+                "REVOKE ALL ON FUTURE {asset_type}s IN {} {} FROM {agent_type} \"{agent}\"",
                 asset.asset_type(),
                 asset.fqn()
             )]
@@ -88,34 +88,37 @@ fn generate_queries_for_diff_details(
             // also affects other grants
             if add.privileges.remove("OWNERSHIP") {
                 res.push(format!(
-                    "GRANT OWNERSHIP ON FUTURE {asset_type}s in {} {} TO {agent_type} {agent} COPY CURRENT GRANTS",
+                    "GRANT OWNERSHIP ON FUTURE {asset_type}s in {} {} TO {agent_type} \"{agent}\" COPY CURRENT GRANTS",
                     asset.asset_type(),
                     asset.fqn()
                 ))
             }
-
-            let privileges = add
-                .privileges
-                .to_owned()
-                .into_iter()
-                .collect::<Vec<_>>()
-                .join(", ");
-            res.push(format!(
-                "GRANT {privileges} ON FUTURE {asset_type}S IN {} {} TO {agent_type} {agent}",
+            if !add.privileges.is_empty() {
+                let privileges = add
+                    .privileges
+                    .to_owned()
+                    .into_iter()
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                res.push(format!(
+                    "GRANT {privileges} ON FUTURE {asset_type}s IN {} {} TO {agent_type} \"{agent}\"",
+                    asset.asset_type(),
+                    asset.fqn()
+                ));
+            }
+            if !remove.privileges.is_empty() {
+                let privileges = remove
+                    .privileges
+                    .to_owned()
+                    .into_iter()
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                res.push(format!(
+                "REVOKE {privileges} ON FUTURE {asset_type}s IN {} {} FROM {agent_type} \"{agent}\"",
                 asset.asset_type(),
                 asset.fqn()
             ));
-            let privileges = remove
-                .privileges
-                .to_owned()
-                .into_iter()
-                .collect::<Vec<_>>()
-                .join(", ");
-            res.push(format!(
-                "REVOKE {privileges} ON FUTURE {asset_type}S IN {} {} FROM {agent_type} {agent}",
-                asset.asset_type(),
-                asset.fqn()
-            ));
+            }
             res
         }
     }

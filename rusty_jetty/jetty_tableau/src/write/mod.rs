@@ -20,20 +20,24 @@ mod groups;
 mod policies;
 mod users;
 
+/// Struct containing a sequenced plans. The sequence is important to get the order
+/// of operations right (don't add users to groups until they're created, for example)
 #[derive(Default)]
-pub(crate) struct PrioritizedPlans(
+pub(crate) struct SequencedPlans(
     pub(crate) Vec<reqwest::Request>,
     pub(crate) Vec<reqwest::Request>,
     pub(crate) Vec<reqwest::Request>,
 );
 
-impl PrioritizedPlans {
+impl SequencedPlans {
     /// extend prioritized plans, consuming other
     pub(crate) fn extend(&mut self, other: Self) {
         self.0.extend(other.0.into_iter().map(|r| r));
         self.1.extend(other.1.into_iter().map(|r| r));
         self.2.extend(other.2.into_iter().map(|r| r));
     }
+
+    /// Flatten planned requests to a vector of strings for 'jetty plan'
     pub(crate) fn flatten_to_string_vec(&self) -> Vec<String> {
         [&self.0, &self.1, &self.2]
             .into_iter()
@@ -43,14 +47,16 @@ impl PrioritizedPlans {
     }
 }
 
+/// Struct containing a sequenced futures. The sequence is important to get the order
+/// of operations right (don't add users to groups until they're created, for example)
 #[derive(Default)]
-pub(crate) struct PrioritizedFutures<'a>(
+pub(crate) struct SequencedFutures<'a>(
     pub(crate) Vec<BoxFuture<'a, Result<()>>>,
     pub(crate) Vec<BoxFuture<'a, Result<()>>>,
     pub(crate) Vec<BoxFuture<'a, Result<()>>>,
 );
 
-impl<'a> PrioritizedFutures<'a> {
+impl<'a> SequencedFutures<'a> {
     /// extend prioritized futures, consuming other
     pub(crate) fn extend(&mut self, other: Self) {
         self.0.extend(other.0.into_iter().map(|r| r));
@@ -59,6 +65,7 @@ impl<'a> PrioritizedFutures<'a> {
     }
 }
 
+/// Convert a request to a string representation to display as part of the plan
 fn request_to_string(req: &reqwest::Request) -> String {
     let mut res = format!("{} {}\n", req.method(), req.url().path(),);
     match req.body() {
@@ -78,10 +85,11 @@ fn request_to_string(req: &reqwest::Request) -> String {
 }
 
 impl TableauConnector {
+    /// generate the futures that will be executed with 'jetty apply'
     pub(super) fn generate_plan_futures<'a>(
         &'a self,
         diffs: &'a LocalConnectorDiffs,
-    ) -> Result<PrioritizedFutures> {
+    ) -> Result<SequencedFutures> {
         let group_map: HashMap<String, String> = self
             .coordinator
             .env
@@ -92,7 +100,7 @@ impl TableauConnector {
 
         let group_map_mutex = Arc::new(Mutex::new(group_map));
 
-        let mut futures = PrioritizedFutures::default();
+        let mut futures = SequencedFutures::default();
 
         let group_futures =
             self.generate_group_apply_futures(&diffs.groups, Arc::clone(&group_map_mutex))?;
@@ -113,11 +121,12 @@ impl TableauConnector {
         Ok(futures)
     }
 
+    /// Plan the requests that will be executed - for 'jetty plan'
     pub(super) fn generate_request_plan(
         &self,
         diffs: &LocalConnectorDiffs,
-    ) -> Result<PrioritizedPlans> {
-        let mut plans = PrioritizedPlans::default();
+    ) -> Result<SequencedPlans> {
+        let mut plans = SequencedPlans::default();
 
         let group_plans = self.prepare_groups_plan(&diffs.groups)?;
         let user_plans = self.prepare_users_plan(&diffs.users)?;
@@ -137,4 +146,20 @@ impl TableauConnector {
         self.coordinator.rest_client.execute(request).await?;
         Ok(())
     }
+}
+
+/// given an Arc Mutex containing a map of group names to ids, return the id for a given name
+/// This was created to be called from async functions that need to fetch the id of a
+/// group just in time
+fn group_lookup_from_mutex(
+    group_map: Arc<Mutex<HashMap<String, String>>>,
+    group_name: &String,
+) -> Result<String> {
+    // get the group_id
+    let temp_group_map = group_map.lock().unwrap();
+    let group_id = temp_group_map
+        .get(group_name)
+        .ok_or(anyhow!("Unable to find group id for {}", group_name))?
+        .to_owned();
+    Ok(group_id)
 }
