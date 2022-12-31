@@ -163,7 +163,6 @@ impl TableauConnector {
 
         // update the environment so that when users look for this group in the future, they are able to find it!
         let mut locked_group_map = group_map.lock().unwrap();
-        dbg!(&group_name, &group_id);
         locked_group_map.insert(group_name.to_owned(), group_id);
 
         Ok(())

@@ -139,7 +139,7 @@ impl GroupIndex {
         Ok(ag
             .get_matching_children(
                 self.idx,
-                |e| matches!(EdgeType::MemberOf, e),
+                |e| matches!(e, EdgeType::MemberOf),
                 |n| matches!(n, JettyNode::Group(_)),
             )
             .into_iter()

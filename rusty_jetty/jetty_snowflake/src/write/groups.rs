@@ -18,7 +18,7 @@ pub(super) fn prepare_queries(
                 for group in member_of {
                     res.2.push(format!(
                         "GRANT ROLE \"{}\" TO ROLE \"{}\";",
-                        diff.group_name, group
+                        group, diff.group_name
                     ))
                 }
             }
@@ -39,13 +39,13 @@ pub(super) fn prepare_queries(
                 for group in add_member_of {
                     res.2.push(format!(
                         "GRANT ROLE \"{}\" TO ROLE \"{}\";",
-                        diff.group_name, group
+                        group, diff.group_name
                     ))
                 }
                 for group in remove_member_of {
                     res.2.push(format!(
                         "REVOKE ROLE \"{}\" FROM ROLE \"{}\";",
-                        diff.group_name, group
+                        group, diff.group_name
                     ))
                 }
             }

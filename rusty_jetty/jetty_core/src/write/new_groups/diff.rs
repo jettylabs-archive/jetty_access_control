@@ -109,6 +109,7 @@ impl Display for Diff {
 pub fn generate_diffs(validated_config: &GroupConfig, jetty: &Jetty) -> Result<Vec<Diff>> {
     let mut env_state = bootstrap::get_env_membership_nodes(jetty)?;
     let config_state = get_config_state(validated_config, jetty);
+
     let mut res = Vec::new();
 
     // handle nodes in the config, but not in the env
