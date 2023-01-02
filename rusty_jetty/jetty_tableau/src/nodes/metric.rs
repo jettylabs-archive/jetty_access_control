@@ -65,31 +65,6 @@ pub(crate) async fn get_basic_metrics(
     super::to_asset_map(tc, node, &to_node)
 }
 
-impl Metric {
-    #[allow(clippy::too_many_arguments)]
-    pub(crate) fn new(
-        id: String,
-        name: String,
-        updated_at: String,
-        suspended: bool,
-        project_id: String,
-        owner_id: String,
-        underlying_view_id: String,
-        permissions: Vec<super::Permission>,
-    ) -> Self {
-        Self {
-            id,
-            name,
-            updated_at,
-            suspended,
-            owner_id,
-            underlying_view_id,
-            permissions,
-            project_id: ProjectId(project_id),
-        }
-    }
-}
-
 impl Permissionable for Metric {
     fn get_endpoint(&self) -> String {
         format!("metrics/{}/permissions", self.id)

@@ -60,7 +60,8 @@ pub(super) fn get_output_table_cuals(
     struct OutputDbAttributes {
         schema: String,
         dbname: String,
-        warehouse: String,
+        #[serde(rename = "warehouse")]
+        _warehouse: String,
         tablename: String,
     }
 

@@ -27,7 +27,6 @@ impl Display for ConnectorNamespace {
 }
 
 /// Struct representing the jetty_config.yaml file.
-#[allow(dead_code)]
 #[derive(Deserialize, Serialize, Debug, Default, Clone)]
 pub struct JettyConfig {
     version: String,
@@ -95,7 +94,6 @@ impl JettyConfig {
 }
 
 /// Config for all connectors in this project.
-#[allow(dead_code)]
 #[derive(Clone, Deserialize, Serialize, Default, Debug)]
 pub struct ConnectorConfig {
     /// The connector type

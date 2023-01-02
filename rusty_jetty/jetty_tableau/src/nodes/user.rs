@@ -35,26 +35,6 @@ pub(crate) struct User {
     pub site_role: SiteRole,
 }
 
-impl User {
-    pub(crate) fn new(
-        id: String,
-        name: String,
-        email: String,
-        external_auth_user_id: String,
-        full_name: String,
-        site_role: SiteRole,
-    ) -> Self {
-        Self {
-            id,
-            name,
-            email,
-            external_auth_user_id,
-            full_name,
-            site_role,
-        }
-    }
-}
-
 impl From<User> for jetty_nodes::RawUser {
     fn from(val: User) -> Self {
         jetty_nodes::RawUser::new(
@@ -91,6 +71,26 @@ pub(crate) async fn get_basic_users(tc: &rest::TableauRestClient) -> Result<Hash
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    impl User {
+        pub(crate) fn new(
+            id: String,
+            name: String,
+            email: String,
+            external_auth_user_id: String,
+            full_name: String,
+            site_role: SiteRole,
+        ) -> Self {
+            Self {
+                id,
+                name,
+                email,
+                external_auth_user_id,
+                full_name,
+                site_role,
+            }
+        }
+    }
 
     #[test]
     #[allow(unused_must_use)]

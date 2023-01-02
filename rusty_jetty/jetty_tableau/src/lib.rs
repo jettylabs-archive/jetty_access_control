@@ -2,7 +2,6 @@
 //!
 
 #![deny(missing_docs)]
-#![allow(dead_code)]
 
 mod coordinator;
 mod file_parse;
@@ -16,7 +15,6 @@ use async_trait::async_trait;
 
 use coordinator::Environment;
 use futures::StreamExt;
-use reqwest::RequestBuilder;
 use rest::get_cual_prefix;
 pub use rest::TableauRestClient;
 use serde::{Deserialize, Serialize};
@@ -122,10 +120,9 @@ impl TableauCredentials {
 }
 
 /// Top-level connector struct.
-#[allow(dead_code)]
 #[derive(Default)]
 pub struct TableauConnector {
-    config: TableauConfig,
+    _config: TableauConfig,
     coordinator: coordinator::Coordinator,
 }
 
@@ -243,11 +240,6 @@ impl TableauConnector {
     }
 }
 
-async fn request_builder_to_unit_result(req: RequestBuilder) -> Result<()> {
-    req.send().await?;
-    Ok(())
-}
-
 #[async_trait]
 impl NewConnector for TableauConnector {
     /// Validates the configs and bootstraps a Tableau connection.
@@ -264,7 +256,7 @@ impl NewConnector for TableauConnector {
         let creds = TableauCredentials::from_map(credentials)?;
 
         let tableau_connector = TableauConnector {
-            config: config.config.to_owned(),
+            _config: config.config.to_owned(),
             coordinator: coordinator::Coordinator::new(creds, data_dir).await?,
         };
 

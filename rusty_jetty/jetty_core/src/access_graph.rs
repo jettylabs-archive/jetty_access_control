@@ -752,7 +752,6 @@ pub(crate) struct JettyEdge {
 }
 
 impl JettyEdge {
-    #[allow(dead_code)]
     pub(crate) fn new(from: NodeName, to: NodeName, edge_type: EdgeType) -> Self {
         Self {
             from,
@@ -1094,7 +1093,6 @@ impl AccessGraph {
     }
 }
 
-#[allow(dead_code)]
 fn merge_set<T>(s1: &HashSet<T>, s2: &HashSet<T>) -> HashSet<T>
 where
     T: Eq + Hash + Clone,
@@ -1104,7 +1102,7 @@ where
     s1.extend(s2);
     s1
 }
-#[allow(dead_code)]
+
 fn merge_matched_field<T>(s1: &T, s2: &T) -> Result<T>
 where
     T: std::cmp::PartialEq + std::cmp::Eq + Debug + Clone,
@@ -1119,7 +1117,6 @@ where
     Ok(s1.to_owned())
 }
 
-#[allow(dead_code)]
 pub(crate) fn merge_map<K, V>(m1: &HashMap<K, V>, m2: &HashMap<K, V>) -> Result<HashMap<K, V>>
 where
     K: Debug + Clone + Hash + std::cmp::Eq,

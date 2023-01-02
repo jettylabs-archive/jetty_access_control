@@ -5,7 +5,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 
 use jetty_core::access_graph::translate::diffs::users;
 use serde_json::json;
@@ -147,28 +147,5 @@ impl TableauConnector {
             )?
             .build()
             .context("building request")
-    }
-
-    /// Function to add users to a group, deferring the group lookup until it's needed. This
-    /// allows it to work for new groups
-    async fn add_user_to_group(
-        &self,
-        user: &String,
-        group_name: &String,
-        group_map: Arc<Mutex<HashMap<String, String>>>,
-    ) -> Result<()> {
-        // get the group_id
-        let group_id;
-        {
-            let temp_group_map = group_map.lock().unwrap();
-            group_id = temp_group_map
-                .get(group_name)
-                .ok_or_else(|| anyhow!("Unable to find group id for {}", group_name))?
-                .to_owned();
-        }
-
-        // Add the user
-        self.execute_to_unit_result(self.build_add_user_request(&group_id, user)?)
-            .await
     }
 }

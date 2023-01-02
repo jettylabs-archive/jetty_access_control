@@ -106,16 +106,6 @@ impl TableauRestClient {
             .to_owned())
     }
 
-    /// Get api version from the TableauRestClient.
-    pub(crate) fn get_api_version(&self) -> String {
-        self.api_version.to_owned()
-    }
-
-    /// Get server name from the TableauRestClient.
-    pub(crate) fn get_server_name(&self) -> String {
-        self.credentials.server_name.to_owned()
-    }
-
     /// Get authentication token from the TableauRestClient.
     fn get_token(&self) -> Result<String> {
         Ok(self

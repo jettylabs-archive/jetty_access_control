@@ -79,29 +79,6 @@ impl ToString for ContentPermissions {
 }
 
 impl Project {
-    #[allow(clippy::too_many_arguments)]
-    pub(crate) fn new(
-        id: ProjectId,
-        name: String,
-        owner_id: String,
-        parent_project_id: Option<ProjectId>,
-        controlling_permissions_project_id: Option<ProjectId>,
-        permissions: Vec<Permission>,
-        default_permissions: HashMap<String, Vec<Permission>>,
-        content_permissions: ContentPermissions,
-    ) -> Self {
-        Self {
-            id,
-            name,
-            owner_id,
-            parent_project_id,
-            controlling_permissions_project_id,
-            permissions,
-            content_permissions,
-            default_permissions,
-        }
-    }
-
     /// Determine whether the given user is the project leader.
     pub(crate) fn is_leader(&self, user: &super::User) -> bool {
         self.permissions.iter().any(|p| {
@@ -228,7 +205,8 @@ fn to_node(val: &serde_json::Value) -> Result<super::Project> {
         owner: super::IdField,
         parent_project_id: Option<String>,
         controlling_permissions_project_id: Option<String>,
-        updated_at: String,
+        #[serde(rename = "updatedAt")]
+        _updated_at: String,
         content_permissions: ContentPermissions,
     }
 
@@ -376,5 +354,35 @@ fn convert_workbook_permission_to_view_permissions(permission: &Permission) -> P
     Permission {
         grantee: permission.grantee.to_owned(),
         capabilities: new_capabilities,
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    impl Project {
+        #[allow(clippy::too_many_arguments)]
+        pub(crate) fn new(
+            id: ProjectId,
+            name: String,
+            owner_id: String,
+            parent_project_id: Option<ProjectId>,
+            controlling_permissions_project_id: Option<ProjectId>,
+            permissions: Vec<Permission>,
+            default_permissions: HashMap<String, Vec<Permission>>,
+            content_permissions: ContentPermissions,
+        ) -> Self {
+            Self {
+                id,
+                name,
+                owner_id,
+                parent_project_id,
+                controlling_permissions_project_id,
+                permissions,
+                content_permissions,
+                default_permissions,
+            }
+        }
     }
 }

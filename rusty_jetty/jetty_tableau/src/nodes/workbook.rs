@@ -32,31 +32,6 @@ pub(crate) struct Workbook {
     pub permissions: Vec<super::Permission>,
 }
 
-impl Workbook {
-    #[allow(clippy::too_many_arguments)]
-    pub(crate) fn new(
-        id: String,
-        name: String,
-        owner_id: String,
-        project_id: ProjectId,
-        has_embedded_sources: bool,
-        sources: HashSet<SourceOrigin>,
-        updated_at: String,
-        permissions: Vec<super::Permission>,
-    ) -> Self {
-        Self {
-            id,
-            name,
-            owner_id,
-            project_id,
-            has_embedded_sources,
-            sources,
-            updated_at,
-            permissions,
-        }
-    }
-}
-
 impl Downloadable for Workbook {
     fn get_path(&self) -> String {
         format!("/workbooks/{}/content", &self.id)
@@ -162,7 +137,7 @@ impl FromTableau<Workbook> for jetty_nodes::RawAsset {
     }
 }
 
-/// Take a JSON object returned from a GraphQL query and turn it into a notebook
+/// Take a JSON object returned from a GraphQL query and turn it into a workbook
 fn to_node_graphql(val: &serde_json::Value) -> Result<Workbook> {
     #[derive(Deserialize)]
     struct LuidField {
@@ -172,7 +147,8 @@ fn to_node_graphql(val: &serde_json::Value) -> Result<Workbook> {
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]
     struct EmbeddedSourceHelper {
-        name: String,
+        #[serde(rename = "name")]
+        _name: String,
     }
 
     #[derive(Deserialize)]
@@ -231,4 +207,36 @@ pub(crate) async fn get_basic_workbooks(
         .await?;
     let node = rest::get_json_from_path(&node, &vec!["data".to_owned(), "workbooks".to_owned()])?;
     super::to_asset_map(tc, node, &to_node_graphql)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::nodes::Permission;
+
+    use super::*;
+
+    impl Workbook {
+        #[allow(clippy::too_many_arguments)]
+        pub(crate) fn new(
+            id: String,
+            name: String,
+            owner_id: String,
+            project_id: ProjectId,
+            has_embedded_sources: bool,
+            sources: HashSet<SourceOrigin>,
+            updated_at: String,
+            permissions: Vec<Permission>,
+        ) -> Self {
+            Self {
+                id,
+                name,
+                owner_id,
+                project_id,
+                has_embedded_sources,
+                sources,
+                updated_at,
+                permissions,
+            }
+        }
+    }
 }

@@ -72,7 +72,6 @@ macro_rules! vec_vec_child {
 
 /// A wrapper for sqlparser::ast types that allows them to implement
 /// the Traversable trait
-#[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub(crate) enum Node {
     Array(ast::Array),
