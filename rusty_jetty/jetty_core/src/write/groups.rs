@@ -217,7 +217,7 @@ fn validate_group_config(
         // check the users
         if let Some(member_users) = &config.members.users {
             for u in member_users {
-                if let Err(_) = ag.get_node(&NodeName::User(u.name.to_owned())) {
+                if ag.get_node(&NodeName::User(u.name.to_owned())).is_err() {
                     errors.push(GroupConfigError { message:format!("configuration refers to user `{}`, but there is no user with that name", &u.name), pos: u.pos })
                 }
             }
@@ -271,7 +271,7 @@ fn generate_diff(
         let binding = all_config_group_names.clone();
         let node_names = binding
             .get(group_name)
-            .ok_or(anyhow!("group {} not found in config", group_name))?;
+            .ok_or_else(|| anyhow!("group {} not found in config", group_name))?;
 
         for (origin, node_name) in node_names {
             // get all the legal groups and users for the node
@@ -286,7 +286,7 @@ fn generate_diff(
             };
 
             // now filter down to the relevant users (those with the right connector)
-            let legal_users = legal_users
+            let legal_users: Vec<_> = legal_users
                 .into_iter()
                 .filter(|u| {
                     ag.get_node(u)
@@ -452,7 +452,7 @@ fn groups_to_node_names(
     }
 }
 
-fn diff_node_names(old: &Vec<NodeName>, new: &Vec<NodeName>) -> NodeNameListDiff {
+fn diff_node_names(old: &[NodeName], new: &[NodeName]) -> NodeNameListDiff {
     // get everything that new contains and old doesn't
     let add = new
         .iter()

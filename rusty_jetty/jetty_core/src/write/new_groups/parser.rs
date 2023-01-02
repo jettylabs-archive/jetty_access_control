@@ -149,11 +149,6 @@ pub(crate) fn get_group_membership_map(
 ) -> HashMap<String, HashSet<String>> {
     validated_config
         .iter()
-        .map(|g| {
-            (
-                g.name.to_owned(),
-                g.member_of.to_owned().into_iter().collect(),
-            )
-        })
+        .map(|g| (g.name.to_owned(), g.member_of.iter().cloned().collect()))
         .collect()
 }

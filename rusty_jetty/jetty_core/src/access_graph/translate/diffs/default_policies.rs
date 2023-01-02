@@ -39,20 +39,24 @@ impl Translator {
                 .users
                 .iter()
                 .filter_map(|(agent, details)| {
-                    translate_diff_details(details).map(|translated_details| (
+                    translate_diff_details(details).map(|translated_details| {
+                        (
                             self.translate_node_name_to_local(agent, &global_diff.connector),
                             translated_details,
-                        ))
+                        )
+                    })
                 })
                 .collect(),
             groups: global_diff
                 .groups
                 .iter()
                 .filter_map(|(agent, details)| {
-                    translate_diff_details(details).map(|translated_details| (
+                    translate_diff_details(details).map(|translated_details| {
+                        (
                             self.translate_node_name_to_local(agent, &global_diff.connector),
                             translated_details,
-                        ))
+                        )
+                    })
                 })
                 .collect(),
         };
@@ -65,7 +69,7 @@ fn translate_diff_details(
     default_policy_details: &DefaultPolicyDiffDetails,
 ) -> Option<write::assets::diff::policies::DiffDetails> {
     Some(match default_policy_details {
-        DefaultPolicyDiffDetails::AddDefaultPolicy { add } => {
+        DefaultPolicyDiffDetails::Add { add } => {
             if !add.connector_managed {
                 return None;
             }
@@ -73,12 +77,12 @@ fn translate_diff_details(
                 add: translate_policy_state(add),
             }
         }
-        DefaultPolicyDiffDetails::RemoveDefaultPolicy { remove } => {
+        DefaultPolicyDiffDetails::Remove { remove } => {
             write::assets::diff::policies::DiffDetails::RemoveAgent {
                 remove: translate_policy_state(remove),
             }
         }
-        DefaultPolicyDiffDetails::ModifyDefaultPolicy {
+        DefaultPolicyDiffDetails::Modify {
             add,
             remove,
             connector_managed,
@@ -101,11 +105,7 @@ fn translate_policy_state(
     default_policy_state: &assets::DefaultPolicyState,
 ) -> assets::PolicyState {
     assets::PolicyState {
-        privileges: default_policy_state
-            .privileges
-            .to_owned()
-            .into_iter()
-            .collect(),
+        privileges: default_policy_state.privileges.iter().cloned().collect(),
         metadata: default_policy_state.metadata.to_owned(),
     }
 }

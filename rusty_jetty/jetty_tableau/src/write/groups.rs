@@ -40,10 +40,12 @@ impl TableauConnector {
                         .coordinator
                         .env
                         .get_group_id_by_name(&diff.group_name)
-                        .ok_or(anyhow!(
-                            "can't delete group {}: group doesn't exist",
-                            &diff.group_name
-                        ))?;
+                        .ok_or_else(|| {
+                            anyhow!(
+                                "can't delete group {}: group doesn't exist",
+                                &diff.group_name
+                            )
+                        })?;
 
                     plans.0.push(self.build_delete_group_request(&group_id)?);
                 }

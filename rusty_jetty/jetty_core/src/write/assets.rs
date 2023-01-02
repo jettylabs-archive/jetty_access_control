@@ -186,7 +186,7 @@ fn get_env_state(jetty: &Jetty) -> Result<CombinedPolicyState> {
                     acc.insert(
                         (asset.to_owned(), agent.to_owned()),
                         PolicyState {
-                            privileges: policy.privileges.to_owned().into_iter().collect(),
+                            privileges: policy.privileges.iter().cloned().collect(),
                             metadata: Default::default(),
                         },
                     );
@@ -218,7 +218,7 @@ fn get_env_state(jetty: &Jetty) -> Result<CombinedPolicyState> {
                             agent.to_owned(),
                         ),
                         DefaultPolicyState {
-                            privileges: policy.privileges.to_owned().into_iter().collect(),
+                            privileges: policy.privileges.iter().cloned().collect(),
                             metadata: policy.metadata.to_owned(),
                             // We're getting this from the graph - only connector-managed default policies appear in the graph
                             connector_managed: true,
@@ -349,6 +349,8 @@ impl CombinedPolicyState {
 
         // prioritize default policies
         let mut prioritized_policies = HashMap::new();
+
+        #[allow(clippy::unnecessary_to_owned)]
         for (k, v) in self.default_policies.to_owned() {
             let asset_path = match &k.0 {
                 NodeName::Asset { path, .. } => path,
@@ -365,7 +367,7 @@ impl CombinedPolicyState {
                         combined_state.insert(k.to_owned(), v.to_owned());
                     },
                 )
-                .or_insert(HashMap::from([(k.to_owned(), v.to_owned())]));
+                .or_insert_with(|| HashMap::from([(k.to_owned(), v.to_owned())]));
         }
 
         // This intermediate map holds all of the regular policies created by the default policies,
@@ -391,11 +393,7 @@ impl CombinedPolicyState {
                 })?;
 
                 let policy_state = PolicyState {
-                    privileges: default_policy_state
-                        .privileges
-                        .to_owned()
-                        .into_iter()
-                        .collect(),
+                    privileges: default_policy_state.privileges.iter().cloned().collect(),
                     // FUTURE: for now, just leaving this blank. I think we'll need a mechanism to specify policy-level metadata on a default policy
                     metadata: Default::default(),
                 };

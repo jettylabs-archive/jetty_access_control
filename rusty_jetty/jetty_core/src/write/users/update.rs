@@ -11,7 +11,7 @@ use crate::{
 
 use super::{bootstrap::write_user_config_file, get_validated_file_config_map};
 
-pub(crate) fn update_user_name(jetty: &Jetty, old: &String, new: &str) -> Result<()> {
+pub(crate) fn update_user_name(jetty: &Jetty, old: &str, new: &str) -> Result<()> {
     let validated_group_config = &new_groups::parse_and_validate_groups(jetty)?;
     let mut config = get_validated_file_config_map(jetty, validated_group_config)?;
 
@@ -22,19 +22,19 @@ pub(crate) fn update_user_name(jetty: &Jetty, old: &String, new: &str) -> Result
     }
     Ok(())
 }
-pub(crate) fn remove_user_name(jetty: &Jetty, name: &String) -> Result<()> {
+pub(crate) fn remove_user_name(jetty: &Jetty, name: &str) -> Result<()> {
     let validated_group_config = &new_groups::parse_and_validate_groups(jetty)?;
     let config = get_validated_file_config_map(jetty, validated_group_config)?;
 
     for (path, user) in config {
-        if &user.name == name {
+        if user.name == name {
             fs::remove_file(path)?;
             return Ok(());
         }
     }
     Ok(())
 }
-pub(crate) fn update_group_name(jetty: &Jetty, old: &String, new: &str) -> Result<()> {
+pub(crate) fn update_group_name(jetty: &Jetty, old: &str, new: &str) -> Result<()> {
     let validated_group_config = &new_groups::parse_and_validate_groups(jetty)?;
     let mut config = get_validated_file_config_map(jetty, validated_group_config)?;
 
@@ -45,7 +45,7 @@ pub(crate) fn update_group_name(jetty: &Jetty, old: &String, new: &str) -> Resul
     }
     Ok(())
 }
-pub(crate) fn remove_group_name(jetty: &Jetty, name: &String) -> Result<()> {
+pub(crate) fn remove_group_name(jetty: &Jetty, name: &str) -> Result<()> {
     let validated_group_config = &new_groups::parse_and_validate_groups(jetty)?;
     let mut config = get_validated_file_config_map(jetty, validated_group_config)?;
 

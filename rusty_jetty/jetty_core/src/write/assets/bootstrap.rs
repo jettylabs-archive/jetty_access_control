@@ -24,6 +24,8 @@ use super::{
     YamlAssetIdentifier, YamlDefaultPolicy, YamlPolicy,
 };
 
+type PolicyKey = (NodeName, BTreeSet<String>, BTreeSet<(String, String)>);
+
 impl Jetty {
     /// Collect the policies in the graph and return a map of <(asset name, agent name), SimplePolicy>
     fn build_simple_policy_map(&self) -> Result<HashMap<(NodeName, NodeName), PolicyState>> {
@@ -33,7 +35,7 @@ impl Jetty {
 
         // FUTURE: this should be updated so that each policy has a single grantee and a single asset
         let policies = &ag.graph.nodes.policies;
-        for (_, idx) in policies {
+        for idx in policies.values() {
             let attributes = PolicyAttributes::try_from(ag[*idx].clone())?;
             let target_assets = ag.get_matching_descendants(
                 *idx,
@@ -63,7 +65,7 @@ impl Jetty {
             let grantees = [target_groups, target_users].concat();
 
             let simple_policy = PolicyState {
-                privileges: attributes.privileges.to_owned().into_iter().collect(),
+                privileges: attributes.privileges.iter().cloned().collect(),
                 metadata: Default::default(),
             };
 
@@ -80,6 +82,7 @@ impl Jetty {
     }
 
     /// Collect all the default policies from the graph and return a map of <(Asset, path, types, grantee), DefaultPolicyState>
+    #[allow(clippy::type_complexity)]
     fn build_default_policy_map(
         &self,
     ) -> Result<HashMap<(NodeName, String, BTreeSet<AssetType>, NodeName), DefaultPolicyState>>
@@ -90,7 +93,7 @@ impl Jetty {
 
         let mut res = HashMap::new();
         // Push the future policies to the results
-        for (_, &idx) in default_policies {
+        for &idx in default_policies.values() {
             let attributes = DefaultPolicyAttributes::try_from(ag[idx].to_owned())?;
             // There should only be one base_node
             let binding = ag.get_matching_descendants(
@@ -120,7 +123,7 @@ impl Jetty {
                         ag[grantee].get_node_name(),
                     ),
                     DefaultPolicyState {
-                        privileges: attributes.privileges.to_owned().into_iter().collect(),
+                        privileges: attributes.privileges.iter().cloned().collect(),
                         metadata: attributes.metadata.to_owned(),
                         connector_managed: true,
                     },
@@ -131,6 +134,7 @@ impl Jetty {
     }
 
     /// Go thorugh the config and return a map of node_index (asset) -> (policies, default_policies) that can be written to create the assets directory
+    #[allow(clippy::type_complexity)]
     fn build_bootstrapped_policy_config(
         &self,
     ) -> Result<HashMap<NodeIndex, (BTreeSet<YamlPolicy>, BTreeSet<YamlDefaultPolicy>)>> {
@@ -185,20 +189,17 @@ impl Jetty {
         let folded_policies = basic_policies.into_iter().fold(
             HashMap::new(),
             // acc is HashMap of <(Asset, Privileges, Metadata), Set<grantees>>
-            |mut acc: HashMap<
-                (NodeName, BTreeSet<String>, BTreeSet<(String, String)>),
-                HashSet<NodeName>,
-            >,
+            |mut acc: HashMap<PolicyKey, HashSet<NodeName>>,
              ((policy_asset, policy_grantee), policy_state)| {
                 acc.entry((
                     policy_asset,
-                    policy_state.privileges.to_owned().into_iter().collect(),
+                    policy_state.privileges.into_iter().collect(),
                     policy_state.metadata.into_iter().collect(),
                 ))
                 .and_modify(|f| {
                     f.insert(policy_grantee.to_owned());
                 })
-                .or_insert([policy_grantee.to_owned()].into());
+                .or_insert_with(|| [policy_grantee.to_owned()].into());
                 acc
             },
         );
@@ -210,7 +211,7 @@ impl Jetty {
             for g in grantees {
                 match &ag[ag
                     .get_untyped_index_from_name(g)
-                    .ok_or(anyhow!("unable to find grantee node in graph"))?]
+                    .ok_or_else(|| anyhow!("unable to find grantee node in graph"))?]
                 {
                     JettyNode::Group(attr) => groups.insert(attr.name.to_string()),
                     JettyNode::User(attr) => users.insert(attr.name.to_string()),
@@ -234,14 +235,17 @@ impl Jetty {
                 metadata: if metadata.is_empty() {
                     None
                 } else {
-                    Some(metadata.to_owned().into_iter().collect())
+                    Some(
+                        #[allow(clippy::unnecessary_to_owned)]
+                        metadata.to_owned().into_iter().collect(),
+                    )
                 },
             };
 
             policy_map
                 .entry(
                     ag.get_untyped_index_from_name(asset)
-                        .ok_or(anyhow!("unable to find asset node for policy"))?,
+                        .ok_or_else(|| anyhow!("unable to find asset node for policy"))?,
                 )
                 .and_modify(
                     |(policies, _default_policies): &mut (
@@ -268,6 +272,7 @@ impl Jetty {
         let folded_default_policies = default_policies.into_iter().fold(
             HashMap::new(),
             // acc is HashMap of <(Asset, Path, Types, Privileges, Metadata), Set<grantees>>
+            #[allow(clippy::type_complexity)]
             |mut acc: HashMap<
                 (
                     NodeName,
@@ -289,7 +294,7 @@ impl Jetty {
                 .and_modify(|f| {
                     f.insert(policy_grantee.to_owned());
                 })
-                .or_insert([policy_grantee.to_owned()].into());
+                .or_insert_with(|| [policy_grantee.to_owned()].into());
                 acc
             },
         );
@@ -303,7 +308,7 @@ impl Jetty {
             for g in grantees {
                 match &ag[ag
                     .get_untyped_index_from_name(g)
-                    .ok_or(anyhow!("unable to find grantee node in graph"))?]
+                    .ok_or_else(|| anyhow!("unable to find grantee node in graph"))?]
                 {
                     JettyNode::Group(attr) => groups.insert(attr.name.to_string()),
                     JettyNode::User(attr) => users.insert(attr.name.to_string()),
@@ -327,7 +332,7 @@ impl Jetty {
                 metadata: if metadata.is_empty() {
                     None
                 } else {
-                    Some(metadata.to_owned().into_iter().collect())
+                    Some(metadata.iter().cloned().collect())
                 },
                 path: path.to_owned(),
                 types: types.to_owned(),
@@ -338,7 +343,7 @@ impl Jetty {
             policy_map
                 .entry(
                     ag.get_untyped_index_from_name(asset)
-                        .ok_or(anyhow!("unable to find asset node for policy"))?,
+                        .ok_or_else(|| anyhow!("unable to find asset node for policy"))?,
                 )
                 .and_modify(
                     |(_policies, default_policies): &mut (
@@ -506,7 +511,7 @@ pub fn update_asset_files(jetty: &Jetty) -> Result<()> {
         let idx = ag
             .get_asset_index_from_id(id)
             .to_owned()
-            .ok_or(anyhow!("unable to get asset by id"))?;
+            .ok_or_else(|| anyhow!("unable to get asset by id"))?;
         let attributes: AssetAttributes = ag[idx].to_owned().try_into()?;
         let policy_doc = YamlAssetDoc {
             identifier: asset_attributes_to_yaml_identifier(&attributes),

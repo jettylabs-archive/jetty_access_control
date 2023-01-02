@@ -137,6 +137,7 @@ impl TableauConnector {
     }
 
     /// Get the environment, but transformed into Jetty objects.
+    #[allow(clippy::type_complexity)]
     fn env_to_jetty_all(
         &self,
     ) -> (

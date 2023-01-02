@@ -30,7 +30,7 @@ impl AccessGraph {
         let root_id = self.get_node(root_node)?.id();
         let root_idx = self
             .get_asset_index_from_id(&root_id)
-            .ok_or(anyhow!("root node must exist in the graph"))?;
+            .ok_or_else(|| anyhow!("root node must exist in the graph"))?;
 
         let res = self
             .get_matching_descendants(

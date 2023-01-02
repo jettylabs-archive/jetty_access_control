@@ -45,7 +45,7 @@ impl SplitByConnector for CombinedUserDiff {
                     .and_modify(|groups| {
                         groups.insert(v.to_owned());
                     })
-                    .or_insert([v.to_owned()].into());
+                    .or_insert_with(|| [v.to_owned()].into());
                     acc
                 });
 
@@ -61,7 +61,7 @@ impl SplitByConnector for CombinedUserDiff {
                         .and_modify(|groups| {
                             groups.insert(v.to_owned());
                         })
-                        .or_insert([v.to_owned()].into());
+                        .or_insert_with(|| [v.to_owned()].into());
                         acc
                     });
             }
@@ -96,7 +96,7 @@ impl Display for CombinedUserDiff {
         // Need to show if the user is new, deleted, or modified
         if let Some(identity_details) = &self.identity {
             match identity_details {
-                IdentityDiffDetails::AddUser { add } => {
+                IdentityDiffDetails::Add { add } => {
                     text += format!("{}{}\n", "+ user: ".green(), self.user.to_string().green())
                         .as_str();
                     text += "  identity:\n";
@@ -105,15 +105,14 @@ impl Display for CombinedUserDiff {
                             format!("{}", format!("  + {conn}: {local_name}\n").green()).as_str();
                     }
                 }
-                IdentityDiffDetails::RemoveUser { remove } => {
-                    text += format!("{}", format!("- user: {}\n", self.user).red())
-                        .as_str();
+                IdentityDiffDetails::Remove { remove } => {
+                    text += format!("{}", format!("- user: {}\n", self.user).red()).as_str();
                     text += "  identity:\n";
                     for (conn, local_name) in remove {
                         text += &format!("{}", format!("    - {conn}: {local_name}\n").red());
                     }
                 }
-                IdentityDiffDetails::ModifyUser { add, remove } => {
+                IdentityDiffDetails::Modify { add, remove } => {
                     text += format!(
                         "{}{}\n",
                         "~ user: ".yellow(),

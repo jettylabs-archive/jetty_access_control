@@ -29,9 +29,9 @@ impl Jetty {
     fn build_bootstrapped_group_config(&self) -> Result<BTreeMap<String, YamlGroup>> {
         let mut res = BTreeMap::new();
 
-        let ag = self.access_graph.as_ref().ok_or(anyhow!(
-            "unable to bootstrap group configuration - no access graph exists"
-        ))?;
+        let ag = self.access_graph.as_ref().ok_or_else(|| {
+            anyhow!("unable to bootstrap group configuration - no access graph exists")
+        })?;
         let ag_groups = &ag.graph.nodes.groups;
         for (name, idx) in ag_groups {
             if !matches!(name, NodeName::Group { .. }) {

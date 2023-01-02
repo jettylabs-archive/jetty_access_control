@@ -151,6 +151,7 @@ pub struct ConnectorData {
 
 impl ConnectorData {
     /// Basic constructor
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         groups: Vec<RawGroup>,
         users: Vec<RawUser>,
@@ -284,6 +285,7 @@ pub struct RawAsset {
 
 impl RawAsset {
     /// Basic constructor.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         cual: Cual,
         name: String,
@@ -348,6 +350,7 @@ pub struct RawAssetReference {
 
 impl RawAssetReference {
     /// Basic constructor.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         cual: Cual,
         metadata: HashMap<String, String>,
@@ -408,7 +411,6 @@ pub struct RawTag {
 
 /// Struct used to populate policy nodes and edges in the graph
 #[derive(Debug, Derivative, Clone, PartialEq, Eq)]
-#[derivative(Default)]
 pub struct RawPolicy {
     /// ID of the Policy, namespaced for the relevant context
     pub name: String,
@@ -424,7 +426,6 @@ pub struct RawPolicy {
     /// IDs of users the policy is applied to
     pub granted_to_users: HashSet<String>,
     /// Whether the policy also applies to child assets
-    #[derivative(Default(value = "true"))]
     pub pass_through_hierarchy: bool,
     /// Whether the policy also applies to derived assets
     pub pass_through_lineage: bool,
@@ -432,6 +433,7 @@ pub struct RawPolicy {
 
 impl RawPolicy {
     /// Basic constructor.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         name: String,
         privileges: HashSet<String>,

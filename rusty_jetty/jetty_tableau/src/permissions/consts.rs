@@ -237,11 +237,11 @@ impl<'a> AssetCapabilityMap<'a> {
         }
     }
 
-    pub(crate) fn get<'b>(
-        &'b self,
+    pub(crate) fn get(
+        &self,
         site_role: SiteRole,
         asset_type: TableauAssetType,
-    ) -> Option<&'b Vec<&'b str>> {
+    ) -> Option<&Vec<&str>> {
         self.map
             .get(&site_role)
             .and_then(|role_restrictions| role_restrictions.get(&asset_type))

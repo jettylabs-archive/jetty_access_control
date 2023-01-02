@@ -33,6 +33,7 @@ pub(crate) struct Workbook {
 }
 
 impl Workbook {
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
         id: String,
         name: String,

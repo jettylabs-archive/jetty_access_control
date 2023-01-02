@@ -66,18 +66,15 @@ impl<'a> SequencedFutures<'a> {
 /// Convert a request to a string representation to display as part of the plan
 fn request_to_string(req: &reqwest::Request) -> String {
     let mut res = format!("{} {}\n", req.method(), req.url().path(),);
-    match req.body() {
-        Some(b) => {
-            let val: serde_json::Value =
-                serde_json::from_slice(b.as_bytes().unwrap_or_default()).unwrap_or_default();
-            res.push_str("body:\n");
-            res.push_str(
-                serde_json::to_string_pretty(&val)
-                    .unwrap_or_default()
-                    .as_str(),
-            );
-        }
-        None => (),
+    if let Some(b) = req.body() {
+        let val: serde_json::Value =
+            serde_json::from_slice(b.as_bytes().unwrap_or_default()).unwrap_or_default();
+        res.push_str("body:\n");
+        res.push_str(
+            serde_json::to_string_pretty(&val)
+                .unwrap_or_default()
+                .as_str(),
+        );
     };
     res
 }
@@ -157,7 +154,7 @@ fn group_lookup_from_mutex(
     let temp_group_map = group_map.lock().unwrap();
     let group_id = temp_group_map
         .get(group_name)
-        .ok_or(anyhow!("Unable to find group id for {}", group_name))?
+        .ok_or_else(|| anyhow!("Unable to find group id for {}", group_name))?
         .to_owned();
     Ok(group_id)
 }

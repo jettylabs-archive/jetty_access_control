@@ -163,7 +163,7 @@ impl TableauConnector {
             let temp_group_map = group_map.lock().unwrap();
             group_id = temp_group_map
                 .get(group_name)
-                .ok_or(anyhow!("Unable to find group id for {}", group_name))?
+                .ok_or_else(|| anyhow!("Unable to find group id for {}", group_name))?
                 .to_owned();
         }
 

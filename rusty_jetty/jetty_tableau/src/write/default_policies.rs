@@ -655,25 +655,22 @@ fn try_update_content_permissions(
     content_permissions: &mut Option<String>,
     state: &PolicyState,
 ) -> Result<()> {
-    match state.metadata.get("Tableau Content Permissions") {
-        Some(p) => {
-            if content_permissions
-                .to_owned()
-                .and_then(|existing_value| {
-                    if &existing_value == p {
-                        None
-                    } else {
-                        Some(false)
-                    }
-                })
-                .is_none()
-            {
-                *content_permissions = Some(p.to_owned());
-            } else {
-                bail!("problem generating plan for {}: Tableau Content Permissions must match for all default policies originating from a given asset", cual.to_string());
-            };
-        }
-        None => (),
+    if let Some(p) = state.metadata.get("Tableau Content Permissions") {
+        if content_permissions
+            .to_owned()
+            .and_then(|existing_value| {
+                if &existing_value == p {
+                    None
+                } else {
+                    Some(false)
+                }
+            })
+            .is_none()
+        {
+            *content_permissions = Some(p.to_owned());
+        } else {
+            bail!("problem generating plan for {}: Tableau Content Permissions must match for all default policies originating from a given asset", cual.to_string());
+        };
     }
     Ok(())
 }

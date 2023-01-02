@@ -20,13 +20,13 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub(crate) enum DefaultPolicyDiffDetails {
-    AddDefaultPolicy {
+    Add {
         add: DefaultPolicyState,
     },
-    RemoveDefaultPolicy {
+    Remove {
         remove: DefaultPolicyState,
     },
-    ModifyDefaultPolicy {
+    Modify {
         add: DefaultPolicyState,
         remove: DefaultPolicyState,
         connector_managed: ConnectorManagementDiff,
@@ -83,7 +83,7 @@ fn print_diff_inner_details(
     let mut text = String::new();
     for (name, details) in inner_details {
         match details {
-            DefaultPolicyDiffDetails::AddDefaultPolicy { add } => {
+            DefaultPolicyDiffDetails::Add { add } => {
                 text += &format!("{}", format!("  + {}{}\n", prefix, name).as_str().green());
 
                 text += &format!(
@@ -107,7 +107,7 @@ fn print_diff_inner_details(
                     }
                 }
             }
-            DefaultPolicyDiffDetails::RemoveDefaultPolicy { remove } => {
+            DefaultPolicyDiffDetails::Remove { remove } => {
                 text += &format!("{}", format!("  - {prefix}{name}\n").as_str().red());
 
                 text += &format!(
@@ -133,7 +133,7 @@ fn print_diff_inner_details(
                     }
                 }
             }
-            DefaultPolicyDiffDetails::ModifyDefaultPolicy {
+            DefaultPolicyDiffDetails::Modify {
                 add,
                 remove,
                 connector_managed,
@@ -201,7 +201,7 @@ fn diff_default_policy_state(
 
     let (add_metadata, remove_metadata) = add_and_remove(&config_metadata_set, &env_metadata_set);
 
-    DefaultPolicyDiffDetails::ModifyDefaultPolicy {
+    DefaultPolicyDiffDetails::Modify {
         add: DefaultPolicyState {
             privileges: add_privileges,
             metadata: add_metadata
@@ -264,7 +264,7 @@ pub(crate) fn diff_default_policies(
                 }
             }
             // In this case, we're adding an agent
-            None => DefaultPolicyDiffDetails::AddDefaultPolicy {
+            None => DefaultPolicyDiffDetails::Add {
                 add: config_value.to_owned(),
             },
         };
@@ -290,10 +290,12 @@ pub(crate) fn diff_default_policies(
                 _ => panic!("got wrong node type while diffing"),
             })
             .or_insert({
-                let mut helper = DefaultPolicyDiffHelper::default();
-                helper.connector = match &config_key.0 {
-                    NodeName::Asset { connector, .. } => connector.to_owned(),
-                    _ => panic!("got wrong node type while diffing"),
+                let mut helper = DefaultPolicyDiffHelper {
+                    connector: match &config_key.0 {
+                        NodeName::Asset { connector, .. } => connector.to_owned(),
+                        _ => panic!("got wrong node type while diffing"),
+                    },
+                    ..Default::default()
                 };
                 match &config_key.3 {
                     NodeName::User(_) => {
@@ -311,7 +313,7 @@ pub(crate) fn diff_default_policies(
     // Now iterate through whatever is left in the env_policies and add removal diffs
     for (env_key, env_value) in &env_policies {
         // These will always be connector managed, otherwise they wouldn't show up at all
-        let diff_details = DefaultPolicyDiffDetails::RemoveDefaultPolicy {
+        let diff_details = DefaultPolicyDiffDetails::Remove {
             remove: env_value.to_owned(),
         };
         policy_diffs
@@ -335,10 +337,12 @@ pub(crate) fn diff_default_policies(
                 _ => panic!("got wrong node type while diffing"),
             })
             .or_insert({
-                let mut helper = DefaultPolicyDiffHelper::default();
-                helper.connector = match &env_key.0 {
-                    NodeName::Asset { connector, .. } => connector.to_owned(),
-                    _ => panic!("got wrong node type while diffing"),
+                let mut helper = DefaultPolicyDiffHelper {
+                    connector: match &env_key.0 {
+                        NodeName::Asset { connector, .. } => connector.to_owned(),
+                        _ => panic!("got wrong node type while diffing"),
+                    },
+                    ..Default::default()
                 };
                 match &env_key.3 {
                     NodeName::User(_) => {

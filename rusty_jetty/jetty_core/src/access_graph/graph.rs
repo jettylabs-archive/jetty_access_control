@@ -337,7 +337,7 @@ impl Graph {
         let weight = self
             .graph
             .remove_edge(edge_idx)
-            .ok_or(anyhow!("failed to find edge to redirect"))?;
+            .ok_or_else(|| anyhow!("failed to find edge to redirect"))?;
         self.graph.add_edge(from, to, weight);
         Ok(())
     }

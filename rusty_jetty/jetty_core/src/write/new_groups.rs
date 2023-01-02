@@ -39,17 +39,17 @@ pub struct GroupYaml {
 }
 
 impl UpdateConfig for GroupYaml {
-    fn update_user_name(&mut self, _old: &String, _new: &str) -> Result<bool> {
+    fn update_user_name(&mut self, _old: &str, _new: &str) -> Result<bool> {
         Ok(false)
     }
 
-    fn remove_user_name(&mut self, _name: &String) -> Result<bool> {
+    fn remove_user_name(&mut self, _name: &str) -> Result<bool> {
         Ok(false)
     }
 
-    fn update_group_name(&mut self, old: &String, new: &str) -> Result<bool> {
+    fn update_group_name(&mut self, old: &str, new: &str) -> Result<bool> {
         let mut changed = false;
-        if &self.name == old {
+        if self.name == old {
             self.name = new.to_string();
             changed = true;
         }
@@ -62,7 +62,7 @@ impl UpdateConfig for GroupYaml {
     }
 
     /// This will remove references to groups, but not the group itself
-    fn remove_group_name(&mut self, name: &String) -> Result<bool> {
+    fn remove_group_name(&mut self, name: &str) -> Result<bool> {
         if self.member_of.remove(name) {
             Ok(true)
         } else {

@@ -193,10 +193,12 @@ pub(crate) fn diff_policies(
             })
             .or_insert({
                 // get the connector from the asset
-                let mut d = PolicyDiffHelper::default();
-                d.connector = match &config_key.0 {
-                    NodeName::Asset { connector, .. } => connector.to_owned(),
-                    _ => panic!("got wrong node type while diffing"),
+                let mut d = PolicyDiffHelper {
+                    connector: match &config_key.0 {
+                        NodeName::Asset { connector, .. } => connector.to_owned(),
+                        _ => panic!("got wrong node type while diffing"),
+                    },
+                    ..Default::default()
                 };
                 match &config_key.1 {
                     NodeName::User(_) => {
@@ -237,10 +239,12 @@ pub(crate) fn diff_policies(
             })
             .or_insert({
                 // get the connector from the asset
-                let mut d = PolicyDiffHelper::default();
-                d.connector = match &env_key.0 {
-                    NodeName::Asset { connector, .. } => connector.to_owned(),
-                    _ => panic!("got wrong node type while diffing"),
+                let mut d = PolicyDiffHelper {
+                    connector: match &env_key.0 {
+                        NodeName::Asset { connector, .. } => connector.to_owned(),
+                        _ => panic!("got wrong node type while diffing"),
+                    },
+                    ..Default::default()
                 };
                 match &env_key.1 {
                     NodeName::User(_) => {

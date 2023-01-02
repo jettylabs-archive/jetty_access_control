@@ -61,7 +61,7 @@ impl GlobalDiffs {
 }
 
 fn split_diff_vec_by_connector<T: Clone + SplitByConnector>(
-    obj: &Vec<T>,
+    obj: &[T],
 ) -> HashMap<ConnectorNamespace, Vec<T>> {
     let mut res: HashMap<ConnectorNamespace, Vec<T>> = HashMap::new();
     for u in obj.iter() {
@@ -83,14 +83,14 @@ trait SplitByConnector {
 }
 
 trait UpdateConfig {
-    fn update_user_name(&mut self, old: &String, new: &str) -> Result<bool>;
-    fn remove_user_name(&mut self, name: &String) -> Result<bool>;
-    fn update_group_name(&mut self, old: &String, new: &str) -> Result<bool>;
-    fn remove_group_name(&mut self, name: &String) -> Result<bool>;
+    fn update_user_name(&mut self, old: &str, new: &str) -> Result<bool>;
+    fn remove_user_name(&mut self, name: &str) -> Result<bool>;
+    fn update_group_name(&mut self, old: &str, new: &str) -> Result<bool>;
+    fn remove_group_name(&mut self, name: &str) -> Result<bool>;
 }
 
 /// update configuration files for the relvant node types
-pub fn remove_group_name(jetty: &Jetty, name: &String) -> Result<()> {
+pub fn remove_group_name(jetty: &Jetty, name: &str) -> Result<()> {
     users::remove_group_name(jetty, name)?;
     new_groups::remove_group_name(jetty, name)?;
     assets::remove_group_name(jetty, name)?;
@@ -98,7 +98,7 @@ pub fn remove_group_name(jetty: &Jetty, name: &String) -> Result<()> {
 }
 
 /// update configuration files for the relvant node types
-pub fn remove_user_name(jetty: &Jetty, name: &String) -> Result<()> {
+pub fn remove_user_name(jetty: &Jetty, name: &str) -> Result<()> {
     users::remove_user_name(jetty, name)?;
     new_groups::remove_user_name(jetty, name)?;
     assets::remove_user_name(jetty, name)?;
@@ -106,7 +106,7 @@ pub fn remove_user_name(jetty: &Jetty, name: &String) -> Result<()> {
 }
 
 /// update configuration files for the relvant node types
-pub fn update_group_name(jetty: &Jetty, old: &String, new: &String) -> Result<()> {
+pub fn update_group_name(jetty: &Jetty, old: &str, new: &str) -> Result<()> {
     users::update_group_name(jetty, old, new)?;
     new_groups::update_group_name(jetty, old, new)?;
     assets::update_group_name(jetty, old, new)?;
@@ -114,7 +114,7 @@ pub fn update_group_name(jetty: &Jetty, old: &String, new: &String) -> Result<()
 }
 
 /// update configuration files for the relvant node types
-pub fn update_user_name(jetty: &Jetty, old: &String, new: &String) -> Result<()> {
+pub fn update_user_name(jetty: &Jetty, old: &str, new: &str) -> Result<()> {
     users::update_user_name(jetty, old, new)?;
     new_groups::update_user_name(jetty, old, new)?;
     assets::update_user_name(jetty, old, new)?;

@@ -184,10 +184,11 @@ impl Translator {
         &self,
         data: Vec<(ConnectorData, ConnectorNamespace)>,
     ) -> ProcessedConnectorData {
-        let mut result = ProcessedConnectorData::default();
-
-        result.effective_permissions =
-            self.translate_effective_permissions_axes_to_global_node_names(&data);
+        let mut result = ProcessedConnectorData {
+            effective_permissions: self
+                .translate_effective_permissions_axes_to_global_node_names(&data),
+            ..Default::default()
+        };
 
         for (cd, namespace) in data {
             // convert the users
@@ -585,9 +586,9 @@ impl Translator {
                 .global_to_local
                 .users
                 .get(connector)
-                .ok_or(anyhow!("unable to find connector for node translation"))?
+                .ok_or_else(|| anyhow!("unable to find connector for node translation"))?
                 .get(node_name)
-                .ok_or(anyhow!("unable to find username for connection"))?
+                .ok_or_else(|| anyhow!("unable to find username for connection"))?
                 .to_owned(),
             // There may be groups that don't exist yet, so we'll just use the group name without the origin
             NodeName::Group { name, .. } => name.to_owned(),
@@ -598,9 +599,9 @@ impl Translator {
                 .global_to_local
                 .policies
                 .get(connector)
-                .ok_or(anyhow!("unable to find connector for node translation"))?
+                .ok_or_else(|| anyhow!("unable to find connector for node translation"))?
                 .get(node_name)
-                .ok_or(anyhow!("unable to find username for collection"))?
+                .ok_or_else(|| anyhow!("unable to find username for collection"))?
                 .to_owned(),
             NodeName::Tag(t) => t.to_owned(),
             // Default policies don't have names
@@ -633,7 +634,7 @@ impl Translator {
             .global_to_local
             .users
             .get_mut(connector)
-            .ok_or(anyhow!("unable to find connector for user map update"))?;
+            .ok_or_else(|| anyhow!("unable to find connector for user map update"))?;
         global_to_local.remove(old_node);
         global_to_local.insert(new_node.to_owned(), local_name.to_owned());
 
@@ -641,7 +642,7 @@ impl Translator {
             .local_to_global
             .users
             .get_mut(connector)
-            .ok_or(anyhow!("unable to find connector for user map update"))?;
+            .ok_or_else(|| anyhow!("unable to find connector for user map update"))?;
         local_to_global.remove(local_name);
         local_to_global.insert(local_name.to_owned(), new_node.to_owned());
 

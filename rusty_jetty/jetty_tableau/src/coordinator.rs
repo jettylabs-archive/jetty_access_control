@@ -327,6 +327,7 @@ impl Coordinator {
 
     /// Return a Vec of futures (sort of - look at return type) that will fetch futures from
     /// a map of assets
+    #[allow(clippy::type_complexity)]
     fn get_source_futures_from_map<'a, T: HasSources + Send + Sync>(
         &'a self,
         new_assets: &'a mut HashMap<String, T>,
@@ -348,6 +349,7 @@ impl Coordinator {
     }
 
     /// Return a Vec of futures that will request permissions for a collection of assets
+    #[allow(clippy::type_complexity)]
     fn get_permission_futures_from_map<'a, T: Permissionable + Send>(
         &'a self,
         new_assets: &'a mut HashMap<String, T>,

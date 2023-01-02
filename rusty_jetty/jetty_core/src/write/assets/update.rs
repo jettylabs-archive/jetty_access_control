@@ -9,7 +9,7 @@ use crate::{write::UpdateConfig, Jetty};
 use super::{parser::parse_to_file_map, YamlAssetDoc, YamlDefaultPolicy, YamlPolicy};
 
 impl UpdateConfig for YamlAssetDoc {
-    fn update_user_name(&mut self, old: &String, new: &str) -> anyhow::Result<bool> {
+    fn update_user_name(&mut self, old: &str, new: &str) -> anyhow::Result<bool> {
         let mut modified_policies = false;
         let policies = self.policies.to_owned();
         let new_policies = policies
@@ -40,7 +40,7 @@ impl UpdateConfig for YamlAssetDoc {
         Ok(modified_policies || modified_default_policies)
     }
 
-    fn remove_user_name(&mut self, name: &String) -> anyhow::Result<bool> {
+    fn remove_user_name(&mut self, name: &str) -> anyhow::Result<bool> {
         let mut modified_policies = false;
         let policies = self.policies.to_owned();
         let new_policies = policies
@@ -50,9 +50,7 @@ impl UpdateConfig for YamlAssetDoc {
                 Ok(p)
             })
             .filter(|p| match p {
-                Ok(p) => {
-                    !(p.users.is_none() && p.groups.is_none())
-                }
+                Ok(p) => !(p.users.is_none() && p.groups.is_none()),
                 Err(_) => true,
             })
             .collect::<Result<BTreeSet<YamlPolicy>>>()?;
@@ -69,9 +67,7 @@ impl UpdateConfig for YamlAssetDoc {
                 Ok(p)
             })
             .filter(|p| match p {
-                Ok(p) => {
-                    !(p.users.is_none() && p.groups.is_none())
-                }
+                Ok(p) => !(p.users.is_none() && p.groups.is_none()),
                 Err(_) => true,
             })
             .collect::<Result<BTreeSet<YamlDefaultPolicy>>>()?;
@@ -82,7 +78,7 @@ impl UpdateConfig for YamlAssetDoc {
         Ok(modified_policies || modified_default_policies)
     }
 
-    fn update_group_name(&mut self, old: &String, new: &str) -> anyhow::Result<bool> {
+    fn update_group_name(&mut self, old: &str, new: &str) -> anyhow::Result<bool> {
         let mut modified_policies = false;
         let policies = self.policies.to_owned();
         let new_policies = policies
@@ -113,7 +109,7 @@ impl UpdateConfig for YamlAssetDoc {
         Ok(modified_policies || modified_default_policies)
     }
 
-    fn remove_group_name(&mut self, name: &String) -> anyhow::Result<bool> {
+    fn remove_group_name(&mut self, name: &str) -> anyhow::Result<bool> {
         let mut modified_policies = false;
         let policies = self.policies.to_owned();
         let new_policies = policies
@@ -123,9 +119,7 @@ impl UpdateConfig for YamlAssetDoc {
                 Ok(p)
             })
             .filter(|p| match p {
-                Ok(p) => {
-                    !(p.users.is_none() && p.groups.is_none())
-                }
+                Ok(p) => !(p.users.is_none() && p.groups.is_none()),
                 Err(_) => true,
             })
             .collect::<Result<BTreeSet<YamlPolicy>>>()?;
@@ -142,9 +136,7 @@ impl UpdateConfig for YamlAssetDoc {
                 Ok(p)
             })
             .filter(|p| match p {
-                Ok(p) => {
-                    !(p.users.is_none() && p.groups.is_none())
-                }
+                Ok(p) => !(p.users.is_none() && p.groups.is_none()),
                 Err(_) => true,
             })
             .collect::<Result<BTreeSet<YamlDefaultPolicy>>>()?;
@@ -157,7 +149,7 @@ impl UpdateConfig for YamlAssetDoc {
 }
 
 impl UpdateConfig for YamlPolicy {
-    fn update_user_name(&mut self, old: &String, new: &str) -> anyhow::Result<bool> {
+    fn update_user_name(&mut self, old: &str, new: &str) -> anyhow::Result<bool> {
         if let Some(users) = &mut self.users {
             if users.remove(old) {
                 users.insert(new.to_string());
@@ -170,7 +162,7 @@ impl UpdateConfig for YamlPolicy {
         }
     }
 
-    fn remove_user_name(&mut self, name: &String) -> anyhow::Result<bool> {
+    fn remove_user_name(&mut self, name: &str) -> anyhow::Result<bool> {
         let mut modified = false;
         let mut set_to_none = false;
         if let Some(users) = &mut self.users {
@@ -187,7 +179,7 @@ impl UpdateConfig for YamlPolicy {
         Ok(modified)
     }
 
-    fn update_group_name(&mut self, old: &String, new: &str) -> anyhow::Result<bool> {
+    fn update_group_name(&mut self, old: &str, new: &str) -> anyhow::Result<bool> {
         if let Some(groups) = &mut self.groups {
             if groups.remove(old) {
                 groups.insert(new.to_string());
@@ -200,7 +192,7 @@ impl UpdateConfig for YamlPolicy {
         }
     }
 
-    fn remove_group_name(&mut self, name: &String) -> anyhow::Result<bool> {
+    fn remove_group_name(&mut self, name: &str) -> anyhow::Result<bool> {
         let mut modified = false;
         let mut set_to_none = false;
         if let Some(groups) = &mut self.groups {
@@ -219,7 +211,7 @@ impl UpdateConfig for YamlPolicy {
 }
 
 impl UpdateConfig for YamlDefaultPolicy {
-    fn update_user_name(&mut self, old: &String, new: &str) -> anyhow::Result<bool> {
+    fn update_user_name(&mut self, old: &str, new: &str) -> anyhow::Result<bool> {
         if let Some(users) = &mut self.users {
             if users.remove(old) {
                 users.insert(new.to_string());
@@ -232,7 +224,7 @@ impl UpdateConfig for YamlDefaultPolicy {
         }
     }
 
-    fn remove_user_name(&mut self, name: &String) -> anyhow::Result<bool> {
+    fn remove_user_name(&mut self, name: &str) -> anyhow::Result<bool> {
         let mut modified = false;
         let mut set_to_none = false;
         if let Some(groups) = &mut self.groups {
@@ -249,7 +241,7 @@ impl UpdateConfig for YamlDefaultPolicy {
         Ok(modified)
     }
 
-    fn update_group_name(&mut self, old: &String, new: &str) -> anyhow::Result<bool> {
+    fn update_group_name(&mut self, old: &str, new: &str) -> anyhow::Result<bool> {
         if let Some(groups) = &mut self.groups {
             if groups.remove(old) {
                 groups.insert(new.to_string());
@@ -262,7 +254,7 @@ impl UpdateConfig for YamlDefaultPolicy {
         }
     }
 
-    fn remove_group_name(&mut self, name: &String) -> anyhow::Result<bool> {
+    fn remove_group_name(&mut self, name: &str) -> anyhow::Result<bool> {
         let mut modified = false;
         let mut set_to_none = false;
         if let Some(groups) = &mut self.groups {
@@ -280,7 +272,7 @@ impl UpdateConfig for YamlDefaultPolicy {
     }
 }
 
-pub(crate) fn update_user_name(_jetty: &Jetty, old: &String, new: &str) -> Result<()> {
+pub(crate) fn update_user_name(_jetty: &Jetty, old: &str, new: &str) -> Result<()> {
     let config = parse_to_file_map()?;
     for (path, mut asset_doc) in config {
         if asset_doc.update_user_name(old, new)? {
@@ -291,7 +283,7 @@ pub(crate) fn update_user_name(_jetty: &Jetty, old: &String, new: &str) -> Resul
     Ok(())
 }
 
-pub(crate) fn remove_user_name(_jetty: &Jetty, name: &String) -> Result<()> {
+pub(crate) fn remove_user_name(_jetty: &Jetty, name: &str) -> Result<()> {
     let config = parse_to_file_map()?;
     for (path, mut asset_doc) in config {
         if asset_doc.remove_user_name(name)? {
@@ -302,7 +294,7 @@ pub(crate) fn remove_user_name(_jetty: &Jetty, name: &String) -> Result<()> {
     Ok(())
 }
 
-pub(crate) fn update_group_name(_jetty: &Jetty, old: &String, new: &str) -> Result<()> {
+pub(crate) fn update_group_name(_jetty: &Jetty, old: &str, new: &str) -> Result<()> {
     let config = parse_to_file_map()?;
     for (path, mut asset_doc) in config {
         if asset_doc.update_group_name(old, new)? {
@@ -313,7 +305,7 @@ pub(crate) fn update_group_name(_jetty: &Jetty, old: &String, new: &str) -> Resu
     Ok(())
 }
 
-pub(crate) fn remove_group_name(_jetty: &Jetty, name: &String) -> Result<()> {
+pub(crate) fn remove_group_name(_jetty: &Jetty, name: &str) -> Result<()> {
     let config = parse_to_file_map()?;
     for (path, mut asset_doc) in config {
         if asset_doc.remove_group_name(name)? {

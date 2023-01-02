@@ -85,6 +85,7 @@ pub fn update_user_files(jetty: &Jetty) -> Result<()> {
     let validated_group_config = &parse_and_validate_groups(jetty)?;
     let configs = get_validated_file_config_map(jetty, validated_group_config)?;
 
+    #[allow(clippy::unnecessary_to_owned)]
     let configs_local_name_map = configs
         .to_owned()
         .into_iter()
@@ -96,6 +97,7 @@ pub fn update_user_files(jetty: &Jetty) -> Result<()> {
         })
         .collect::<HashMap<(ConnectorNamespace, String), PathBuf>>();
 
+    #[allow(clippy::unnecessary_to_owned)]
     let mut configs_node_name_map: HashMap<_, _> = configs
         .to_owned()
         .into_iter()
@@ -133,7 +135,7 @@ pub fn update_user_files(jetty: &Jetty) -> Result<()> {
         else {
             let idx = ag
                 .get_user_index_from_name(&node_name)
-                .ok_or(anyhow!("unable to find referenced user"))?;
+                .ok_or_else(|| anyhow!("unable to find referenced user"))?;
             let user_yaml = user_yaml_from_idx(jetty, idx)?;
             configs_node_name_map.insert(
                 node_name.to_owned(),

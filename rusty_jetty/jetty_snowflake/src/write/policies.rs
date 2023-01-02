@@ -71,8 +71,8 @@ pub(crate) fn generate_queries_for_diff_details(
             }
             let privileges = add
                 .privileges
-                .to_owned()
-                .into_iter()
+                .iter()
+                .cloned()
                 .collect::<Vec<_>>()
                 .join(", ");
             res.push(format!(
@@ -102,8 +102,8 @@ pub(crate) fn generate_queries_for_diff_details(
                 }
                 let privileges = add
                     .privileges
-                    .to_owned()
-                    .into_iter()
+                    .iter()
+                    .cloned()
                     .collect::<Vec<_>>()
                     .join(", ");
                 res.push(format!(
@@ -115,8 +115,8 @@ pub(crate) fn generate_queries_for_diff_details(
             if !remove.privileges.is_empty() {
                 let privileges = remove
                     .privileges
-                    .to_owned()
-                    .into_iter()
+                    .iter()
+                    .cloned()
                     .collect::<Vec<_>>()
                     .join(", ");
                 res.push(format!(

@@ -120,7 +120,7 @@ pub(crate) fn get_nodename_local_id_map(
     configs: &HashMap<PathBuf, UserYaml>,
 ) -> HashMap<ConnectorNamespace, BiHashMap<NodeName, String>> {
     let mut res = HashMap::new();
-    for (_path, config) in configs {
+    for config in configs.values() {
         for (connector, local_name) in &config.identifiers {
             res.entry(connector.to_owned())
                 .and_modify(|m: &mut BiHashMap<NodeName, String>| {

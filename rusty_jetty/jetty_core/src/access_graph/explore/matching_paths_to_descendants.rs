@@ -51,6 +51,7 @@ impl AccessGraph {
 
     /// Returns a Vec of Vec<JettyNodes> representing the matching non-cyclic paths
     /// between two nodes
+    #[allow(clippy::too_many_arguments)]
     fn all_matching_simple_paths_to_descendants_recursive(
         &self,
         from_idx: NodeIndex,

@@ -101,7 +101,7 @@ fn parse_policies(
     for policy in policies {
         let policy_state = PolicyState {
             privileges: match &policy.privileges {
-                Some(p) => p.to_owned().into_iter().collect(),
+                Some(p) => p.iter().cloned().collect(),
                 None => Default::default(),
             },
             metadata: Default::default(),
@@ -141,6 +141,7 @@ fn parse_policies(
     Ok(res_policies)
 }
 
+#[allow(clippy::type_complexity)]
 fn parse_default_policies(
     asset_name: &NodeName,
     default_policies: &BTreeSet<YamlDefaultPolicy>,
@@ -260,9 +261,7 @@ fn get_group_name(
     // make sure the groups exist. Needs info from the group parsing. Use the resolved group name
     let group_name = config_groups
         .get(group)
-        .ok_or(anyhow!(
-            "unable to find a group called {group} in the configuration"
-        ))?
+        .ok_or_else(|| anyhow!("unable to find a group called {group} in the configuration"))?
         .get(connector)
         .unwrap();
     Ok(group_name.to_owned())

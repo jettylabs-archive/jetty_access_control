@@ -66,6 +66,7 @@ pub(crate) async fn get_basic_metrics(
 }
 
 impl Metric {
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
         id: String,
         name: String,

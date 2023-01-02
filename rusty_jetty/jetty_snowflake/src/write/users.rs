@@ -4,7 +4,7 @@ use jetty_core::access_graph::translate::diffs::users;
 
 use super::PrioritizedQueries;
 
-pub(super) fn prepare_queries(user_diffs: &Vec<users::LocalDiff>) -> PrioritizedQueries {
+pub(super) fn prepare_queries(user_diffs: &[users::LocalDiff]) -> PrioritizedQueries {
     let mut res = PrioritizedQueries::default();
 
     user_diffs.iter().for_each(|diff| {

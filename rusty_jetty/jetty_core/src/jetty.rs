@@ -200,16 +200,16 @@ impl Jetty {
 
     /// Getter for a reference to the access graph. Returns an error if no access graph has been created
     pub fn try_access_graph(&self) -> Result<&AccessGraph> {
-        self.access_graph.as_ref().ok_or(anyhow!(
-            "unable to find an existing access graph; try running `jetty fetch`"
-        ))
+        self.access_graph.as_ref().ok_or_else(|| {
+            anyhow!("unable to find an existing access graph; try running `jetty fetch`")
+        })
     }
 
     /// Getter for a mutable reference to the access graph. Returns an error if no access graph has been created
     pub fn try_access_graph_mut(&mut self) -> Result<&mut AccessGraph> {
-        self.access_graph.as_mut().ok_or(anyhow!(
-            "unable to find an existing access graph; try running `jetty fetch`"
-        ))
+        self.access_graph.as_mut().ok_or_else(|| {
+            anyhow!("unable to find an existing access graph; try running `jetty fetch`")
+        })
     }
 
     /// return whether a given connector name exists in the config
