@@ -410,7 +410,7 @@ pub struct RawTag {
 }
 
 /// Struct used to populate policy nodes and edges in the graph
-#[derive(Debug, Derivative, Clone, PartialEq, Eq)]
+#[derive(Debug, Derivative, Clone, PartialEq, Eq, Default)]
 pub struct RawPolicy {
     /// ID of the Policy, namespaced for the relevant context
     pub name: String,
