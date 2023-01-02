@@ -214,7 +214,7 @@ impl Jetty {
 
     /// return whether a given connector name exists in the config
     pub(crate) fn has_connector(&self, connector: &ConnectorNamespace) -> bool {
-        self.connectors.contains_key(&connector)
+        self.connectors.contains_key(connector)
     }
 }
 

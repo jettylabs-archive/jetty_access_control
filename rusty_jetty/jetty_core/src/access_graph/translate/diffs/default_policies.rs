@@ -39,28 +39,20 @@ impl Translator {
                 .users
                 .iter()
                 .filter_map(|(agent, details)| {
-                    if let Some(translated_details) = translate_diff_details(details) {
-                        Some((
+                    translate_diff_details(details).map(|translated_details| (
                             self.translate_node_name_to_local(agent, &global_diff.connector),
                             translated_details,
                         ))
-                    } else {
-                        None
-                    }
                 })
                 .collect(),
             groups: global_diff
                 .groups
                 .iter()
                 .filter_map(|(agent, details)| {
-                    if let Some(translated_details) = translate_diff_details(details) {
-                        Some((
+                    translate_diff_details(details).map(|translated_details| (
                             self.translate_node_name_to_local(agent, &global_diff.connector),
                             translated_details,
                         ))
-                    } else {
-                        None
-                    }
                 })
                 .collect(),
         };

@@ -191,9 +191,9 @@ impl Jetty {
             >,
              ((policy_asset, policy_grantee), policy_state)| {
                 acc.entry((
-                    policy_asset.to_owned(),
+                    policy_asset,
                     policy_state.privileges.to_owned().into_iter().collect(),
-                    policy_state.metadata.to_owned().into_iter().collect(),
+                    policy_state.metadata.into_iter().collect(),
                 ))
                 .and_modify(|f| {
                     f.insert(policy_grantee.to_owned());
@@ -280,11 +280,11 @@ impl Jetty {
             >,
              ((policy_asset, policy_path, asset_types, policy_grantee), policy_state)| {
                 acc.entry((
-                    policy_asset.to_owned(),
-                    policy_path.to_owned(),
-                    asset_types.to_owned(),
+                    policy_asset,
+                    policy_path,
+                    asset_types,
                     policy_state.privileges.to_owned(),
-                    policy_state.metadata.to_owned().into_iter().collect(),
+                    policy_state.metadata.into_iter().collect(),
                 ))
                 .and_modify(|f| {
                     f.insert(policy_grantee.to_owned());
@@ -470,11 +470,11 @@ fn compact_regular_policies(
 ) -> HashSet<(NodeName, NodeName)> {
     let mut removal_list = HashSet::new();
     for (other_k, other_v) in expanded_default_policies {
-        let entry = existing_policies.get(&other_k).cloned();
+        let entry = existing_policies.get(other_k).cloned();
         match entry {
             Some(p) => {
                 // if the policy matches a default policy, drop it
-                if p == other_v.to_owned() {
+                if p == *other_v {
                     removal_list.insert(other_k.to_owned());
                 }
                 // if it doesn't match a default policy, leave it as is

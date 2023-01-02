@@ -51,11 +51,7 @@ impl UpdateConfig for YamlAssetDoc {
             })
             .filter(|p| match p {
                 Ok(p) => {
-                    if p.users.is_none() && p.groups.is_none() {
-                        false
-                    } else {
-                        true
-                    }
+                    !(p.users.is_none() && p.groups.is_none())
                 }
                 Err(_) => true,
             })
@@ -74,11 +70,7 @@ impl UpdateConfig for YamlAssetDoc {
             })
             .filter(|p| match p {
                 Ok(p) => {
-                    if p.users.is_none() && p.groups.is_none() {
-                        false
-                    } else {
-                        true
-                    }
+                    !(p.users.is_none() && p.groups.is_none())
                 }
                 Err(_) => true,
             })
@@ -132,11 +124,7 @@ impl UpdateConfig for YamlAssetDoc {
             })
             .filter(|p| match p {
                 Ok(p) => {
-                    if p.users.is_none() && p.groups.is_none() {
-                        false
-                    } else {
-                        true
-                    }
+                    !(p.users.is_none() && p.groups.is_none())
                 }
                 Err(_) => true,
             })
@@ -155,11 +143,7 @@ impl UpdateConfig for YamlAssetDoc {
             })
             .filter(|p| match p {
                 Ok(p) => {
-                    if p.users.is_none() && p.groups.is_none() {
-                        false
-                    } else {
-                        true
-                    }
+                    !(p.users.is_none() && p.groups.is_none())
                 }
                 Err(_) => true,
             })
@@ -192,7 +176,7 @@ impl UpdateConfig for YamlPolicy {
         if let Some(users) = &mut self.users {
             if users.remove(name) {
                 modified = true;
-                if users.len() == 0 {
+                if users.is_empty() {
                     set_to_none = true;
                 };
             }
@@ -222,7 +206,7 @@ impl UpdateConfig for YamlPolicy {
         if let Some(groups) = &mut self.groups {
             if groups.remove(name) {
                 modified = true;
-                if groups.len() == 0 {
+                if groups.is_empty() {
                     set_to_none = true;
                 };
             }
@@ -254,7 +238,7 @@ impl UpdateConfig for YamlDefaultPolicy {
         if let Some(groups) = &mut self.groups {
             if groups.remove(name) {
                 modified = true;
-                if groups.len() == 0 {
+                if groups.is_empty() {
                     set_to_none = true;
                 };
             }
@@ -284,7 +268,7 @@ impl UpdateConfig for YamlDefaultPolicy {
         if let Some(groups) = &mut self.groups {
             if groups.remove(name) {
                 modified = true;
-                if groups.len() == 0 {
+                if groups.is_empty() {
                     set_to_none = true;
                 };
             }

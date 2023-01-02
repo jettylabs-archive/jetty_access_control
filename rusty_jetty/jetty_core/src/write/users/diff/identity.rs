@@ -39,7 +39,7 @@ impl Display for IdentityDiff {
             }
             IdentityDiffDetails::RemoveUser { remove } => {
                 text +=
-                    format!("{}", format!("- user: {}\n", self.user.to_string()).red()).as_str();
+                    format!("{}", format!("- user: {}\n", self.user).red()).as_str();
                 for (conn, local_name) in remove {
                     text += &format!("{}", format!("  - {conn}: {local_name}\n").red());
                 }
@@ -91,7 +91,7 @@ pub fn get_identity_diffs(
     // handle nodes in the config, but not in the env
     for (config_node, config_identities) in &config_identity_state {
         // does this node exist in env? If so remove it. We'll deal with the leftovers later!
-        let details = match env_identity_state.remove(&config_node) {
+        let details = match env_identity_state.remove(config_node) {
             Some(env_identities) => {
                 if &env_identities == config_identities {
                     // No change
@@ -267,7 +267,7 @@ fn update_access_graph_edges(
             .get_untyped_index_from_name(new_node)
             .ok_or(anyhow!("unable to find source node"))?;
 
-        if let Some(old_node) = from.get(&key) {
+        if let Some(old_node) = from.get(key) {
             let old_node_idx = ag
                 .get_untyped_index_from_name(old_node)
                 .ok_or(anyhow!("unable to find original node"))?;
@@ -328,7 +328,7 @@ fn modify_translator_mapping(
         let conn = &key.0.to_owned();
         let local_name = &key.1.to_owned();
 
-        if let Some(old_node) = from.get(&key) {
+        if let Some(old_node) = from.get(key) {
             ag.translator_mut()
                 .modify_user_mapping(conn, local_name, old_node, new_node)?;
         } else {

@@ -469,7 +469,7 @@ impl Translator {
                 grantee: Box::new(grantee.to_owned()),
             },
             privileges: policy.privileges,
-            root_node: root_node,
+            root_node,
             matching_path: policy.wildcard_path,
             types,
             grantee,
@@ -530,7 +530,7 @@ impl Translator {
             } => {
                 let prefix = self
                     .cual_prefix_to_namespace
-                    .get_by_right(&connector)
+                    .get_by_right(connector)
                     .context("unable to find cual prefix")?
                     .to_owned()
                     .unwrap_or_default();
@@ -612,12 +612,11 @@ impl Translator {
         self.local_to_global
             .users
             .iter()
-            .map(|(connector, user_map)| {
+            .flat_map(|(connector, user_map)| {
                 user_map.iter().map(|(k, node_name)| {
                     ((connector.to_owned(), k.to_owned()), node_name.to_owned())
                 })
             })
-            .flatten()
             .collect()
     }
 

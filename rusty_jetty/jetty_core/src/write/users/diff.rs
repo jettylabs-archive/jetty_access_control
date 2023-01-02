@@ -106,7 +106,7 @@ impl Display for CombinedUserDiff {
                     }
                 }
                 IdentityDiffDetails::RemoveUser { remove } => {
-                    text += format!("{}", format!("- user: {}\n", self.user.to_string()).red())
+                    text += format!("{}", format!("- user: {}\n", self.user).red())
                         .as_str();
                     text += "  identity:\n";
                     for (conn, local_name) in remove {

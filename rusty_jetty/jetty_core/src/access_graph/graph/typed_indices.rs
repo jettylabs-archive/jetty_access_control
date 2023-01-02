@@ -109,7 +109,7 @@ impl UserIndex {
                 |n| matches!(n, JettyNode::Group(_)),
             )
             .into_iter()
-            .map(|idx| GroupIndex::new(idx))
+            .map(GroupIndex::new)
             .collect())
     }
 }
@@ -143,7 +143,7 @@ impl GroupIndex {
                 |n| matches!(n, JettyNode::Group(_)),
             )
             .into_iter()
-            .map(|idx| GroupIndex::new(idx))
+            .map(GroupIndex::new)
             .collect())
     }
 }

@@ -323,7 +323,7 @@ async fn bootstrap(overwrite: bool) -> Result<()> {
 
     // assets
     write_bootstrapped_asset_yaml(asset_yaml)?;
-    if let Err(e) = update_asset_files(&jetty) {
+    if let Err(e) = update_asset_files(jetty) {
         warn!("failed to generate files for all assets: {}", e);
     };
 

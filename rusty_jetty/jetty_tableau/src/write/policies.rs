@@ -39,7 +39,7 @@ impl TableauConnector {
                             user.to_owned(),
                             add.privileges
                                 .iter()
-                                .map(|p| IndividualPermission::from_string(p))
+                                .map(IndividualPermission::from_string)
                                 .collect::<Vec<_>>(),
                         );
                     }
@@ -59,7 +59,7 @@ impl TableauConnector {
                             user.to_owned(),
                             add.privileges
                                 .iter()
-                                .map(|p| IndividualPermission::from_string(p))
+                                .map(IndividualPermission::from_string)
                                 .collect::<Vec<_>>(),
                         );
                         plans.1.extend(self.build_delete_policy_requests(
@@ -83,7 +83,7 @@ impl TableauConnector {
                             group_id.to_owned(),
                             add.privileges
                                 .iter()
-                                .map(|p| IndividualPermission::from_string(p))
+                                .map(IndividualPermission::from_string)
                                 .collect::<Vec<_>>(),
                         );
                     }
@@ -104,7 +104,7 @@ impl TableauConnector {
                                 group_id.to_owned(),
                                 add.privileges
                                     .iter()
-                                    .map(|p| IndividualPermission::from_string(p))
+                                    .map(IndividualPermission::from_string)
                                     .collect::<Vec<_>>(),
                             );
                         }
@@ -154,7 +154,7 @@ impl TableauConnector {
                             user_id.to_owned(),
                             add.privileges
                                 .iter()
-                                .map(|p| IndividualPermission::from_string(p))
+                                .map(IndividualPermission::from_string)
                                 .collect::<Vec<_>>(),
                         );
                     }
@@ -178,7 +178,7 @@ impl TableauConnector {
                             user_id.to_owned(),
                             add.privileges
                                 .iter()
-                                .map(|p| IndividualPermission::from_string(p))
+                                .map(IndividualPermission::from_string)
                                 .collect::<Vec<_>>(),
                         );
                         self.build_delete_policy_request_futures(
@@ -200,7 +200,7 @@ impl TableauConnector {
                             group_name.to_owned(),
                             add.privileges
                                 .iter()
-                                .map(|p| IndividualPermission::from_string(p))
+                                .map(IndividualPermission::from_string)
                                 .collect::<Vec<_>>(),
                         );
                     }
@@ -226,7 +226,7 @@ impl TableauConnector {
                                 group_name.to_owned(),
                                 add.privileges
                                     .iter()
-                                    .map(|p| IndividualPermission::from_string(p))
+                                    .map(IndividualPermission::from_string)
                                     .collect::<Vec<_>>(),
                             );
                         }
@@ -339,7 +339,7 @@ impl TableauConnector {
     ) -> Result<()> {
         let mut grantee_id = user_id_or_group_name.to_owned();
 
-        if grantee_type == "group".to_owned() {
+        if grantee_type == *"group" {
             grantee_id = super::group_lookup_from_mutex(group_map, &grantee_id)?;
         }
 
@@ -357,7 +357,7 @@ impl TableauConnector {
         grantee_type: &str,
         privilege: &String,
     ) -> Result<Request, anyhow::Error> {
-        let permission = IndividualPermission::from_string(&privilege);
+        let permission = IndividualPermission::from_string(privilege);
 
         let request = self
             .coordinator
@@ -389,7 +389,7 @@ impl TableauConnector {
         state
             .privileges
             .iter()
-            .map(|p| self.generate_delete_privilege_request(&asset, &grantee_id, &grantee_type, p))
+            .map(|p| self.generate_delete_privilege_request(asset, grantee_id, grantee_type, p))
             .collect()
     }
 }

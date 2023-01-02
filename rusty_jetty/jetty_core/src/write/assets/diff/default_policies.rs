@@ -363,7 +363,7 @@ pub(crate) fn diff_default_policies(
             users: helper.users,
             groups: helper.groups,
             connector: helper.connector,
-            path: path,
+            path,
             // FIXME: update when we only allow a single type
             asset_type: types.into_iter().next().unwrap(),
             asset: root_asset,

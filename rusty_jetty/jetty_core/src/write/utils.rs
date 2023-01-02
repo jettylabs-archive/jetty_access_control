@@ -27,7 +27,7 @@ pub(crate) fn clean_string_for_path(val: String) -> String {
 /// Turn a Vec<String> of errors into a single formatted string
 pub(crate) fn error_vec_to_string(errors: &Vec<String>) -> String {
     errors
-        .into_iter()
+        .iter()
         .map(|e| format!("{}", format!(" - {e}").as_str().red()))
         .collect::<Vec<_>>()
         .join("\n")

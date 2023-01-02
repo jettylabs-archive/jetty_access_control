@@ -88,13 +88,12 @@ pub fn update_user_files(jetty: &Jetty) -> Result<()> {
     let configs_local_name_map = configs
         .to_owned()
         .into_iter()
-        .map(|(path, user)| {
+        .flat_map(|(path, user)| {
             user.identifiers
                 .into_iter()
                 .map(|(connector, id)| ((connector, id), path.to_owned()))
                 .collect::<Vec<_>>()
         })
-        .flatten()
         .collect::<HashMap<(ConnectorNamespace, String), PathBuf>>();
 
     let mut configs_node_name_map: HashMap<_, _> = configs

@@ -37,7 +37,7 @@ pub(crate) fn get_env_membership_nodes(
     let all_groups = &ag.graph.nodes.groups;
 
     all_groups
-        .into_iter()
+        .iter()
         .map(
             |(node_name, idx)| -> Result<(NodeName, HashSet<NodeName>)> {
                 Ok((

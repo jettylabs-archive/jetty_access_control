@@ -90,7 +90,7 @@ impl TableauConnector {
         group_map: Arc<Mutex<HashMap<String, String>>>,
     ) -> Result<()> {
         let group_id = &super::group_lookup_from_mutex(group_map, group_name)?;
-        self.execute_to_unit_result(self.build_add_user_request(&group_id, user_id)?)
+        self.execute_to_unit_result(self.build_add_user_request(group_id, user_id)?)
             .await
     }
 
@@ -103,7 +103,7 @@ impl TableauConnector {
         group_map: Arc<Mutex<HashMap<String, String>>>,
     ) -> Result<()> {
         let group_id = &super::group_lookup_from_mutex(group_map, group_name)?;
-        self.execute_to_unit_result(self.build_remove_user_request(&group_id, user_id)?)
+        self.execute_to_unit_result(self.build_remove_user_request(group_id, user_id)?)
             .await
     }
 
@@ -124,7 +124,7 @@ impl TableauConnector {
         self.coordinator
             .rest_client
             .build_request(
-                format!("groups/{group_id}/users").to_string(),
+                format!("groups/{group_id}/users"),
                 Some(req_body),
                 reqwest::Method::POST,
             )?

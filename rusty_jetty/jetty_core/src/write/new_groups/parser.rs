@@ -121,7 +121,7 @@ pub fn get_group_to_nodename_map(
                     .into()
                 } else {
                     connectors
-                        .into_iter()
+                        .iter()
                         .map(|connector| {
                             (connector.to_owned(), {
                                 match group.identifiers.get(connector) {

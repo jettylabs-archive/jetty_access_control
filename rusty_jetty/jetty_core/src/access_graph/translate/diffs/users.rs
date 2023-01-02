@@ -26,8 +26,7 @@ impl Translator {
         global_diff: &write::users::CombinedUserDiff,
         connector: &ConnectorNamespace,
     ) -> Option<LocalDiff> {
-        match &global_diff.group_membership {
-            Some(group_membership) => Some(LocalDiff {
+        global_diff.group_membership.as_ref().map(|group_membership| LocalDiff {
                 user: self.translate_node_name_to_local(&global_diff.user, connector),
                 group_membership: LocalDiffDetails {
                     add: group_membership
@@ -41,8 +40,6 @@ impl Translator {
                         .map(|group| self.translate_node_name_to_local(group, connector))
                         .collect(),
                 },
-            }),
-            None => None,
-        }
+            })
     }
 }

@@ -89,10 +89,10 @@ fn get_membership_config_state(
                 NodeName::User(user.name.to_owned()),
                 user.identifiers
                     .keys()
-                    .map(|conn| {
+                    .flat_map(|conn| {
                         user.groups
                             .iter()
-                            .map(|g| {
+                            .flat_map(|g| {
                                 handle_nested_groups(
                                     g,
                                     conn,
@@ -101,10 +101,8 @@ fn get_membership_config_state(
                                     jetty,
                                 )
                             })
-                            .flatten()
                             .collect::<HashSet<_>>()
                     })
-                    .flatten()
                     .collect(),
             )
         })
@@ -151,7 +149,7 @@ fn handle_nested_groups(
     };
     // does the connector support nested groups? If not, collect the upstream groups
     if supports_nested_groups(connector, jetty) {
-        return res;
+        res
     } else {
         for child in &membership_map[group_name] {
             res.extend(handle_nested_groups(

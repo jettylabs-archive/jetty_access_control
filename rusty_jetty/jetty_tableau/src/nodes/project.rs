@@ -159,7 +159,7 @@ impl Project {
                     "view".to_owned(),
                     final_permissions
                         .iter()
-                        .map(|p| convert_workbook_permission_to_view_permissions(p))
+                        .map(convert_workbook_permission_to_view_permissions)
                         .collect(),
                 );
             }

@@ -30,9 +30,9 @@ pub(crate) struct SequencedPlans(
 impl SequencedPlans {
     /// extend prioritized plans, consuming other
     pub(crate) fn extend(&mut self, other: Self) {
-        self.0.extend(other.0.into_iter().map(|r| r));
-        self.1.extend(other.1.into_iter().map(|r| r));
-        self.2.extend(other.2.into_iter().map(|r| r));
+        self.0.extend(other.0.into_iter());
+        self.1.extend(other.1.into_iter());
+        self.2.extend(other.2.into_iter());
     }
 
     /// Flatten planned requests to a vector of strings for 'jetty plan'
@@ -40,7 +40,7 @@ impl SequencedPlans {
         [&self.0, &self.1, &self.2]
             .into_iter()
             .flatten()
-            .map(|r| request_to_string(r))
+            .map(request_to_string)
             .collect::<Vec<_>>()
     }
 }
@@ -57,9 +57,9 @@ pub(crate) struct SequencedFutures<'a>(
 impl<'a> SequencedFutures<'a> {
     /// extend prioritized futures, consuming other
     pub(crate) fn extend(&mut self, other: Self) {
-        self.0.extend(other.0.into_iter().map(|r| r));
-        self.1.extend(other.1.into_iter().map(|r| r));
-        self.2.extend(other.2.into_iter().map(|r| r));
+        self.0.extend(other.0.into_iter());
+        self.1.extend(other.1.into_iter());
+        self.2.extend(other.2.into_iter());
     }
 }
 
