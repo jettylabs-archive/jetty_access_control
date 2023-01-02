@@ -182,7 +182,7 @@ pub enum UsageEvent {
     InvokedHelp,
     /// Program panicked during execution.
     #[serde(rename = "panicked")]
-    InvokedPanic,
+    Panic,
     /// `jetty bootstrap`
     #[serde(rename = "invoked_bootstrap")]
     InvokedBootstrap { no_fetch: bool, overwrite: bool },

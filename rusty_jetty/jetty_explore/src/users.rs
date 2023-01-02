@@ -45,7 +45,7 @@ async fn assets_handler(
             // build Vec of UserAssetResponse structs
             .map(|(k, v)| NodeSummaryWithPrivileges {
                 node: k.to_owned().into(),
-                privileges: v.to_owned().into_iter().map(|p| p.to_owned()).collect(),
+                privileges: v.iter().copied().map(|p| p.to_owned()).collect(),
             })
             .collect(),
     )

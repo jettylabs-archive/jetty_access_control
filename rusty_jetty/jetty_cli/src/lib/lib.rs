@@ -63,7 +63,7 @@ pub async fn cli() -> Result<()> {
     // Get Jetty Config
     let jetty_config = JettyConfig::read_from_file(project::jetty_cfg_path_local()).ok();
     // Get args
-    let args = if env::args().collect::<Vec<_>>().len() == 1 {
+    let args = if env::args().count() == 1 {
         // Invoke telemetry for empty args. If we executed `JettyArgs::parse()` first,
         // the program would exit before we got to publish usage.
         record_usage(UsageEvent::InvokedDefault, &jetty_config)
@@ -185,7 +185,7 @@ pub async fn cli() -> Result<()> {
             let parsed_uuid = uuid::Uuid::from_str(id)?;
             let binding = ag.extract_graph(
                 ag.get_untyped_index_from_id(&parsed_uuid)
-                    .ok_or(anyhow!("unable to find the right node"))?,
+                    .ok_or_else(|| anyhow!("unable to find the right node"))?,
                 *depth,
             );
             let generated_dot = binding.dot();
@@ -300,17 +300,14 @@ async fn bootstrap(overwrite: bool) -> Result<()> {
             bail!("{} already exists; run `jetty bootstrap --overwrite` to overwrite the existing configuration", project::users_cfg_root_path_local().to_string_lossy())
         }
     } else {
-        match fs::remove_file(groups_cfg_path_local()) {
-            Ok(_) => println!("removed existing groups file"),
-            Err(_) => (),
+        if fs::remove_file(groups_cfg_path_local()).is_ok() {
+            println!("removed existing groups file")
         };
-        match fs::remove_dir_all(project::assets_cfg_root_path_local()) {
-            Ok(_) => println!("removed existing asset directory"),
-            Err(_) => (),
+        if fs::remove_dir_all(project::assets_cfg_root_path_local()).is_ok() {
+            println!("removed existing asset directory")
         };
-        match fs::remove_dir_all(project::users_cfg_root_path_local()) {
-            Ok(_) => println!("removed existing users directory"),
-            Err(_) => (),
+        if fs::remove_dir_all(project::users_cfg_root_path_local()).is_ok() {
+            println!("removed existing users directory")
         };
     }
 
