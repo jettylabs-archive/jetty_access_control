@@ -1,23 +1,21 @@
 //! Diff changes to group membership
 
 use std::{
-    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
-    fmt::Display,
+    collections::{BTreeSet, HashMap, HashSet},
     path::PathBuf,
 };
 
-use anyhow::{anyhow, bail, Result};
-use colored::Colorize;
+use anyhow::Result;
 
 use crate::{
-    access_graph::{graph::typed_indices::TypedIndex, JettyNode, NodeName, UserAttributes},
+    access_graph::{graph::typed_indices::TypedIndex, NodeName},
     jetty::ConnectorNamespace,
     write::{
         new_groups::{
             get_group_capable_connectors, get_group_to_nodename_map,
             parser::get_group_membership_map, GroupConfig,
         },
-        users::{parser::get_validated_file_config_map, UserYaml},
+        users::UserYaml,
         utils::diff_hashset,
     },
     Jetty,

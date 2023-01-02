@@ -29,7 +29,7 @@ pub use entry_types::{
     StandardGrant, Table, User, View, Warehouse,
 };
 use futures::StreamExt;
-use jetty_core::access_graph::translate::diffs::{groups, LocalConnectorDiffs};
+use jetty_core::access_graph::translate::diffs::LocalConnectorDiffs;
 use jetty_core::connectors::{
     AssetType, ConnectorCapabilities, NewConnector, ReadCapabilities, WriteCapabilities,
 };

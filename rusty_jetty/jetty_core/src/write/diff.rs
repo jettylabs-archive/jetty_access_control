@@ -4,12 +4,7 @@ use anyhow::Result;
 
 use crate::Jetty;
 
-use super::{
-    assets::{self, diff::policies},
-    new_groups,
-    users::{self, diff::update_graph},
-    GlobalDiffs,
-};
+use super::{assets, new_groups, users, GlobalDiffs};
 
 /// Get all the diffs
 pub fn get_diffs(jetty: &mut Jetty) -> Result<GlobalDiffs> {

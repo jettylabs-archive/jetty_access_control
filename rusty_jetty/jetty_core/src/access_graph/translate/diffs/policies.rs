@@ -1,11 +1,6 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
-use crate::{
-    access_graph::{translate::Translator, NodeName},
-    cual::Cual,
-    jetty::ConnectorNamespace,
-    write,
-};
+use crate::{access_graph::translate::Translator, cual::Cual, write};
 
 #[derive(Debug)]
 /// A group-specific local diff

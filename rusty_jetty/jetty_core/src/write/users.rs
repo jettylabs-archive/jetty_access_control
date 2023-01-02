@@ -8,12 +8,10 @@ mod update;
 use std::collections::{BTreeSet, HashMap};
 
 use anyhow::{Context, Result};
-use bimap::BiHashMap;
 use glob::glob;
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
-use crate::{access_graph::NodeName, jetty::ConnectorNamespace, project};
+use crate::{jetty::ConnectorNamespace, project};
 
 pub use diff::{get_membership_diffs, CombinedUserDiff};
 pub use parser::get_validated_file_config_map;
@@ -40,8 +38,9 @@ impl UpdateConfig for UserYaml {
         }
     }
 
-    /// No-op: if the name in the config is a match, delete the config file.
-    fn remove_user_name(&mut self, name: &String) -> Result<bool> {
+    /// No-op: if the name in the config is a match, delete the config file (must happen in
+    /// the caller).
+    fn remove_user_name(&mut self, _name: &String) -> Result<bool> {
         Ok(true)
     }
 

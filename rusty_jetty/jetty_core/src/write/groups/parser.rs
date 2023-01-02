@@ -119,7 +119,7 @@ pub(crate) fn parse_groups(config: &String) -> Result<BTreeMap<String, GroupConf
         groups.insert(
             group_name.clone(),
             GroupConfig {
-                name: group_name,
+                _name: group_name,
                 connector_names,
                 members,
                 pos: group_pos,

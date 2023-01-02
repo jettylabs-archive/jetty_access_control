@@ -35,7 +35,6 @@ impl Jetty {
         let policies = &ag.graph.nodes.policies;
         for (_, idx) in policies {
             let attributes = PolicyAttributes::try_from(ag[*idx].clone())?;
-            let privileges = attributes.privileges.to_owned();
             let target_assets = ag.get_matching_descendants(
                 *idx,
                 |e| matches!(e, EdgeType::Governs),
@@ -135,7 +134,6 @@ impl Jetty {
     fn build_bootstrapped_policy_config(
         &self,
     ) -> Result<HashMap<NodeIndex, (BTreeSet<YamlPolicy>, BTreeSet<YamlDefaultPolicy>)>> {
-        let ag = self.try_access_graph()?;
         let mut basic_policies = self.build_simple_policy_map()?;
         let default_policies = self.build_default_policy_map()?;
 
@@ -365,11 +363,7 @@ impl Jetty {
                     let attributes: AssetAttributes = ag[idx].to_owned().try_into()?;
                     let node_name = attributes.name();
                     match node_name {
-                        NodeName::Asset {
-                            connector,
-                            asset_type,
-                            path,
-                        } => Ok((
+                        NodeName::Asset { .. } => Ok((
                             self.asset_index_to_file_path(idx),
                             yaml_peg::serde::to_string(&YamlAssetDoc {
                                 identifier: asset_attributes_to_yaml_identifier(&attributes),

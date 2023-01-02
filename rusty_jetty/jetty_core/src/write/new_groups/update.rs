@@ -1,7 +1,5 @@
 //! functionality to update the config, when necessary
 
-use std::fs;
-
 use anyhow::Result;
 
 use crate::{
@@ -59,7 +57,7 @@ pub(crate) fn update_group_name(jetty: &Jetty, old: &String, new: &str) -> Resul
 }
 
 pub(crate) fn remove_group_name(jetty: &Jetty, name: &String) -> Result<()> {
-    let mut config: Vec<_> = new_groups::parse_and_validate_groups(&jetty)?
+    let config: Vec<_> = new_groups::parse_and_validate_groups(&jetty)?
         .into_iter()
         .collect();
     let mut modified1 = false;

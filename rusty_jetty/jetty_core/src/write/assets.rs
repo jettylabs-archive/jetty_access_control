@@ -21,7 +21,7 @@ use crate::{
         AccessGraph, AssetPath, DefaultPolicyAttributes, EdgeType, JettyNode, NodeName,
         PolicyAttributes,
     },
-    connectors::{AssetType, WriteCapabilities},
+    connectors::AssetType,
     jetty::ConnectorNamespace,
     logging::warn,
     project, Jetty,
@@ -418,12 +418,6 @@ impl CombinedPolicyState {
             }
         }
         Ok(intermediate_map)
-    }
-
-    /// merge a CombinedPolicyState struct into self, replacing entries if they exist
-    fn merge_replacing_if_exists(&mut self, other: CombinedPolicyState) {
-        self.policies.extend(other.policies);
-        self.default_policies.extend(other.default_policies);
     }
 
     /// merge a CombinedPolicyState struct into self, but if a key already exists, don't replace it

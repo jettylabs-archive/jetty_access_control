@@ -1,12 +1,11 @@
 //! Diff changes to user identities
 
 use std::{
-    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
+    collections::{BTreeSet, HashMap, HashSet},
     fmt::Display,
-    path::PathBuf,
 };
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, Result};
 use colored::Colorize;
 
 use crate::{

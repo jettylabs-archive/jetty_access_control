@@ -648,22 +648,4 @@ impl Translator {
 
         Ok(())
     }
-
-    /// This will entirely remove a user from both the local and global translator mapping
-    pub(crate) fn remove_user_from_mapping(&mut self, node_name: &NodeName) -> Result<()> {
-        for (conn, map) in self.global_to_local.users.iter_mut() {
-            // get the connector and local name from here, use it to delete in the other map as well
-            match map.remove(node_name) {
-                Some(local_name) => {
-                    self.local_to_global
-                        .users
-                        .get_mut(conn)
-                        .unwrap()
-                        .remove(&local_name);
-                }
-                None => (),
-            };
-        }
-        Ok(())
-    }
 }

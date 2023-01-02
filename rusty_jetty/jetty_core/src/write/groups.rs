@@ -25,7 +25,7 @@ use crate::{
 /// group configuration, as represented in the yaml
 #[derive(Deserialize, Debug)]
 pub struct GroupConfig {
-    name: String,
+    _name: String,
     connector_names: Option<Vec<ConnectorName>>,
     members: GroupMembers,
     pos: u64,

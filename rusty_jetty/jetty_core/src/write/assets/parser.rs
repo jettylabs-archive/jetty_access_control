@@ -1,7 +1,7 @@
 //! Parse asset configuration files
 
 use std::{
-    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
+    collections::{BTreeSet, HashMap, HashSet},
     path::PathBuf,
 };
 

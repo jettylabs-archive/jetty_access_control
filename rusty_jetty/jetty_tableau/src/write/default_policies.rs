@@ -5,7 +5,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{bail, Context, Result};
 
 use futures::future::BoxFuture;
 use jetty_core::{
@@ -563,8 +563,6 @@ impl TableauConnector {
         if grantee_type == "group".to_owned() {
             grantee_id = super::group_lookup_from_mutex(group_map, &grantee_id)?;
         }
-
-        let permission = IndividualPermission::from_string(&privilege);
 
         let request = self.generate_delete_default_privilege_request(
             &privilege,

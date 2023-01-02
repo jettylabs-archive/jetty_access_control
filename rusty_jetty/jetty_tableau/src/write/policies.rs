@@ -2,17 +2,13 @@
 
 use std::{
     collections::HashMap,
-    pin::Pin,
     sync::{Arc, Mutex},
 };
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 
 use futures::future::BoxFuture;
-use jetty_core::{
-    access_graph::translate::diffs::{policies, users},
-    write::assets::PolicyState,
-};
+use jetty_core::{access_graph::translate::diffs::policies, write::assets::PolicyState};
 use reqwest::Request;
 
 use crate::{

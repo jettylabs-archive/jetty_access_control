@@ -1,12 +1,11 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use crate::{
-    access_graph::{translate::Translator, NodeName},
+    access_graph::translate::Translator,
     cual::Cual,
-    jetty::ConnectorNamespace,
     write::{
         self,
-        assets::{self, diff::default_policies::DefaultPolicyDiffDetails, PolicyState},
+        assets::{self, diff::default_policies::DefaultPolicyDiffDetails},
     },
 };
 

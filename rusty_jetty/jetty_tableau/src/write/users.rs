@@ -158,7 +158,7 @@ impl TableauConnector {
         group_map: Arc<Mutex<HashMap<String, String>>>,
     ) -> Result<()> {
         // get the group_id
-        let mut group_id = "".to_owned();
+        let group_id;
         {
             let temp_group_map = group_map.lock().unwrap();
             group_id = temp_group_map

@@ -15,7 +15,7 @@ use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
 
 use coordinator::Environment;
-use futures::{future::BoxFuture, Future, StreamExt};
+use futures::StreamExt;
 use reqwest::RequestBuilder;
 use rest::get_cual_prefix;
 pub use rest::TableauRestClient;
@@ -23,7 +23,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use jetty_core::{
-    access_graph::translate::diffs::{groups, LocalConnectorDiffs},
+    access_graph::translate::diffs::LocalConnectorDiffs,
     connectors::{
         nodes::ConnectorData,
         nodes::{self as jetty_nodes, EffectivePermission, SparseMatrix},
@@ -45,13 +45,10 @@ use permissions::{
     },
     PermissionManager,
 };
-use write::SequencedPlans;
 
 use std::{
     collections::{HashMap, HashSet},
     path::PathBuf,
-    pin::Pin,
-    sync::{Arc, Mutex},
 };
 
 /// Map wrapper for config values.

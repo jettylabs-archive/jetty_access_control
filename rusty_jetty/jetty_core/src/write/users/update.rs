@@ -9,10 +9,7 @@ use crate::{
     Jetty,
 };
 
-use super::{
-    bootstrap::write_user_config_file, get_config_paths, get_validated_file_config_map,
-    parser::read_config_file,
-};
+use super::{bootstrap::write_user_config_file, get_validated_file_config_map};
 
 pub(crate) fn update_user_name(jetty: &Jetty, old: &String, new: &str) -> Result<()> {
     let validated_group_config = &new_groups::parse_and_validate_groups(&jetty)?;

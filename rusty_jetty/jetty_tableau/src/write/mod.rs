@@ -2,18 +2,16 @@
 
 use std::{
     collections::HashMap,
-    pin::Pin,
     sync::{Arc, Mutex},
 };
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Result};
 
-use futures::{future::BoxFuture, Future};
+use futures::future::BoxFuture;
 use jetty_core::access_graph::translate::diffs::LocalConnectorDiffs;
 use reqwest::Request;
-use serde_json::json;
 
-use crate::{rest, TableauConnector};
+use crate::TableauConnector;
 
 mod default_policies;
 mod groups;

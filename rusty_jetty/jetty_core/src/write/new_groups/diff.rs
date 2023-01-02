@@ -1,7 +1,7 @@
 //! Diffing of config vs env
 
 use std::{
-    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
+    collections::{BTreeSet, HashMap, HashSet},
     fmt::Display,
 };
 

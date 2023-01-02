@@ -1,7 +1,7 @@
 //! Parsing group configuration
 
 use std::{
-    collections::{BTreeSet, HashMap, HashSet},
+    collections::{HashMap, HashSet},
     fs,
 };
 

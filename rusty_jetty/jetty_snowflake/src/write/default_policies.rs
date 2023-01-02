@@ -1,10 +1,8 @@
 //! managing the write path for policies
 
-use std::fmt::Display;
-
 use jetty_core::{access_graph::translate::diffs::default_policies, write::assets};
 
-use crate::{SnowflakeAsset, SnowflakeConnector};
+use crate::SnowflakeAsset;
 
 use super::{policies::AgentType, PrioritizedQueries};
 

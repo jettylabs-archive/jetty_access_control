@@ -18,7 +18,6 @@ use std::{
     env, fs,
     str::FromStr,
     sync::Arc,
-    thread,
     time::{self, Instant},
 };
 
@@ -36,15 +35,10 @@ use jetty_core::{
     logging::{self, debug, error, info, warn},
     project::{self, groups_cfg_path_local},
     write::{
-        assets::{
-            bootstrap::{update_asset_files, write_bootstrapped_asset_yaml},
-            get_default_policy_diffs, get_policy_diffs,
-        },
+        assets::bootstrap::{update_asset_files, write_bootstrapped_asset_yaml},
         diff::get_diffs,
-        groups::parse_and_validate_groups,
         new_groups,
         users::bootstrap::{update_user_files, write_bootstrapped_user_yaml},
-        GlobalDiffs,
     },
     Connector, Jetty,
 };
@@ -335,7 +329,7 @@ async fn bootstrap(overwrite: bool) -> Result<()> {
 
     // users
     write_bootstrapped_user_yaml(user_yaml)?;
-    if let Err(e) = update_user_files(&jetty) {
+    if let Err(e) = update_user_files(jetty) {
         warn!("failed to generate files for all users: {}", e);
     }
 
@@ -386,13 +380,6 @@ async fn apply() -> Result<()> {
 
     match fetch(&None, &false).await {
         Ok(_) => {
-            // reload jetty to get the latest fetch
-
-            let jetty = new_jetty_with_connectors().await?;
-
-            println!("Here is the current diff based on your configuration:");
-            // For now, we're just looking at group diffs
-
             diff::diff().await?;
         }
         Err(_) => {
@@ -423,11 +410,13 @@ async fn get_connectors(
                         &selected_connectors[namespace],
                         &creds
                             .get(namespace.to_string().as_str())
-                            .ok_or(anyhow!(
-                                "unable to find a connector called {} in {}",
-                                namespace,
-                                project::connector_cfg_path().display()
-                            ))?
+                            .ok_or_else(|| {
+                                anyhow!(
+                                    "unable to find a connector called {} in {}",
+                                    namespace,
+                                    project::connector_cfg_path().display()
+                                )
+                            })?
                             .to_owned(),
                         Some(ConnectorClient::Core),
                         Some(project::data_dir().join(namespace.to_string())),
@@ -439,11 +428,13 @@ async fn get_connectors(
                         &selected_connectors[namespace],
                         &creds
                             .get(namespace.to_string().as_str())
-                            .ok_or(anyhow!(
-                                "unable to find a connector called {} in {}",
-                                namespace,
-                                project::connector_cfg_path().display()
-                            ))?
+                            .ok_or_else(|| {
+                                anyhow!(
+                                    "unable to find a connector called {} in {}",
+                                    namespace,
+                                    project::connector_cfg_path().display()
+                                )
+                            })?
                             .to_owned(),
                         Some(ConnectorClient::Core),
                         Some(project::data_dir().join(namespace.to_string())),
@@ -455,11 +446,13 @@ async fn get_connectors(
                         &selected_connectors[namespace],
                         &creds
                             .get(namespace.to_string().as_str())
-                            .ok_or(anyhow!(
-                                "unable to find a connector called {} in {}",
-                                namespace,
-                                project::connector_cfg_path().display()
-                            ))?
+                            .ok_or_else(|| {
+                                anyhow!(
+                                    "unable to find a connector called {} in {}",
+                                    namespace,
+                                    project::connector_cfg_path().display()
+                                )
+                            })?
                             .to_owned(),
                         Some(ConnectorClient::Core),
                         Some(project::data_dir().join(namespace.to_string())),
@@ -493,30 +486,6 @@ pub async fn new_jetty_with_connectors() -> Result<Jetty> {
     let connectors = get_connectors(&creds, &config.connectors).await?;
 
     Jetty::new_with_config(config, project::data_dir(), connectors)
-}
-
-fn timer_with_spinner(secs: u64, msg: &str, completion_msg: &str) {
-    let pb = ProgressBar::new_spinner();
-    pb.enable_steady_tick(time::Duration::from_millis(120));
-
-    pb.set_style(
-        ProgressStyle::with_template("{spinner:.green} {msg}")
-            .unwrap()
-            // For more spinners check out the cli-spinners project:
-            // https://github.com/sindresorhus/cli-spinners/blob/master/spinners.json
-            .tick_strings(&[
-                "▹▹▹▹▹",
-                "▸▹▹▹▹",
-                "▹▸▹▹▹",
-                "▹▹▸▹▹",
-                "▹▹▹▸▹",
-                "▹▹▹▹▸",
-                "▪▪▪▪▪",
-            ]),
-    );
-    pb.set_message(msg.to_owned());
-    thread::sleep(time::Duration::from_secs(secs));
-    pb.finish_with_message(completion_msg.to_owned());
 }
 
 fn basic_progress_bar(msg: &str) -> ProgressBar {

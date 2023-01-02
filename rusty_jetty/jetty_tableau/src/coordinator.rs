@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 
-use std::default;
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::{collections::HashMap, fs, io};

@@ -1,7 +1,7 @@
 //! Module to diff default policies
 
 use std::{
-    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
+    collections::{BTreeMap, BTreeSet, HashMap},
     fmt::Display,
 };
 
@@ -16,7 +16,6 @@ use crate::{
         utils::diff_btreeset,
         SplitByConnector,
     },
-    Connector,
 };
 
 #[derive(Debug, Clone)]

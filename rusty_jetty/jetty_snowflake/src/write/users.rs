@@ -1,8 +1,6 @@
 //! managing the write path for users
 
-use jetty_core::access_graph::translate::diffs::{groups, users};
-
-use crate::SnowflakeConnector;
+use jetty_core::access_graph::translate::diffs::users;
 
 use super::PrioritizedQueries;
 

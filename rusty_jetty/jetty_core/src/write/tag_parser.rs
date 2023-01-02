@@ -1,9 +1,8 @@
 use anyhow::{anyhow, bail, Context, Result};
 use petgraph::stable_graph::NodeIndex;
 
-
 use std::collections::HashMap;
-use std::collections::{HashSet};
+use std::collections::HashSet;
 use std::fmt::Display;
 
 use yaml_peg::{parse, repr::RcRepr, NodeRc};
@@ -23,7 +22,7 @@ pub(crate) struct TagConfig {
     pass_through_lineage: bool,
     apply_to: Option<Vec<TargetAsset>>,
     remove_from: Option<Vec<TargetAsset>>,
-    pos: u64,
+    _pos: u64,
 }
 
 /// information collected when unable to find a referenced asset
@@ -165,7 +164,7 @@ pub(crate) fn parse_tags(config: &String) -> Result<HashMap<String, TagConfig>> 
                 value,
                 apply_to,
                 remove_from,
-                pos: tag_pos,
+                _pos: tag_pos,
                 pass_through_hierarchy,
                 pass_through_lineage,
             },

@@ -1,4 +1,4 @@
-use std::{default, fmt::Display, sync::Once};
+use std::{fmt::Display, sync::Once};
 
 use anyhow::{bail, Context, Ok, Result};
 

@@ -5,7 +5,7 @@ use std::{
     fs,
 };
 
-use anyhow::{bail, Result};
+use anyhow::Result;
 
 use crate::{
     access_graph::{graph::typed_indices::TypedIndex, NodeName},
@@ -16,11 +16,6 @@ use super::{GroupConfig, GroupYaml};
 
 /// Fetch the configuration of groups from the environment. This will always reflect connector-specific relationships
 pub fn get_env_config(jetty: &Jetty) -> Result<GroupConfig> {
-    let ag = jetty.try_access_graph()?;
-    let all_groups = &ag.graph.nodes.groups;
-
-    let mut res = GroupConfig::new();
-
     let env_nodes = get_env_membership_nodes(jetty)?;
 
     Ok(env_nodes
