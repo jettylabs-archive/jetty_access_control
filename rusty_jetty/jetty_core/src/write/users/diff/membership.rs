@@ -11,7 +11,7 @@ use crate::{
     access_graph::{graph::typed_indices::TypedIndex, NodeName},
     jetty::ConnectorNamespace,
     write::{
-        new_groups::{
+        groups::{
             get_group_capable_connectors, get_group_to_nodename_map,
             parser::get_group_membership_map, GroupConfig,
         },

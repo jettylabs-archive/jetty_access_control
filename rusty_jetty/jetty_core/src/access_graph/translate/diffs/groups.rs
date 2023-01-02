@@ -1,7 +1,7 @@
 use crate::{
     access_graph::{translate::Translator, NodeName},
     jetty::ConnectorNamespace,
-    write::new_groups,
+    write::groups,
 };
 
 use std::collections::{BTreeSet, HashSet};
@@ -35,24 +35,17 @@ pub enum LocalDiffDetails {
 }
 
 impl Translator {
-    pub(super) fn translate_group_diff_to_local(
-        &self,
-        global_diff: &new_groups::Diff,
-    ) -> LocalDiff {
+    pub(super) fn translate_group_diff_to_local(&self, global_diff: &groups::Diff) -> LocalDiff {
         LocalDiff {
             group_name: self
                 .translate_node_name_to_local(&global_diff.group_name, &global_diff.connector),
             details: match &global_diff.details {
-                new_groups::diff::DiffDetails::AddGroup { member_of } => {
-                    LocalDiffDetails::AddGroup {
-                        member_of: self.translate_group_member_changes_to_local(
-                            member_of,
-                            &global_diff.connector,
-                        ),
-                    }
-                }
-                new_groups::diff::DiffDetails::RemoveGroup => LocalDiffDetails::RemoveGroup,
-                new_groups::diff::DiffDetails::ModifyGroup {
+                groups::diff::DiffDetails::AddGroup { member_of } => LocalDiffDetails::AddGroup {
+                    member_of: self
+                        .translate_group_member_changes_to_local(member_of, &global_diff.connector),
+                },
+                groups::diff::DiffDetails::RemoveGroup => LocalDiffDetails::RemoveGroup,
+                groups::diff::DiffDetails::ModifyGroup {
                     add_member_of,
                     remove_member_of,
                 } => LocalDiffDetails::ModifyGroup {

@@ -37,7 +37,7 @@ use jetty_core::{
     write::{
         assets::bootstrap::{update_asset_files, write_bootstrapped_asset_yaml},
         diff::get_diffs,
-        new_groups,
+        groups,
         users::bootstrap::{update_user_files, write_bootstrapped_user_yaml},
     },
     Connector, Jetty,
@@ -284,7 +284,7 @@ async fn bootstrap(overwrite: bool) -> Result<()> {
     jetty.try_access_graph()?;
 
     // Build all the yaml first
-    let group_yaml = new_groups::get_env_config(jetty)?;
+    let group_yaml = groups::get_env_config(jetty)?;
     let asset_yaml = jetty.generate_bootstrapped_policy_yaml()?;
     let user_yaml = jetty.generate_bootstrapped_user_yaml()?;
 
@@ -314,7 +314,7 @@ async fn bootstrap(overwrite: bool) -> Result<()> {
     // Now write the yaml files
 
     // groups
-    if let Err(e) = new_groups::write_env_config(&group_yaml) {
+    if let Err(e) = groups::write_env_config(&group_yaml) {
         warn!("failed to write groups file: {}", e);
     }
 

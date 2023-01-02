@@ -21,7 +21,7 @@ use crate::{
     cual::Cual,
     jetty::ConnectorNamespace,
     permissions::matrix::{DoubleInsert, InsertOrMerge},
-    write::{new_groups::parse_and_validate_groups, users},
+    write::{groups::parse_and_validate_groups, users},
     Jetty,
 };
 

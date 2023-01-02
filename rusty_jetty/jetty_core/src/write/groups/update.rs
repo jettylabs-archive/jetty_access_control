@@ -3,14 +3,14 @@
 use anyhow::Result;
 
 use crate::{
-    write::{new_groups, UpdateConfig},
+    write::{groups, UpdateConfig},
     Jetty,
 };
 
 use super::write_env_config;
 
 pub(crate) fn update_user_name(jetty: &Jetty, old: &str, new: &str) -> Result<()> {
-    let mut config: Vec<_> = new_groups::parse_and_validate_groups(jetty)?
+    let mut config: Vec<_> = groups::parse_and_validate_groups(jetty)?
         .into_iter()
         .collect();
     let mut modified = false;
@@ -25,7 +25,7 @@ pub(crate) fn update_user_name(jetty: &Jetty, old: &str, new: &str) -> Result<()
     Ok(())
 }
 pub(crate) fn remove_user_name(jetty: &Jetty, name: &str) -> Result<()> {
-    let mut config: Vec<_> = new_groups::parse_and_validate_groups(jetty)?
+    let mut config: Vec<_> = groups::parse_and_validate_groups(jetty)?
         .into_iter()
         .collect();
     let mut modified = false;
@@ -41,7 +41,7 @@ pub(crate) fn remove_user_name(jetty: &Jetty, name: &str) -> Result<()> {
 }
 
 pub(crate) fn update_group_name(jetty: &Jetty, old: &str, new: &str) -> Result<()> {
-    let mut config: Vec<_> = new_groups::parse_and_validate_groups(jetty)?
+    let mut config: Vec<_> = groups::parse_and_validate_groups(jetty)?
         .into_iter()
         .collect();
     let mut modified = false;
@@ -57,7 +57,7 @@ pub(crate) fn update_group_name(jetty: &Jetty, old: &str, new: &str) -> Result<(
 }
 
 pub(crate) fn remove_group_name(jetty: &Jetty, name: &str) -> Result<()> {
-    let config = new_groups::parse_and_validate_groups(jetty)?.into_iter();
+    let config = groups::parse_and_validate_groups(jetty)?.into_iter();
     let mut modified1 = false;
     let mut modified2 = false;
     let updated_config = config

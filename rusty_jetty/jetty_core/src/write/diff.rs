@@ -4,7 +4,7 @@ use anyhow::Result;
 
 use crate::Jetty;
 
-use super::{assets, new_groups, users, GlobalDiffs};
+use super::{assets, groups, users, GlobalDiffs};
 
 /// Get all the diffs
 pub fn get_diffs(jetty: &mut Jetty) -> Result<GlobalDiffs> {
@@ -12,7 +12,7 @@ pub fn get_diffs(jetty: &mut Jetty) -> Result<GlobalDiffs> {
     jetty.try_access_graph()?;
 
     // get group config
-    let validated_group_config = &new_groups::parse_and_validate_groups(jetty)?;
+    let validated_group_config = &groups::parse_and_validate_groups(jetty)?;
 
     // get user_config
     let validated_user_config =
@@ -30,7 +30,7 @@ pub fn get_diffs(jetty: &mut Jetty) -> Result<GlobalDiffs> {
     let user_diffs = users::diff::combine_diffs(&user_identity_diffs, &group_membership_diffs);
 
     // group diffs
-    let group_diffs = new_groups::generate_diffs(validated_group_config, jetty)?;
+    let group_diffs = groups::generate_diffs(validated_group_config, jetty)?;
 
     // now get the policy diff
     // need to get the group configs and all available connectors

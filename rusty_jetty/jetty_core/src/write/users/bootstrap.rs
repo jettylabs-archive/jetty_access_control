@@ -15,7 +15,7 @@ use crate::{
     },
     jetty::ConnectorNamespace,
     project,
-    write::{new_groups::parse_and_validate_groups, utils::clean_string_for_path},
+    write::{groups::parse_and_validate_groups, utils::clean_string_for_path},
     Jetty,
 };
 

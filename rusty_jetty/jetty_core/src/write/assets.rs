@@ -32,7 +32,7 @@ use self::diff::{
     policies::{diff_policies, PolicyDiff},
 };
 
-use super::new_groups::{get_group_capable_connectors, get_group_to_nodename_map, GroupYaml};
+use super::groups::{get_group_capable_connectors, get_group_to_nodename_map, GroupYaml};
 
 pub(crate) use update::{remove_group_name, remove_user_name, update_group_name, update_user_name};
 

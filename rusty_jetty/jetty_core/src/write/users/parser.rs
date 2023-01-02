@@ -14,7 +14,7 @@ use glob::Paths;
 use crate::{
     access_graph::NodeName,
     jetty::ConnectorNamespace,
-    write::new_groups::{parser::get_all_group_names, GroupConfig},
+    write::groups::{parser::get_all_group_names, GroupConfig},
     Jetty,
 };
 

@@ -12,7 +12,7 @@ use crate::{
     access_graph::{JettyNode, NodeName, UserAttributes},
     jetty::ConnectorNamespace,
     write::{
-        new_groups::GroupConfig, users::parser::get_validated_file_config_map, utils::diff_hashset,
+        groups::GroupConfig, users::parser::get_validated_file_config_map, utils::diff_hashset,
     },
     Jetty,
 };

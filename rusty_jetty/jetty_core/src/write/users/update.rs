@@ -5,14 +5,14 @@ use std::fs;
 use anyhow::Result;
 
 use crate::{
-    write::{new_groups, UpdateConfig},
+    write::{groups, UpdateConfig},
     Jetty,
 };
 
 use super::{bootstrap::write_user_config_file, get_validated_file_config_map};
 
 pub(crate) fn update_user_name(jetty: &Jetty, old: &str, new: &str) -> Result<()> {
-    let validated_group_config = &new_groups::parse_and_validate_groups(jetty)?;
+    let validated_group_config = &groups::parse_and_validate_groups(jetty)?;
     let mut config = get_validated_file_config_map(jetty, validated_group_config)?;
 
     for (path, user) in config.iter_mut() {
@@ -23,7 +23,7 @@ pub(crate) fn update_user_name(jetty: &Jetty, old: &str, new: &str) -> Result<()
     Ok(())
 }
 pub(crate) fn remove_user_name(jetty: &Jetty, name: &str) -> Result<()> {
-    let validated_group_config = &new_groups::parse_and_validate_groups(jetty)?;
+    let validated_group_config = &groups::parse_and_validate_groups(jetty)?;
     let config = get_validated_file_config_map(jetty, validated_group_config)?;
 
     for (path, user) in config {
@@ -35,7 +35,7 @@ pub(crate) fn remove_user_name(jetty: &Jetty, name: &str) -> Result<()> {
     Ok(())
 }
 pub(crate) fn update_group_name(jetty: &Jetty, old: &str, new: &str) -> Result<()> {
-    let validated_group_config = &new_groups::parse_and_validate_groups(jetty)?;
+    let validated_group_config = &groups::parse_and_validate_groups(jetty)?;
     let mut config = get_validated_file_config_map(jetty, validated_group_config)?;
 
     for (path, user) in config.iter_mut() {
@@ -46,7 +46,7 @@ pub(crate) fn update_group_name(jetty: &Jetty, old: &str, new: &str) -> Result<(
     Ok(())
 }
 pub(crate) fn remove_group_name(jetty: &Jetty, name: &str) -> Result<()> {
-    let validated_group_config = &new_groups::parse_and_validate_groups(jetty)?;
+    let validated_group_config = &groups::parse_and_validate_groups(jetty)?;
     let mut config = get_validated_file_config_map(jetty, validated_group_config)?;
 
     for (path, user) in config.iter_mut() {
