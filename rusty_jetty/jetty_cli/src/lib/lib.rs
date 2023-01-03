@@ -375,6 +375,12 @@ async fn apply() -> Result<()> {
         now.elapsed().as_secs_f32()
     ));
 
+    for (c, result) in results {
+        println!("{c}:\n{result}\n");
+    }
+
+    println!("Fetching updated state");
+
     match fetch(&None, &false).await {
         Ok(_) => {
             diff::diff().await?;
@@ -384,10 +390,6 @@ async fn apply() -> Result<()> {
             println!("We recommend running `jetty diff -f` to see if you should run apply again to correct any side-effects of your changes");
         }
     };
-
-    for (c, result) in results {
-        println!("{c}:\n{result}\n");
-    }
 
     Ok(())
 }

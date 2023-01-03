@@ -5,7 +5,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, bail, Result};
 
 use futures::future::BoxFuture;
 use jetty_core::access_graph::translate::diffs::LocalConnectorDiffs;
@@ -138,8 +138,20 @@ impl TableauConnector {
 
     /// Function to execute a request and return a unit response
     async fn execute_to_unit_result(&self, request: Request) -> Result<()> {
-        self.coordinator.rest_client.execute(request).await?;
-        Ok(())
+        let res = self.coordinator.rest_client.execute(request).await?;
+
+        let status = res.status();
+        if status.is_client_error() || status.is_server_error() {
+            let url = res.url().to_owned();
+            let error_detail = if let Some(deets) = get_error_details_from_response(res).await {
+                format!(": {deets}")
+            } else {
+                String::new()
+            };
+            bail!("HTTP error ({status}) for url ({url}){error_detail}")
+        } else {
+            Ok(())
+        }
     }
 }
 
@@ -157,4 +169,13 @@ fn group_lookup_from_mutex(
         .ok_or_else(|| anyhow!("Unable to find group id for {}", group_name))?
         .to_owned();
     Ok(group_id)
+}
+
+async fn get_error_details_from_response(res: reqwest::Response) -> Option<String> {
+    res.json::<serde_json::Value>()
+        .await
+        .ok()
+        .and_then(|v| v.get("error").cloned())
+        .and_then(|v| v.get("detail").cloned())
+        .and_then(|v| v.as_str().map(|v| v.to_string()))
 }

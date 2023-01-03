@@ -9,7 +9,8 @@ use anyhow::{bail, Context, Result};
 
 use futures::future::BoxFuture;
 use jetty_core::{
-    access_graph::translate::diffs::default_policies, cual::Cual, write::assets::PolicyState,
+    access_graph::translate::diffs::default_policies, cual::Cual, logging::info,
+    write::assets::PolicyState,
 };
 use reqwest::Request;
 use serde_json::json;
@@ -48,6 +49,19 @@ impl TableauConnector {
                 "problem generating plan for {}",
                 &diff.asset.to_string()
             ))?;
+            let asset_type = if asset_type == TableauAssetType::View {
+                info!("default policies set for views are applied to workbooks (and then inherited by views); this may cause a policy conflict if the \
+                workbook policy isn't also updated ({})", 
+                &diff.asset.to_string());
+                TableauAssetType::Workbook
+            } else if asset_type == TableauAssetType::Workbook {
+                info!("default policies set for workbooks are inherited by views; this may cause a policy conflict if the \
+                view policy isn't also updated ({})", 
+                &diff.asset.to_string());
+                asset_type
+            } else {
+                asset_type
+            };
 
             let mut set_tableau_content_permissions: Option<String> = None;
 
@@ -223,6 +237,18 @@ impl TableauConnector {
                 "problem generating plan for {}",
                 &diff.asset.to_string()
             ))?;
+            let asset_type = if asset_type == TableauAssetType::View {
+                info!("default policies set for views are applied to workbooks (and then inherited by views); this may cause a policy conflict if the \
+                workbook policy isn't also updated");
+                TableauAssetType::Workbook
+            } else if asset_type == TableauAssetType::Workbook {
+                info!("default policies set for workbooks are inherited by views; this may cause a policy conflict if the \
+                view policy isn't also updated ({})", 
+                &diff.asset.to_string());
+                asset_type
+            } else {
+                asset_type
+            };
 
             let mut set_tableau_content_permissions: Option<String> = None;
 
@@ -450,7 +476,7 @@ impl TableauConnector {
             .rest_client
             .build_request(
                 format!(
-                    "projects/{}/default-permissions/{}/{grantee_type}/{grantee_id}/{}/{}",
+                    "projects/{}/default-permissions/{}/{grantee_type}s/{grantee_id}/{}/{}",
                     &asset.id,
                     applied_to_asset_type.as_category_str(),
                     &permission.capability,
@@ -626,16 +652,23 @@ fn generate_add_default_privileges_request_body(
             group_id.to_owned()
         )
         .as_str();
-        request_text += "          \"capabilities\": [\n";
-        for permission in permissions {
-            request_text += format!(
-                "            {{ \"capability\": {{ \"name\": \"{}\", \"mode\": \"{}\" }} }}\n",
-                &permission.capability,
-                &permission.mode.to_string()
-            )
-            .as_str()
-        }
-        request_text += "          ]\n";
+        request_text += "          \"capabilities\": {\n";
+        request_text += "            \"capability\": [";
+        request_text += permissions
+            .iter()
+            .map(|permission| {
+                format!(
+                    "            {{ \"name\": \"{}\", \"mode\": \"{}\" }}\n",
+                    permission.capability,
+                    permission.mode.to_string()
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(",")
+            .as_str();
+
+        request_text += "            ]\n";
+        request_text += "          }\n";
         request_text += "        }\n"
     }
     request_text += "      ]\n";

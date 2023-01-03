@@ -364,7 +364,7 @@ impl TableauConnector {
             .rest_client
             .build_request(
                 format!(
-                    "{}/{}/permissions/{grantee_type}/{grantee_id}/{}/{}",
+                    "{}/{}/permissions/{grantee_type}s/{grantee_id}/{}/{}",
                     asset.asset_type.as_category_str(),
                     &asset.id,
                     permission.capability,
@@ -434,16 +434,23 @@ pub(super) fn generate_add_privileges_request_body(
     for (group_id, permissions) in group.iter() {
         request_text += "{";
         request_text += format!("\"group\": {{ \"id\": \"{}\" }},\n", group_id.to_owned()).as_str();
-        request_text += "\"capabilities\": [\n";
-        for permission in permissions {
-            request_text += format!(
-                "            {{ \"capability\": {{ \"name\": \"{}\", \"mode\": \"{}\" }} }}\n",
-                &permission.capability,
-                &permission.mode.to_string()
-            )
-            .as_str()
-        }
-        request_text += "\n";
+        request_text += "          \"capabilities\": {\n";
+        request_text += "            \"capability\": [";
+        request_text += permissions
+            .iter()
+            .map(|permission| {
+                format!(
+                    "            {{ \"name\": \"{}\", \"mode\": \"{}\" }}\n",
+                    permission.capability,
+                    permission.mode.to_string()
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(",")
+            .as_str();
+
+        request_text += "            ]\n";
+        request_text += "          }\n";
         request_text += "}\n"
     }
     request_text += "]\n";
