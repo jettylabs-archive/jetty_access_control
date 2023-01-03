@@ -85,9 +85,13 @@ impl Translator {
         let user_data: Vec<_> = data.iter().map(|(c, n)| (&c.users, n)).collect();
         // get all the users in the config
         // FUTURE: We end up parsing the group config too many times. Try to centralize this, perhaps as part of the Jetty struct
-        let validated_group_config = &parse_and_validate_groups(jetty)?;
         let user_config_id_map =
-            users::parser::get_validated_nodename_local_id_map(jetty, validated_group_config)?;
+            if let Ok(validated_group_config) = &parse_and_validate_groups(jetty) {
+                users::parser::get_validated_nodename_local_id_map(jetty, validated_group_config)?
+            } else {
+                Default::default()
+            };
+
         // for each connector, look over all the users.
         for (users, namespace) in user_data {
             for user in users {

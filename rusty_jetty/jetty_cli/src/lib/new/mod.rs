@@ -210,6 +210,6 @@ async fn initialize_project_structure(
     println!("\n\nCongratulations, your jetty project has been created and configured!");
     println!("To get started, run the following commands:\n");
     println!("\t$ cd {}", project_path);
-    println!("\t$ jetty explore --fetch\n\n");
+    println!("\t$ jetty bootstrap\n\n");
     Ok(())
 }

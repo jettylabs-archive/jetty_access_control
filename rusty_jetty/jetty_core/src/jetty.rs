@@ -179,7 +179,6 @@ impl Jetty {
         connectors: HashMap<ConnectorNamespace, Box<dyn Connector>>,
     ) -> Result<Self> {
         let ag = load_access_graph()?;
-
         Ok(Jetty {
             config,
             _data_dir: data_dir,
