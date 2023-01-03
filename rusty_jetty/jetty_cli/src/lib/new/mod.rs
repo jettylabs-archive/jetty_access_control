@@ -5,7 +5,12 @@ mod fs;
 mod inquiry;
 mod pki;
 
-use std::{collections::HashMap, fs::OpenOptions, io::Write, path::PathBuf};
+use std::{
+    collections::HashMap,
+    fs::OpenOptions,
+    io::Write,
+    path::{Path, PathBuf},
+};
 
 use anyhow::{bail, Context, Result};
 
@@ -27,11 +32,11 @@ struct ProjectStructure {
 
 impl ProjectStructure {
     fn new(
-        jetty_config: JettyConfig,
+        jetty_config: &JettyConfig,
         credentials: HashMap<String, HashMap<String, String>>,
     ) -> Self {
         Self {
-            jetty_config,
+            jetty_config: jetty_config.to_owned(),
             credentials,
         }
     }
@@ -39,7 +44,7 @@ impl ProjectStructure {
 
 /// Main initialization fn to ask the user for the necessary information and
 /// create the relevant project structure.
-pub async fn init(
+pub async fn new(
     from: &Option<PathBuf>,
     overwrite_project_dir: bool,
     project_name: &Option<String>,
@@ -57,8 +62,25 @@ pub async fn init(
         bail!("skipping project initialization - no connectors were configured");
     }
 
-    initialize_project_structure(ProjectStructure::new(jetty_config, credentials)).await?;
+    initialize_project_structure(ProjectStructure::new(&jetty_config, credentials)).await?;
+
+    // create a new repository in the directory specified by the project name
+    create_git_repo(jetty_config.get_name());
     Ok(())
+}
+
+/// Create a new gite repository, renaming the master branch to main
+fn create_git_repo<P: AsRef<Path>>(project_path: P) -> Result<()> {
+    match git2::Repository::init(project_path) {
+        Ok(r) => {
+            r.find_branch("master", git2::BranchType::Local)
+                .context("renaming main branch")?
+                .rename("main", true)
+                .context("renaming main branch")?;
+            Ok(())
+        }
+        Err(_) => bail!("Unable to create git repository for project"),
+    }
 }
 
 /// Add connectors to an existing project
@@ -126,7 +148,6 @@ async fn initialize_project_structure(
     println!("Creating project files...");
 
     let project_path = jt_config.get_name();
-    // TODO: Notify the customer that this has to be a unique path (file or dir)
     create_dir_ignore_failure(&project_path).await;
     let jetty_config = create_file(project::jetty_cfg_path(&project_path)).await;
     let home_dir = dirs::home_dir().expect("Couldn't find your home directory.");
