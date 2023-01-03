@@ -51,6 +51,14 @@ pub(crate) async fn ask_snowflake_connector_setup(
             bail!("skipped");
         }
 
+        let user_role = Text::new("Snowflake role to use:")
+        .with_default("SECURITYADMIN")
+        .with_help_message(&format!("We will use this role when Jetty runs. To see all permissions across your account, the Jetty user needs a role that can read the accounts metadata. Read here for more information: https://docs.get-jetty.com/getting-started/#prerequisites.{skip_message}"))
+        .prompt()?;
+        if admin_username == SKIP_CMD {
+            bail!("skipped");
+        }
+
         let warehouse = Text::new("Warehouse to query with:")
             .with_help_message(&format!("We will use this warehouse for any warehouse-required queries to manage permissions.{skip_message}"))
             .prompt()?;
@@ -117,7 +125,7 @@ pub(crate) async fn ask_snowflake_connector_setup(
             ("warehouse".to_owned(), warehouse),
             ("public_key_fp".to_owned(), keypair.fingerprint()),
             ("private_key".to_owned(), keypair.private_key()),
-            ("role".to_owned(), "SECURITYADMIN".to_owned()),
+            ("role".to_owned(), user_role),
         ]);
         let connector =
             SnowflakeConnector::new(&ConnectorConfig::default(), &creds, None, None).await?;
