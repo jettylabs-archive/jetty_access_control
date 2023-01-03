@@ -16,7 +16,7 @@ use jetty_core::{
 };
 use tokio::io::AsyncWriteExt;
 
-use crate::init::fs::{create_dir_ignore_failure, create_file};
+use crate::new::fs::{create_dir_ignore_failure, create_file};
 
 use self::inquiry::{inquire_add, inquire_init};
 

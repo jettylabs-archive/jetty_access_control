@@ -6,7 +6,7 @@
 mod ascii;
 mod cmd;
 mod diff;
-mod init;
+mod new;
 mod plan;
 mod remove;
 mod rename;
@@ -74,7 +74,7 @@ pub async fn cli() -> Result<()> {
         let args = JettyArgs::parse();
         // Invoke telemetry
         let event = match args.command {
-            JettyCommand::Init { .. } => UsageEvent::InvokedInit,
+            JettyCommand::New { .. } => UsageEvent::InvokedNew,
             JettyCommand::Fetch { .. } => UsageEvent::InvokedFetch {
                 connector_types: if let Some(c) = &jetty_config {
                     c.connectors
@@ -111,12 +111,12 @@ pub async fn cli() -> Result<()> {
 
     // ...and we're off!
     match &args.command {
-        JettyCommand::Init {
+        JettyCommand::New {
             from,
             project_name,
             overwrite,
         } => {
-            init::init(from, *overwrite, project_name).await?;
+            new::init(from, *overwrite, project_name).await?;
         }
 
         JettyCommand::Fetch {
@@ -141,7 +141,7 @@ pub async fn cli() -> Result<()> {
             jetty_explore::explore_web_ui(Arc::from(jetty.access_graph.unwrap()), bind).await;
         }
         JettyCommand::Add => {
-            init::add().await?;
+            new::add().await?;
         }
         JettyCommand::Bootstrap {
             no_fetch,
@@ -275,7 +275,7 @@ async fn bootstrap(overwrite: bool) -> Result<()> {
     let jetty = &new_jetty_with_connectors().await.map_err(|_| {
         anyhow!(
             "unable to find {} - make sure you are in a \
-        Jetty project directory, or create a new project by running `jetty init`",
+        Jetty project directory, or create a new project by running `jetty new`",
             project::jetty_cfg_path_local().display()
         )
     })?;
@@ -342,7 +342,7 @@ async fn apply() -> Result<()> {
     let jetty = &mut new_jetty_with_connectors().await.map_err(|_| {
         anyhow!(
             "unable to find {} - make sure you are in a \
-        Jetty project directory, or create a new project by running `jetty init`",
+        Jetty project directory, or create a new project by running `jetty new`",
             project::jetty_cfg_path_local().display()
         )
     })?;
@@ -471,13 +471,13 @@ async fn get_connectors(
 /// Create a new Jetty struct with all the connectors. Uses default locations for everything
 pub async fn new_jetty_with_connectors() -> Result<Jetty> {
     let config = JettyConfig::read_from_file(project::jetty_cfg_path_local()).context(format!(
-        "unable to find Jetty Config file at {} - you can set this up by running `jetty init`",
+        "unable to find Jetty Config file at {} - you can set this up by running `jetty new`",
         project::jetty_cfg_path_local().to_string_lossy()
     ))?;
 
     let creds = fetch_credentials(project::connector_cfg_path()).map_err(|_| {
         anyhow!(
-            "unable to find {} - you can set this up by running `jetty init`",
+            "unable to find {} - you can set this up by running `jetty new`",
             project::connector_cfg_path().display()
         )
     })?;

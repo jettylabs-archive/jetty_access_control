@@ -5,7 +5,7 @@ use colored::Colorize;
 use inquire::Text;
 use jetty_core::jetty::CredentialsMap;
 
-use crate::init::inquiry::{
+use crate::new::inquiry::{
     autocomplete::FilepathCompleter,
     validation::{FilepathValidator, FilepathValidatorMode, PathType},
     SKIP_CMD,

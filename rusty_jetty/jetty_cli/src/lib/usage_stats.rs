@@ -165,9 +165,9 @@ pub enum UsageEvent {
     /// No args
     #[serde(rename = "invoked_default")]
     InvokedDefault,
-    /// `jetty init`
-    #[serde(rename = "invoked_init")]
-    InvokedInit,
+    /// `jetty new`
+    #[serde(rename = "invoked_new")]
+    InvokedNew,
     /// `jetty add`
     #[serde(rename = "invoked_add")]
     InvokedAdd,

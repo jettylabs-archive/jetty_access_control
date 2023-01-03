@@ -11,7 +11,7 @@ use jetty_core::{
 };
 use jetty_snowflake::SnowflakeConnector;
 
-use crate::init::{
+use crate::new::{
     inquiry::{
         autocomplete::FilepathCompleter,
         validation::{FilepathValidator, FilepathValidatorMode, PathType},

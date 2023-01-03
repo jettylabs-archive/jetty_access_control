@@ -20,8 +20,8 @@ pub(crate) struct JettyArgs {
 
 #[derive(Subcommand, Debug, Clone)]
 pub(crate) enum JettyCommand {
-    /// Initialize a Jetty project.
-    Init {
+    /// Create a Jetty project in a new directory
+    New {
         /// Project name
         project_name: Option<String>,
         /// Initialize from an existing config (as a shortcut).

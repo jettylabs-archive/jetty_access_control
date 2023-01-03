@@ -1,7 +1,7 @@
 use self::validation::{filled_validator, project_dir_does_not_exist_validator};
 use crate::{
     ascii::{print_banner, JETTY_ACCENT, JETTY_ORANGE, JETTY_ORANGE_DARK},
-    init::inquiry::{
+    new::inquiry::{
         dbt::ask_dbt_connector_setup, snowflake::ask_snowflake_connector_setup,
         tableau::ask_tableau_connector_setup,
     },
