@@ -116,7 +116,7 @@ pub async fn cli() -> Result<()> {
             project_name,
             overwrite,
         } => {
-            new::init(from, *overwrite, project_name).await?;
+            new::new(from, *overwrite, project_name).await?;
         }
 
         JettyCommand::Fetch {
