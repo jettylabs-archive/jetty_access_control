@@ -105,7 +105,7 @@ async fn update_project_configs(
 
     println!("\n\nSuccessfully added connectors to your project!");
     println!("To get started, run the following command:\n");
-    println!("\t$ jetty explore --fetch\n\n");
+    println!("\t$ jetty bootstrap\n\n");
 
     Ok(())
 }
