@@ -297,6 +297,7 @@ pub(crate) struct IndividualPermission {
     pub(crate) mode: TableauPermissionMode,
 }
 
+#[derive(Debug)]
 pub(crate) enum TableauPermissionMode {
     Allow,
     Deny,
@@ -323,11 +324,10 @@ impl IndividualPermission {
             TableauPermissionMode::Other
         };
 
-        let capability = val
-            .strip_prefix("Deny")
-            .unwrap_or(val)
+        let capability = val.strip_prefix("Deny").unwrap_or(val);
+        let capability = capability
             .strip_prefix("Allow")
-            .unwrap_or(val)
+            .unwrap_or(capability)
             .to_owned();
         IndividualPermission { capability, mode }
     }

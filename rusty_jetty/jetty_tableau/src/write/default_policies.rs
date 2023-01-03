@@ -67,6 +67,7 @@ impl TableauConnector {
                             &diff.asset,
                             &mut set_tableau_content_permissions,
                             add,
+                            &asset_type,
                         )?;
                     }
                     jetty_core::write::assets::diff::policies::DiffDetails::RemoveAgent {
@@ -87,6 +88,7 @@ impl TableauConnector {
                             &diff.asset,
                             &mut set_tableau_content_permissions,
                             add,
+                            &asset_type,
                         )?;
 
                         user_adds.insert(
@@ -119,6 +121,7 @@ impl TableauConnector {
                             &diff.asset,
                             &mut set_tableau_content_permissions,
                             add,
+                            &asset_type,
                         )?;
                         group_adds.insert(
                             group_id.to_owned(),
@@ -146,6 +149,7 @@ impl TableauConnector {
                             &diff.asset,
                             &mut set_tableau_content_permissions,
                             add,
+                            &asset_type,
                         )?;
                         if !add.privileges.is_empty() {
                             group_adds.insert(
@@ -238,6 +242,7 @@ impl TableauConnector {
                             &diff.asset,
                             &mut set_tableau_content_permissions,
                             add,
+                            &asset_type,
                         )?;
                     }
                     jetty_core::write::assets::diff::policies::DiffDetails::RemoveAgent {
@@ -263,6 +268,7 @@ impl TableauConnector {
                             &diff.asset,
                             &mut set_tableau_content_permissions,
                             add,
+                            &asset_type,
                         )?;
 
                         user_adds.insert(
@@ -293,6 +299,7 @@ impl TableauConnector {
                             &diff.asset,
                             &mut set_tableau_content_permissions,
                             add,
+                            &asset_type,
                         )?;
                         group_adds.insert(
                             group_name.to_owned(),
@@ -324,6 +331,7 @@ impl TableauConnector {
                             &diff.asset,
                             &mut set_tableau_content_permissions,
                             add,
+                            &asset_type,
                         )?;
                         if !add.privileges.is_empty() {
                             group_adds.insert(
@@ -654,23 +662,27 @@ fn try_update_content_permissions(
     cual: &Cual,
     content_permissions: &mut Option<String>,
     state: &PolicyState,
+    applied_to_asset_type: &TableauAssetType,
 ) -> Result<()> {
-    if let Some(p) = state.metadata.get("Tableau Content Permissions") {
-        if content_permissions
-            .to_owned()
-            .and_then(|existing_value| {
-                if &existing_value == p {
-                    None
-                } else {
-                    Some(false)
-                }
-            })
-            .is_none()
-        {
-            *content_permissions = Some(p.to_owned());
-        } else {
-            bail!("problem generating plan for {}: Tableau Content Permissions must match for all default policies originating from a given asset", cual.to_string());
-        };
+    // Only check for the metadata on projects
+    if applied_to_asset_type == &TableauAssetType::Project {
+        if let Some(p) = state.metadata.get("Tableau Content Permissions") {
+            if content_permissions
+                .to_owned()
+                .and_then(|existing_value| {
+                    if &existing_value == p {
+                        None
+                    } else {
+                        Some(false)
+                    }
+                })
+                .is_none()
+            {
+                *content_permissions = Some(p.to_owned());
+            } else {
+                bail!("problem generating plan for {}: Tableau Content Permissions must match for all default policies originating from a given asset", cual.to_string());
+            };
+        }
     }
     Ok(())
 }

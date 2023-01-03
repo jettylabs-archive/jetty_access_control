@@ -45,7 +45,7 @@ impl TableauConnector {
                     }
                     jetty_core::write::assets::diff::policies::DiffDetails::RemoveAgent {
                         remove,
-                    } => plans.1.extend(self.build_delete_policy_requests(
+                    } => plans.2.extend(self.build_delete_policy_requests(
                         remove,
                         asset_reference,
                         user,
@@ -62,7 +62,7 @@ impl TableauConnector {
                                 .map(IndividualPermission::from_string)
                                 .collect::<Vec<_>>(),
                         );
-                        plans.1.extend(self.build_delete_policy_requests(
+                        plans.2.extend(self.build_delete_policy_requests(
                             remove,
                             asset_reference,
                             user,
@@ -89,7 +89,7 @@ impl TableauConnector {
                     }
                     jetty_core::write::assets::diff::policies::DiffDetails::RemoveAgent {
                         remove,
-                    } => plans.1.extend(self.build_delete_policy_requests(
+                    } => plans.2.extend(self.build_delete_policy_requests(
                         remove,
                         asset_reference,
                         &group_id,
@@ -109,7 +109,7 @@ impl TableauConnector {
                             );
                         }
                         if !remove.privileges.is_empty() {
-                            plans.1.extend(self.build_delete_policy_requests(
+                            plans.2.extend(self.build_delete_policy_requests(
                                 remove,
                                 asset_reference,
                                 &group_id,
@@ -120,7 +120,7 @@ impl TableauConnector {
                 }
             }
             if !user_adds.is_empty() || !group_adds.is_empty() {
-                plans.1.push(self.build_add_policy_request(
+                plans.2.push(self.build_add_policy_request(
                     asset_reference,
                     user_adds,
                     group_adds,
@@ -169,7 +169,7 @@ impl TableauConnector {
                             group_map.clone(),
                         )?
                         .into_iter()
-                        .for_each(|f| futures.1.push(f)),
+                        .for_each(|f| futures.2.push(f)),
                     jetty_core::write::assets::diff::policies::DiffDetails::ModifyAgent {
                         add,
                         remove,
@@ -189,7 +189,7 @@ impl TableauConnector {
                             group_map.clone(),
                         )?
                         .into_iter()
-                        .for_each(|f| futures.1.push(f));
+                        .for_each(|f| futures.2.push(f));
                     }
                 }
             }
@@ -215,7 +215,7 @@ impl TableauConnector {
                             group_map.clone(),
                         )?
                         .into_iter()
-                        .for_each(|f| futures.1.push(f)),
+                        .for_each(|f| futures.2.push(f)),
 
                     jetty_core::write::assets::diff::policies::DiffDetails::ModifyAgent {
                         add,
@@ -239,7 +239,7 @@ impl TableauConnector {
                                 group_map.clone(),
                             )?
                             .into_iter()
-                            .for_each(|f| futures.1.push(f));
+                            .for_each(|f| futures.2.push(f));
                         }
                     }
                 }

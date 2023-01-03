@@ -162,6 +162,8 @@ impl Project {
         .expect("Generating cual from project");
 
         for (asset_type, permissions) in &self.default_permissions {
+            let target_asset_type = AssetType(asset_type.to_owned());
+
             for permission in permissions {
                 // get the raw policy
                 let raw: jetty_nodes::RawPolicy = permission.to_owned().into();
@@ -180,13 +182,17 @@ impl Project {
                         privileges: raw.privileges.to_owned(),
                         root_asset: root_cual.to_owned(),
                         wildcard_path: "/**".to_owned(),
-                        target_types: [AssetType(asset_type.to_owned())].into(),
+                        target_types: [target_asset_type.to_owned()].into(),
                         grantee,
-                        metadata: [(
-                            "Tableau Content Permissions".to_owned(),
-                            self.content_permissions.to_string(),
-                        )]
-                        .into(),
+                        /// Content permissions are controlled only at the project level
+                        metadata: if asset_type == "project" {
+                            HashMap::from([(
+                                "Tableau Content Permissions".to_owned(),
+                                self.content_permissions.to_string(),
+                            )])
+                        } else {
+                            HashMap::new()
+                        },
                     });
                 }
             }
