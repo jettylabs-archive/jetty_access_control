@@ -5,7 +5,7 @@ use std::collections::HashSet;
 use jetty_core::connectors::nodes;
 use serde::{Deserialize, Serialize};
 
-use crate::{cual::cual_from_snowflake_obj_name};
+use crate::cual::cual_from_snowflake_obj_name;
 
 #[derive(Deserialize, Serialize, Clone, PartialEq, Eq, Hash)]
 pub enum GrantType {
@@ -88,7 +88,7 @@ impl Grant for StandardGrant {
     }
 
     fn into_policy(self, all_privileges: HashSet<String>) -> nodes::RawPolicy {
-        let cual = cual_from_snowflake_obj_name(self.granted_on_name()).unwrap();
+        let cual = cual_from_snowflake_obj_name(self.granted_on_name(), self.granted_on()).unwrap();
 
         nodes::RawPolicy::new(
             format!("snowflake.{}.{}", self.role_name(), self.granted_on_name()),
@@ -141,7 +141,7 @@ mod tests {
             nodes::RawPolicy::new(
                 "snowflake.grantee_name.db".to_owned(),
                 HashSet::from(["priv".to_owned()]),
-                HashSet::from([cual_from_snowflake_obj_name("DB")?.uri()]),
+                HashSet::from([cual_from_snowflake_obj_name("DB", "DATABASE")?.uri()]),
                 HashSet::new(),
                 HashSet::from(["grantee_name".to_owned()]),
                 HashSet::new(),

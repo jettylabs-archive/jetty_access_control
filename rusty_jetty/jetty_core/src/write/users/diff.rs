@@ -12,7 +12,7 @@ use colored::Colorize;
 pub use identity::{get_identity_diffs, update_graph};
 pub use membership::get_membership_diffs;
 
-use crate::access_graph::NodeName;
+use crate::{access_graph::NodeName, jetty::ConnectorNamespace, write::SplitByConnector};
 
 use self::{
     identity::{IdentityDiff, IdentityDiffDetails},
@@ -20,11 +20,73 @@ use self::{
 };
 
 /// Complete diffs for users
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct CombinedUserDiff {
-    user: NodeName,
+    pub(crate) user: NodeName,
     identity: Option<IdentityDiffDetails>,
-    group_membership: Option<MembershipDiffDetails>,
+    pub(crate) group_membership: Option<MembershipDiffDetails>,
+}
+
+impl SplitByConnector for CombinedUserDiff {
+    fn split_by_connector(&self) -> HashMap<ConnectorNamespace, Box<Self>> {
+        let mut res = HashMap::new();
+
+        let mut add_map: HashMap<ConnectorNamespace, BTreeSet<NodeName>> = HashMap::new();
+        let mut remove_map: HashMap<ConnectorNamespace, BTreeSet<NodeName>> = HashMap::new();
+
+        match &self.group_membership {
+            Some(membership_details) => {
+                add_map = membership_details.add.iter().fold(add_map, |mut acc, v| {
+                    acc.entry(
+                        v.get_group_origin()
+                            .expect("must be a list of groups")
+                            .to_owned(),
+                    )
+                    .and_modify(|groups| {
+                        groups.insert(v.to_owned());
+                    })
+                    .or_insert_with(|| [v.to_owned()].into());
+                    acc
+                });
+
+                remove_map = membership_details
+                    .remove
+                    .iter()
+                    .fold(remove_map, |mut acc, v| {
+                        acc.entry(
+                            v.get_group_origin()
+                                .expect("must be a list of groups")
+                                .to_owned(),
+                        )
+                        .and_modify(|groups| {
+                            groups.insert(v.to_owned());
+                        })
+                        .or_insert_with(|| [v.to_owned()].into());
+                        acc
+                    });
+            }
+            None => return Default::default(),
+        };
+
+        let mut keys: HashSet<_> = add_map.keys().collect();
+        keys.extend(remove_map.keys().collect::<HashSet<_>>());
+
+        for key in keys {
+            res.insert(
+                key.to_owned(),
+                Box::new(CombinedUserDiff {
+                    user: self.user.to_owned(),
+                    identity: None,
+                    group_membership: Some(MembershipDiffDetails {
+                        add: add_map.get(key).cloned().unwrap_or_default(),
+                        remove: remove_map.get(key).cloned().unwrap_or_default(),
+                    }),
+                }),
+            );
+        }
+
+        res
+    }
 }
 
 impl Display for CombinedUserDiff {
@@ -34,7 +96,7 @@ impl Display for CombinedUserDiff {
         // Need to show if the user is new, deleted, or modified
         if let Some(identity_details) = &self.identity {
             match identity_details {
-                IdentityDiffDetails::AddUser { add } => {
+                IdentityDiffDetails::Add { add } => {
                     text += format!("{}{}\n", "+ user: ".green(), self.user.to_string().green())
                         .as_str();
                     text += "  identity:\n";
@@ -43,15 +105,14 @@ impl Display for CombinedUserDiff {
                             format!("{}", format!("  + {conn}: {local_name}\n").green()).as_str();
                     }
                 }
-                IdentityDiffDetails::RemoveUser { remove } => {
-                    text += format!("{}", format!("- user: {}\n", self.user.to_string()).red())
-                        .as_str();
+                IdentityDiffDetails::Remove { remove } => {
+                    text += format!("{}", format!("- user: {}\n", self.user).red()).as_str();
                     text += "  identity:\n";
                     for (conn, local_name) in remove {
                         text += &format!("{}", format!("    - {conn}: {local_name}\n").red());
                     }
                 }
-                IdentityDiffDetails::ModifyUser { add, remove } => {
+                IdentityDiffDetails::Modify { add, remove } => {
                     text += format!(
                         "{}{}\n",
                         "~ user: ".yellow(),

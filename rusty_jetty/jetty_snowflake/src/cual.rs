@@ -6,7 +6,7 @@ use jetty_core::cual::Cualable;
 // Reexport for convenience.
 pub use jetty_core::cual::Cual;
 
-use crate::{Database, Object, Schema, Table, View};
+use crate::{Database, Object, Schema, SnowflakeAsset, Table, View};
 
 static mut CUAL_ACCOUNT_NAME: String = String::new();
 static INIT_CUAL_ACCOUNT_NAME: Once = Once::new();
@@ -50,7 +50,7 @@ pub(crate) fn get_cual_prefix() -> Result<String> {
 macro_rules! cual {
     ($db:expr) => {
         Cual::new(&format!(
-            "{}://{}/{}",
+            "{}://{}/{}?type=DATABASE",
             "snowflake",
             get_cual_account_name().expect("couldn't get CUAL account name"),
             urlencoding::encode(&$db)
@@ -58,35 +58,36 @@ macro_rules! cual {
     };
     ($db:expr, $schema:expr) => {
         Cual::new(&format!(
-            "{}://{}/{}/{}",
+            "{}://{}/{}/{}?type=SCHEMA",
             "snowflake",
             get_cual_account_name().expect("couldn't get CUAL account name"),
             urlencoding::encode(&$db),
             urlencoding::encode(&$schema)
         ))
     };
-    ($db:expr, $schema:expr, $table:expr) => {
+    ($db:expr, $schema:expr, $table:expr, $asset_type:expr) => {
         Cual::new(&format!(
-            "{}://{}/{}/{}/{}",
+            "{}://{}/{}/{}/{}?type={}",
             "snowflake",
             get_cual_account_name().expect("couldn't get CUAL account name"),
             urlencoding::encode(&$db),
             urlencoding::encode(&$schema),
-            urlencoding::encode(&$table)
+            urlencoding::encode(&$table),
+            &$asset_type
         ))
     };
 }
 
 pub(crate) use cual;
 
-pub(crate) fn cual_from_snowflake_obj_name(name: &str) -> Result<Cual> {
+pub(crate) fn cual_from_snowflake_obj_name(name: &str, asset_type: &str) -> Result<Cual> {
     let parts: Vec<_> = name
         .split('.')
         .map(|p| crate::strip_snowflake_quotes(p.to_owned(), true))
         .collect();
 
     if let (Some(db), Some(schema), Some(obj_name)) = (parts.get(0), parts.get(1), parts.get(2)) {
-        Ok(cual!(db, schema, obj_name))
+        Ok(cual!(db, schema, obj_name, asset_type))
     } else if let (Some(db), Some(schema)) = (parts.get(0), parts.get(1)) {
         Ok(cual!(db, schema))
     } else if let Some(db) = parts.get(0) {
@@ -99,21 +100,26 @@ pub(crate) fn cual_from_snowflake_obj_name(name: &str) -> Result<Cual> {
 impl Cualable for Table {
     /// Get the CUAL that points to this table or view.
     fn cual(&self) -> Cual {
-        cual!(self.database_name, self.schema_name, self.name)
+        cual!(self.database_name, self.schema_name, self.name, "TABLE")
     }
 }
 
 impl Cualable for Object {
     /// Get the CUAL that points to this table or view.
     fn cual(&self) -> Cual {
-        cual!(self.database_name, self.schema_name, self.name)
+        cual!(
+            self.database_name,
+            self.schema_name,
+            self.name,
+            self.kind.to_string()
+        )
     }
 }
 
 impl Cualable for View {
     /// Get the CUAL that points to this table or view.
     fn cual(&self) -> Cual {
-        cual!(self.database_name, self.schema_name, self.name)
+        cual!(self.database_name, self.schema_name, self.name, "VIEW")
     }
 }
 
@@ -131,6 +137,23 @@ impl Cualable for Database {
     }
 }
 
+pub(crate) fn cual_to_snowflake_asset(cual: &Cual) -> SnowflakeAsset {
+    let path = cual.asset_path().components().to_owned();
+    let asset_type = cual.asset_type().unwrap();
+    let fqn = path
+        .into_iter()
+        .map(|segment| format!("\"{}\"", urlencoding::decode(segment.as_str()).unwrap()))
+        .collect::<Vec<_>>()
+        .join(".");
+    match asset_type.to_string().as_str() {
+        "TABLE" => SnowflakeAsset::Table(fqn),
+        "VIEW" => SnowflakeAsset::View(fqn),
+        "SCHEMA" => SnowflakeAsset::Schema(fqn),
+        "DATABASE" => SnowflakeAsset::Database(fqn),
+        _ => panic!("illegal snowflake asset type: {asset_type:?}"),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -138,10 +161,11 @@ mod tests {
     #[test]
     fn test_cual_from_name() -> Result<()> {
         set_cual_account_name("account");
-        let c = cual_from_snowflake_obj_name("SNOWFLAKE_SAMPLE_DATA.TPCDS_SF10TCL.WEB_PAGE")?;
+        let c =
+            cual_from_snowflake_obj_name("SNOWFLAKE_SAMPLE_DATA.TPCDS_SF10TCL.WEB_PAGE", "TABLE")?;
         assert_eq!(
             c.uri(),
-            "snowflake://account.snowflakecomputing.com/SNOWFLAKE_SAMPLE_DATA/TPCDS_SF10TCL/WEB_PAGE".to_owned()
+            "snowflake://account.snowflakecomputing.com/SNOWFLAKE_SAMPLE_DATA/TPCDS_SF10TCL/WEB_PAGE?type=TABLE".to_owned()
         );
         Ok(())
     }
@@ -157,7 +181,9 @@ mod tests {
         .cual();
         assert_eq!(
             cual,
-            Cual::new("snowflake://account.snowflakecomputing.com/database/schema/my_table")
+            Cual::new(
+                "snowflake://account.snowflakecomputing.com/database/schema/my_table?type=TABLE"
+            )
         )
     }
 
@@ -172,7 +198,9 @@ mod tests {
         .cual();
         assert_eq!(
             cual,
-            Cual::new("snowflake://account.snowflakecomputing.com/database/schema/my_table")
+            Cual::new(
+                "snowflake://account.snowflakecomputing.com/database/schema/my_table?type=VIEW"
+            )
         )
     }
 
@@ -186,7 +214,7 @@ mod tests {
         .cual();
         assert_eq!(
             cual,
-            Cual::new("snowflake://account.snowflakecomputing.com/database/my_schema")
+            Cual::new("snowflake://account.snowflakecomputing.com/database/my_schema?type=SCHEMA")
         )
     }
 
@@ -199,7 +227,29 @@ mod tests {
         .cual();
         assert_eq!(
             cual,
-            Cual::new("snowflake://account.snowflakecomputing.com/my_db")
+            Cual::new("snowflake://account.snowflakecomputing.com/my_db?type=DATABASE")
         )
+    }
+
+    #[test]
+    fn cual_to_snowflake_asset_works_table() -> Result<()> {
+        assert_eq!(
+            cual_to_snowflake_asset(&Cual::new(
+                "snowflake://account.snowflakecomputing.com/database/schema/my_table?type=TABLE",
+            )),
+            SnowflakeAsset::Table("\"database\".\"schema\".\"my_table\"".to_owned())
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn cual_to_snowflake_asset_works_db() -> Result<()> {
+        assert_eq!(
+            cual_to_snowflake_asset(&Cual::new(
+                "snowflake://account.snowflakecomputing.com/databasE?type=DATABASE",
+            )),
+            SnowflakeAsset::Database("\"databasE\"".to_owned())
+        );
+        Ok(())
     }
 }

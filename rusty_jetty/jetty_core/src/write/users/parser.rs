@@ -14,7 +14,7 @@ use glob::Paths;
 use crate::{
     access_graph::NodeName,
     jetty::ConnectorNamespace,
-    write::new_groups::{parser::get_all_group_names, GroupConfig},
+    write::groups::{parser::get_all_group_names, GroupConfig},
     Jetty,
 };
 
@@ -22,7 +22,7 @@ use super::{get_config_paths, UserYaml};
 
 /// read a single config file into a UserYaml object
 pub(crate) fn read_config_file(path: &PathBuf) -> Result<UserYaml> {
-    let yaml = fs::read_to_string(&path)?;
+    let yaml = fs::read_to_string(path)?;
     let config_vec: Vec<UserYaml> = yaml_peg::serde::from_str(&yaml)?;
     if config_vec.is_empty() {
         bail!("unable to parse configuration")
@@ -70,7 +70,7 @@ fn validate_config(
 
         for (connector, local_name) in &config.identifiers {
             // make sure connectors are legal
-            if !allowed_connectors.contains(&connector) {
+            if !allowed_connectors.contains(connector) {
                 errors.push(format!(
                     "invalid connector in {}: {connector} is doesn't exist in your project configuration", path.display()
                 ));
@@ -120,7 +120,7 @@ pub(crate) fn get_nodename_local_id_map(
     configs: &HashMap<PathBuf, UserYaml>,
 ) -> HashMap<ConnectorNamespace, BiHashMap<NodeName, String>> {
     let mut res = HashMap::new();
-    for (_path, config) in configs {
+    for config in configs.values() {
         for (connector, local_name) in &config.identifiers {
             res.entry(connector.to_owned())
                 .and_modify(|m: &mut BiHashMap<NodeName, String>| {

@@ -51,13 +51,6 @@ impl Group {
     }
 }
 
-/// Convert JSON Value to a Group instance
-impl Group {
-    pub(crate) fn new(id: String, name: String, includes: Vec<tableau_nodes::User>) -> Self {
-        Self { id, name, includes }
-    }
-}
-
 impl From<Group> for jetty_nodes::RawGroup {
     fn from(val: Group) -> Self {
         jetty_nodes::RawGroup::new(
@@ -107,6 +100,12 @@ pub(crate) async fn get_basic_groups(
 mod tests {
 
     use super::*;
+
+    impl Group {
+        pub(crate) fn new(id: String, name: String, includes: Vec<tableau_nodes::User>) -> Self {
+            Self { id, name, includes }
+        }
+    }
 
     #[test]
     #[allow(unused_must_use)]

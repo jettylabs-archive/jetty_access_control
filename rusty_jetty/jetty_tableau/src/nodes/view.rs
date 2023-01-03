@@ -72,28 +72,6 @@ impl Permissionable for View {
     }
 }
 
-impl View {
-    pub(crate) fn new(
-        id: String,
-        name: String,
-        workbook_id: String,
-        owner_id: String,
-        project_id: ProjectId,
-        updated_at: String,
-        permissions: Vec<Permission>,
-    ) -> Self {
-        Self {
-            id,
-            name,
-            workbook_id,
-            owner_id,
-            project_id,
-            updated_at,
-            permissions,
-        }
-    }
-}
-
 impl FromTableau<View> for jetty_nodes::RawAsset {
     fn from(val: View, env: &Environment) -> Self {
         let cual = get_tableau_cual(
@@ -141,5 +119,31 @@ impl FromTableau<View> for jetty_nodes::RawAsset {
 impl TableauAsset for View {
     fn get_asset_type(&self) -> TableauAssetType {
         TableauAssetType::View
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    impl View {
+        pub(crate) fn new(
+            id: String,
+            name: String,
+            workbook_id: String,
+            owner_id: String,
+            project_id: ProjectId,
+            updated_at: String,
+            permissions: Vec<Permission>,
+        ) -> Self {
+            Self {
+                id,
+                name,
+                workbook_id,
+                owner_id,
+                project_id,
+                updated_at,
+                permissions,
+            }
+        }
     }
 }

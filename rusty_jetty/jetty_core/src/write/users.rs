@@ -8,14 +8,12 @@ mod update;
 use std::collections::{BTreeSet, HashMap};
 
 use anyhow::{Context, Result};
-use bimap::BiHashMap;
 use glob::glob;
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
-use crate::{access_graph::NodeName, jetty::ConnectorNamespace, project};
+use crate::{jetty::ConnectorNamespace, project};
 
-pub use diff::get_membership_diffs;
+pub use diff::{get_membership_diffs, CombinedUserDiff};
 pub use parser::get_validated_file_config_map;
 pub(crate) use update::{remove_group_name, remove_user_name, update_group_name, update_user_name};
 
@@ -31,8 +29,8 @@ pub struct UserYaml {
 }
 
 impl UpdateConfig for UserYaml {
-    fn update_user_name(&mut self, old: &String, new: &str) -> Result<bool> {
-        if &self.name == old {
+    fn update_user_name(&mut self, old: &str, new: &str) -> Result<bool> {
+        if self.name == old {
             self.name = new.to_owned();
             Ok(true)
         } else {
@@ -40,12 +38,13 @@ impl UpdateConfig for UserYaml {
         }
     }
 
-    /// No-op: if the name in the config is a match, delete the config file.
-    fn remove_user_name(&mut self, name: &String) -> Result<bool> {
+    /// No-op: if the name in the config is a match, delete the config file (must happen in
+    /// the caller).
+    fn remove_user_name(&mut self, _name: &str) -> Result<bool> {
         Ok(true)
     }
 
-    fn update_group_name(&mut self, old: &String, new: &str) -> Result<bool> {
+    fn update_group_name(&mut self, old: &str, new: &str) -> Result<bool> {
         if self.groups.remove(old) {
             self.groups.insert(new.to_string());
             Ok(true)
@@ -54,7 +53,7 @@ impl UpdateConfig for UserYaml {
         }
     }
 
-    fn remove_group_name(&mut self, name: &String) -> Result<bool> {
+    fn remove_group_name(&mut self, name: &str) -> Result<bool> {
         Ok(self.groups.remove(name))
     }
 }

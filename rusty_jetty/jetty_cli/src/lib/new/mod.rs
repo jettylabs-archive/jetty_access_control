@@ -5,7 +5,12 @@ mod fs;
 mod inquiry;
 mod pki;
 
-use std::{collections::HashMap, fs::OpenOptions, io::Write, path::PathBuf};
+use std::{
+    collections::HashMap,
+    fs::OpenOptions,
+    io::Write,
+    path::{Path, PathBuf},
+};
 
 use anyhow::{bail, Context, Result};
 
@@ -16,7 +21,7 @@ use jetty_core::{
 };
 use tokio::io::AsyncWriteExt;
 
-use crate::init::fs::{create_dir_ignore_failure, create_file};
+use crate::new::fs::{create_dir_ignore_failure, create_file};
 
 use self::inquiry::{inquire_add, inquire_init};
 
@@ -27,11 +32,11 @@ struct ProjectStructure {
 
 impl ProjectStructure {
     fn new(
-        jetty_config: JettyConfig,
+        jetty_config: &JettyConfig,
         credentials: HashMap<String, HashMap<String, String>>,
     ) -> Self {
         Self {
-            jetty_config,
+            jetty_config: jetty_config.to_owned(),
             credentials,
         }
     }
@@ -39,13 +44,13 @@ impl ProjectStructure {
 
 /// Main initialization fn to ask the user for the necessary information and
 /// create the relevant project structure.
-pub async fn init(
+pub async fn new(
     from: &Option<PathBuf>,
     overwrite_project_dir: bool,
     project_name: &Option<String>,
 ) -> Result<()> {
     let (jetty_config, credentials) = if let Some(from_config) = from {
-        // This is a shortcut for debugging and reinitialization with an existing config.
+        // This is a shortcut for debugging and re-initialization with an existing config.
         let jt = JettyConfig::read_from_file(from_config)?;
         let credentials = fetch_credentials(project::connector_cfg_path())?;
         (jt, credentials)
@@ -57,8 +62,24 @@ pub async fn init(
         bail!("skipping project initialization - no connectors were configured");
     }
 
-    initialize_project_structure(ProjectStructure::new(jetty_config, credentials)).await?;
+    initialize_project_structure(ProjectStructure::new(&jetty_config, credentials)).await?;
+
+    // create a new repository in the directory specified by the project name
+    create_git_repo(jetty_config.get_name())?;
     Ok(())
+}
+
+/// Create a new gite repository, renaming the master branch to main
+fn create_git_repo<P: AsRef<Path>>(project_path: P) -> Result<()> {
+    if git2::Repository::init(&project_path).is_ok() {
+        let git_head_path = PathBuf::from(project_path.as_ref()).join(".git/head");
+        std::fs::write(git_head_path, "ref: refs/heads/main")
+            .context("updating name of branch to main")?;
+
+        Ok(())
+    } else {
+        bail!("Unable to create git repository for project")
+    }
 }
 
 /// Add connectors to an existing project
@@ -105,7 +126,7 @@ async fn update_project_configs(
 
     println!("\n\nSuccessfully added connectors to your project!");
     println!("To get started, run the following command:\n");
-    println!("\t$ jetty explore --fetch\n\n");
+    println!("\t$ jetty bootstrap\n\n");
 
     Ok(())
 }
@@ -126,7 +147,6 @@ async fn initialize_project_structure(
     println!("Creating project files...");
 
     let project_path = jt_config.get_name();
-    // TODO: Notify the customer that this has to be a unique path (file or dir)
     create_dir_ignore_failure(&project_path).await;
     let jetty_config = create_file(project::jetty_cfg_path(&project_path)).await;
     let home_dir = dirs::home_dir().expect("Couldn't find your home directory.");
@@ -189,6 +209,6 @@ async fn initialize_project_structure(
     println!("\n\nCongratulations, your jetty project has been created and configured!");
     println!("To get started, run the following commands:\n");
     println!("\t$ cd {}", project_path);
-    println!("\t$ jetty explore --fetch\n\n");
+    println!("\t$ jetty bootstrap\n\n");
     Ok(())
 }

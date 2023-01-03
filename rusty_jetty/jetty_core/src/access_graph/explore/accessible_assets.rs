@@ -37,10 +37,10 @@ impl AccessGraph {
     }
 
     /// Return accessible assets by user. To be accessible, the asset must have at least one Allow privilege
-    pub fn get_users_with_access_to_asset<'a>(
-        &'a self,
+    pub fn get_users_with_access_to_asset(
+        &self,
         asset: AssetIndex,
-    ) -> HashMap<UserIndex, HashSet<&'a EffectivePermission>> {
+    ) -> HashMap<UserIndex, HashSet<&EffectivePermission>> {
         let perms = get_access_by_asset(&self.effective_permissions, asset);
         perms
             .iter()

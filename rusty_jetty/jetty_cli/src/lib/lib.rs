@@ -6,7 +6,8 @@
 mod ascii;
 mod cmd;
 mod diff;
-mod init;
+mod new;
+mod plan;
 mod remove;
 mod rename;
 mod tui;
@@ -17,12 +18,12 @@ use std::{
     env, fs,
     str::FromStr,
     sync::Arc,
-    thread,
     time::{self, Instant},
 };
 
 use anyhow::{anyhow, bail, Context, Result};
 use clap::Parser;
+use colored::Colorize;
 use human_panic::setup_panic;
 use indicatif::{ProgressBar, ProgressStyle};
 
@@ -34,14 +35,10 @@ use jetty_core::{
     logging::{self, debug, error, info, warn},
     project::{self, groups_cfg_path_local},
     write::{
-        assets::{
-            bootstrap::{update_asset_files, write_bootstrapped_asset_yaml},
-            get_default_policy_diffs, get_policy_diffs,
-        },
-        groups::parse_and_validate_groups,
-        new_groups,
+        assets::bootstrap::{update_asset_files, write_bootstrapped_asset_yaml},
+        diff::get_diffs,
+        groups,
         users::bootstrap::{update_user_files, write_bootstrapped_user_yaml},
-        Diffs,
     },
     Connector, Jetty,
 };
@@ -66,7 +63,7 @@ pub async fn cli() -> Result<()> {
     // Get Jetty Config
     let jetty_config = JettyConfig::read_from_file(project::jetty_cfg_path_local()).ok();
     // Get args
-    let args = if env::args().collect::<Vec<_>>().len() == 1 {
+    let args = if env::args().count() == 1 {
         // Invoke telemetry for empty args. If we executed `JettyArgs::parse()` first,
         // the program would exit before we got to publish usage.
         record_usage(UsageEvent::InvokedDefault, &jetty_config)
@@ -77,7 +74,7 @@ pub async fn cli() -> Result<()> {
         let args = JettyArgs::parse();
         // Invoke telemetry
         let event = match args.command {
-            JettyCommand::Init { .. } => UsageEvent::InvokedInit,
+            JettyCommand::New { .. } => UsageEvent::InvokedNew,
             JettyCommand::Fetch { .. } => UsageEvent::InvokedFetch {
                 connector_types: if let Some(c) = &jetty_config {
                     c.connectors
@@ -114,12 +111,12 @@ pub async fn cli() -> Result<()> {
 
     // ...and we're off!
     match &args.command {
-        JettyCommand::Init {
+        JettyCommand::New {
             from,
             project_name,
             overwrite,
         } => {
-            init::init(from, *overwrite, project_name).await?;
+            new::new(from, *overwrite, project_name).await?;
         }
 
         JettyCommand::Fetch {
@@ -144,7 +141,7 @@ pub async fn cli() -> Result<()> {
             jetty_explore::explore_web_ui(Arc::from(jetty.access_graph.unwrap()), bind).await;
         }
         JettyCommand::Add => {
-            init::add().await?;
+            new::add().await?;
         }
         JettyCommand::Bootstrap {
             no_fetch,
@@ -172,7 +169,7 @@ pub async fn cli() -> Result<()> {
             } else {
                 println!("Generating plan based off existing data. Run `jetty plan -f` to fetch before generating the plan.")
             };
-            plan().await?;
+            plan::plan().await?;
         }
         JettyCommand::Apply { no_fetch } => {
             if !*no_fetch {
@@ -188,7 +185,7 @@ pub async fn cli() -> Result<()> {
             let parsed_uuid = uuid::Uuid::from_str(id)?;
             let binding = ag.extract_graph(
                 ag.get_untyped_index_from_id(&parsed_uuid)
-                    .ok_or(anyhow!("unable to find the right node"))?,
+                    .ok_or_else(|| anyhow!("unable to find the right node"))?,
                 *depth,
             );
             let generated_dot = binding.dot();
@@ -239,7 +236,6 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
 
     let pb = basic_progress_bar("Creating access graph");
     let now = Instant::now();
-
     // the last jetty was partially consumed by the fetch, so re-instantiating here
     let jetty = new_jetty_with_connectors().await?;
 
@@ -264,12 +260,18 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
         debug!("Skipping visualization.")
     };
 
-    if let Err(e) = update_asset_files(&jetty) {
-        warn!("failed to generate files for all assets: {}", e);
-    };
-    if let Err(e) = update_user_files(&jetty) {
-        warn!("failed to generate files for all users: {}", e);
-    };
+    // if config files have already been created, update them, if not, skip
+    if project::groups_cfg_path_local().exists()
+        || project::assets_cfg_root_path_local().exists()
+        || project::users_cfg_root_path_local().exists()
+    {
+        if let Err(e) = update_asset_files(&jetty) {
+            warn!("failed to generate files for all assets: {}", e);
+        };
+        if let Err(e) = update_user_files(&jetty) {
+            warn!("failed to generate files for all users: {}", e);
+        };
+    }
 
     Ok(())
 }
@@ -278,7 +280,7 @@ async fn bootstrap(overwrite: bool) -> Result<()> {
     let jetty = &new_jetty_with_connectors().await.map_err(|_| {
         anyhow!(
             "unable to find {} - make sure you are in a \
-        Jetty project directory, or create a new project by running `jetty init`",
+        Jetty project directory, or create a new project by running `jetty new`",
             project::jetty_cfg_path_local().display()
         )
     })?;
@@ -287,7 +289,7 @@ async fn bootstrap(overwrite: bool) -> Result<()> {
     jetty.try_access_graph()?;
 
     // Build all the yaml first
-    let group_yaml = new_groups::get_env_config(jetty)?;
+    let group_yaml = groups::get_env_config(jetty)?;
     let asset_yaml = jetty.generate_bootstrapped_policy_yaml()?;
     let user_yaml = jetty.generate_bootstrapped_user_yaml()?;
 
@@ -303,126 +305,64 @@ async fn bootstrap(overwrite: bool) -> Result<()> {
             bail!("{} already exists; run `jetty bootstrap --overwrite` to overwrite the existing configuration", project::users_cfg_root_path_local().to_string_lossy())
         }
     } else {
-        match fs::remove_file(groups_cfg_path_local()) {
-            Ok(_) => println!("removed existing groups file"),
-            Err(_) => (),
+        if fs::remove_file(groups_cfg_path_local()).is_ok() {
+            println!("removed existing groups file")
         };
-        match fs::remove_dir_all(project::assets_cfg_root_path_local()) {
-            Ok(_) => println!("removed existing asset directory"),
-            Err(_) => (),
+        if fs::remove_dir_all(project::assets_cfg_root_path_local()).is_ok() {
+            println!("removed existing asset directory")
         };
-        match fs::remove_dir_all(project::users_cfg_root_path_local()) {
-            Ok(_) => println!("removed existing users directory"),
-            Err(_) => (),
+        if fs::remove_dir_all(project::users_cfg_root_path_local()).is_ok() {
+            println!("removed existing users directory")
         };
     }
 
     // Now write the yaml files
 
     // groups
-    if let Err(e) = new_groups::write_env_config(&group_yaml) {
+    if let Err(e) = groups::write_env_config(&group_yaml) {
         warn!("failed to write groups file: {}", e);
     }
 
     // assets
     write_bootstrapped_asset_yaml(asset_yaml)?;
-    if let Err(e) = update_asset_files(&jetty) {
+    if let Err(e) = update_asset_files(jetty) {
         warn!("failed to generate files for all assets: {}", e);
     };
 
     // users
     write_bootstrapped_user_yaml(user_yaml)?;
-    if let Err(e) = update_user_files(&jetty) {
+    if let Err(e) = update_user_files(jetty) {
         warn!("failed to generate files for all users: {}", e);
     }
 
-    // sanity check - the diff should be empty at this point
-    // let validated_group_config = parse_and_validate_groups(&jetty)?;
-    // if jetty_core::write::get_group_diff(&validated_group_config, &jetty)
-    //     .context("checking the generated group configuration")?
-    //     .len()
-    //     != 0
-    // {
-    //     bail!("something went wrong - the configuration generated doesn't fully match the true state of your environment; please contact support: support@get-jetty.com")
-    // }
+    println!(
+        "{}",
+        "\nSuccessfully bootstrapped your environment! 🎉🎉".green()
+    );
 
-    Ok(())
-}
-
-async fn plan() -> Result<()> {
-    let jetty = new_jetty_with_connectors().await.map_err(|_| {
-        anyhow!(
-            "unable to find {} - make sure you are in a \
-        Jetty project directory, or create a new project by running `jetty init`",
-            project::jetty_cfg_path_local().display()
-        )
-    })?;
-
-    // make sure there's an existing access graph
-    let ag = jetty.try_access_graph()?;
-    let validated_group_config = parse_and_validate_groups(&jetty)?;
-
-    let diffs = Diffs {
-        groups: jetty_core::write::get_group_diff(&validated_group_config, &jetty)?,
-    };
-
-    let connector_specific_diffs = diffs.split_by_connector();
-
-    let tr = ag.translator();
-
-    let local_diffs = connector_specific_diffs
-        .iter()
-        .map(|(k, v)| (k.to_owned(), tr.translate_diffs_to_local(v)))
-        .collect::<HashMap<_, _>>();
-
-    // Exit early if there haven't been any changes
-    if local_diffs.is_empty() {
-        println!("No changes found");
-        return Ok(());
-    }
-
-    let plans: HashMap<_, _> = local_diffs
-        .iter()
-        .map(|(k, v)| (k.to_owned(), jetty.connectors[k].plan_changes(v)))
-        .collect();
-
-    for (c, plan) in plans {
-        println!("{c}:");
-        if !plan.is_empty() {
-            plan.iter()
-                .for_each(|s| println!("{}\n", textwrap::indent(s, "  ")));
-            println!("\n")
-        } else {
-            println!("  No changes planned\n");
-        }
-    }
     Ok(())
 }
 
 async fn apply() -> Result<()> {
-    let jetty = new_jetty_with_connectors().await.map_err(|_| {
+    let jetty = &mut new_jetty_with_connectors().await.map_err(|_| {
         anyhow!(
             "unable to find {} - make sure you are in a \
-        Jetty project directory, or create a new project by running `jetty init`",
+        Jetty project directory, or create a new project by running `jetty new`",
             project::jetty_cfg_path_local().display()
         )
     })?;
 
+    let diffs = get_diffs(jetty)?;
+
     // make sure there's an existing access graph
     let ag = jetty.try_access_graph()?;
-    let validated_group_config = parse_and_validate_groups(&jetty)?;
-
-    let diffs = Diffs {
-        groups: jetty_core::write::get_group_diff(&validated_group_config, &jetty)?,
-    };
-
     let connector_specific_diffs = diffs.split_by_connector();
 
     let tr = ag.translator();
 
     let local_diffs = connector_specific_diffs
         .iter()
-        .map(|(k, v)| (k.to_owned(), tr.translate_diffs_to_local(v)))
+        .map(|(k, v)| (k.to_owned(), tr.translate_diffs_to_local(v, k)))
         .collect::<HashMap<_, _>>();
 
     let mut results: HashMap<_, _> = HashMap::new();
@@ -440,46 +380,21 @@ async fn apply() -> Result<()> {
         now.elapsed().as_secs_f32()
     ));
 
-    // Look at the updated data to see if the apply was successful
-    println!("Waiting 5 seconds then fetching updated access information");
-    timer_with_spinner(
-        5,
-        "Giving your tools a chance to update",
-        "Done - beginning fetch",
-    );
+    for (c, result) in results {
+        println!("{c}:\n{result}\n");
+    }
+
+    println!("Fetching updated state");
 
     match fetch(&None, &false).await {
         Ok(_) => {
-            // reload jetty to get the latest fetch
-
-            let jetty = new_jetty_with_connectors().await?;
-
-            println!("Here is the current diff based on your configuration:");
-            // For now, we're just looking at group diffs
-
-            let validated_group_config = parse_and_validate_groups(&jetty)?;
-            let group_diff = jetty_core::write::get_group_diff(&validated_group_config, &jetty)?;
-            if !group_diff.is_empty() {
-                group_diff.iter().for_each(|diff| println!("{diff}"));
-                println!(
-                    r#"You might see outstanding changes for a couple of reasons:
-    1. The underlying system is still updating (this is often the case with Tableau)
-    2. The changes had side-effects. This is expected for some changes.
-       You can run `jetty apply` again to make the necessary updates"#
-                )
-            } else {
-                println!("No changes found");
-            };
+            diff::diff().await?;
         }
         Err(_) => {
             error!("unable to perform fetch");
             println!("We recommend running `jetty diff -f` to see if you should run apply again to correct any side-effects of your changes");
         }
     };
-
-    for (c, result) in results {
-        println!("{c}:\n{result}\n");
-    }
 
     Ok(())
 }
@@ -499,11 +414,13 @@ async fn get_connectors(
                         &selected_connectors[namespace],
                         &creds
                             .get(namespace.to_string().as_str())
-                            .ok_or(anyhow!(
-                                "unable to find a connector called {} in {}",
-                                namespace,
-                                project::connector_cfg_path().display()
-                            ))?
+                            .ok_or_else(|| {
+                                anyhow!(
+                                    "unable to find a connector called {} in {}",
+                                    namespace,
+                                    project::connector_cfg_path().display()
+                                )
+                            })?
                             .to_owned(),
                         Some(ConnectorClient::Core),
                         Some(project::data_dir().join(namespace.to_string())),
@@ -515,11 +432,13 @@ async fn get_connectors(
                         &selected_connectors[namespace],
                         &creds
                             .get(namespace.to_string().as_str())
-                            .ok_or(anyhow!(
-                                "unable to find a connector called {} in {}",
-                                namespace,
-                                project::connector_cfg_path().display()
-                            ))?
+                            .ok_or_else(|| {
+                                anyhow!(
+                                    "unable to find a connector called {} in {}",
+                                    namespace,
+                                    project::connector_cfg_path().display()
+                                )
+                            })?
                             .to_owned(),
                         Some(ConnectorClient::Core),
                         Some(project::data_dir().join(namespace.to_string())),
@@ -531,11 +450,13 @@ async fn get_connectors(
                         &selected_connectors[namespace],
                         &creds
                             .get(namespace.to_string().as_str())
-                            .ok_or(anyhow!(
-                                "unable to find a connector called {} in {}",
-                                namespace,
-                                project::connector_cfg_path().display()
-                            ))?
+                            .ok_or_else(|| {
+                                anyhow!(
+                                    "unable to find a connector called {} in {}",
+                                    namespace,
+                                    project::connector_cfg_path().display()
+                                )
+                            })?
                             .to_owned(),
                         Some(ConnectorClient::Core),
                         Some(project::data_dir().join(namespace.to_string())),
@@ -555,13 +476,13 @@ async fn get_connectors(
 /// Create a new Jetty struct with all the connectors. Uses default locations for everything
 pub async fn new_jetty_with_connectors() -> Result<Jetty> {
     let config = JettyConfig::read_from_file(project::jetty_cfg_path_local()).context(format!(
-        "unable to find Jetty Config file at {} - you can set this up by running `jetty init`",
+        "unable to find Jetty Config file at {} - you can set this up by running `jetty new`",
         project::jetty_cfg_path_local().to_string_lossy()
     ))?;
 
     let creds = fetch_credentials(project::connector_cfg_path()).map_err(|_| {
         anyhow!(
-            "unable to find {} - you can set this up by running `jetty init`",
+            "unable to find {} - you can set this up by running `jetty new`",
             project::connector_cfg_path().display()
         )
     })?;
@@ -569,30 +490,6 @@ pub async fn new_jetty_with_connectors() -> Result<Jetty> {
     let connectors = get_connectors(&creds, &config.connectors).await?;
 
     Jetty::new_with_config(config, project::data_dir(), connectors)
-}
-
-fn timer_with_spinner(secs: u64, msg: &str, completion_msg: &str) {
-    let pb = ProgressBar::new_spinner();
-    pb.enable_steady_tick(time::Duration::from_millis(120));
-
-    pb.set_style(
-        ProgressStyle::with_template("{spinner:.green} {msg}")
-            .unwrap()
-            // For more spinners check out the cli-spinners project:
-            // https://github.com/sindresorhus/cli-spinners/blob/master/spinners.json
-            .tick_strings(&[
-                "▹▹▹▹▹",
-                "▸▹▹▹▹",
-                "▹▸▹▹▹",
-                "▹▹▸▹▹",
-                "▹▹▹▸▹",
-                "▹▹▹▹▸",
-                "▪▪▪▪▪",
-            ]),
-    );
-    pb.set_message(msg.to_owned());
-    thread::sleep(time::Duration::from_secs(secs));
-    pb.finish_with_message(completion_msg.to_owned());
 }
 
 fn basic_progress_bar(msg: &str) -> ProgressBar {

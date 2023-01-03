@@ -11,7 +11,7 @@ use jetty_core::{
 };
 use jetty_snowflake::SnowflakeConnector;
 
-use crate::init::{
+use crate::new::{
     inquiry::{
         autocomplete::FilepathCompleter,
         validation::{FilepathValidator, FilepathValidatorMode, PathType},
@@ -47,6 +47,14 @@ pub(crate) async fn ask_snowflake_connector_setup(
             .with_default("jetty")
             .with_help_message(&format!("We will use this user to authenticate Jetty runs. To see all permissions across your account, the Jetty user needs a role that can read the accounts metadata. Read here for more information: https://docs.get-jetty.com/getting-started/#prerequisites.{skip_message}"))
             .prompt()?;
+        if admin_username == SKIP_CMD {
+            bail!("skipped");
+        }
+
+        let user_role = Text::new("Snowflake role to use:")
+        .with_default("SECURITYADMIN")
+        .with_help_message(&format!("We will use this role when Jetty runs. To see all permissions across your account, the Jetty user needs a role that can read the accounts metadata. Read here for more information: https://docs.get-jetty.com/getting-started/#prerequisites.{skip_message}"))
+        .prompt()?;
         if admin_username == SKIP_CMD {
             bail!("skipped");
         }
@@ -117,7 +125,7 @@ pub(crate) async fn ask_snowflake_connector_setup(
             ("warehouse".to_owned(), warehouse),
             ("public_key_fp".to_owned(), keypair.fingerprint()),
             ("private_key".to_owned(), keypair.private_key()),
-            ("role".to_owned(), "SECURITYADMIN".to_owned()),
+            ("role".to_owned(), user_role),
         ]);
         let connector =
             SnowflakeConnector::new(&ConnectorConfig::default(), &creds, None, None).await?;

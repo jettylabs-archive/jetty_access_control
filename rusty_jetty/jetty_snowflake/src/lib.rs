@@ -29,7 +29,7 @@ pub use entry_types::{
     StandardGrant, Table, User, View, Warehouse,
 };
 use futures::StreamExt;
-use jetty_core::access_graph::translate::diffs::{groups, LocalDiffs};
+use jetty_core::access_graph::translate::diffs::LocalConnectorDiffs;
 use jetty_core::connectors::{
     AssetType, ConnectorCapabilities, NewConnector, ReadCapabilities, WriteCapabilities,
 };
@@ -255,18 +255,16 @@ impl Connector for SnowflakeConnector {
             .into(),
         }
     }
-    fn plan_changes(&self, diffs: &LocalDiffs) -> Vec<std::string::String> {
-        self.generate_diff_queries(diffs)
-            .into_iter()
-            .flatten()
-            .collect()
+    fn plan_changes(&self, diffs: &LocalConnectorDiffs) -> Vec<std::string::String> {
+        self.generate_diff_queries(diffs).flatten()
     }
 
-    async fn apply_changes(&self, diffs: &LocalDiffs) -> Result<String> {
+    async fn apply_changes(&self, diffs: &LocalConnectorDiffs) -> Result<String> {
         let mut success_counter = 0;
         let mut failure_counter = 0;
         // This is designed in such a way that each query_set may be run concurrently.
-        for query_set in self.generate_diff_queries(diffs) {
+        let prepared_queries = self.generate_diff_queries(diffs);
+        for query_set in [prepared_queries.0, prepared_queries.1, prepared_queries.2] {
             let query_set_configs = query_set
                 .iter()
                 .map(|q| SnowflakeRequestConfig {
@@ -577,65 +575,6 @@ impl SnowflakeConnector {
             })
             .collect::<Vec<_>>()
     }
-
-    fn generate_diff_queries(&self, diffs: &LocalDiffs) -> Vec<Vec<String>> {
-        let mut first_queries: Vec<String> = vec![];
-        let mut second_queries: Vec<String> = vec![];
-        let mut third_queries: Vec<String> = vec![];
-        // start with groups
-        for diff in &diffs.groups {
-            match &diff.details {
-                // Drop roles. This will transfer all ownership to the Jetty role. If there are grants that are owned by the role that is dropped, those grants are dropped too.
-                // because of this, it may be necessary to run a double-apply.
-                groups::LocalDiffDetails::RemoveGroup => {
-                    first_queries.push(format!("GRANT OWNERSHIP ON ROLE \"{}\" TO {}; --Only the owner of a role can drop it", diff.group_name, self.rest_client.get_snowflake_role()));
-                    second_queries.push(format!("DROP ROLE \"{}\";", diff.group_name))
-                }
-                groups::LocalDiffDetails::AddGroup { members } => {
-                    second_queries.push(format!("CREATE ROLE \"{}\";", diff.group_name));
-                    for user in &members.users {
-                        third_queries.push(format!(
-                            "GRANT ROLE \"{}\" TO USER \"{}\";",
-                            diff.group_name, user
-                        ))
-                    }
-                    for group in &members.groups {
-                        third_queries.push(format!(
-                            "GRANT ROLE \"{}\" TO ROLE \"{}\";",
-                            diff.group_name, group
-                        ))
-                    }
-                }
-                groups::LocalDiffDetails::ModifyGroup { add, remove } => {
-                    for user in &add.users {
-                        third_queries.push(format!(
-                            "GRANT ROLE \"{}\" TO USER \"{}\";",
-                            diff.group_name, user
-                        ))
-                    }
-                    for group in &add.groups {
-                        third_queries.push(format!(
-                            "GRANT ROLE \"{}\" TO ROLE \"{}\";",
-                            diff.group_name, group
-                        ))
-                    }
-                    for user in &remove.users {
-                        third_queries.push(format!(
-                            "REVOKE ROLE \"{}\" FROM USER \"{}\";",
-                            diff.group_name, user
-                        ))
-                    }
-                    for group in &remove.groups {
-                        third_queries.push(format!(
-                            "REVOKE ROLE {} FROM ROLE {};",
-                            diff.group_name, group
-                        ))
-                    }
-                }
-            }
-        }
-        vec![first_queries, second_queries, third_queries]
-    }
 }
 
 pub(crate) fn strip_snowflake_quotes(object: String, capitalize: bool) -> String {
@@ -652,6 +591,37 @@ pub(crate) fn strip_snowflake_quotes(object: String, capitalize: bool) -> String
         } else {
             // In some cases, like when it is a value from Snowflake, we don't need to capitalize it. We just leave it as is.
             object
+        }
+    }
+}
+
+/// A Snowflake Asset. Inner value is the fully-qualified snowflake name.
+#[derive(PartialEq, Debug)]
+enum SnowflakeAsset {
+    Table(String),
+    View(String),
+    Schema(String),
+    Database(String),
+}
+
+impl SnowflakeAsset {
+    /// Get the snowflake fully-qualified name for the asset
+    fn fqn(&self) -> &String {
+        match self {
+            SnowflakeAsset::Table(fqn) => fqn,
+            SnowflakeAsset::View(fqn) => fqn,
+            SnowflakeAsset::Schema(fqn) => fqn,
+            SnowflakeAsset::Database(fqn) => fqn,
+        }
+    }
+
+    /// Get the asset type as a &str
+    fn asset_type(&self) -> &str {
+        match self {
+            SnowflakeAsset::Table(_) => "TABLE",
+            SnowflakeAsset::View(_) => "VIEW",
+            SnowflakeAsset::Schema(_) => "SCHEMA",
+            SnowflakeAsset::Database(_) => "DATABASE",
         }
     }
 }

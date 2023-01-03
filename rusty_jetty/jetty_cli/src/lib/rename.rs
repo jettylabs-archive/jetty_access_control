@@ -14,7 +14,7 @@ pub(super) async fn rename(
     let jetty = &new_jetty_with_connectors().await.map_err(|_| {
         anyhow!(
             "unable to find {} - make sure you are in a \
-        Jetty project directory, or create a new project by running `jetty init`",
+        Jetty project directory, or create a new project by running `jetty new`",
             project::jetty_cfg_path_local().display()
         )
     })?;

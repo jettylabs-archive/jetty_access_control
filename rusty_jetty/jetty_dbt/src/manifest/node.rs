@@ -76,6 +76,7 @@ impl NamePartable for DbtNode {
 }
 
 impl DbtNode {
+    #[allow(clippy::borrowed_box)]
     pub(crate) fn to_jetty_asset(
         &self,
         manifest: &Box<dyn DbtProjectManifest + Send + Sync>,

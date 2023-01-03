@@ -1,164 +1,154 @@
-use std::collections::BTreeMap;
+//! Parsing group configuration
 
-use anyhow::{anyhow, bail, Context, Result};
+use std::{
+    collections::{HashMap, HashSet},
+    fs,
+};
 
-use yaml_peg::{parse, repr::RcRepr};
+use anyhow::{bail, Result};
 
-use crate::{jetty::ConnectorNamespace, write::parser_common::indicated_msg};
+use crate::{
+    access_graph::NodeName, jetty::ConnectorNamespace, project, write::utils::error_vec_to_string,
+    Jetty,
+};
 
-use super::{ConnectorName, GroupConfig, GroupMembers, MemberGroup, MemberUser};
+use super::GroupConfig;
 
-/// Parse a string tag config into a map of tag configuration objects
-pub(crate) fn parse_groups(config: &String) -> Result<BTreeMap<String, GroupConfig>> {
-    // Parse into Node representation and selecting the first element in the Vec
-    let root = &parse::<RcRepr>(config).context("unable to parse tags file - invalid yaml")?[0];
-
-    // Return an empty BTreeMap if there are no tags
-    if root.is_null() {
-        return Ok(Default::default());
-    }
-    let mapped_root = root
-        .as_map()
-        .map_err(|_| anyhow!("improperly formatted groups file: should be a dictionary of group names and configurations \
-        - please refer to the documentation for more information"))?;
-
-    let mut groups = BTreeMap::new();
-
-    // iterate over each item in the map
-    for (k, v) in mapped_root {
-        let group_pos = k.pos();
-        let group_name = k
-            .as_str()
-            .map_err(|_| {
-                anyhow!(
-                    "group name is not a string: {}",
-                    indicated_msg(config.as_bytes(), k.pos(), 2)
-                )
-            })?
-            .to_owned();
-
-        // get the names map
-        let connector_names_node = v.get("names");
-        // first map checks to see if the names map exists
-        let connector_names = match connector_names_node {
-            Ok(names) => {
-                // now check to see if it's a map
-                let names = names.as_map().map_err(|_| anyhow!("improperly formatted groups file: names field for {group_name} should be a map of namespace: string \
-                - please refer to the documentation for more information"))?;
-                let mut result_vec = Vec::new();
-                // names should be listed as a map of string -> string
-                for (k, v) in names {
-                    result_vec.push(ConnectorName {
-                        connector: ConnectorNamespace(k.as_str().map_err(|_| anyhow!("improperly formatted groups file: names field for {group_name} should be a map of namespace: string \
-                        - please refer to the documentation for more information"))?.to_owned()),
-                        alias: v.as_str().map_err(|_| anyhow!("improperly formatted groups file: names field for {group_name} should be a map of namespace: string \
-                        - please refer to the documentation for more information"))?.to_owned(),
-                        pos: k.pos(),
-                    })
-                }
-                Some(result_vec)
-            }
-            Err(_) => None,
-        };
-
-        // get the members map
-        let members_node = v.get("members");
-        let members = match members_node {
-            Ok(ok_members) => {
-                // Get the users
-                let users = ok_members.get("users").ok();
-                let users = match users {
-                    Some(u) => {
-                        if let Ok(Ok(user_vec)) = u.as_seq().map(|seq| {
-                            seq.iter()
-                                .map(|v| {
-                                    v.as_str().map(|s| MemberUser {
-                                        name: s.to_owned(),
-                                        pos: v.pos(),
-                                    })
-                                })
-                                .collect::<Result<Vec<_>, u64>>()
-                        }) {
-                            Some(user_vec)
-                        } else {
-                            bail!("improperly formatted groups file: members.users field in {group_name} should be a sequence of strings")
-                        }
-                    }
-                    None => None,
-                };
-                let member_groups = ok_members.get("groups").ok();
-                let member_groups = match member_groups {
-                    Some(u) => {
-                        if let Ok(Ok(user_vec)) = u.as_seq().map(|seq| {
-                            seq.iter()
-                                .map(|v| {
-                                    v.as_str().map(|s| MemberGroup {
-                                        name: s.to_owned(),
-                                        pos: v.pos(),
-                                    })
-                                })
-                                .collect::<Result<Vec<_>, u64>>()
-                        }) {
-                            Some(user_vec)
-                        } else {
-                            bail!("improperly formatted groups file: members.groups field in {group_name} should be a sequence of strings")
-                        }
-                    }
-                    None => None,
-                };
-                GroupMembers {
-                    groups: member_groups,
-                    users,
-                }
-            }
-            Err(_) => {
-                bail!("improperly formatted groups file: members field must exist for {group_name}")
-            }
-        };
-
-        groups.insert(
-            group_name.clone(),
-            GroupConfig {
-                name: group_name,
-                connector_names,
-                members,
-                pos: group_pos,
-            },
-        );
-    }
-
-    Ok(groups)
+fn read_config_file() -> Result<GroupConfig> {
+    let val = fs::read_to_string(project::groups_cfg_path_local())?;
+    let res: Vec<GroupConfig> = yaml_peg::serde::from_str(&val)?;
+    if res.is_empty() {
+        bail!("unable to parse group configuration file")
+    };
+    Ok(res[0].to_owned())
 }
 
-#[cfg(test)]
-mod test {
-    use super::*;
+fn validate_config(config: &GroupConfig, jetty: &Jetty) -> Vec<String> {
+    let mut errors = Vec::new();
+    let mut mapped_connectors = HashSet::new();
 
-    #[test]
-    fn parse_groups_works() -> Result<()> {
-        let group_config = r#"
-All Analysts:
-    names:
-        snow: ANALYSTS
-        tab: cheese puffs
-    members:
-        groups:
-            - Sales Analysts
-            - Product Analysts
-            - Data Engineering
-        users:
-            - isaac.hales@gmail.com
-            - jk@get-jetty.com
+    let all_groups = get_all_group_names(config);
 
-Sales Analysts:
-    members:
-        users:
-            - mark@thefacebook.com
-            - elliot@allsafe.com
+    for group in config {
+        let (prefix, suffix) = split_group_name(&group.name);
 
-"#;
+        // if there's a prefix, make sure it's allowed
+        if let Some(conn) = &prefix {
+            if !jetty.has_connector(conn) {
+                errors.push(format!("configuration specifies a group `{suffix}` with the prefix `{conn}` but there is no connector `{conn}` in the project"));
+            }
+        }
 
-        dbg!(parse_groups(&group_config.to_owned())?);
-        Ok(())
+        // check the groups referenced in member_of to make sure they exist
+        for g in &group.member_of {
+            if !all_groups.contains(g) {
+                errors.push(format!("configuration refers to group `{g}`, but there is no group with that name in the configuration"));
+            }
+            // if a group is connector-specific, only groups from Jetty or from that connector can be members. If it's a jetty group,
+            // any group can be a member
+            let (member_prefix, _) = split_group_name(g);
+            if prefix.is_some() && member_prefix.is_some() && prefix != member_prefix {
+                errors.push(format!(
+                    "{}, a connector-specific group, cannot have group members from other connectors ({g})",
+                    group.name
+                ));
+            }
+        }
+
+        for (conn, local_name) in &group.identifiers {
+            // Check that the connectors exist
+            if !jetty.has_connector(conn) {
+                errors.push(format!("configuration refers to a connector called `{conn}`, but there is no connector with that name in the project"));
+            }
+            // make sure that there aren't any double assignments
+            match mapped_connectors.insert((conn, local_name)) {
+                true => (),
+                false => {
+                    errors.push(format!("the {conn}-specific group name, `{local_name}` was assigned to more than one group"));
+                }
+            };
+        }
     }
+    errors
+}
+
+fn split_group_name(name: &String) -> (Option<ConnectorNamespace>, String) {
+    match name.split_once("::") {
+        Some((prefix, suffix)) => (
+            Some(ConnectorNamespace(prefix.to_owned())),
+            suffix.to_owned(),
+        ),
+        None => (None, name.to_owned()),
+    }
+}
+
+pub(crate) fn get_all_group_names(config: &GroupConfig) -> HashSet<String> {
+    config.iter().map(|g| g.name.to_owned()).collect()
+}
+
+/// Parse and validate group configuration return a BTreeSet of configs
+pub fn parse_and_validate_groups(jetty: &Jetty) -> Result<GroupConfig> {
+    let config = read_config_file()?;
+    let errors = validate_config(&config, jetty);
+    if !errors.is_empty() {
+        bail!(
+            "configuration is invalid:\n{}",
+            error_vec_to_string(&errors)
+        );
+    };
+    Ok(config)
+}
+
+/// get the map of jetty group names to the connector-specific group names
+pub fn get_group_to_nodename_map(
+    validated_config: &GroupConfig,
+    connectors: &HashSet<ConnectorNamespace>,
+) -> HashMap<String, HashMap<ConnectorNamespace, NodeName>> {
+    validated_config
+        .iter()
+        .map(|group| {
+            (
+                group.name.to_owned(),
+                // branch on whether it's a connector-specific group
+                if let (Some(connector), local_name) = split_group_name(&group.name) {
+                    [(
+                        connector.to_owned(),
+                        NodeName::Group {
+                            name: local_name,
+                            origin: connector,
+                        },
+                    )]
+                    .into()
+                } else {
+                    connectors
+                        .iter()
+                        .map(|connector| {
+                            (connector.to_owned(), {
+                                match group.identifiers.get(connector) {
+                                    Some(name) => NodeName::Group {
+                                        name: name.to_owned(),
+                                        origin: connector.to_owned(),
+                                    },
+                                    None => NodeName::Group {
+                                        name: group.name.to_owned(),
+                                        origin: connector.to_owned(),
+                                    },
+                                }
+                            })
+                        })
+                        .collect()
+                },
+            )
+        })
+        .collect()
+}
+
+/// Get the map of group -> member_of strings
+pub(crate) fn get_group_membership_map(
+    validated_config: &GroupConfig,
+) -> HashMap<String, HashSet<String>> {
+    validated_config
+        .iter()
+        .map(|g| (g.name.to_owned(), g.member_of.iter().cloned().collect()))
+        .collect()
 }

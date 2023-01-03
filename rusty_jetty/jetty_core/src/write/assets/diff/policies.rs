@@ -13,10 +13,11 @@ use crate::{
     write::{
         assets::{CombinedPolicyState, PolicyState},
         utils::diff_hashset,
+        SplitByConnector,
     },
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// A diff of assets
 pub struct PolicyDiff {
     /// The name of the asset being changed
@@ -28,14 +29,30 @@ pub struct PolicyDiff {
     pub(crate) connector: ConnectorNamespace,
 }
 
+impl SplitByConnector for PolicyDiff {
+    fn split_by_connector(&self) -> HashMap<ConnectorNamespace, Box<Self>> {
+        [(self.connector.to_owned(), Box::new(self.to_owned()))].into()
+    }
+}
+
+/// Details of policy diff
 #[derive(Debug, Clone)]
-pub(crate) enum DiffDetails {
+pub enum DiffDetails {
+    /// Add an agent to the policy
     AddAgent {
+        /// The new policy state
         add: PolicyState,
     },
-    RemoveAgent,
+    /// Remove an agent from the policy
+    RemoveAgent {
+        /// The permissions being removed
+        remove: PolicyState,
+    },
+    /// Change policy state
     ModifyAgent {
+        /// What's being added
         add: PolicyState,
+        /// What's being removed
         remove: PolicyState,
     },
 }
@@ -86,8 +103,20 @@ fn print_diff_inner_details(
                     }
                 }
             }
-            DiffDetails::RemoveAgent => {
+            DiffDetails::RemoveAgent { remove } => {
                 text += &format!("{}", format!("  - {}{}\n", prefix, name).as_str().red());
+                if !remove.privileges.is_empty() {
+                    text += "    privileges:\n";
+                    for privilege in &remove.privileges {
+                        text += &format!("{}", format!("      - {}\n", privilege).as_str().red());
+                    }
+                }
+                if !remove.metadata.is_empty() {
+                    text += "    metadata:\n";
+                    for (k, v) in &remove.metadata {
+                        text += &format!("{}", format!("{}{k}: {v}\n", "      - ").as_str().red());
+                    }
+                }
             }
             DiffDetails::ModifyAgent { add, remove } => {
                 text += &format!("{}", format!("  ~ {}{}\n", prefix, name).as_str().yellow());
@@ -164,10 +193,12 @@ pub(crate) fn diff_policies(
             })
             .or_insert({
                 // get the connector from the asset
-                let mut d = PolicyDiffHelper::default();
-                d.connector = match &config_key.0 {
-                    NodeName::Asset { connector, .. } => connector.to_owned(),
-                    _ => panic!("got wrong node type while diffing"),
+                let mut d = PolicyDiffHelper {
+                    connector: match &config_key.0 {
+                        NodeName::Asset { connector, .. } => connector.to_owned(),
+                        _ => panic!("got wrong node type while diffing"),
+                    },
+                    ..Default::default()
                 };
                 match &config_key.1 {
                     NodeName::User(_) => {
@@ -189,7 +220,9 @@ pub(crate) fn diff_policies(
             continue;
         }
 
-        let diff_details = DiffDetails::RemoveAgent;
+        let diff_details = DiffDetails::RemoveAgent {
+            remove: env_value.to_owned(),
+        };
         policy_diffs
             // add to the policy diff for the asset
             .entry(env_key.0.to_owned())
@@ -206,10 +239,12 @@ pub(crate) fn diff_policies(
             })
             .or_insert({
                 // get the connector from the asset
-                let mut d = PolicyDiffHelper::default();
-                d.connector = match &env_key.0 {
-                    NodeName::Asset { connector, .. } => connector.to_owned(),
-                    _ => panic!("got wrong node type while diffing"),
+                let mut d = PolicyDiffHelper {
+                    connector: match &env_key.0 {
+                        NodeName::Asset { connector, .. } => connector.to_owned(),
+                        _ => panic!("got wrong node type while diffing"),
+                    },
+                    ..Default::default()
                 };
                 match &env_key.1 {
                     NodeName::User(_) => {

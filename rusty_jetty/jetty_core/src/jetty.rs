@@ -27,7 +27,6 @@ impl Display for ConnectorNamespace {
 }
 
 /// Struct representing the jetty_config.yaml file.
-#[allow(dead_code)]
 #[derive(Deserialize, Serialize, Debug, Default, Clone)]
 pub struct JettyConfig {
     version: String,
@@ -95,7 +94,6 @@ impl JettyConfig {
 }
 
 /// Config for all connectors in this project.
-#[allow(dead_code)]
 #[derive(Clone, Deserialize, Serialize, Default, Debug)]
 pub struct ConnectorConfig {
     /// The connector type
@@ -181,7 +179,6 @@ impl Jetty {
         connectors: HashMap<ConnectorNamespace, Box<dyn Connector>>,
     ) -> Result<Self> {
         let ag = load_access_graph()?;
-
         Ok(Jetty {
             config,
             _data_dir: data_dir,
@@ -200,21 +197,21 @@ impl Jetty {
 
     /// Getter for a reference to the access graph. Returns an error if no access graph has been created
     pub fn try_access_graph(&self) -> Result<&AccessGraph> {
-        self.access_graph.as_ref().ok_or(anyhow!(
-            "unable to find an existing access graph; try running `jetty fetch`"
-        ))
+        self.access_graph.as_ref().ok_or_else(|| {
+            anyhow!("unable to find an existing access graph; try running `jetty fetch`")
+        })
     }
 
     /// Getter for a mutable reference to the access graph. Returns an error if no access graph has been created
     pub fn try_access_graph_mut(&mut self) -> Result<&mut AccessGraph> {
-        self.access_graph.as_mut().ok_or(anyhow!(
-            "unable to find an existing access graph; try running `jetty fetch`"
-        ))
+        self.access_graph.as_mut().ok_or_else(|| {
+            anyhow!("unable to find an existing access graph; try running `jetty fetch`")
+        })
     }
 
     /// return whether a given connector name exists in the config
     pub(crate) fn has_connector(&self, connector: &ConnectorNamespace) -> bool {
-        self.connectors.contains_key(&connector)
+        self.connectors.contains_key(connector)
     }
 }
 

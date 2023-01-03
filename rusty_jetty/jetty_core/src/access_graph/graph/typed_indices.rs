@@ -2,13 +2,13 @@
 //!
 use std::collections::HashSet;
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
 
 use crate::{
     access_graph::{
-        AccessGraph, AssetAttributes, DefaultPolicyAttributes, EdgeType, GroupAttributes,
-        JettyNode, NodeIndex, NodeName, PolicyAttributes, TagAttributes, UserAttributes,
+        AssetAttributes, DefaultPolicyAttributes, EdgeType, GroupAttributes, JettyNode, NodeIndex,
+        NodeName, PolicyAttributes, TagAttributes, UserAttributes,
     },
     Jetty,
 };
@@ -109,7 +109,7 @@ impl UserIndex {
                 |n| matches!(n, JettyNode::Group(_)),
             )
             .into_iter()
-            .map(|idx| GroupIndex::new(idx))
+            .map(GroupIndex::new)
             .collect())
     }
 }
@@ -139,11 +139,11 @@ impl GroupIndex {
         Ok(ag
             .get_matching_children(
                 self.idx,
-                |e| matches!(EdgeType::MemberOf, e),
+                |e| matches!(e, EdgeType::MemberOf),
                 |n| matches!(n, JettyNode::Group(_)),
             )
             .into_iter()
-            .map(|idx| GroupIndex::new(idx))
+            .map(GroupIndex::new)
             .collect())
     }
 }

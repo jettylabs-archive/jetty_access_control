@@ -11,7 +11,7 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    access_graph::translate::diffs::LocalDiffs,
+    access_graph::translate::diffs::LocalConnectorDiffs,
     connectors::nodes::ConnectorData,
     jetty::{ConnectorConfig, ConnectorManifest, CredentialsMap},
 };
@@ -39,10 +39,10 @@ pub trait Connector {
     fn get_manifest(&self) -> ConnectorManifest;
     /// Plan changes, based on a set of diffs. Can have a todo!() implementation if a connector doesn't have
     /// write capabilities
-    fn plan_changes(&self, diffs: &LocalDiffs) -> Vec<String>;
+    fn plan_changes(&self, diffs: &LocalConnectorDiffs) -> Vec<String>;
     /// Apply changes, based on a set of diffs. Can have a todo!() implementation if a connector doesn't have
     /// write capabilities
-    async fn apply_changes(&self, diffs: &LocalDiffs) -> Result<String>;
+    async fn apply_changes(&self, diffs: &LocalConnectorDiffs) -> Result<String>;
 }
 
 /// The trait all connectors are expected to implement.

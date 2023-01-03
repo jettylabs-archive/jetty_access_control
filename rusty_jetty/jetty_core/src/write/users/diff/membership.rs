@@ -1,23 +1,21 @@
 //! Diff changes to group membership
 
 use std::{
-    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
-    fmt::Display,
+    collections::{BTreeSet, HashMap, HashSet},
     path::PathBuf,
 };
 
-use anyhow::{anyhow, bail, Result};
-use colored::Colorize;
+use anyhow::Result;
 
 use crate::{
-    access_graph::{graph::typed_indices::TypedIndex, JettyNode, NodeName, UserAttributes},
+    access_graph::{graph::typed_indices::TypedIndex, NodeName},
     jetty::ConnectorNamespace,
     write::{
-        new_groups::{
+        groups::{
             get_group_capable_connectors, get_group_to_nodename_map,
             parser::get_group_membership_map, GroupConfig,
         },
-        users::{parser::get_validated_file_config_map, UserYaml},
+        users::UserYaml,
         utils::diff_hashset,
     },
     Jetty,
@@ -31,8 +29,9 @@ pub struct MembershipDiff {
     pub(crate) details: MembershipDiffDetails,
 }
 
+/// Details of the changes in group membership for a user
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub(crate) struct MembershipDiffDetails {
+pub struct MembershipDiffDetails {
     /// The groups that exist in the config, not in the environment
     pub(crate) add: BTreeSet<NodeName>,
     /// The groups that exist in the environment, not in the config
@@ -48,7 +47,6 @@ pub fn get_membership_diffs(
     let env_state = get_membership_env_state(jetty)?;
     let config_state =
         get_membership_config_state(jetty, validated_user_config, validated_group_config)?;
-
     // we know that the env and config keys will match 1:1 - that's part of parser validation
     Ok(config_state
         .into_iter()
@@ -91,10 +89,10 @@ fn get_membership_config_state(
                 NodeName::User(user.name.to_owned()),
                 user.identifiers
                     .keys()
-                    .map(|conn| {
+                    .flat_map(|conn| {
                         user.groups
                             .iter()
-                            .map(|g| {
+                            .flat_map(|g| {
                                 handle_nested_groups(
                                     g,
                                     conn,
@@ -103,10 +101,8 @@ fn get_membership_config_state(
                                     jetty,
                                 )
                             })
-                            .flatten()
                             .collect::<HashSet<_>>()
                     })
-                    .flatten()
                     .collect(),
             )
         })
@@ -153,7 +149,7 @@ fn handle_nested_groups(
     };
     // does the connector support nested groups? If not, collect the upstream groups
     if supports_nested_groups(connector, jetty) {
-        return res;
+        res
     } else {
         for child in &membership_map[group_name] {
             res.extend(handle_nested_groups(

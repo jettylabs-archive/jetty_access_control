@@ -22,26 +22,6 @@ pub(crate) struct Lens {
     pub permissions: Vec<super::Permission>,
 }
 
-impl Lens {
-    pub(crate) fn new(
-        id: String,
-        name: String,
-        datasource_id: String,
-        project_id: ProjectId,
-        owner_id: String,
-        permissions: Vec<super::Permission>,
-    ) -> Self {
-        Self {
-            id,
-            name,
-            datasource_id,
-            project_id,
-            owner_id,
-            permissions,
-        }
-    }
-}
-
 /// Convert JSON to a Lens struct
 fn to_node(val: &serde_json::Value) -> Result<Lens> {
     #[derive(Deserialize)]

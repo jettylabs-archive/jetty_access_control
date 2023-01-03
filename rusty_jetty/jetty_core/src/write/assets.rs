@@ -21,7 +21,7 @@ use crate::{
         AccessGraph, AssetPath, DefaultPolicyAttributes, EdgeType, JettyNode, NodeName,
         PolicyAttributes,
     },
-    connectors::{AssetType, WriteCapabilities},
+    connectors::AssetType,
     jetty::ConnectorNamespace,
     logging::warn,
     project, Jetty,
@@ -32,21 +32,24 @@ use self::diff::{
     policies::{diff_policies, PolicyDiff},
 };
 
-use super::new_groups::{get_group_capable_connectors, get_group_to_nodename_map, GroupYaml};
+use super::groups::{get_group_capable_connectors, get_group_to_nodename_map, GroupYaml};
 
 pub(crate) use update::{remove_group_name, remove_user_name, update_group_name, update_user_name};
 
+/// Policy state
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
-pub(crate) struct PolicyState {
-    privileges: HashSet<String>,
-    metadata: HashMap<String, String>,
+pub struct PolicyState {
+    /// Included privileges
+    pub privileges: HashSet<String>,
+    /// Included metadata
+    pub metadata: HashMap<String, String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct DefaultPolicyState {
-    privileges: BTreeSet<String>,
-    metadata: HashMap<String, String>,
-    connector_managed: bool,
+    pub(crate) privileges: BTreeSet<String>,
+    pub(crate) metadata: HashMap<String, String>,
+    pub(crate) connector_managed: bool,
 }
 #[derive(Serialize, Deserialize, Debug, Default, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub(crate) struct YamlAssetDoc {
@@ -183,7 +186,7 @@ fn get_env_state(jetty: &Jetty) -> Result<CombinedPolicyState> {
                     acc.insert(
                         (asset.to_owned(), agent.to_owned()),
                         PolicyState {
-                            privileges: policy.privileges.to_owned().into_iter().collect(),
+                            privileges: policy.privileges.iter().cloned().collect(),
                             metadata: Default::default(),
                         },
                     );
@@ -215,7 +218,7 @@ fn get_env_state(jetty: &Jetty) -> Result<CombinedPolicyState> {
                             agent.to_owned(),
                         ),
                         DefaultPolicyState {
-                            privileges: policy.privileges.to_owned().into_iter().collect(),
+                            privileges: policy.privileges.iter().cloned().collect(),
                             metadata: policy.metadata.to_owned(),
                             // We're getting this from the graph - only connector-managed default policies appear in the graph
                             connector_managed: true,
@@ -346,6 +349,8 @@ impl CombinedPolicyState {
 
         // prioritize default policies
         let mut prioritized_policies = HashMap::new();
+
+        #[allow(clippy::unnecessary_to_owned)]
         for (k, v) in self.default_policies.to_owned() {
             let asset_path = match &k.0 {
                 NodeName::Asset { path, .. } => path,
@@ -362,7 +367,7 @@ impl CombinedPolicyState {
                         combined_state.insert(k.to_owned(), v.to_owned());
                     },
                 )
-                .or_insert(HashMap::from([(k.to_owned(), v.to_owned())]));
+                .or_insert_with(|| HashMap::from([(k.to_owned(), v.to_owned())]));
         }
 
         // This intermediate map holds all of the regular policies created by the default policies,
@@ -388,11 +393,7 @@ impl CombinedPolicyState {
                 })?;
 
                 let policy_state = PolicyState {
-                    privileges: default_policy_state
-                        .privileges
-                        .to_owned()
-                        .into_iter()
-                        .collect(),
+                    privileges: default_policy_state.privileges.iter().cloned().collect(),
                     // FUTURE: for now, just leaving this blank. I think we'll need a mechanism to specify policy-level metadata on a default policy
                     metadata: Default::default(),
                 };
@@ -415,12 +416,6 @@ impl CombinedPolicyState {
             }
         }
         Ok(intermediate_map)
-    }
-
-    /// merge a CombinedPolicyState struct into self, replacing entries if they exist
-    fn merge_replacing_if_exists(&mut self, other: CombinedPolicyState) {
-        self.policies.extend(other.policies);
-        self.default_policies.extend(other.default_policies);
     }
 
     /// merge a CombinedPolicyState struct into self, but if a key already exists, don't replace it

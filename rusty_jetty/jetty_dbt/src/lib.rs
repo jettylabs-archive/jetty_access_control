@@ -14,13 +14,13 @@ mod cual;
 mod manifest;
 
 use std::{
-    collections::{HashSet},
+    collections::HashSet,
     path::{Path, PathBuf},
 };
 
 use cual::set_cual_account_name;
 use jetty_core::{
-    access_graph::translate::diffs::LocalDiffs,
+    access_graph::translate::diffs::LocalConnectorDiffs,
     connectors::{
         self,
         nodes::{ConnectorData, RawAssetReference as JettyAssetReference},
@@ -115,11 +115,11 @@ impl Connector for DbtConnector {
         }
     }
 
-    fn plan_changes(&self, _: &LocalDiffs) -> Vec<String> {
+    fn plan_changes(&self, _: &LocalConnectorDiffs) -> Vec<String> {
         todo!()
     }
 
-    async fn apply_changes(&self, _: &LocalDiffs) -> Result<String> {
+    async fn apply_changes(&self, _: &LocalConnectorDiffs) -> Result<String> {
         todo!()
     }
 }

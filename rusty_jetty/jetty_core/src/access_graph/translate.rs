@@ -21,13 +21,14 @@ use crate::{
     cual::Cual,
     jetty::ConnectorNamespace,
     permissions::matrix::{DoubleInsert, InsertOrMerge},
-    write::{new_groups::parse_and_validate_groups, users},
+    write::{groups::parse_and_validate_groups, users},
     Jetty,
 };
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use bimap;
 use serde::{Deserialize, Serialize};
+use url::Url;
 
 /// Struct to translate local data to global data and back again
 /// Eventually, this will need to be persisted with the graph to enable the write path
@@ -84,9 +85,13 @@ impl Translator {
         let user_data: Vec<_> = data.iter().map(|(c, n)| (&c.users, n)).collect();
         // get all the users in the config
         // FUTURE: We end up parsing the group config too many times. Try to centralize this, perhaps as part of the Jetty struct
-        let validated_group_config = &parse_and_validate_groups(jetty)?;
         let user_config_id_map =
-            users::parser::get_validated_nodename_local_id_map(jetty, validated_group_config)?;
+            if let Ok(validated_group_config) = &parse_and_validate_groups(jetty) {
+                users::parser::get_validated_nodename_local_id_map(jetty, validated_group_config)?
+            } else {
+                Default::default()
+            };
+
         // for each connector, look over all the users.
         for (users, namespace) in user_data {
             for user in users {
@@ -183,10 +188,11 @@ impl Translator {
         &self,
         data: Vec<(ConnectorData, ConnectorNamespace)>,
     ) -> ProcessedConnectorData {
-        let mut result = ProcessedConnectorData::default();
-
-        result.effective_permissions =
-            self.translate_effective_permissions_axes_to_global_node_names(&data);
+        let mut result = ProcessedConnectorData {
+            effective_permissions: self
+                .translate_effective_permissions_axes_to_global_node_names(&data),
+            ..Default::default()
+        };
 
         for (cd, namespace) in data {
             // convert the users
@@ -468,7 +474,7 @@ impl Translator {
                 grantee: Box::new(grantee.to_owned()),
             },
             privileges: policy.privileges,
-            root_node: root_node,
+            root_node,
             matching_path: policy.wildcard_path,
             types,
             grantee,
@@ -519,6 +525,40 @@ impl Translator {
         })
     }
 
+    /// Convert a NodeName::Asset to cual
+    pub fn asset_name_to_cual(&self, asset_name: &NodeName) -> Result<Cual> {
+        match asset_name {
+            NodeName::Asset {
+                connector,
+                asset_type,
+                path,
+            } => {
+                let prefix = self
+                    .cual_prefix_to_namespace
+                    .get_by_right(connector)
+                    .context("unable to find cual prefix")?
+                    .to_owned()
+                    .unwrap_or_default();
+                let path = path
+                    .components()
+                    .iter()
+                    .map(|c| urlencoding::encode(c))
+                    .collect::<Vec<_>>()
+                    .join("/");
+
+                let mut uri = Url::parse(format!("{prefix}/{path}").as_str())?;
+                match asset_type {
+                    Some(asset_type) => {
+                        uri.set_query(Some(format!("type={}", asset_type.to_string()).as_str()))
+                    }
+                    None => (),
+                }
+                Ok(Cual::new(uri.as_str()))
+            }
+            _ => bail!("cannot convert non-asset to cual"),
+        }
+    }
+
     pub(crate) fn translate_node_name_to_local(
         &self,
         node_name: &NodeName,
@@ -550,9 +590,9 @@ impl Translator {
                 .global_to_local
                 .users
                 .get(connector)
-                .ok_or(anyhow!("unable to find connector for node translation"))?
+                .ok_or_else(|| anyhow!("unable to find connector for node translation"))?
                 .get(node_name)
-                .ok_or(anyhow!("unable to find username for collection"))?
+                .ok_or_else(|| anyhow!("unable to find username for connection"))?
                 .to_owned(),
             // There may be groups that don't exist yet, so we'll just use the group name without the origin
             NodeName::Group { name, .. } => name.to_owned(),
@@ -563,9 +603,9 @@ impl Translator {
                 .global_to_local
                 .policies
                 .get(connector)
-                .ok_or(anyhow!("unable to find connector for node translation"))?
+                .ok_or_else(|| anyhow!("unable to find connector for node translation"))?
                 .get(node_name)
-                .ok_or(anyhow!("unable to find username for collection"))?
+                .ok_or_else(|| anyhow!("unable to find username for collection"))?
                 .to_owned(),
             NodeName::Tag(t) => t.to_owned(),
             // Default policies don't have names
@@ -577,12 +617,11 @@ impl Translator {
         self.local_to_global
             .users
             .iter()
-            .map(|(connector, user_map)| {
+            .flat_map(|(connector, user_map)| {
                 user_map.iter().map(|(k, node_name)| {
                     ((connector.to_owned(), k.to_owned()), node_name.to_owned())
                 })
             })
-            .flatten()
             .collect()
     }
 
@@ -599,7 +638,7 @@ impl Translator {
             .global_to_local
             .users
             .get_mut(connector)
-            .ok_or(anyhow!("unable to find connector for user map update"))?;
+            .ok_or_else(|| anyhow!("unable to find connector for user map update"))?;
         global_to_local.remove(old_node);
         global_to_local.insert(new_node.to_owned(), local_name.to_owned());
 
@@ -607,28 +646,10 @@ impl Translator {
             .local_to_global
             .users
             .get_mut(connector)
-            .ok_or(anyhow!("unable to find connector for user map update"))?;
+            .ok_or_else(|| anyhow!("unable to find connector for user map update"))?;
         local_to_global.remove(local_name);
         local_to_global.insert(local_name.to_owned(), new_node.to_owned());
 
-        Ok(())
-    }
-
-    /// This will entirely remove a user from both the local and global translator mapping
-    pub(crate) fn remove_user_from_mapping(&mut self, node_name: &NodeName) -> Result<()> {
-        for (conn, map) in self.global_to_local.users.iter_mut() {
-            // get the connector and local name from here, use it to delete in the other map as well
-            match map.remove(node_name) {
-                Some(local_name) => {
-                    self.local_to_global
-                        .users
-                        .get_mut(conn)
-                        .unwrap()
-                        .remove(&local_name);
-                }
-                None => (),
-            };
-        }
         Ok(())
     }
 }

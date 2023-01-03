@@ -94,7 +94,7 @@ impl SnowflakeRestClient {
             .context("couldn't send request")?
             .error_for_status()?;
 
-        while &response.status() == &reqwest::StatusCode::ACCEPTED {
+        while response.status() == reqwest::StatusCode::ACCEPTED {
             thread::sleep(Duration::from_millis(1500));
             let statement_handle = response.json::<AcceptedResponse>().await?.statement_handle;
 

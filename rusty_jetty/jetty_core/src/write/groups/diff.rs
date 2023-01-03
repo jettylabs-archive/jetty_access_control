@@ -1,7 +1,7 @@
 //! Diffing of config vs env
 
 use std::{
-    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
+    collections::{BTreeSet, HashMap, HashSet},
     fmt::Display,
 };
 
@@ -9,8 +9,11 @@ use anyhow::Result;
 use colored::Colorize;
 
 use crate::{
-    access_graph::NodeName, connectors::WriteCapabilities, jetty::ConnectorNamespace,
-    write::utils::diff_hashset, Jetty,
+    access_graph::NodeName,
+    connectors::WriteCapabilities,
+    jetty::ConnectorNamespace,
+    write::{utils::diff_hashset, SplitByConnector},
+    Jetty,
 };
 
 use super::{bootstrap, get_group_to_nodename_map, GroupConfig};
@@ -24,6 +27,12 @@ pub struct Diff {
     pub details: DiffDetails,
     /// The connector the diff should be applied to
     pub connector: ConnectorNamespace,
+}
+
+impl SplitByConnector for Diff {
+    fn split_by_connector(&self) -> HashMap<ConnectorNamespace, Box<Self>> {
+        [(self.connector.to_owned(), Box::new(self.to_owned()))].into()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -52,7 +61,7 @@ impl Display for Diff {
             DiffDetails::AddGroup { member_of } => {
                 text += format!(
                     "{}",
-                    format!("+ group: {}\n", self.group_name.to_string()).green()
+                    format!("+ group: {}\n", self.group_name).green()
                 )
                 .as_str();
                 if !member_of.is_empty() {
@@ -60,13 +69,13 @@ impl Display for Diff {
                 };
                 for group in member_of {
                     text +=
-                        format!("{}", format!("    + {}\n", group.to_string()).green()).as_str();
+                        format!("{}", format!("    + {}\n", group).green()).as_str();
                 }
             }
             DiffDetails::RemoveGroup => {
                 text += format!(
                     "{}",
-                    format!("- group: {}\n", self.group_name.to_string()).red()
+                    format!("- group: {}\n", self.group_name).red()
                 )
                 .as_str();
             }
@@ -84,11 +93,11 @@ impl Display for Diff {
                     text += "  member of:\n"
                 };
                 for user in add_member_of {
-                    text += format!("{}", format!("    + {}\n", user.to_string()).green()).as_str();
+                    text += format!("{}", format!("    + {}\n", user).green()).as_str();
                 }
 
                 for user in remove_member_of {
-                    text += format!("{}", format!("    - {}\n", user.to_string()).red()).as_str();
+                    text += format!("{}", format!("    - {}\n", user).red()).as_str();
                 }
             }
         }
@@ -100,6 +109,7 @@ impl Display for Diff {
 pub fn generate_diffs(validated_config: &GroupConfig, jetty: &Jetty) -> Result<Vec<Diff>> {
     let mut env_state = bootstrap::get_env_membership_nodes(jetty)?;
     let config_state = get_config_state(validated_config, jetty);
+
     let mut res = Vec::new();
 
     // handle nodes in the config, but not in the env
@@ -110,7 +120,7 @@ pub fn generate_diffs(validated_config: &GroupConfig, jetty: &Jetty) -> Result<V
             panic!("expects a NodeName::Group")
         };
         // does this node exist in env? If so remove it. We'll deal with the leftovers later!
-        let details = match env_state.remove(&group) {
+        let details = match env_state.remove(group) {
             Some(env_member_of) => {
                 if config_member_of == &env_member_of {
                     // No change
@@ -118,7 +128,7 @@ pub fn generate_diffs(validated_config: &GroupConfig, jetty: &Jetty) -> Result<V
                 }
                 // Node exists, but there's been a change
                 else {
-                    diff_matching_groups(&config_member_of, &env_member_of)
+                    diff_matching_groups(config_member_of, &env_member_of)
                 }
             }
             None => DiffDetails::AddGroup {
@@ -168,7 +178,7 @@ fn get_config_state(
 
     validated_config
         .iter()
-        .map(|group| {
+        .flat_map(|group| {
             // for each connector-specific group
             group_map[&group.name]
                 .iter()
@@ -188,7 +198,6 @@ fn get_config_state(
                 })
                 .collect::<HashMap<_, _>>()
         })
-        .flatten()
         .collect()
 }
 

@@ -8,13 +8,15 @@ use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use futures::StreamExt;
 use futures::{join, Future};
+use jetty_core::cual::Cual;
 use jetty_core::logging::error;
 use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 
 use crate::file_parse::origin::SourceOrigin;
-use crate::nodes::{self, Permissionable, ProjectId};
+use crate::nodes::{self, Permissionable, ProjectId, TableauCualable};
 
-use crate::rest;
+use crate::rest::{self, TableauAssetType};
 use crate::TableauCredentials;
 
 /// Number of assets to download concurrently
@@ -26,6 +28,7 @@ const SERIALIZED_ENV_FILENAME: &str = "tableau_env.json";
 
 /// The state of a tableau site. We use this to persist state and
 /// enable incremental updates.
+#[serde_as]
 #[derive(Default, Deserialize, Serialize, Debug, Clone)]
 pub(crate) struct Environment {
     pub users: HashMap<String, nodes::User>,
@@ -37,6 +40,14 @@ pub(crate) struct Environment {
     pub metrics: HashMap<String, nodes::Metric>,
     pub views: HashMap<String, nodes::View>,
     pub workbooks: HashMap<String, nodes::Workbook>,
+    #[serde_as(as = "HashMap<serde_with::json::JsonString, _>")]
+    pub cual_id_map: HashMap<Cual, TableauAssetReference>,
+}
+
+#[derive(Hash, Default, Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+pub(crate) struct TableauAssetReference {
+    pub(crate) asset_type: TableauAssetType,
+    pub(crate) id: String,
 }
 
 impl Environment {
@@ -213,21 +224,25 @@ impl Coordinator {
                 error!("unable to fetch groups: {}", e);
                 Default::default()
             }),
+            // FUTURE: update all calls to create a cual to just use this. Probably easier to have it centralized
+            cual_id_map: Default::default(),
         };
 
-        // Now, make sure that assets sources are all up to date
+        // FUTURE: put this back in. Right now, we don't fetch the sources well, so we'll just skip it. This needs to be
+        // reworked to use the metadata api
+        // // Now, make sure that assets sources are all up to date
 
-        let source_futures = vec![
-            self.get_source_futures_from_map(&mut new_env.flows, &self.env.flows),
-            self.get_source_futures_from_map(&mut new_env.datasources, &self.env.datasources),
-            self.get_source_futures_from_map(&mut new_env.workbooks, &self.env.workbooks),
-        ];
+        // let source_futures = vec![
+        //     self.get_source_futures_from_map(&mut new_env.flows, &self.env.flows),
+        //     self.get_source_futures_from_map(&mut new_env.datasources, &self.env.datasources),
+        //     self.get_source_futures_from_map(&mut new_env.workbooks, &self.env.workbooks),
+        // ];
 
-        // Source fetches
-        futures::stream::iter(source_futures.into_iter().flatten())
-            .buffer_unordered(CONCURRENT_ASSET_DOWNLOADS)
-            .collect::<Vec<_>>()
-            .await;
+        // // Source fetches
+        // futures::stream::iter(source_futures.into_iter().flatten())
+        //     .buffer_unordered(CONCURRENT_ASSET_DOWNLOADS)
+        //     .collect::<Vec<_>>()
+        //     .await;
 
         // Clone the env so we don't try to both immutably and mutably borrow at the same time.
         let new_env_clone = new_env.clone();
@@ -280,6 +295,8 @@ impl Coordinator {
             Err(e) => error!("problem fetching tableau groups: {e}"),
         });
 
+        // update the cual map
+        build_cual_map(&mut new_env);
         // update self.env
         self.env = new_env;
 
@@ -310,6 +327,7 @@ impl Coordinator {
 
     /// Return a Vec of futures (sort of - look at return type) that will fetch futures from
     /// a map of assets
+    #[allow(clippy::type_complexity)]
     fn get_source_futures_from_map<'a, T: HasSources + Send + Sync>(
         &'a self,
         new_assets: &'a mut HashMap<String, T>,
@@ -331,6 +349,7 @@ impl Coordinator {
     }
 
     /// Return a Vec of futures that will request permissions for a collection of assets
+    #[allow(clippy::type_complexity)]
     fn get_permission_futures_from_map<'a, T: Permissionable + Send>(
         &'a self,
         new_assets: &'a mut HashMap<String, T>,
@@ -376,6 +395,72 @@ fn read_environment_assets(data_dir: PathBuf) -> Result<Environment> {
 
     // Return the `Environment`.
     Ok(e)
+}
+
+fn build_cual_map(env: &mut Environment) {
+    for (id, node) in &env.projects {
+        env.cual_id_map.insert(
+            node.cual(env),
+            TableauAssetReference {
+                asset_type: TableauAssetType::Project,
+                id: id.to_owned(),
+            },
+        );
+    }
+    for (id, node) in &env.datasources {
+        env.cual_id_map.insert(
+            node.cual(env),
+            TableauAssetReference {
+                asset_type: TableauAssetType::Datasource,
+                id: id.to_owned(),
+            },
+        );
+    }
+    for (id, node) in &env.flows {
+        env.cual_id_map.insert(
+            node.cual(env),
+            TableauAssetReference {
+                asset_type: TableauAssetType::Flow,
+                id: id.to_owned(),
+            },
+        );
+    }
+    for (id, node) in &env.lenses {
+        env.cual_id_map.insert(
+            node.cual(env),
+            TableauAssetReference {
+                asset_type: TableauAssetType::Lens,
+                id: id.to_owned(),
+            },
+        );
+    }
+    for (id, node) in &env.metrics {
+        env.cual_id_map.insert(
+            node.cual(env),
+            TableauAssetReference {
+                asset_type: TableauAssetType::Metric,
+                id: id.to_owned(),
+            },
+        );
+    }
+    for (id, node) in &env.views {
+        env.cual_id_map.insert(
+            node.cual(env),
+            TableauAssetReference {
+                asset_type: TableauAssetType::View,
+                id: id.to_owned(),
+            },
+        );
+    }
+    for (id, node) in &env.workbooks {
+        env.cual_id_map.insert(
+            node.cual(env),
+            TableauAssetReference {
+                asset_type: TableauAssetType::Workbook,
+                id: id.to_owned(),
+            },
+        );
+    }
 }
 
 #[cfg(test)]

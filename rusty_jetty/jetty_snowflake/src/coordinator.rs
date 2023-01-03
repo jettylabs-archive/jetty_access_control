@@ -462,10 +462,9 @@ fn add_non_default_policies(connector_data: &mut ConnectorData) {
                     .and_modify(|kids| {
                         kids.insert((c.cual.to_string(), c.asset_type.to_owned()));
                     })
-                    .or_insert(HashSet::from([(
-                        c.cual.to_string(),
-                        c.asset_type.to_owned(),
-                    )]));
+                    .or_insert_with(|| {
+                        HashSet::from([(c.cual.to_string(), c.asset_type.to_owned())])
+                    });
             }
 
             acc
@@ -558,7 +557,7 @@ mod tests {
 
     #[test]
     fn test_add_non_default_policies() -> Result<()> {
-        cual::set_cual_account_name("test");
+        cual::set_cual_account_name("account");
         let assets = [
             RawAsset {
                 cual: cual!("db"),

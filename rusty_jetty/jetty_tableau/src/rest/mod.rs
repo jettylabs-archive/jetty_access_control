@@ -17,6 +17,7 @@ use anyhow::{bail, Context};
 use async_trait::async_trait;
 use bytes::Bytes;
 
+use reqwest::Request;
 use serde::Serialize;
 
 pub(crate) trait Downloadable {
@@ -51,6 +52,13 @@ impl TableauRestClient {
         };
         tc.fetch_token_and_site_id().await?;
         Ok(tc)
+    }
+
+    pub(crate) async fn execute(
+        &self,
+        request: Request,
+    ) -> Result<reqwest::Response, reqwest::Error> {
+        self.http_client.execute(request).await
     }
 
     /// Download a Tableau asset. Most Workbooks and Datasources can have a query parameter to exclude
@@ -96,16 +104,6 @@ impl TableauRestClient {
             .as_ref()
             .ok_or_else(|| anyhow!["unable to find site_id"])?
             .to_owned())
-    }
-
-    /// Get api version from the TableauRestClient.
-    pub(crate) fn get_api_version(&self) -> String {
-        self.api_version.to_owned()
-    }
-
-    /// Get server name from the TableauRestClient.
-    pub(crate) fn get_server_name(&self) -> String {
-        self.credentials.server_name.to_owned()
     }
 
     /// Get authentication token from the TableauRestClient.

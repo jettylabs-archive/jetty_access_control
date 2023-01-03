@@ -62,7 +62,7 @@ pub(crate) const METRIC_CAPABILITIES: &[&str] = &[
 pub(crate) const PROJECT_CAPABILITIES: &[&str] = &[
     "Read",                   // View
     "Write",                  // Publish
-    "ProjectLeader",          // SPECIAL (not a real capability)
+    "ProjectLeader",          // Project Leader
     "InheritedProjectLeader", // SPECIAL (not a real capability)
 ];
 
@@ -237,11 +237,11 @@ impl<'a> AssetCapabilityMap<'a> {
         }
     }
 
-    pub(crate) fn get<'b>(
-        &'b self,
+    pub(crate) fn get(
+        &self,
         site_role: SiteRole,
         asset_type: TableauAssetType,
-    ) -> Option<&'b Vec<&'b str>> {
+    ) -> Option<&Vec<&str>> {
         self.map
             .get(&site_role)
             .and_then(|role_restrictions| role_restrictions.get(&asset_type))

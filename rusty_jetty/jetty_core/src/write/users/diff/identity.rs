@@ -1,19 +1,18 @@
 //! Diff changes to user identities
 
 use std::{
-    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
+    collections::{BTreeSet, HashMap, HashSet},
     fmt::Display,
-    path::PathBuf,
 };
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, Result};
 use colored::Colorize;
 
 use crate::{
     access_graph::{JettyNode, NodeName, UserAttributes},
     jetty::ConnectorNamespace,
     write::{
-        new_groups::GroupConfig, users::parser::get_validated_file_config_map, utils::diff_hashset,
+        groups::GroupConfig, users::parser::get_validated_file_config_map, utils::diff_hashset,
     },
     Jetty,
 };
@@ -31,21 +30,20 @@ impl Display for IdentityDiff {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut text = "".to_owned();
         match &self.details {
-            IdentityDiffDetails::AddUser { add } => {
+            IdentityDiffDetails::Add { add } => {
                 text +=
                     format!("{}{}\n", "+ user: ".green(), self.user.to_string().green()).as_str();
                 for (conn, local_name) in add {
                     text += format!("{}", format!("  + {conn}: {local_name}\n").green()).as_str();
                 }
             }
-            IdentityDiffDetails::RemoveUser { remove } => {
-                text +=
-                    format!("{}", format!("- user: {}\n", self.user.to_string()).red()).as_str();
+            IdentityDiffDetails::Remove { remove } => {
+                text += format!("{}", format!("- user: {}\n", self.user).red()).as_str();
                 for (conn, local_name) in remove {
                     text += &format!("{}", format!("  - {conn}: {local_name}\n").red());
                 }
             }
-            IdentityDiffDetails::ModifyUser { add, remove } => {
+            IdentityDiffDetails::Modify { add, remove } => {
                 text += format!(
                     "{}{}\n",
                     "~ user: ".yellow(),
@@ -66,13 +64,13 @@ impl Display for IdentityDiff {
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) enum IdentityDiffDetails {
-    AddUser {
+    Add {
         add: BTreeSet<(ConnectorNamespace, String)>,
     },
-    RemoveUser {
+    Remove {
         remove: BTreeSet<(ConnectorNamespace, String)>,
     },
-    ModifyUser {
+    Modify {
         add: BTreeSet<(ConnectorNamespace, String)>,
         remove: BTreeSet<(ConnectorNamespace, String)>,
     },
@@ -92,7 +90,7 @@ pub fn get_identity_diffs(
     // handle nodes in the config, but not in the env
     for (config_node, config_identities) in &config_identity_state {
         // does this node exist in env? If so remove it. We'll deal with the leftovers later!
-        let details = match env_identity_state.remove(&config_node) {
+        let details = match env_identity_state.remove(config_node) {
             Some(env_identities) => {
                 if &env_identities == config_identities {
                     // No change
@@ -103,7 +101,8 @@ pub fn get_identity_diffs(
                     get_connector_name_changes(config_identities, &env_identities)
                 }
             }
-            None => IdentityDiffDetails::AddUser {
+            None => IdentityDiffDetails::Add {
+                #[allow(clippy::unnecessary_to_owned)]
                 add: config_identities.to_owned().into_iter().collect(),
             },
         };
@@ -117,7 +116,7 @@ pub fn get_identity_diffs(
     for (env_node, env_identities) in env_identity_state {
         res.insert(IdentityDiff {
             user: env_node,
-            details: IdentityDiffDetails::RemoveUser {
+            details: IdentityDiffDetails::Remove {
                 remove: env_identities.into_iter().collect(),
             },
         });
@@ -132,11 +131,15 @@ fn get_connector_name_changes(
     env: &HashMap<ConnectorNamespace, String>,
 ) -> IdentityDiffDetails {
     // turn them into sets so that they're easier to compare
+
+    #[allow(clippy::unnecessary_to_owned)]
     let config_set: HashSet<_> = config.to_owned().into_iter().collect();
+
+    #[allow(clippy::unnecessary_to_owned)]
     let env_set: HashSet<_> = env.to_owned().into_iter().collect();
     let (add, remove) = diff_hashset(&config_set, &env_set);
 
-    IdentityDiffDetails::ModifyUser {
+    IdentityDiffDetails::Modify {
         add: add.collect(),
         remove: remove.collect(),
     }
@@ -177,7 +180,7 @@ fn get_identity_env_state(
                 .and_modify(|entry: &mut HashMap<ConnectorNamespace, String>| {
                     entry.insert(conn.to_owned(), local_name.to_owned());
                 })
-                .or_insert(HashMap::from([(conn.to_owned(), local_name.to_owned())]));
+                .or_insert_with(|| HashMap::from([(conn.to_owned(), local_name.to_owned())]));
             acc
         },
     );
@@ -196,15 +199,15 @@ pub fn update_graph(jetty: &mut Jetty, diffs: &HashSet<IdentityDiff>) -> Result<
     // create new users as needed
     for diff in diffs {
         match &diff.details {
-            IdentityDiffDetails::AddUser { add } => {
+            IdentityDiffDetails::Add { add } => {
                 to.extend(add.iter().map(|d| (d.to_owned(), diff.user.to_owned())));
                 add_list.insert(diff.user.to_owned());
             }
-            IdentityDiffDetails::RemoveUser { remove } => {
+            IdentityDiffDetails::Remove { remove } => {
                 from.extend(remove.iter().map(|d| (d.to_owned(), diff.user.to_owned())));
                 remove_list.insert(diff.user.to_owned());
             }
-            IdentityDiffDetails::ModifyUser { add, remove } => {
+            IdentityDiffDetails::Modify { add, remove } => {
                 from.extend(remove.iter().map(|d| (d.to_owned(), diff.user.to_owned())));
                 to.extend(add.iter().map(|d| (d.to_owned(), diff.user.to_owned())));
             }
@@ -226,9 +229,9 @@ pub fn update_graph(jetty: &mut Jetty, diffs: &HashSet<IdentityDiff>) -> Result<
     // remove the nodes we don't need anymore
     let ag = jetty.try_access_graph_mut()?;
     for node_name in remove_list {
-        let idx = ag.get_untyped_index_from_name(&node_name).ok_or(anyhow!(
-            "unable to remove user {node_name}: couldn't find node index"
-        ))?;
+        let idx = ag.get_untyped_index_from_name(&node_name).ok_or_else(|| {
+            anyhow!("unable to remove user {node_name}: couldn't find node index")
+        })?;
         ag.graph.remove_node(idx)?;
     }
 
@@ -266,12 +269,12 @@ fn update_access_graph_edges(
         let conn = &key.0.to_owned();
         let new_node_idx = ag
             .get_untyped_index_from_name(new_node)
-            .ok_or(anyhow!("unable to find source node"))?;
+            .ok_or_else(|| anyhow!("unable to find source node"))?;
 
-        if let Some(old_node) = from.get(&key) {
+        if let Some(old_node) = from.get(key) {
             let old_node_idx = ag
                 .get_untyped_index_from_name(old_node)
-                .ok_or(anyhow!("unable to find original node"))?;
+                .ok_or_else(|| anyhow!("unable to find original node"))?;
             // redirect the edges
             plans.extend(ag.graph.plan_conditional_redirect_edges_from_node(
                 old_node_idx,
@@ -285,13 +288,13 @@ fn update_access_graph_edges(
                 .and_modify(|c: &mut HashSet<ConnectorNamespace>| {
                     c.insert(conn.to_owned());
                 })
-                .or_insert(HashSet::from([(conn.to_owned())]));
+                .or_insert_with(|| HashSet::from([(conn.to_owned())]));
             connector_removals
                 .entry(old_node_idx)
                 .and_modify(|c: &mut HashSet<ConnectorNamespace>| {
                     c.insert(conn.to_owned());
                 })
-                .or_insert(HashSet::from([(conn.to_owned())]));
+                .or_insert_with(|| HashSet::from([(conn.to_owned())]));
         } else {
             panic!("unable to find origin for user identifier")
         }
@@ -329,7 +332,7 @@ fn modify_translator_mapping(
         let conn = &key.0.to_owned();
         let local_name = &key.1.to_owned();
 
-        if let Some(old_node) = from.get(&key) {
+        if let Some(old_node) = from.get(key) {
             ag.translator_mut()
                 .modify_user_mapping(conn, local_name, old_node, new_node)?;
         } else {

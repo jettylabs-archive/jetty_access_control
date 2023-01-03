@@ -7,30 +7,19 @@ use std::{
 };
 
 use anyhow::{anyhow, Context, Result};
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
 use crate::{
     access_graph::{
         graph::typed_indices::{TypedIndex, UserIndex},
-        AccessGraph, NodeName, UserAttributes,
+        NodeName,
     },
     jetty::ConnectorNamespace,
     project,
-    write::{
-        new_groups::{parse_and_validate_groups, GroupConfig},
-        utils::clean_string_for_path,
-    },
+    write::{groups::parse_and_validate_groups, utils::clean_string_for_path},
     Jetty,
 };
 
-use super::{
-    parser::{
-        get_nodename_local_id_map, get_validated_file_config_map,
-        get_validated_nodename_local_id_map,
-    },
-    UserYaml,
-};
+use super::{parser::get_validated_file_config_map, UserYaml};
 
 impl Jetty {
     /// Get all the users from the access graph and convert them into a map of path to file and yaml config
@@ -96,18 +85,19 @@ pub fn update_user_files(jetty: &Jetty) -> Result<()> {
     let validated_group_config = &parse_and_validate_groups(jetty)?;
     let configs = get_validated_file_config_map(jetty, validated_group_config)?;
 
+    #[allow(clippy::unnecessary_to_owned)]
     let configs_local_name_map = configs
         .to_owned()
         .into_iter()
-        .map(|(path, user)| {
+        .flat_map(|(path, user)| {
             user.identifiers
                 .into_iter()
                 .map(|(connector, id)| ((connector, id), path.to_owned()))
                 .collect::<Vec<_>>()
         })
-        .flatten()
         .collect::<HashMap<(ConnectorNamespace, String), PathBuf>>();
 
+    #[allow(clippy::unnecessary_to_owned)]
     let mut configs_node_name_map: HashMap<_, _> = configs
         .to_owned()
         .into_iter()
@@ -127,14 +117,15 @@ pub fn update_user_files(jetty: &Jetty) -> Result<()> {
         .difference(&config_user_set)
         .collect::<HashSet<_>>();
 
-    // if a user is missing, get it's node_name from the translator. If that name exists in the config, add this identifer. If it doesn't, write a new file
+    // if a user is missing, get it's node_name from the translator. If that name exists in the config, add this identifer.
+    // If it doesn't, write a new file
 
     let mut write_list: HashSet<NodeName> = HashSet::new();
     let mut delete_list: HashSet<NodeName> = HashSet::new();
     for (conn, local_user) in missing_users {
         let node_name = translator_users[&(conn.to_owned(), local_user.to_owned())].to_owned();
         // if the node exists, update it
-        if let Some((path, user_yaml)) = configs_node_name_map.get_mut(&node_name) {
+        if let Some((_path, user_yaml)) = configs_node_name_map.get_mut(&node_name) {
             user_yaml
                 .identifiers
                 .insert(conn.to_owned(), local_user.to_owned());
@@ -144,7 +135,7 @@ pub fn update_user_files(jetty: &Jetty) -> Result<()> {
         else {
             let idx = ag
                 .get_user_index_from_name(&node_name)
-                .ok_or(anyhow!("unable to find referenced user"))?;
+                .ok_or_else(|| anyhow!("unable to find referenced user"))?;
             let user_yaml = user_yaml_from_idx(jetty, idx)?;
             configs_node_name_map.insert(
                 node_name.to_owned(),
@@ -192,7 +183,7 @@ pub fn update_user_files(jetty: &Jetty) -> Result<()> {
 
     // delete files in the delete list
     for node_name in delete_list {
-        let (path, user) = configs_node_name_map[&node_name].to_owned();
+        let (path, _user) = configs_node_name_map[&node_name].to_owned();
 
         fs::remove_file(path).context("removing nonexistent user from config")?;
     }

@@ -37,7 +37,6 @@ impl_to_origins!(SnowflakeTable, SnowflakeQuery);
 
 /// Gets cuals from an xml file by parsing the file, pulling out the relevant relations,
 /// and building an identifier from it.
-#[allow(unused)]
 pub(crate) fn parse(data: &str) -> Result<HashSet<SourceOrigin>> {
     let doc = roxmltree::Document::parse(data).unwrap();
 
@@ -62,7 +61,7 @@ pub(crate) fn parse(data: &str) -> Result<HashSet<SourceOrigin>> {
 
     for r in relations {
         let c = r.to_origins().unwrap_or_else(|e| {
-            error!("unable to create source origin from {:#?}", r);
+            error!("unable to create source origin from {r:#?}: {e}");
             vec![]
         });
 

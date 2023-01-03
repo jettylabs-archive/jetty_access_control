@@ -79,28 +79,6 @@ impl ToString for ContentPermissions {
 }
 
 impl Project {
-    pub(crate) fn new(
-        id: ProjectId,
-        name: String,
-        owner_id: String,
-        parent_project_id: Option<ProjectId>,
-        controlling_permissions_project_id: Option<ProjectId>,
-        permissions: Vec<Permission>,
-        default_permissions: HashMap<String, Vec<Permission>>,
-        content_permissions: ContentPermissions,
-    ) -> Self {
-        Self {
-            id,
-            name,
-            owner_id,
-            parent_project_id,
-            controlling_permissions_project_id,
-            permissions,
-            content_permissions,
-            default_permissions,
-        }
-    }
-
     /// Determine whether the given user is the project leader.
     pub(crate) fn is_leader(&self, user: &super::User) -> bool {
         self.permissions.iter().any(|p| {
@@ -159,7 +137,7 @@ impl Project {
                     "view".to_owned(),
                     final_permissions
                         .iter()
-                        .map(|p| convert_workbook_permission_to_view_permissions(p))
+                        .map(convert_workbook_permission_to_view_permissions)
                         .collect(),
                 );
             }
@@ -184,6 +162,8 @@ impl Project {
         .expect("Generating cual from project");
 
         for (asset_type, permissions) in &self.default_permissions {
+            let target_asset_type = AssetType(asset_type.to_owned());
+
             for permission in permissions {
                 // get the raw policy
                 let raw: jetty_nodes::RawPolicy = permission.to_owned().into();
@@ -202,13 +182,17 @@ impl Project {
                         privileges: raw.privileges.to_owned(),
                         root_asset: root_cual.to_owned(),
                         wildcard_path: "/**".to_owned(),
-                        target_types: [AssetType(asset_type.to_owned())].into(),
+                        target_types: [target_asset_type.to_owned()].into(),
                         grantee,
-                        metadata: [(
-                            "Tableau Content Permissions".to_owned(),
-                            self.content_permissions.to_string(),
-                        )]
-                        .into(),
+                        /// Content permissions are controlled only at the project level
+                        metadata: if asset_type == "project" {
+                            HashMap::from([(
+                                "Tableau Content Permissions".to_owned(),
+                                self.content_permissions.to_string(),
+                            )])
+                        } else {
+                            HashMap::new()
+                        },
                     });
                 }
             }
@@ -227,7 +211,8 @@ fn to_node(val: &serde_json::Value) -> Result<super::Project> {
         owner: super::IdField,
         parent_project_id: Option<String>,
         controlling_permissions_project_id: Option<String>,
-        updated_at: String,
+        #[serde(rename = "updatedAt")]
+        _updated_at: String,
         content_permissions: ContentPermissions,
     }
 
@@ -375,5 +360,35 @@ fn convert_workbook_permission_to_view_permissions(permission: &Permission) -> P
     Permission {
         grantee: permission.grantee.to_owned(),
         capabilities: new_capabilities,
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    impl Project {
+        #[allow(clippy::too_many_arguments)]
+        pub(crate) fn new(
+            id: ProjectId,
+            name: String,
+            owner_id: String,
+            parent_project_id: Option<ProjectId>,
+            controlling_permissions_project_id: Option<ProjectId>,
+            permissions: Vec<Permission>,
+            default_permissions: HashMap<String, Vec<Permission>>,
+            content_permissions: ContentPermissions,
+        ) -> Self {
+            Self {
+                id,
+                name,
+                owner_id,
+                parent_project_id,
+                controlling_permissions_project_id,
+                permissions,
+                content_permissions,
+                default_permissions,
+            }
+        }
     }
 }

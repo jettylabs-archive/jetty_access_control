@@ -226,7 +226,7 @@ pub(crate) trait TableauCualable {
 macro_rules! impl_Cualable {
     (for $($t:tt),+) => {
         $(impl TableauCualable for $t {
-            fn cual(&self, env:&Environment) -> Cual{
+            fn cual(&self, env: &Environment) -> Cual{
                     get_tableau_cual(
                         TableauAssetType::$t,
                         &self.name,
@@ -292,6 +292,47 @@ struct IdField {
     id: String,
 }
 
+pub(crate) struct IndividualPermission {
+    pub(crate) capability: String,
+    pub(crate) mode: TableauPermissionMode,
+}
+
+#[derive(Debug)]
+pub(crate) enum TableauPermissionMode {
+    Allow,
+    Deny,
+    Other,
+}
+
+impl ToString for TableauPermissionMode {
+    fn to_string(&self) -> String {
+        match self {
+            TableauPermissionMode::Allow => "Allow".to_owned(),
+            TableauPermissionMode::Deny => "Deny".to_owned(),
+            TableauPermissionMode::Other => "Other".to_owned(),
+        }
+    }
+}
+
+impl IndividualPermission {
+    pub(crate) fn from_string(val: &String) -> Self {
+        let mode = if val.starts_with("Allow") {
+            TableauPermissionMode::Allow
+        } else if val.starts_with("Deny") {
+            TableauPermissionMode::Deny
+        } else {
+            TableauPermissionMode::Other
+        };
+
+        let capability = val.strip_prefix("Deny").unwrap_or(val);
+        let capability = capability
+            .strip_prefix("Allow")
+            .unwrap_or(capability)
+            .to_owned();
+        IndividualPermission { capability, mode }
+    }
+}
+
 /// Representation of Tableau permissions
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub(crate) struct Permission {
@@ -333,7 +374,13 @@ impl From<Permission> for jetty_nodes::RawPolicy {
             Uuid::new_v4().to_string(),
             val.capabilities
                 .into_iter()
-                .map(|(capability, mode)| format!("{mode}{capability}"))
+                .filter_map(|(capability, mode)| {
+                    if &capability == "InheritedProjectLeader" {
+                        None
+                    } else {
+                        Some(format!("{mode}{capability}"))
+                    }
+                })
                 .collect(),
             // Handled by the caller.
             HashSet::new(),

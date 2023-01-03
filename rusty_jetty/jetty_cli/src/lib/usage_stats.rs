@@ -165,9 +165,9 @@ pub enum UsageEvent {
     /// No args
     #[serde(rename = "invoked_default")]
     InvokedDefault,
-    /// `jetty init`
-    #[serde(rename = "invoked_init")]
-    InvokedInit,
+    /// `jetty new`
+    #[serde(rename = "invoked_new")]
+    InvokedNew,
     /// `jetty add`
     #[serde(rename = "invoked_add")]
     InvokedAdd,
@@ -182,7 +182,7 @@ pub enum UsageEvent {
     InvokedHelp,
     /// Program panicked during execution.
     #[serde(rename = "panicked")]
-    InvokedPanic,
+    Panic,
     /// `jetty bootstrap`
     #[serde(rename = "invoked_bootstrap")]
     InvokedBootstrap { no_fetch: bool, overwrite: bool },

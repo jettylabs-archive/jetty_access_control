@@ -1,18 +1,16 @@
 //! functionality to update the config, when necessary
 
-use std::fs;
-
 use anyhow::Result;
 
 use crate::{
-    write::{new_groups, UpdateConfig},
+    write::{groups, UpdateConfig},
     Jetty,
 };
 
 use super::write_env_config;
 
-pub(crate) fn update_user_name(jetty: &Jetty, old: &String, new: &str) -> Result<()> {
-    let mut config: Vec<_> = new_groups::parse_and_validate_groups(&jetty)?
+pub(crate) fn update_user_name(jetty: &Jetty, old: &str, new: &str) -> Result<()> {
+    let mut config: Vec<_> = groups::parse_and_validate_groups(jetty)?
         .into_iter()
         .collect();
     let mut modified = false;
@@ -26,8 +24,8 @@ pub(crate) fn update_user_name(jetty: &Jetty, old: &String, new: &str) -> Result
     };
     Ok(())
 }
-pub(crate) fn remove_user_name(jetty: &Jetty, name: &String) -> Result<()> {
-    let mut config: Vec<_> = new_groups::parse_and_validate_groups(&jetty)?
+pub(crate) fn remove_user_name(jetty: &Jetty, name: &str) -> Result<()> {
+    let mut config: Vec<_> = groups::parse_and_validate_groups(jetty)?
         .into_iter()
         .collect();
     let mut modified = false;
@@ -42,8 +40,8 @@ pub(crate) fn remove_user_name(jetty: &Jetty, name: &String) -> Result<()> {
     Ok(())
 }
 
-pub(crate) fn update_group_name(jetty: &Jetty, old: &String, new: &str) -> Result<()> {
-    let mut config: Vec<_> = new_groups::parse_and_validate_groups(&jetty)?
+pub(crate) fn update_group_name(jetty: &Jetty, old: &str, new: &str) -> Result<()> {
+    let mut config: Vec<_> = groups::parse_and_validate_groups(jetty)?
         .into_iter()
         .collect();
     let mut modified = false;
@@ -58,16 +56,14 @@ pub(crate) fn update_group_name(jetty: &Jetty, old: &String, new: &str) -> Resul
     Ok(())
 }
 
-pub(crate) fn remove_group_name(jetty: &Jetty, name: &String) -> Result<()> {
-    let mut config: Vec<_> = new_groups::parse_and_validate_groups(&jetty)?
-        .into_iter()
-        .collect();
+pub(crate) fn remove_group_name(jetty: &Jetty, name: &str) -> Result<()> {
+    let config = groups::parse_and_validate_groups(jetty)?.into_iter();
     let mut modified1 = false;
     let mut modified2 = false;
     let updated_config = config
         .into_iter()
         .filter(|g| {
-            if &g.name != name {
+            if g.name != name {
                 true
             } else {
                 modified2 = true;

@@ -25,9 +25,9 @@ pub(crate) fn clean_string_for_path(val: String) -> String {
 }
 
 /// Turn a Vec<String> of errors into a single formatted string
-pub(crate) fn error_vec_to_string(errors: &Vec<String>) -> String {
+pub(crate) fn error_vec_to_string(errors: &[String]) -> String {
     errors
-        .into_iter()
+        .iter()
         .map(|e| format!("{}", format!(" - {e}").as_str().red()))
         .collect::<Vec<_>>()
         .join("\n")
@@ -35,6 +35,7 @@ pub(crate) fn error_vec_to_string(errors: &Vec<String>) -> String {
 
 /// Take config and environment sets and return what elements need to be added to the environment
 /// and what elements need to be removed
+#[allow(clippy::type_complexity)]
 pub(crate) fn diff_hashset<'a, T>(
     config: &'a HashSet<T>,
     env: &'a HashSet<T>,

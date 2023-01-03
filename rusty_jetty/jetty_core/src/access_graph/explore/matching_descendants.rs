@@ -58,6 +58,7 @@ impl AccessGraph {
 
     /// Start with a node, then get all of its children. If they're the target type, add them to the result.
     /// If not the target, keep going.
+    #[allow(clippy::too_many_arguments)]
     fn get_matching_descendants_recursive<X: FnOnce(&JettyNode) -> bool + Copy>(
         &self,
         idx: NodeIndex,
