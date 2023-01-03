@@ -71,15 +71,14 @@ pub async fn new(
 
 /// Create a new gite repository, renaming the master branch to main
 fn create_git_repo<P: AsRef<Path>>(project_path: P) -> Result<()> {
-    match git2::Repository::init(project_path) {
-        Ok(r) => {
-            r.find_branch("master", git2::BranchType::Local)
-                .context("renaming main branch")?
-                .rename("main", true)
-                .context("renaming main branch")?;
-            Ok(())
-        }
-        Err(_) => bail!("Unable to create git repository for project"),
+    if git2::Repository::init(&project_path).is_ok() {
+        let git_head_path = PathBuf::from(project_path.as_ref()).join(".git/head");
+        std::fs::write(git_head_path, "ref: refs/heads/main")
+            .context("updating name of branch to main")?;
+
+        Ok(())
+    } else {
+        bail!("Unable to create git repository for project")
     }
 }
 
