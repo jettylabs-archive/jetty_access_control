@@ -143,8 +143,8 @@ impl TableauConnector {
         let status = res.status();
         if status.is_client_error() || status.is_server_error() {
             let url = res.url().to_owned();
-            let error_detail = if let Some(deets) = get_error_details_from_response(res).await {
-                format!(": {deets}")
+            let error_detail = if let Some(details) = get_error_details_from_response(res).await {
+                format!(": {details}")
             } else {
                 String::new()
             };
