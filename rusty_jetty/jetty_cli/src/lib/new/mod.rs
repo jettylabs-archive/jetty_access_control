@@ -50,7 +50,7 @@ pub async fn new(
     project_name: &Option<String>,
 ) -> Result<()> {
     let (jetty_config, credentials) = if let Some(from_config) = from {
-        // This is a shortcut for debugging and reinitialization with an existing config.
+        // This is a shortcut for debugging and re-initialization with an existing config.
         let jt = JettyConfig::read_from_file(from_config)?;
         let credentials = fetch_credentials(project::connector_cfg_path())?;
         (jt, credentials)
@@ -65,7 +65,7 @@ pub async fn new(
     initialize_project_structure(ProjectStructure::new(&jetty_config, credentials)).await?;
 
     // create a new repository in the directory specified by the project name
-    create_git_repo(jetty_config.get_name());
+    create_git_repo(jetty_config.get_name())?;
     Ok(())
 }
 
