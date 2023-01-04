@@ -39,7 +39,9 @@ time = "0.3.17"
 reqwest = "0.11.13"
 textwrap = "0.16.0"
 indicatif = "0.17.2"
-git2 = { version = "0.15.0", features = ["zlib-ng-compat"] }
+git2 = { version = "0.15.0", features = [
+    "zlib-ng-compat",
+], default-features = false }
 
 
 [target.'cfg(linux)'.dependencies]
