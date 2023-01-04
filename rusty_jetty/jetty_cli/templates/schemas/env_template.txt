@@ -1,0 +1,112 @@
+\{
+    "$id": ".schemas/env_enums.json",
+    "type": "object",
+    "properties": \{
+        "connectors": \{
+            "type": "string",
+            "enum": [{{for v in connectors}}"{v}"{{ if @last }}{{else}},{{ endif }}{{endfor}}]
+        },
+        "users": \{
+            "type": "string",
+            "enum": ["isaac", "chi lang"]
+        },
+        "groups": \{
+            "type": "string",
+            "enum": ["group1", "group2"]
+        },
+        "policy_matcher": \{
+            "allOf": [
+                {{- for combo in datas -}}
+                \{
+                    "if": \{
+                        "properties": \{
+                            "identifier": \{
+                                "properties": \{
+                                    "connector": \{ "const": "{combo.0}" },
+                                    "asset_type": \{ "const": "{combo.1}" }
+                                },
+                                "required": ["connector", "asset_type"]
+                            }
+                        },
+                        "required": ["identifier"]
+                    },
+                    "then": \{
+                        "properties": \{
+                            "policies": \{
+                                "items": \{
+                                    "properties": \{
+                                        "privileges": \{
+                                            "anyOf": [
+                                                \{
+                                                    "type": "array",
+                                                    "items": \{
+                                                        "type": "string",
+                                                        "enum": [{{for p in combo.2}}"{p}"{{ if @last }}{{ else }},{{ endif }}{{endfor}}]
+                                                    }
+                                                },
+                                                \{ "type": "null" }
+                                            ]
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }{{ if @last }}{{ else }},{{ endif }}
+                {{- endfor }}
+            ]
+        },
+        "default_policy_matcher": \{
+            "allOf": [
+            {{- for combo in datas -}}
+                \{
+                    "if": \{
+                        "properties": \{
+                            "identifier": \{
+                                "properties": \{
+                                    "connector": \{ "const": "{combo.0}" }
+                                },
+                                "required": ["connector"]
+                            },
+                            "default policies": \{
+                                "items": \{
+                                    "type": "object",
+                                    "properties": \{
+                                        "asset_type": \{
+                                            "const": "{combo.1}"
+                                        }
+                                    },
+                                    "required": ["asset_type"]
+                                }
+                            }
+                        },
+                        "required": ["identifier", "default policies"]
+                    },
+                    "then": \{
+                        "properties": \{
+                            "default policies": \{
+                                "items": \{
+                                    "properties": \{
+                                        "privileges": \{
+                                            "anyOf": [
+                                                \{
+                                                    "type": "array",
+                                                    "items": \{
+                                                        "type": "string",
+                                                        "enum": [{{for p in combo.2}}"{p}"{{ if @last }}{{ else }},{{ endif }}{{endfor}}]
+                                                    }
+                                                },
+                                                \{ "type": "null" }
+                                            ]
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }{{ if @last }}{{ else }},{{ endif }}
+                {{- endfor }}
+            ]
+        }
+    }
+}
