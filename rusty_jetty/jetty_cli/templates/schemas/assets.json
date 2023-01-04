@@ -1,0 +1,117 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": ".schemas/assets.json",
+    "type": "object",
+    "required": ["identifier"],
+    "additionalProperties": false,
+    "properties": {
+        "identifier": {
+            "$ref": "#/$defs/identifier"
+        },
+        "policies": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/policy" }
+        },
+        "default policies": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/default_policy" }
+        }
+    },
+
+    "$defs": {
+        "identifier": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "name": { "type": "string" },
+                "asset_type": { "type": "string" },
+                "connector": {
+                    "$ref": "env_enums.json#/properties/connectors"
+                }
+            },
+            "required": ["name", "asset_type", "connector"]
+        },
+
+        "policy": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "privileges": {
+                    "anyOf": [
+                        {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        { "type": "null" }
+                    ]
+                },
+                "groups": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "env_enums.json#/properties/groups"
+                    }
+                },
+                "users": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "env_enums.json#/properties/users"
+                    }
+                },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": { "type": "string" }
+                }
+            },
+            "anyOf": [{ "required": ["groups"] }, { "required": ["users"] }]
+        },
+
+        "default_policy": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "privileges": {
+                    "anyOf": [
+                        {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        { "type": "null" }
+                    ]
+                },
+                "path": {
+                    "type": "string",
+                    "pattern": "^(?:\\/)?(?:\\*)(?:\\/\\*)*?(?:\\/\\*\\*)?(?:\\/)?$"
+                },
+                "asset_type": {
+                    "type": "string"
+                },
+                "groups": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "env_enums.json#/properties/groups"
+                    }
+                },
+                "users": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "env_enums.json#/properties/users"
+                    }
+                },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": { "type": "string" }
+                },
+                "connector_managed": {
+                    "type": "bool"
+                }
+            },
+            "required": ["path", "asset_type"],
+            "anyOf": [{ "required": ["groups"] }, { "required": ["users"] }]
+        }
+    },
+    "allOf": [{ "$ref": "env_enums.json#/properties/if_test" }]
+}

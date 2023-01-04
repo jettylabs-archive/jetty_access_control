@@ -1,0 +1,172 @@
+{
+    "$id": ".schemas/env_enums.json",
+    "type": "object",
+    "properties": {
+        "connectors": {
+            "type": "string",
+            "enum": ["bob", "sally"]
+        },
+        "users": {
+            "type": "string",
+            "enum": ["isaac", "chi lang"]
+        },
+        "groups": {
+            "type": "string",
+            "enum": ["group1", "group2"]
+        },
+        "if_test": {
+            "allOf": [
+                {
+                    "if": {
+                        "properties": {
+                            "identifier": {
+                                "properties": {
+                                    "connector": { "const": "sally" },
+                                    "assset_type": { "const": "db" }
+                                },
+                                "required": ["connector", "asset_type"]
+                            }
+                        },
+                        "required": ["identifier"]
+                    },
+                    "then": {
+                        "properties": {
+                            "policies": {
+                                "items": {
+                                    "properties": {
+                                        "privileges": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string",
+                                                        "enum": ["sally"]
+                                                    }
+                                                },
+                                                { "type": "null" }
+                                            ]
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "identifier": {
+                                "properties": {
+                                    "connector": { "const": "bob" }
+                                },
+                                "required": ["connector"]
+                            }
+                        },
+                        "required": ["identifier"]
+                    },
+                    "then": {
+                        "properties": {
+                            "policies": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "privileges": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string",
+                                                "enum": ["bob"]
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            ]
+        }
+    },
+    "if_test2": {
+        "allOf": [
+            {
+                "if": {
+                    "properties": {
+                        "identifier": {
+                            "properties": {
+                                "connector": { "const": "sally" }
+                            },
+                            "required": ["connector"]
+                        },
+                        "default policies": {
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "asset_type": {
+                                        "const": "db"
+                                    }
+                                },
+                                "required": ["asset_type"]
+                            }
+                        }
+                    },
+                    "required": ["identifier", "default policies"]
+                },
+                "then": {
+                    "properties": {
+                        "default policies": {
+                            "items": {
+                                "properties": {
+                                    "privileges": {
+                                        "anyOf": [
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string",
+                                                    "enum": ["sally"]
+                                                }
+                                            },
+                                            { "type": "null" }
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            {
+                "if": {
+                    "properties": {
+                        "identifier": {
+                            "properties": {
+                                "connector": { "const": "bob" }
+                            },
+                            "required": ["connector"]
+                        }
+                    },
+                    "required": ["identifier"]
+                },
+                "then": {
+                    "properties": {
+                        "policies": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "privileges": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string",
+                                            "enum": ["bob"]
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        ]
+    }
+}

@@ -1,0 +1,27 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": ".schemas/groups.json",
+    "type": "array",
+    "items": {
+        "type": "object",
+        "properties": {
+            "name": {
+                "type": "string"
+            },
+            "member_of": {
+                "type": "array",
+                "items": {
+                    "$ref": "env_enums.json#/properties/groups"
+                }
+            },
+            "identifiers": {
+                "type": "object",
+                "propertyNames": {
+                    "$ref": "env_enums.json#/properties/connectors"
+                },
+                "additionalProperties": { "type": "string" }
+            }
+        },
+        "required": ["name"]
+    }
+}
