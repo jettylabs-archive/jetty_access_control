@@ -23,9 +23,9 @@
                             "identifier": \{
                                 "properties": \{
                                     "connector": \{ "const": "{combo.0}" },
-                                    "asset_type": \{ "const": "{combo.1}" }
+                                    "asset type": \{ "const": "{combo.1}" }
                                 },
-                                "required": ["connector", "asset_type"]
+                                "required": ["connector", "asset type"]
                             }
                         },
                         "required": ["identifier"]
@@ -72,11 +72,11 @@
                                 "items": \{
                                     "type": "object",
                                     "properties": \{
-                                        "asset_type": \{
+                                        "target type": \{
                                             "const": "{combo.1}"
                                         }
                                     },
-                                    "required": ["asset_type"]
+                                    "required": ["target type"]
                                 }
                             }
                         },
