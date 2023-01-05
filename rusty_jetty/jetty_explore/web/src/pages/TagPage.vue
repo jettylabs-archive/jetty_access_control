@@ -43,7 +43,7 @@
         />
         <q-route-tab
           name="users"
-          label="User Access"
+          label="User Access (preview)"
           :to="'/tag/' + props.node_id + '/users'"
         />
       </q-tabs>
@@ -76,7 +76,7 @@ import { ref, computed } from 'vue';
 import JettyHeader from 'src/components/JettyHeader.vue';
 import { useJettyStore } from 'stores/jetty';
 import { useRoute, useRouter } from 'vue-router';
-import { nodeId, nodeNameAsString, NodeSummary } from 'src/util';
+import { nodeId, NodeSummary } from 'src/util';
 import { TagSummary } from 'src/components/models';
 
 const route = useRoute();

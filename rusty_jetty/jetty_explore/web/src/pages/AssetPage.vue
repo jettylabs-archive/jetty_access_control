@@ -72,12 +72,12 @@
       >
         <q-route-tab
           name="users"
-          label="Direct Access"
+          label="Direct Access (preview)"
           :to="'/asset/' + props.node_id + '/direct_access'"
         />
         <q-route-tab
           name="all_users"
-          label="Any Access"
+          label="Any Access (preview)"
           :to="'/asset/' + props.node_id + '/any_access'"
         />
         <q-route-tab

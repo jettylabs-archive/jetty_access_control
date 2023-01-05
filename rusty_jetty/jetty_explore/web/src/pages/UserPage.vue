@@ -12,7 +12,7 @@
       >
         <q-route-tab
           name="assets"
-          label="Assets"
+          label="Assets (preview)"
           :to="'/user/' + props.user_id + '/assets'"
         />
         <q-route-tab
