@@ -14,14 +14,14 @@ impl AccessGraph {
         default_policy: &NodeName,
     ) -> Result<BTreeSet<NodeIndex>> {
         // Make sure that the node name is right
-        let (root_node, matching_path, types) = if let NodeName::DefaultPolicy {
+        let (root_node, matching_path, target_type) = if let NodeName::DefaultPolicy {
             root_node,
             matching_path,
-            types,
+            target_type,
             ..
         } = default_policy
         {
-            (root_node, matching_path, types)
+            (root_node, matching_path, target_type)
         } else {
             panic!("node_name must be a NodeName::DefaultPolicy: {default_policy}");
         };
@@ -38,7 +38,7 @@ impl AccessGraph {
                 |e| matches!(e, EdgeType::ParentOf),
                 |n| matches!(n, JettyNode::Asset(_)),
                 |n| match n {
-                    JettyNode::Asset(a) => types.contains(a.asset_type()),
+                    JettyNode::Asset(a) => target_type == a.asset_type(),
                     _ => false,
                 },
                 Some(wildcard_details.depth),

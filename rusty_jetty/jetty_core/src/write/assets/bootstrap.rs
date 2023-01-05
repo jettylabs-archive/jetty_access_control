@@ -85,8 +85,7 @@ impl Jetty {
     #[allow(clippy::type_complexity)]
     fn build_default_policy_map(
         &self,
-    ) -> Result<HashMap<(NodeName, String, BTreeSet<AssetType>, NodeName), DefaultPolicyState>>
-    {
+    ) -> Result<HashMap<(NodeName, String, AssetType, NodeName), DefaultPolicyState>> {
         let ag = self.try_access_graph()?;
         // The contract for getting default policies from connectors will require that it be one agent <-> asset (including root node, path, and type) per policy.
         let default_policies = &ag.graph.nodes.default_policies;
@@ -119,7 +118,7 @@ impl Jetty {
                     (
                         ag[base_idx].get_node_name(),
                         attributes.matching_path.to_owned(),
-                        attributes.types.to_owned(),
+                        attributes.target_type.to_owned(),
                         ag[grantee].get_node_name(),
                     ),
                     DefaultPolicyState {
@@ -262,10 +261,7 @@ impl Jetty {
 
     fn fold_and_build_yaml_default_policies(
         &self,
-        default_policies: HashMap<
-            (NodeName, String, BTreeSet<AssetType>, NodeName),
-            DefaultPolicyState,
-        >,
+        default_policies: HashMap<(NodeName, String, AssetType, NodeName), DefaultPolicyState>,
         policy_map: &mut HashMap<NodeIndex, (BTreeSet<YamlPolicy>, BTreeSet<YamlDefaultPolicy>)>,
     ) -> Result<()> {
         let ag = self.try_access_graph()?;
@@ -277,17 +273,17 @@ impl Jetty {
                 (
                     NodeName,
                     String,
-                    BTreeSet<AssetType>,
+                    AssetType,
                     BTreeSet<String>,
                     BTreeSet<(String, String)>,
                 ),
                 HashSet<NodeName>,
             >,
-             ((policy_asset, policy_path, asset_types, policy_grantee), policy_state)| {
+             ((policy_asset, policy_path, asset_type, policy_grantee), policy_state)| {
                 acc.entry((
                     policy_asset,
                     policy_path,
-                    asset_types,
+                    asset_type,
                     policy_state.privileges.to_owned(),
                     policy_state.metadata.into_iter().collect(),
                 ))
@@ -335,7 +331,7 @@ impl Jetty {
                     Some(metadata.iter().cloned().collect())
                 },
                 path: path.to_owned(),
-                types: types.to_owned(),
+                target_type: types.to_owned(),
                 // only connector-managed defaults should be present when bootstrapping
                 connector_managed: true,
             };

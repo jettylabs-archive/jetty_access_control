@@ -55,7 +55,7 @@ fn build_context(
     let binding = jetty.get_asset_type_privileges();
     let mut privilege_map: Vec<_> = binding
         .iter()
-        .map(|(conn, v)| {
+        .flat_map(|(conn, v)| {
             v.iter().map(|(a, p)| {
                 (
                     conn.clone(),
@@ -64,10 +64,9 @@ fn build_context(
                 )
             })
         })
-        .flatten()
         .collect();
 
-    connectors.sort_by(|a, b| a.to_string().cmp(&b.to_string()));
+    connectors.sort_by_key(|a| a.to_string());
     privilege_map.sort_by(|a, b| format!("{a:?}").cmp(&format!("{b:?}")));
     let mut users: Vec<String> = users.into_iter().collect();
     users.sort();

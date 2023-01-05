@@ -91,7 +91,8 @@ struct YamlDefaultPolicy {
     /// this is specifically for default policies
     path: String,
     /// this is specifically for default policies - the types on which the policy should be applied
-    types: BTreeSet<AssetType>,
+    #[serde(rename = "target type")]
+    target_type: AssetType,
     #[serde(skip_serializing_if = "bool_is_false", default)]
     /// Whether this default policy is managed by the connector (rather than just by Jetty)
     connector_managed: bool,
@@ -118,8 +119,7 @@ pub(crate) struct CombinedPolicyState {
     policies: HashMap<(NodeName, NodeName), PolicyState>,
     /// Represents the future policies
     /// HashMap of <(NodeName::Asset, wildcard path, Asset Types, Grantee), DefaultPolicyState>
-    default_policies:
-        HashMap<(NodeName, String, BTreeSet<AssetType>, NodeName), DefaultPolicyState>,
+    default_policies: HashMap<(NodeName, String, AssetType, NodeName), DefaultPolicyState>,
 }
 
 /// Collect all the configurations and turn them into a combined policy state object
@@ -207,7 +207,7 @@ fn get_env_state(jetty: &Jetty) -> Result<CombinedPolicyState> {
                 let agents = get_policy_agents(idx.into(), ag);
                 let root_asset = get_default_policy_root_asset(idx.into(), ag);
                 let path = policy.matching_path;
-                let types = policy.types;
+                let types = policy.target_type;
 
                 for agent in &agents {
                     acc.insert(
@@ -361,7 +361,7 @@ impl CombinedPolicyState {
                 .entry(get_path_priority(wildcard_path, asset_path.to_owned()))
                 .and_modify(
                     |combined_state: &mut HashMap<
-                        (NodeName, String, BTreeSet<AssetType>, NodeName),
+                        (NodeName, String, AssetType, NodeName),
                         DefaultPolicyState,
                     >| {
                         combined_state.insert(k.to_owned(), v.to_owned());
@@ -382,13 +382,13 @@ impl CombinedPolicyState {
                 },
             );
 
-            for ((root_node, matching_path, types, grantee), default_policy_state) in
+            for ((root_node, matching_path, target_type, grantee), default_policy_state) in
                 default_policies
             {
                 let targets = ag.default_policy_targets(&NodeName::DefaultPolicy {
                     root_node: Box::new(root_node.to_owned()),
                     matching_path: matching_path.to_owned(),
-                    types: types.to_owned(),
+                    target_type: target_type.to_owned(),
                     grantee: Box::new(grantee.to_owned()),
                 })?;
 

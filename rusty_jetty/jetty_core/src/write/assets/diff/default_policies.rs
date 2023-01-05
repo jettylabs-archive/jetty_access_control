@@ -247,10 +247,8 @@ pub(crate) fn diff_default_policies(
     let config_policies = &config.default_policies;
     let mut env_policies = env.default_policies.to_owned();
 
-    let mut policy_diffs: HashMap<
-        (NodeName, String, BTreeSet<AssetType>),
-        DefaultPolicyDiffHelper,
-    > = HashMap::new();
+    let mut policy_diffs: HashMap<(NodeName, String, AssetType), DefaultPolicyDiffHelper> =
+        HashMap::new();
 
     // iterate through each of the policies in the config. If it doesn't exist in the environment, add it to the policy_diffs.
     // If it does exist, remove it from my copy of the the environment and diff the details.
@@ -363,15 +361,16 @@ pub(crate) fn diff_default_policies(
 
     let mut collected_diffs = policy_diffs
         .into_iter()
-        .map(|((root_asset, path, types), helper)| DefaultPolicyDiff {
-            users: helper.users,
-            groups: helper.groups,
-            connector: helper.connector,
-            path,
-            // FIXME: update when we only allow a single type
-            asset_type: types.into_iter().next().unwrap(),
-            asset: root_asset,
-        })
+        .map(
+            |((root_asset, path, asset_type), helper)| DefaultPolicyDiff {
+                users: helper.users,
+                groups: helper.groups,
+                connector: helper.connector,
+                path,
+                asset_type,
+                asset: root_asset,
+            },
+        )
         .collect::<Vec<_>>();
     collected_diffs.sort_by_key(|f| f.asset.to_string());
 

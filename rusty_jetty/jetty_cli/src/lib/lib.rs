@@ -342,7 +342,7 @@ async fn bootstrap(overwrite: bool) -> Result<()> {
     );
 
     // update the json schemas
-    let config_schema = write::config::generate_env_schema_from_config(&jetty)?;
+    let config_schema = write::config::generate_env_schema_from_config(jetty)?;
     write::config::write_config_schema(&config_schema)?;
 
     Ok(())

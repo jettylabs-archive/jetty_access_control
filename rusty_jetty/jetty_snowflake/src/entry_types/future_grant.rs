@@ -56,7 +56,7 @@ impl FutureGrant {
             privileges: all_privileges,
             root_asset: cual,
             wildcard_path,
-            target_types: [convert_to_asset_type(&self.grant_on).unwrap()].into(),
+            target_type: convert_to_asset_type(&self.grant_on).unwrap(),
             // Snowflake only allows grants to roles
             grantee: RawPolicyGrantee::Group(self.grantee_name),
             // empty for now
