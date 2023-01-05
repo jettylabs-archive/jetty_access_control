@@ -59,7 +59,7 @@ impl UpdateConfig for UserYaml {
 }
 
 /// Get the paths of all asset config files
-fn get_config_paths() -> Result<glob::Paths> {
+pub(crate) fn get_config_paths() -> Result<glob::Paths> {
     // collect the paths to all the config files
     glob(
         format!(

@@ -1,5 +1,5 @@
 \{
-    "$id": ".schemas/env_enums.json",
+    "$id": ".schemas/config.json",
     "type": "object",
     "properties": \{
         "connectors": \{

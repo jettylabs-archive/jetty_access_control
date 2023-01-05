@@ -26,7 +26,7 @@
                 "name": { "type": "string" },
                 "asset_type": { "type": "string" },
                 "connector": {
-                    "$ref": "env_enums.json#/properties/connectors"
+                    "$ref": "config.json#/properties/connectors"
                 }
             },
             "required": ["name", "asset_type", "connector"]
@@ -50,13 +50,13 @@
                 "groups": {
                     "type": "array",
                     "items": {
-                        "$ref": "env_enums.json#/properties/groups"
+                        "$ref": "config.json#/properties/groups"
                     }
                 },
                 "users": {
                     "type": "array",
                     "items": {
-                        "$ref": "env_enums.json#/properties/users"
+                        "$ref": "config.json#/properties/users"
                     }
                 },
                 "metadata": {
@@ -92,13 +92,13 @@
                 "groups": {
                     "type": "array",
                     "items": {
-                        "$ref": "env_enums.json#/properties/groups"
+                        "$ref": "config.json#/properties/groups"
                     }
                 },
                 "users": {
                     "type": "array",
                     "items": {
-                        "$ref": "env_enums.json#/properties/users"
+                        "$ref": "config.json#/properties/users"
                     }
                 },
                 "metadata": {
@@ -114,7 +114,7 @@
         }
     },
     "allOf": [
-        { "$ref": "env_enums.json#/properties/policy_matcher" },
-        { "$ref": "env_enums.json#/properties/default_policyy_matcher" }
+        { "$ref": "config.json#/properties/policy_matcher" },
+        { "$ref": "config.json#/properties/default_policyy_matcher" }
     ]
 }

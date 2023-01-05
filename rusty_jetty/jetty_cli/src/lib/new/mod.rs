@@ -18,10 +18,14 @@ use jetty_core::{
     fetch_credentials,
     jetty::{CredentialsMap, JettyConfig},
     project::{self, tags_cfg_path},
+    write,
 };
 use tokio::io::AsyncWriteExt;
 
-use crate::new::fs::{create_dir_ignore_failure, create_file};
+use crate::{
+    new::fs::{create_dir_ignore_failure, create_file},
+    new_jetty_with_connectors,
+};
 
 use self::inquiry::{inquire_add, inquire_init};
 
@@ -66,6 +70,9 @@ pub async fn new(
 
     // create a new repository in the directory specified by the project name
     create_git_repo(jetty_config.get_name())?;
+    // add schemas and vs code settings
+    let jetty = &new_jetty_with_connectors().await?;
+    write::config::write_settings_and_schema(jetty)?;
     Ok(())
 }
 

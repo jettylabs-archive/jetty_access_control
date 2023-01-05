@@ -1,6 +1,7 @@
 //! Write user-configured groups and permissions back to the data stack.
 
 pub mod assets;
+pub mod config;
 pub mod diff;
 pub mod groups;
 mod parser_common;

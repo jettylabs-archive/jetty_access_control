@@ -213,6 +213,24 @@ impl Jetty {
     pub(crate) fn has_connector(&self, connector: &ConnectorNamespace) -> bool {
         self.connectors.contains_key(connector)
     }
+
+    /// Return a double HashMap of Connector, Asset Type, HashSet<Privileges strings>
+    pub fn get_asset_type_privileges(
+        &self,
+    ) -> HashMap<ConnectorNamespace, HashMap<AssetType, HashSet<String>>> {
+        let manifests = self.connector_manifests();
+        manifests
+            .iter()
+            .map(|(c, m)| {
+                (c.to_owned(), {
+                    m.asset_privileges
+                        .iter()
+                        .map(|(asset_type, privs)| (asset_type.to_owned(), privs.to_owned()))
+                        .collect::<HashMap<_, _>>()
+                })
+            })
+            .collect()
+    }
 }
 
 /// Load access graph from a file

@@ -10,13 +10,13 @@
         "groups": {
             "type": "array",
             "items": {
-                "$ref": "env_enums.json#/properties/groups"
+                "$ref": "config.json#/properties/groups"
             }
         },
         "identifiers": {
             "type": "object",
             "propertyNames": {
-                "$ref": "env_enums.json#/properties/connectors"
+                "$ref": "config.json#/properties/connectors"
             },
             "additionalProperties": { "type": "string" }
         }

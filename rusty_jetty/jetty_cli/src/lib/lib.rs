@@ -35,6 +35,7 @@ use jetty_core::{
     logging::{self, debug, error, info, warn},
     project::{self, groups_cfg_path_local},
     write::{
+        self,
         assets::bootstrap::{update_asset_files, write_bootstrapped_asset_yaml},
         diff::get_diffs,
         groups,
@@ -339,6 +340,10 @@ async fn bootstrap(overwrite: bool) -> Result<()> {
         "{}",
         "\nSuccessfully bootstrapped your environment! 🎉🎉".green()
     );
+
+    // update the json schemas
+    let config_schema = write::config::generate_env_schema_from_config(&jetty)?;
+    write::config::write_config_schema(&config_schema)?;
 
     Ok(())
 }

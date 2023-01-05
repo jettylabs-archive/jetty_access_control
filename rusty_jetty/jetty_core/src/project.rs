@@ -10,6 +10,17 @@
 //!       │    ├── jetty_graph
 //!       │    └── {connector}
 //!       │         └── {connector-specific data}
+//!       ├── .vscode
+//!       │    └── settings.json
+//!       ├── .schemas
+//!       │    ├── assets.json
+//!       │    ├── groups.json
+//!       │    ├── users.json
+//!       │    └── config.json
+//!       ├── .data
+//!       │    ├── jetty_graph
+//!       │    └── {connector}
+//!       │         └── {connector-specific data}
 //!       ├── groups
 //!       │    └── groups.yaml
 //!       ├── tags
@@ -39,6 +50,8 @@ lazy_static! {
     static ref PROFILE_CFG_DIR: PathBuf = PathBuf::from(".jetty");
     static ref JETTY_GRAPH: PathBuf = PathBuf::from("jetty_graph");
     static ref DEFAULT_KEY_DIR: PathBuf = PathBuf::from(".ssh");
+    pub(crate) static ref DEFAULT_SCHEMA_DIR: PathBuf = PathBuf::from(".schema");
+    pub(crate) static ref VSCODE_SETTINGS_PATH: PathBuf = PathBuf::from(".vscode/settings.json");
 }
 
 /// The path to tag configuration files
