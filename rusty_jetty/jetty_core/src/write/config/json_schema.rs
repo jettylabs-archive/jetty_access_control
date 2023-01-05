@@ -29,13 +29,13 @@ struct TemplateContext {
 pub fn generate_env_schema_from_config(jetty: &Jetty) -> Result<String> {
     let users = write::config::user_names()?;
     let groups = write::config::group_names()?;
-    generate_env_schema(users, groups, jetty)
+    generate_env_schema(&users, &groups, jetty)
 }
 
 /// Generate a json schema file including information from the config files
-fn generate_env_schema(
-    users: HashSet<String>,
-    groups: HashSet<String>,
+pub(crate) fn generate_env_schema(
+    users: &HashSet<String>,
+    groups: &HashSet<String>,
     jetty: &Jetty,
 ) -> Result<String> {
     let template = include_str!("../../../templates/schemas/config_template.txt");
@@ -50,8 +50,8 @@ fn generate_env_schema(
 
 /// Generate the context necessary to build the config schema
 fn build_context(
-    users: HashSet<String>,
-    groups: HashSet<String>,
+    users: &HashSet<String>,
+    groups: &HashSet<String>,
     jetty: &Jetty,
 ) -> TemplateContext {
     let mut connectors: Vec<_> = jetty.connectors.keys().cloned().collect();
@@ -86,9 +86,9 @@ fn build_context(
 
     connectors.sort_by_key(|a| a.to_string());
     privilege_map.sort_by_key(|a| format!("{a:?}"));
-    let mut users: Vec<String> = users.into_iter().collect();
+    let mut users: Vec<String> = users.iter().cloned().collect();
     users.sort();
-    let mut groups: Vec<String> = groups.into_iter().collect();
+    let mut groups: Vec<String> = groups.iter().cloned().collect();
     groups.sort();
 
     TemplateContext {

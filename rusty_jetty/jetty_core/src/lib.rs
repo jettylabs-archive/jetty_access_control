@@ -16,4 +16,5 @@ pub mod jetty;
 pub mod logging;
 pub mod permissions;
 pub mod project;
+pub mod watcher;
 pub mod write;
