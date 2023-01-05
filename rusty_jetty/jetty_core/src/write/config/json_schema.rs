@@ -43,6 +43,7 @@ fn generate_env_schema(
 
     let mut tt = TinyTemplate::new();
     tt.add_template("env_schema", template)?;
+    tt.set_default_formatter(&tinytemplate::format_unescaped);
     tt.render("env_schema", &context)
         .context("rendering template")
 }

@@ -153,6 +153,7 @@ pub struct Jetty {
 impl Jetty {
     /// Convenience method for struct creation. Uses the default location for
     /// config files.
+    // FUTURE: Remove this - it's used in one place in a test.
     pub fn new<P: AsRef<Path>>(
         jetty_config_path: P,
         data_dir: PathBuf,
@@ -161,7 +162,7 @@ impl Jetty {
         let config =
             JettyConfig::read_from_file(jetty_config_path).context("Reading Jetty Config file")?;
 
-        let ag = load_access_graph()?;
+        let ag = load_access_graph(".")?;
 
         Ok(Jetty {
             config,
@@ -173,12 +174,13 @@ impl Jetty {
 
     /// Convenience method for struct creation. Uses the default location for
     /// config files.
-    pub fn new_with_config(
+    pub fn new_with_config<P: AsRef<Path>>(
+        path_prefix: P,
         config: JettyConfig,
         data_dir: PathBuf,
         connectors: HashMap<ConnectorNamespace, Box<dyn Connector>>,
     ) -> Result<Self> {
-        let ag = load_access_graph()?;
+        let ag = load_access_graph(path_prefix)?;
         Ok(Jetty {
             config,
             _data_dir: data_dir,
@@ -234,12 +236,16 @@ impl Jetty {
 }
 
 /// Load access graph from a file
-fn load_access_graph() -> Result<Option<AccessGraph>> {
+fn load_access_graph<P: AsRef<Path>>(path_prefix: P) -> Result<Option<AccessGraph>> {
     // try to load the graph
-    match AccessGraph::deserialize_graph(project::data_dir().join(project::graph_filename())) {
+    match AccessGraph::deserialize_graph(
+        PathBuf::from(path_prefix.as_ref())
+            .join(project::data_dir())
+            .join(project::graph_filename()),
+    ) {
         Ok(mut ag) => {
             // add the tags to the graph
-            let tags_path = project::tags_cfg_path_local();
+            let tags_path = project::tags_cfg_path(&path_prefix);
             if tags_path.exists() {
                 debug!("Getting tags from config.");
                 let tag_config = std::fs::read_to_string(&tags_path);

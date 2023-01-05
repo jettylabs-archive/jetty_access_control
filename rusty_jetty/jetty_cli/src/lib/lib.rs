@@ -16,6 +16,7 @@ mod usage_stats;
 use std::{
     collections::HashMap,
     env, fs,
+    path::{Path, PathBuf},
     str::FromStr,
     sync::Arc,
     time::{self, Instant},
@@ -136,7 +137,7 @@ pub async fn cli() -> Result<()> {
                 fetch(&None, &false).await?;
             }
 
-            let jetty = new_jetty_with_connectors().await?;
+            let jetty = new_jetty_with_connectors(".").await?;
 
             jetty.try_access_graph()?;
             jetty_explore::explore_web_ui(Arc::from(jetty.access_graph.unwrap()), bind).await;
@@ -180,7 +181,7 @@ pub async fn cli() -> Result<()> {
             apply().await?;
         }
         JettyCommand::Subgraph { id, depth } => {
-            let jetty = new_jetty_with_connectors().await?;
+            let jetty = new_jetty_with_connectors(".").await?;
 
             let ag = jetty.try_access_graph()?;
             let parsed_uuid = uuid::Uuid::from_str(id)?;
@@ -204,7 +205,7 @@ pub async fn cli() -> Result<()> {
 }
 
 async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()> {
-    let jetty = new_jetty_with_connectors().await?;
+    let jetty = new_jetty_with_connectors(".").await?;
 
     let mut data_from_connectors = vec![];
 
@@ -238,7 +239,7 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
     let pb = basic_progress_bar("Creating access graph");
     let now = Instant::now();
     // the last jetty was partially consumed by the fetch, so re-instantiating here
-    let jetty = new_jetty_with_connectors().await?;
+    let jetty = new_jetty_with_connectors(".").await?;
 
     let ag = AccessGraph::new_from_connector_data(data_from_connectors, &jetty)?;
     ag.serialize_graph(project::data_dir().join(project::graph_filename()))?;
@@ -278,7 +279,7 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
 }
 
 async fn bootstrap(overwrite: bool) -> Result<()> {
-    let jetty = &new_jetty_with_connectors().await.map_err(|_| {
+    let jetty = &new_jetty_with_connectors(".").await.map_err(|_| {
         anyhow!(
             "unable to find {} - make sure you are in a \
         Jetty project directory, or create a new project by running `jetty new`",
@@ -349,7 +350,7 @@ async fn bootstrap(overwrite: bool) -> Result<()> {
 }
 
 async fn apply() -> Result<()> {
-    let jetty = &mut new_jetty_with_connectors().await.map_err(|_| {
+    let jetty = &mut new_jetty_with_connectors(".").await.map_err(|_| {
         anyhow!(
             "unable to find {} - make sure you are in a \
         Jetty project directory, or create a new project by running `jetty new`",
@@ -479,8 +480,9 @@ async fn get_connectors(
 }
 
 /// Create a new Jetty struct with all the connectors. Uses default locations for everything
-pub async fn new_jetty_with_connectors() -> Result<Jetty> {
-    let config = JettyConfig::read_from_file(project::jetty_cfg_path_local()).context(format!(
+pub async fn new_jetty_with_connectors<P: AsRef<Path>>(path_prefix: P) -> Result<Jetty> {
+    let config_path = PathBuf::from(path_prefix.as_ref()).join(project::jetty_cfg_path_local());
+    let config = JettyConfig::read_from_file(config_path).context(format!(
         "unable to find Jetty Config file at {} - you can set this up by running `jetty new`",
         project::jetty_cfg_path_local().to_string_lossy()
     ))?;
@@ -494,7 +496,12 @@ pub async fn new_jetty_with_connectors() -> Result<Jetty> {
 
     let connectors = get_connectors(&creds, &config.connectors).await?;
 
-    Jetty::new_with_config(config, project::data_dir(), connectors)
+    Jetty::new_with_config(
+        &path_prefix,
+        config,
+        PathBuf::from(path_prefix.as_ref()).join(project::data_dir()),
+        connectors,
+    )
 }
 
 fn basic_progress_bar(msg: &str) -> ProgressBar {
