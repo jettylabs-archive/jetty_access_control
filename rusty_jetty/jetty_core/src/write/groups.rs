@@ -34,7 +34,11 @@ pub struct GroupYaml {
     identifiers: BTreeMap<ConnectorNamespace, String>,
     /// The groups that this group is a member of. To be valid here, they must appear in the name field
     /// of another group in the config
-    #[serde(skip_serializing_if = "BTreeSet::is_empty", default)]
+    #[serde(
+        skip_serializing_if = "BTreeSet::is_empty",
+        default,
+        rename = "member of"
+    )]
     member_of: BTreeSet<String>,
 }
 

@@ -7,7 +7,7 @@
         "name": {
             "type": "string"
         },
-        "groups": {
+        "member of": {
             "type": "array",
             "items": {
                 "$ref": "config.json#/properties/groups"

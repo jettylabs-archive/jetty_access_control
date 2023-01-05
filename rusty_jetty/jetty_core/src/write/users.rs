@@ -24,8 +24,12 @@ use super::UpdateConfig;
 pub struct UserYaml {
     name: String,
     identifiers: HashMap<ConnectorNamespace, String>,
-    #[serde(skip_serializing_if = "BTreeSet::is_empty", default)]
-    groups: BTreeSet<String>,
+    #[serde(
+        skip_serializing_if = "BTreeSet::is_empty",
+        default,
+        rename = "member of"
+    )]
+    member_of: BTreeSet<String>,
 }
 
 impl UpdateConfig for UserYaml {
@@ -45,8 +49,8 @@ impl UpdateConfig for UserYaml {
     }
 
     fn update_group_name(&mut self, old: &str, new: &str) -> Result<bool> {
-        if self.groups.remove(old) {
-            self.groups.insert(new.to_string());
+        if self.member_of.remove(old) {
+            self.member_of.insert(new.to_string());
             Ok(true)
         } else {
             Ok(false)
@@ -54,7 +58,7 @@ impl UpdateConfig for UserYaml {
     }
 
     fn remove_group_name(&mut self, name: &str) -> Result<bool> {
-        Ok(self.groups.remove(name))
+        Ok(self.member_of.remove(name))
     }
 }
 

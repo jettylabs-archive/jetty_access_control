@@ -95,7 +95,7 @@ fn validate_config(
             }
         }
 
-        for group in &config.groups {
+        for group in &config.member_of {
             if !allowed_group_names.contains(group) {
                 errors.push(format!(
                     "invalid group name in {}: group config doesn't specify a group called \"{group}\"", path.display()
