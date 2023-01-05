@@ -1,7 +1,7 @@
 //! Watch for config changes and update schema if necessary
 
 use std::{
-    collections::{BTreeSet, HashMap, HashSet},
+    collections::{BTreeSet, HashMap},
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
     time::Duration,
@@ -48,7 +48,7 @@ pub async fn watch_and_update(jetty: &Jetty) -> Result<()> {
 
     drop(tx);
 
-    while let Some(_) = rx.recv().await {
+    while rx.recv().await.is_some() {
         info!("updating schema");
         update_schema(user_config.clone(), group_config.clone(), jetty)?;
         // This ensures that we don't end up writing the config more than once a second
@@ -160,7 +160,7 @@ fn update_user_config(user_config: Arc<Mutex<HashMap<PathBuf, UserYaml>>>, path:
         true => {
             if path.is_file() {
                 // read in the file, update the map
-                if let Ok(config) = write::users::parser::read_config_file(&path) {
+                if let Ok(config) = write::users::parser::read_config_file(path) {
                     user_config.lock().unwrap().insert(path.to_owned(), config);
                 }
             }

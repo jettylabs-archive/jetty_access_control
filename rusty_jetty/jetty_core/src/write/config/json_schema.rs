@@ -107,7 +107,7 @@ pub fn write_config_schema<P: AsRef<Path>>(schema: &String, path_prefix: P) -> R
         .join("config.json");
     fs::create_dir_all(
         path.parent()
-            .ok_or(anyhow!("unable to find parent directory for {path:?}"))?,
+            .ok_or_else(|| anyhow!("unable to find parent directory for {path:?}"))?,
     )?;
 
     fs::write(path, schema).context("writing config schema")
@@ -136,7 +136,7 @@ fn write_user_schema<P: AsRef<Path>>(path_prefix: P) -> Result<()> {
 
     fs::create_dir_all(
         path.parent()
-            .ok_or(anyhow!("unable to find parent directory for {path:?}"))?,
+            .ok_or_else(|| anyhow!("unable to find parent directory for {path:?}"))?,
     )?;
     let user_schema = include_str!("../../../templates/schemas/users.json");
 
@@ -151,7 +151,7 @@ fn write_group_schema<P: AsRef<Path>>(path_prefix: P) -> Result<()> {
 
     fs::create_dir_all(
         path.parent()
-            .ok_or(anyhow!("unable to find parent directory for {path:?}"))?,
+            .ok_or_else(|| anyhow!("unable to find parent directory for {path:?}"))?,
     )?;
     let group_schema = include_str!("../../../templates/schemas/groups.json");
 
@@ -166,7 +166,7 @@ fn write_tag_schema<P: AsRef<Path>>(path_prefix: P) -> Result<()> {
 
     fs::create_dir_all(
         path.parent()
-            .ok_or(anyhow!("unable to find parent directory for {path:?}"))?,
+            .ok_or_else(|| anyhow!("unable to find parent directory for {path:?}"))?,
     )?;
     let tag_schema = include_str!("../../../templates/schemas/tags.json");
 
@@ -181,7 +181,7 @@ fn write_asset_schema<P: AsRef<Path>>(path_prefix: P) -> Result<()> {
 
     fs::create_dir_all(
         path.parent()
-            .ok_or(anyhow!("unable to find parent directory for {path:?}"))?,
+            .ok_or_else(|| anyhow!("unable to find parent directory for {path:?}"))?,
     )?;
     let asset_schema = include_str!("../../../templates/schemas/assets.json");
 
@@ -194,7 +194,7 @@ fn write_vs_code_settings<P: AsRef<Path>>(path_prefix: P) -> Result<()> {
 
     fs::create_dir_all(
         path.parent()
-            .ok_or(anyhow!("unable to find parent directory for {path:?}"))?,
+            .ok_or_else(|| anyhow!("unable to find parent directory for {path:?}"))?,
     )?;
 
     let settings = include_str!("../../../templates/settings/settings.json");
