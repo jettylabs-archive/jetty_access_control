@@ -1,0 +1,32 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": ".schema/tags.json",
+    "type": "object",
+    "additionalProperties": {
+        "type": "object",
+        "properties": {
+            "description": {
+                "type": "string"
+            },
+            "apply_to": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            },
+            "remove_from": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            },
+            "pass_through_lineage": {
+                "type": "boolean"
+            },
+            "pass_through_hierarchy": {
+                "type": "boolean"
+            }
+        },
+        "required": ["apply_to"]
+    }
+}

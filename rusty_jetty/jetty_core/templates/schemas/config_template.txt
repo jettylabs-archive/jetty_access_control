@@ -1,5 +1,5 @@
 \{
-    "$id": ".schemas/config.json",
+    "$id": ".schema/config.json",
     "type": "object",
     "properties": \{
         "connectors": \{
@@ -8,15 +8,15 @@
         },
         "users": \{
             "type": "string",
-            "enum": ["isaac", "chi lang"]
+            "enum": [{{for v in users}}"{v}"{{ if @last }}{{else}},{{ endif }}{{endfor}}]
         },
         "groups": \{
             "type": "string",
-            "enum": ["group1", "group2"]
+            "enum": [{{for v in groups}}"{v}"{{ if @last }}{{else}},{{ endif }}{{endfor}}]
         },
         "policy_matcher": \{
             "allOf": [
-                {{- for combo in datas -}}
+                {{- for combo in privilege_map -}}
                 \{
                     "if": \{
                         "properties": \{
@@ -58,7 +58,7 @@
         },
         "default_policy_matcher": \{
             "allOf": [
-            {{- for combo in datas -}}
+            {{- for combo in privilege_map -}}
                 \{
                     "if": \{
                         "properties": \{

@@ -40,7 +40,8 @@ fn generate_env_schema(
 
     let mut tt = TinyTemplate::new();
     tt.add_template("env_schema", template)?;
-    tt.render("hello", &context).context("rendering template")
+    tt.render("env_schema", &context)
+        .context("rendering template")
 }
 
 /// Generate the context necessary to build the config schema
@@ -97,6 +98,7 @@ pub fn write_settings_and_schema(jetty: &Jetty) -> Result<()> {
     write_user_schema()?;
     write_group_schema()?;
     write_asset_schema()?;
+    write_tag_schema()?;
 
     write_vs_code_settings()?;
 
@@ -122,6 +124,15 @@ fn write_group_schema() -> Result<()> {
         group_schema,
     )
     .context("writing groups schema")
+}
+
+/// Write the tag schema
+fn write_tag_schema() -> Result<()> {
+    fs::create_dir_all(project::DEFAULT_SCHEMA_DIR.as_path())?;
+    let tag_schema = include_str!("../../../templates/schemas/tags.json");
+
+    fs::write(project::DEFAULT_SCHEMA_DIR.join("tags.json"), tag_schema)
+        .context("writing tags schema")
 }
 
 /// Write the asset schema

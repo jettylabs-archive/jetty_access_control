@@ -1,6 +1,6 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
-    "$id": ".schemas/groups.json",
+    "$id": ".schema/groups.json",
     "type": "array",
     "items": {
         "type": "object",

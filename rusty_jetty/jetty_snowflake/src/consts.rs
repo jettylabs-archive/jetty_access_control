@@ -12,7 +12,7 @@ pub const USER_AGENT_HEADER: &str = "User-Agent";
 /// as parent roles.
 pub const ASSET_TYPES: [&str; 4] = ["TABLE", "VIEW", "SCHEMA", "DATABASE"];
 
-pub const DATABASE: &str = "database";
-pub const SCHEMA: &str = "schema";
-pub const VIEW: &str = "view";
-pub const TABLE: &str = "table";
+pub const DATABASE: &str = "DATABASE";
+pub const SCHEMA: &str = "SCHEMA";
+pub const VIEW: &str = "VIEW";
+pub const TABLE: &str = "TABLE";

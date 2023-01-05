@@ -1,6 +1,6 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
-    "$id": ".schemas/assets.json",
+    "$id": ".schema/assets.json",
     "type": "object",
     "required": ["identifier"],
     "additionalProperties": false,
@@ -24,6 +24,7 @@
             "additionalProperties": false,
             "properties": {
                 "name": { "type": "string" },
+                "id": { "type": "string" },
                 "asset_type": { "type": "string" },
                 "connector": {
                     "$ref": "config.json#/properties/connectors"
@@ -115,6 +116,6 @@
     },
     "allOf": [
         { "$ref": "config.json#/properties/policy_matcher" },
-        { "$ref": "config.json#/properties/default_policyy_matcher" }
+        { "$ref": "config.json#/properties/default_policy_matcher" }
     ]
 }
