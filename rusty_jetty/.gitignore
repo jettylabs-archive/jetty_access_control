@@ -32,3 +32,5 @@ jetty_project/
 
 /*/assets/**/*.yaml
 /*/users/*.yaml
+/*/.vscode/*.*
+/*/.schema/*.json
