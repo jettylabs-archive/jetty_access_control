@@ -67,6 +67,7 @@ pub(crate) struct YamlAssetDoc {
 #[derive(Serialize, Deserialize, Debug, Default, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub(crate) struct YamlAssetIdentifier {
     name: String,
+    // FUTURE: Make asset_type required, not an option
     #[serde(skip_serializing_if = "Option::is_none", rename = "asset type")]
     asset_type: Option<AssetType>,
     connector: ConnectorNamespace,
