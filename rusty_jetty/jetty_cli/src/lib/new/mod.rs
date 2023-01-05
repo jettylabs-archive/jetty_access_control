@@ -72,7 +72,7 @@ pub async fn new(
     create_git_repo(jetty_config.get_name())?;
     // add schemas and vs code settings
     let jetty = &new_jetty_with_connectors().await?;
-    write::config::write_settings_and_schema(jetty)?;
+    write::config::write_settings_and_schema(jetty, jetty_config.get_name())?;
     Ok(())
 }
 

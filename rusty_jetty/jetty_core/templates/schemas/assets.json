@@ -25,12 +25,12 @@
             "properties": {
                 "name": { "type": "string" },
                 "id": { "type": "string" },
-                "asset_type": { "type": "string" },
+                "asset type": { "type": "string" },
                 "connector": {
                     "$ref": "config.json#/properties/connectors"
                 }
             },
-            "required": ["name", "asset_type", "connector"]
+            "required": ["name", "asset type", "connector"]
         },
 
         "policy": {
@@ -87,7 +87,7 @@
                     "type": "string",
                     "pattern": "^(?:\\/)?(?:\\*)(?:\\/\\*)*?(?:\\/\\*\\*)?(?:\\/)?$"
                 },
-                "asset_type": {
+                "target type": {
                     "type": "string"
                 },
                 "groups": {
@@ -106,11 +106,11 @@
                     "type": "object",
                     "additionalProperties": { "type": "string" }
                 },
-                "connector_managed": {
-                    "type": "bool"
+                "connector managed": {
+                    "type": "boolean"
                 }
             },
-            "required": ["path", "asset_type"],
+            "required": ["path", "target type"],
             "anyOf": [{ "required": ["groups"] }, { "required": ["users"] }]
         }
     },

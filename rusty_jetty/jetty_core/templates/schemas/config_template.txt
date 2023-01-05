@@ -4,19 +4,28 @@
     "properties": \{
         "connectors": \{
             "type": "string",
-            "enum": [{{for v in connectors}}"{v}"{{ if @last }}{{else}},{{ endif }}{{endfor}}]
+            "enum": [
+                {{for v in connectors}}"{v}"{{ if @last }}{{else}},{{ endif }}
+                {{endfor}}
+            ]
         },
         "users": \{
             "type": "string",
-            "enum": [{{for v in users}}"{v}"{{ if @last }}{{else}},{{ endif }}{{endfor}}]
+            "enum": [
+                {{for v in users}}"{v}"{{ if @last }}{{else}},{{ endif }}
+                {{endfor}}
+            ]
         },
         "groups": \{
             "type": "string",
-            "enum": [{{for v in groups}}"{v}"{{ if @last }}{{else}},{{ endif }}{{endfor}}]
+            "enum": [
+                {{for v in groups}}"{v}"{{ if @last }}{{else}},{{ endif }}
+                {{endfor}}
+            ]
         },
         "policy_matcher": \{
             "allOf": [
-                {{- for combo in privilege_map -}}
+                {{for combo in privilege_map -}}
                 \{
                     "if": \{
                         "properties": \{
@@ -41,7 +50,10 @@
                                                     "type": "array",
                                                     "items": \{
                                                         "type": "string",
-                                                        "enum": [{{for p in combo.2}}"{p}"{{ if @last }}{{ else }},{{ endif }}{{endfor}}]
+                                                        "enum": [
+                                                            {{for p in combo.2}}"{p}"{{ if @last }}{{ else }},{{ endif }}
+                                                            {{endfor}}
+                                                        ]
                                                     }
                                                 },
                                                 \{ "type": "null" }
@@ -58,7 +70,38 @@
         },
         "default_policy_matcher": \{
             "allOf": [
-            {{- for combo in privilege_map -}}
+            {{for combo in type_map -}}
+            \{
+                "if": \{
+                    "properties": \{
+                        "identifier": \{
+                            "properties": \{
+                                "connector": \{ "const": "{combo.0}" }
+                            },
+                            "required": ["connector"]
+                        }
+                    },
+                    "required": ["identifier"]
+                },
+                "then": \{
+                    "properties": \{
+                        "default policies": \{
+                            "items": \{
+                                "properties": \{
+                                    "target type": \{
+                                        "enum": [
+                                            {{for p in combo.1}}"{p}"{{ if @last }}{{ else }},{{ endif }}
+                                            {{endfor}}
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            {{- endfor -}}
+            {{for combo in privilege_map -}}
                 \{
                     "if": \{
                         "properties": \{
@@ -93,7 +136,10 @@
                                                     "type": "array",
                                                     "items": \{
                                                         "type": "string",
-                                                        "enum": [{{for p in combo.2}}"{p}"{{ if @last }}{{ else }},{{ endif }}{{endfor}}]
+                                                        "enum": [
+                                                            {{for p in combo.2}}"{p}"{{ if @last }}{{ else }},{{ endif }}
+                                                            {{endfor}}
+                                                        ]
                                                     }
                                                 },
                                                 \{ "type": "null" }
