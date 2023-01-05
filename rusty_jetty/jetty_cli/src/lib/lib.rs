@@ -38,6 +38,7 @@ use jetty_core::{
     write::{
         self,
         assets::bootstrap::{update_asset_files, write_bootstrapped_asset_yaml},
+        config,
         diff::get_diffs,
         groups,
         users::bootstrap::{update_user_files, write_bootstrapped_user_yaml},
@@ -102,6 +103,7 @@ pub async fn cli() -> Result<()> {
             JettyCommand::Subgraph { depth, .. } => UsageEvent::InvokedSubgraph { depth },
             JettyCommand::Remove { node_type, .. } => UsageEvent::InvokedRemove { node_type },
             JettyCommand::Rename { node_type, .. } => UsageEvent::InvokedRename { node_type },
+            JettyCommand::Dev => UsageEvent::InvokedDev,
         };
         record_usage(event, &jetty_config)
             .await
@@ -199,6 +201,10 @@ pub async fn cli() -> Result<()> {
             old,
             new,
         } => rename::rename(node_type, old, new).await?,
+        JettyCommand::Dev => {
+            let jetty = &new_jetty_with_connectors(".").await?;
+            config::watch_and_update(jetty).await?;
+        }
     }
 
     Ok(())

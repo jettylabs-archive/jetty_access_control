@@ -204,6 +204,9 @@ pub enum UsageEvent {
     /// `jetty rename`
     #[serde(rename = "invoked_rename")]
     InvokedRename { node_type: RemoveOrModifyNodeType },
+    /// `jetty rename`
+    #[serde(rename = "invoked_dev")]
+    InvokedDev,
 }
 
 /// Given an event, record its usage to Jetty anonymous usage stats.

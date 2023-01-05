@@ -1,5 +1,6 @@
 //! module to help manage the config
 mod json_schema;
+mod watcher;
 
 use anyhow::Result;
 
@@ -10,6 +11,7 @@ use super::{groups, users};
 pub use json_schema::{
     generate_env_schema_from_config, write_config_schema, write_settings_and_schema,
 };
+pub use watcher::watch_and_update;
 
 pub(crate) use json_schema::generate_env_schema;
 

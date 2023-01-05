@@ -110,6 +110,8 @@ pub(crate) enum JettyCommand {
         /// the new name of that user or group
         new: String,
     },
+    /// Watch config files for changes and update the yaml schema as needed to keep validation working properly
+    Dev,
 }
 
 /// The type of node being modified in the rename or remove commands

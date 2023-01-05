@@ -20,14 +20,13 @@ use crate::{
 use anyhow::{bail, Result};
 use notify_debouncer_mini::{new_debouncer, notify::RecursiveMode};
 use tokio::sync::mpsc::{self, error::TrySendError, Sender};
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 
 /// Watch the user and group config files and update the yaml schema if there are changes
 pub async fn watch_and_update(jetty: &Jetty) -> Result<()> {
+    info!("starting file watcher");
     // Set up initial variables
-    let group_config = Arc::new(Mutex::new(
-        groups::parser::read_config_file().unwrap_or_default(),
-    ));
+    let group_config = Arc::new(Mutex::new(read_groups()));
     let paths = users::get_config_paths()?;
     let user_config = Arc::new(Mutex::new(users::parser::read_config_files(paths)?));
 
@@ -46,6 +45,8 @@ pub async fn watch_and_update(jetty: &Jetty) -> Result<()> {
         user_config.clone(),
         tx.clone(),
     ));
+
+    drop(tx);
 
     while let Some(_) = rx.recv().await {
         info!("updating schema");
@@ -101,8 +102,7 @@ async fn watch_groups<P: AsRef<Path>>(
                 for event in events {
                     info!("change detected in {:?}", event.path);
                 }
-                *group_config.lock().unwrap() =
-                    groups::parser::read_config_file().unwrap_or_default();
+                *group_config.lock().unwrap() = read_groups();
                 if let Err(TrySendError::Closed(_)) = update_channel.try_send(()) {
                     bail!("channel closed unexpectedly");
                 }
@@ -169,4 +169,12 @@ fn update_user_config(user_config: Arc<Mutex<HashMap<PathBuf, UserYaml>>>, path:
             user_config.lock().unwrap().remove(path);
         }
     }
+}
+
+/// Read groups from the config file
+fn read_groups() -> BTreeSet<GroupYaml> {
+    groups::parser::read_config_file().unwrap_or_else(|e| {
+        error!("unable to parse group config file: {e}");
+        Default::default()
+    })
 }

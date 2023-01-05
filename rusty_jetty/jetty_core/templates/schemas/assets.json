@@ -65,6 +65,7 @@
                     "additionalProperties": { "type": "string" }
                 }
             },
+            "required": ["privileges"],
             "anyOf": [{ "required": ["groups"] }, { "required": ["users"] }]
         },
 
@@ -110,7 +111,7 @@
                     "type": "boolean"
                 }
             },
-            "required": ["path", "target type"],
+            "required": ["path", "target type", "privileges"],
             "anyOf": [{ "required": ["groups"] }, { "required": ["users"] }]
         }
     },
