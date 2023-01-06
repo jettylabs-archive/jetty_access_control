@@ -71,7 +71,7 @@
                 },
                 "users": {
                     "type": "array",
-                    "description": "The groups that this policy is granted to. Every policy must be applied to one or more groups or users.",
+                    "description": "The users that this policy is granted to. Every policy must be applied to one or more groups or users.",
                     "items": {
                         "$ref": "config.json#/properties/users"
                     }
@@ -120,7 +120,7 @@
                 },
                 "users": {
                     "type": "array",
-                    "description": "The groups that this policy is granted to. Every policy must be applied to one or more groups or users.",
+                    "description": "The users that this policy is granted to. Every policy must be applied to one or more groups or users.",
                     "items": {
                         "$ref": "config.json#/properties/users"
                     }
