@@ -51,4 +51,4 @@ Great Expectations' [excellent post](https://greatexpectations.io/blog/anonymous
 
 ## Contact us
 
-User feedback is a critical part of our development process, and we would love to hear from you! Please feel free to [reach out to us](mailto:support@get-jetty.com) with any questions, suggestions, or concerns.
+User feedback is a critical part of our development process, and we would love to hear from you! Please feel free to [reach out to us](mailto:product@get-jetty.com) with any questions, suggestions, or concerns.

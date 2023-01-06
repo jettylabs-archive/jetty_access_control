@@ -46,7 +46,7 @@ Policies in Jetty are equivalent to policies set in the connected platforms. Thi
 
 <!-- TODO: Add link -->
 
-Jetty Explore has preview functionality to show a users effective permissions, but this is still experimental. If you want to know more about the current state of this feature, please [reach out](mailto:support@get-jetty.com).
+Jetty Explore has preview functionality to show a users effective permissions, but this is still experimental. If you want to know more about the current state of this feature, please [reach out](mailto:product@get-jetty.com).
 :::
 
 #### Default Policies

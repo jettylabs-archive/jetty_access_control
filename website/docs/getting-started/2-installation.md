@@ -20,7 +20,7 @@ pip install jetty-core
 Next, run `jetty` in the terminal. You should see information about the Jetty CLI.
 
 :::tip
-If it's not working for you, open a new terminal window and try running `jetty` again. If it's still not working, [send us a note](mailto:support@get-jetty.com).
+If it's not working for you, open a new terminal window and try running `jetty` again. If it's still not working, [send us a note](mailto:product@get-jetty.com).
 :::
 **🎉🎉 Congratulations! 🎉🎉**
 

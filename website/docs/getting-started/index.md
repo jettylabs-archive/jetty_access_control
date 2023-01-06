@@ -6,12 +6,13 @@ In this guide, you will learn everything you need to know to get started with Je
 
 1.  Install Jetty
 1.  Connect to your existing data tools
-1.  Explore data access permissions across your stack
-1.  Configure Tags to understand data access across platforms
+1.  Automatically generate configuration files based on your new current data access controls
+1.  Edit group membership and data access policy configurations
+1.  Plan and (optionally) apply the changes in your environment
 
 :::note
 
-In this walkthrough, we will connect to Snowflake, dbt, and Tableau. We will continue to add support for additional data tools, so please [let us know](mailto:support@get-jetty.com) if this stack doesn't meet your needs!
+In this walkthrough, we will connect to Snowflake, dbt, and Tableau. We will continue to add support for additional data tools, so please [let us know](mailto:product@get-jetty.com) if this stack doesn't meet your needs!
 
 :::
 
@@ -68,7 +69,7 @@ Below is the information you will need to connect to each connected platform. As
     </p>
     <hr />
     <p>
-      <strong>Note:</strong> Today Jetty only supports dbt Core projects. Please <a href="mailto:support@get-jetty.com">let us know</a> if you would like
+      <strong>Note:</strong> Today Jetty only supports dbt Core projects. Please <a href="mailto:product@get-jetty.com">let us know</a> if you would like
       to use Jetty with dbt Cloud.
     </p>
   </div>
