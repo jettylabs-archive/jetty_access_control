@@ -131,7 +131,8 @@
                     "additionalProperties": { "type": "string" }
                 },
                 "connector managed": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "description": "Whether this policy should be managed directly by the connector (as well as by Jetty). Connector-managed default policies are used to represent Snowflake future grants and Tableau default permissions"
                 }
             },
             "required": ["path", "target type", "privileges"],
