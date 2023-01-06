@@ -3,7 +3,7 @@
 
 pub mod diffs;
 
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 
 use super::NodeName;
 use crate::{
@@ -452,7 +452,6 @@ impl Translator {
         connector: ConnectorNamespace,
     ) -> ProcessedDefaultPolicy {
         let root_node = self.cual_to_asset_name(policy.root_asset).unwrap();
-        let types: BTreeSet<_> = policy.target_types.into_iter().collect();
         let grantee = match policy.grantee {
             RawPolicyGrantee::Group(g) => self.local_to_global.groups[&connector][&g].to_owned(),
             RawPolicyGrantee::User(u) => {
@@ -470,13 +469,13 @@ impl Translator {
             name: NodeName::DefaultPolicy {
                 root_node: Box::new(root_node.to_owned()),
                 matching_path: policy.wildcard_path.to_owned(),
-                types: types.to_owned(),
+                target_type: policy.target_type.to_owned(),
                 grantee: Box::new(grantee.to_owned()),
             },
             privileges: policy.privileges,
             root_node,
             matching_path: policy.wildcard_path,
-            types,
+            target_type: policy.target_type,
             grantee,
             connector,
             metadata: policy.metadata.to_owned(),

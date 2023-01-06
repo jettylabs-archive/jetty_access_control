@@ -1,0 +1,72 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": ".schema/tags.json",
+    "type": "object",
+    "description": "Key-value pairs defining Jetty tags. The key is the tag name, and the value is an object representing the tag configuration",
+    "additionalProperties": {
+        "type": "object",
+        "properties": {
+            "description": {
+                "type": "string",
+                "description": "A description of the tag"
+            },
+            "apply_to": {
+                "type": "array",
+                "description": "Either the name of the assets this tag should be applied to (Jetty will try to resolve any partial names), or an object specifying the name of the asset and its type (to resolve ambiguous names)",
+                "items": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "object",
+                            "properties": {
+                                "name": {
+                                    "type": "string",
+                                    "description": "The name of an asset this tag should be applied to (Jetty will try to resolve any partial names)"
+                                },
+                                "type": {
+                                    "type": "string",
+                                    "description": "The type of an asset this tag should be applied to (Jetty will try to resolve any partial names)"
+                                }
+                            }
+                        }
+                    ]
+                }
+            },
+            "remove_from": {
+                "type": "array",
+                "description": "Either the name of the assets this tag should be removed from (Jetty will try to resolve any partial names), or an object specifying the name of the asset and its type (to resolve ambiguous names). You can remove tags from assets that would otherwise inherit them.",
+                "items": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "object",
+                            "properties": {
+                                "name": {
+                                    "type": "string",
+                                    "description": "The name of an asset this tag should be removed from (Jetty will try to resolve any partial names)"
+                                },
+                                "type": {
+                                    "type": "string",
+                                    "description": "The type of an asset this tag should be removed from (Jetty will try to resolve any partial names)"
+                                }
+                            }
+                        }
+                    ]
+                }
+            },
+            "pass_through_lineage": {
+                "type": "boolean",
+                "description": "Whether this tag should be inherited by assets that are derived from this asset via lineage"
+            },
+            "pass_through_hierarchy": {
+                "type": "boolean",
+                "description": "Whether this tag should be inherited by assets that are children of this asset via hierarchy (e.g.: the tables in a schema)"
+            }
+        },
+        "required": ["apply_to"]
+    }
+}

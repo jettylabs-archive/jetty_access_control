@@ -7,7 +7,7 @@ use jetty_core::{project, write::diff::get_diffs};
 use crate::new_jetty_with_connectors;
 
 pub(super) async fn diff() -> Result<()> {
-    let jetty = &mut new_jetty_with_connectors().await.map_err(|_| {
+    let jetty = &mut new_jetty_with_connectors(".").await.map_err(|_| {
         anyhow!(
             "unable to find {} - make sure you are in a \
         Jetty project directory, or create a new project by running `jetty new`",

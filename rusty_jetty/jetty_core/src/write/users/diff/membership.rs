@@ -90,7 +90,7 @@ fn get_membership_config_state(
                 user.identifiers
                     .keys()
                     .flat_map(|conn| {
-                        user.groups
+                        user.member_of
                             .iter()
                             .flat_map(|g| {
                                 handle_nested_groups(

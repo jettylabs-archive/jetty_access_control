@@ -31,8 +31,8 @@ pub(crate) fn read_config_file(path: &PathBuf) -> Result<UserYaml> {
     Ok(config)
 }
 
-/// read all config files into a Vec of user structs
-fn read_config_files(paths: Paths) -> Result<HashMap<PathBuf, UserYaml>> {
+/// read all config files into a map of file paths and user structs
+pub(crate) fn read_config_files(paths: Paths) -> Result<HashMap<PathBuf, UserYaml>> {
     let mut res = HashMap::new();
     for path in paths {
         let path = path?;
@@ -95,7 +95,7 @@ fn validate_config(
             }
         }
 
-        for group in &config.groups {
+        for group in &config.member_of {
             if !allowed_group_names.contains(group) {
                 errors.push(format!(
                     "invalid group name in {}: group config doesn't specify a group called \"{group}\"", path.display()
@@ -167,6 +167,14 @@ pub fn get_validated_file_config_map(
     }
 
     Ok(configs)
+}
+
+/// Given a map of paths->UserYaml, return all the user names from the config
+pub(crate) fn get_all_user_names(config: &HashMap<PathBuf, UserYaml>) -> HashSet<String> {
+    config
+        .iter()
+        .map(|(_, user)| user.name.to_owned())
+        .collect()
 }
 
 pub(crate) fn get_validated_nodename_local_id_map(

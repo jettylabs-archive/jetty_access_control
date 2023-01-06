@@ -148,7 +148,7 @@ fn parse_default_policies(
     connector: &ConnectorNamespace,
     config_groups: &HashMap<String, HashMap<ConnectorNamespace, NodeName>>,
     jetty: &Jetty,
-) -> Result<HashMap<(NodeName, String, BTreeSet<AssetType>, NodeName), DefaultPolicyState>> {
+) -> Result<HashMap<(NodeName, String, AssetType, NodeName), DefaultPolicyState>> {
     let ag = jetty.try_access_graph()?;
     let mut res_policies = HashMap::new();
     for policy in default_policies {
@@ -194,13 +194,11 @@ fn parse_default_policies(
             .to_owned()
             .into_keys()
             .collect::<HashSet<_>>();
-        for asset_type in &policy.types {
-            if !allowed_types.contains(asset_type) {
-                bail!(
-                    "the type `{}` is not allowed for this connector",
-                    asset_type.to_string()
-                )
-            }
+        if !allowed_types.contains(&policy.target_type) {
+            bail!(
+                "the type `{}` is not allowed for this connector",
+                &policy.target_type.to_string()
+            )
         }
 
         // Make sure the specified privileges are allowed/exist
@@ -210,7 +208,7 @@ fn parse_default_policies(
                 asset_name,
                 jetty,
                 connector,
-                Some(policy.types.to_owned()),
+                Some(policy.target_type.to_owned()),
             )?;
         }
 
@@ -231,7 +229,7 @@ fn parse_default_policies(
                 (
                     asset_name.to_owned(),
                     policy.path.to_owned(),
-                    policy.types.to_owned(),
+                    policy.target_type.to_owned(),
                     agent.to_owned(),
                 ),
                 DefaultPolicyState {
@@ -325,17 +323,13 @@ fn privileges_are_legal(
     asset_name: &NodeName,
     jetty: &Jetty,
     connector: &ConnectorNamespace,
-    types: Option<BTreeSet<AssetType>>,
+    target_type: Option<AssetType>,
 ) -> Result<()> {
     let ag = jetty.try_access_graph()?;
     let connector_privileges = &jetty.connector_manifests()[connector].asset_privileges;
     // if types were passed, it's a default policy
-    let allowed_privilege_set = if let Some(t) = types {
-        let connector_privileges = &jetty.connector_manifests()[connector].asset_privileges;
-
-        t.iter()
-            .flat_map(|t| connector_privileges[t].to_owned())
-            .collect::<HashSet<_>>()
+    let allowed_privilege_set = if let Some(t) = target_type {
+        connector_privileges[&t].to_owned()
     }
     // Otherwise it's a normal policy, so get the allowed privileges for that type
     else {

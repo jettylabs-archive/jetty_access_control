@@ -3,7 +3,7 @@
 
 use std::{
     cmp::Ordering,
-    collections::{BTreeSet, HashMap, HashSet},
+    collections::{HashMap, HashSet},
 };
 
 use uuid::Uuid;
@@ -274,7 +274,7 @@ pub struct ProcessedDefaultPolicy {
     /// Path to determine scope
     pub matching_path: String,
     /// The types of assets to apply this to
-    pub types: BTreeSet<AssetType>,
+    pub target_type: AssetType,
     /// Who the privilege is granted to
     pub grantee: NodeName,
     /// The metadata associated with the policy
@@ -541,13 +541,13 @@ impl ProcessedDefaultPolicy {
             name: NodeName::DefaultPolicy {
                 root_node: Box::new(self.root_node.to_owned()),
                 matching_path: self.matching_path.to_owned(),
-                types: self.types.to_owned(),
+                target_type: self.target_type.to_owned(),
                 grantee: Box::new(self.grantee.to_owned()),
             },
             id: Uuid::new_v5(&Uuid::NAMESPACE_URL, self.name.to_string().as_bytes()),
             privileges: self.privileges.to_owned(),
             matching_path: self.matching_path.to_owned(),
-            types: self.types.to_owned(),
+            target_type: self.target_type.to_owned(),
             metadata: self.metadata.to_owned(),
             connectors: [self.connector.to_owned()].into(),
         }))

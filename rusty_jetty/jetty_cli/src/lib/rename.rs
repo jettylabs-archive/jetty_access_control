@@ -11,7 +11,7 @@ pub(super) async fn rename(
     old: &String,
     new: &String,
 ) -> Result<()> {
-    let jetty = &new_jetty_with_connectors().await.map_err(|_| {
+    let jetty = &new_jetty_with_connectors(".").await.map_err(|_| {
         anyhow!(
             "unable to find {} - make sure you are in a \
         Jetty project directory, or create a new project by running `jetty new`",

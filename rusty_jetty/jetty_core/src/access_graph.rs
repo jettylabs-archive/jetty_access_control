@@ -27,8 +27,8 @@ use self::translate::Translator;
 use super::connectors;
 use core::hash::Hash;
 
+use std::collections::HashMap;
 use std::collections::HashSet;
-use std::collections::{BTreeSet, HashMap};
 use std::fmt::{Debug, Display};
 use std::fs::{self, File};
 use std::io::BufWriter;
@@ -363,7 +363,7 @@ pub struct DefaultPolicyAttributes {
     /// Metadata associated with the policy
     pub metadata: HashMap<String, String>,
     /// The types of assets that this should be applied to. If None, it's applied to all types
-    pub types: BTreeSet<AssetType>,
+    pub target_type: AssetType,
     /// Connectors for the default policy. Policies include a single asset and single grantee, so
     /// this set should only ever include a single connector
     pub connectors: HashSet<ConnectorNamespace>,
@@ -664,7 +664,7 @@ pub enum NodeName {
         /// The path of wildcards
         matching_path: String,
         /// The types of assets the policy should be applied to
-        types: BTreeSet<AssetType>,
+        target_type: AssetType,
         /// The group/user the policy is granted to
         grantee: Box<NodeName>,
     },
@@ -700,7 +700,7 @@ impl Display for NodeName {
             NodeName::DefaultPolicy {
                 root_node,
                 matching_path,
-                types,
+                target_type,
                 grantee,
             } => {
                 write!(
@@ -709,11 +709,7 @@ impl Display for NodeName {
                     grantee,
                     root_node,
                     matching_path,
-                    types
-                        .iter()
-                        .map(|s| s.to_string())
-                        .collect::<Vec<_>>()
-                        .join(", "),
+                    target_type.to_string(),
                 )
             }
         }

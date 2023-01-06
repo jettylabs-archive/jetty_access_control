@@ -1,0 +1,28 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": ".schema/users.json",
+    "type": "object",
+
+    "properties": {
+        "name": {
+            "description": "The name that will be used to refer to this user in Jetty configurations",
+            "type": "string"
+        },
+        "member of": {
+            "type": "array",
+            "description": "A list of the groups this user is a member of",
+            "items": {
+                "$ref": "config.json#/properties/groups"
+            }
+        },
+        "identifiers": {
+            "type": "object",
+            "description": "The connector-specific identities of this user. Jetty will combine users based on their email addresses, but this allows you to merge users in whatever way makes the most sense.",
+            "propertyNames": {
+                "$ref": "config.json#/properties/connectors"
+            },
+            "additionalProperties": { "type": "string" }
+        }
+    },
+    "required": ["name", "identifiers"]
+}

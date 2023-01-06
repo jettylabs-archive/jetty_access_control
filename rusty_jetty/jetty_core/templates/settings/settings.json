@@ -1,0 +1,8 @@
+{
+    "yaml.schemas": {
+        ".schema/assets.json": ["/assets/**/*.yaml"],
+        ".schema/groups.json": ["/groups/**/*.yaml"],
+        ".schema/users.json": ["/users/**/*.yaml"],
+        ".schema/tags.json": ["/tags/**/*.yaml"]
+    }
+}

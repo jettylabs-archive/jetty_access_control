@@ -1,0 +1,158 @@
+\{
+    "$id": ".schema/config.json",
+    "type": "object",
+    "properties": \{
+        "connectors": \{
+            "type": "string",
+            "enum": [
+                {{for v in connectors}}"{v}"{{ if @last }}{{else}},{{ endif }}
+                {{endfor}}
+            ]
+        },
+        "users": \{
+            "type": "string",
+            "enum": [
+                {{for v in users}}"{v}"{{ if @last }}{{else}},{{ endif }}
+                {{endfor}}
+            ]
+        },
+        "groups": \{
+            "type": "string",
+            "enum": [
+                {{for v in groups}}"{v}"{{ if @last }}{{else}},{{ endif }}
+                {{endfor}}
+            ]
+        },
+        "policy_matcher": \{
+            "allOf": [
+                {{for combo in privilege_map -}}
+                \{
+                    "if": \{
+                        "properties": \{
+                            "identifier": \{
+                                "properties": \{
+                                    "connector": \{ "const": "{combo.0}" },
+                                    "asset type": \{ "const": "{combo.1}" }
+                                },
+                                "required": ["connector", "asset type"]
+                            }
+                        },
+                        "required": ["identifier"]
+                    },
+                    "then": \{
+                        "properties": \{
+                            "policies": \{
+                                "items": \{
+                                    "properties": \{
+                                        "privileges": \{
+                                            "anyOf": [
+                                                \{
+                                                    "type": "array",
+                                                    "items": \{
+                                                        "type": "string",
+                                                        "enum": [
+                                                            {{for p in combo.2}}"{p}"{{ if @last }}{{ else }},{{ endif }}
+                                                            {{endfor}}
+                                                        ]
+                                                    }
+                                                },
+                                                \{ "type": "null" }
+                                            ]
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }{{ if @last }}{{ else }},{{ endif }}
+                {{- endfor }}
+            ]
+        },
+        "default_policy_matcher": \{
+            "allOf": [
+            {{for combo in type_map -}}
+            \{
+                "if": \{
+                    "properties": \{
+                        "identifier": \{
+                            "properties": \{
+                                "connector": \{ "const": "{combo.0}" }
+                            },
+                            "required": ["connector"]
+                        }
+                    },
+                    "required": ["identifier"]
+                },
+                "then": \{
+                    "properties": \{
+                        "default policies": \{
+                            "items": \{
+                                "properties": \{
+                                    "target type": \{
+                                        "enum": [
+                                            {{for p in combo.1}}"{p}"{{ if @last }}{{ else }},{{ endif }}
+                                            {{endfor}}
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            {{- endfor -}}
+            {{for combo in privilege_map -}}
+                \{
+                    "if": \{
+                        "properties": \{
+                            "identifier": \{
+                                "properties": \{
+                                    "connector": \{ "const": "{combo.0}" }
+                                },
+                                "required": ["connector"]
+                            },
+                            "default policies": \{
+                                "items": \{
+                                    "type": "object",
+                                    "properties": \{
+                                        "target type": \{
+                                            "const": "{combo.1}"
+                                        }
+                                    },
+                                    "required": ["target type"]
+                                }
+                            }
+                        },
+                        "required": ["identifier", "default policies"]
+                    },
+                    "then": \{
+                        "properties": \{
+                            "default policies": \{
+                                "items": \{
+                                    "properties": \{
+                                        "privileges": \{
+                                            "anyOf": [
+                                                \{
+                                                    "type": "array",
+                                                    "items": \{
+                                                        "type": "string",
+                                                        "enum": [
+                                                            {{for p in combo.2}}"{p}"{{ if @last }}{{ else }},{{ endif }}
+                                                            {{endfor}}
+                                                        ]
+                                                    }
+                                                },
+                                                \{ "type": "null" }
+                                            ]
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }{{ if @last }}{{ else }},{{ endif }}
+                {{- endfor }}
+            ]
+        }
+    }
+}

@@ -467,11 +467,8 @@ pub struct RawDefaultPolicy {
     pub root_asset: Cual,
     /// The wildcard path to assets that will be affected by this policy (e.g. "*/**" )
     pub wildcard_path: String,
-    /// The types that the policy should be applied to
-    /// **Note:** for now, we're accepting only a single type here, rather than a policy with multiple types.
-    /// I think this will be the right way to go, but I'll wait to make the change
-    // FUTURE: Fix this
-    pub target_types: HashSet<AssetType>,
+    /// The type that the policy should be applied to
+    pub target_type: AssetType,
     /// policy grantee
     pub grantee: RawPolicyGrantee,
     /// metadata for the policy

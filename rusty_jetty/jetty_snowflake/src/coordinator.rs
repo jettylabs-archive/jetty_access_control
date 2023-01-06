@@ -503,7 +503,7 @@ fn add_non_default_policies(connector_data: &mut ConnectorData) {
             asset_map[&default_policy.root_asset.to_string()]
                 .iter()
                 .filter_map(|(name, asset_type)| {
-                    if default_policy.target_types.contains(asset_type) {
+                    if default_policy.target_type == *asset_type {
                         Some(name.to_owned())
                     } else {
                         None
@@ -518,7 +518,7 @@ fn add_non_default_policies(connector_data: &mut ConnectorData) {
                 // get all the grandchildren, then flatten
                 .flat_map(|(level_one_name, _)| asset_map[level_one_name].to_owned())
                 .filter_map(|(name, asset_type)| {
-                    if default_policy.target_types.contains(&asset_type) {
+                    if default_policy.target_type == asset_type {
                         Some(name)
                     } else {
                         None
@@ -595,7 +595,7 @@ mod tests {
             privileges: ["write".to_owned()].into(),
             root_asset: cual!("db"),
             wildcard_path: "/*".to_owned(),
-            target_types: [AssetType(consts::SCHEMA.to_owned())].into(),
+            target_type: AssetType(consts::SCHEMA.to_owned()),
             grantee: RawPolicyGrantee::Group("group".to_owned()),
             metadata: Default::default(),
         }]

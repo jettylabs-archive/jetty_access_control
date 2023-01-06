@@ -14,7 +14,8 @@ use crate::{
 
 use super::GroupConfig;
 
-fn read_config_file() -> Result<GroupConfig> {
+/// read a non-validated config file from the default location. Return a GroupConfig struct
+pub(crate) fn read_config_file() -> Result<GroupConfig> {
     let val = fs::read_to_string(project::groups_cfg_path_local())?;
     let res: Vec<GroupConfig> = yaml_peg::serde::from_str(&val)?;
     if res.is_empty() {

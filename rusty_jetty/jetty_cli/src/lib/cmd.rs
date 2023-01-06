@@ -24,8 +24,9 @@ pub(crate) enum JettyCommand {
     New {
         /// Project name
         project_name: Option<String>,
-        /// Initialize from an existing config (as a shortcut).
-        #[clap(short, long, hide = true)]
+        /// Initialize from an existing jetty_config.yaml file. This will create a new directory based on the name specified
+        /// in the config file. For this to work properly, you must also have an appropriate ~/.jetty/connectors.yaml file in place.
+        #[clap(short, long)]
         from: Option<PathBuf>,
         /// Overwrite project directory if it exists
         #[clap(short, long, value_parser, default_value = "false")]
@@ -34,7 +35,7 @@ pub(crate) enum JettyCommand {
     /// Fetch metadata using an existing Jetty project
     Fetch {
         /// Visualize the graph in an SVG file.
-        #[clap(long, value_parser, default_value = "false")]
+        #[clap(long, value_parser, default_value = "false", hide = true)]
         visualize: bool,
         /// Connectors to collect for.
         #[clap(short, long, use_value_delimiter = true, value_delimiter = ',')]
@@ -110,6 +111,8 @@ pub(crate) enum JettyCommand {
         /// the new name of that user or group
         new: String,
     },
+    /// Watch config files for changes and update the yaml schema as needed to keep validation working properly
+    Dev,
 }
 
 /// The type of node being modified in the rename or remove commands

@@ -182,7 +182,7 @@ impl Project {
                         privileges: raw.privileges.to_owned(),
                         root_asset: root_cual.to_owned(),
                         wildcard_path: "/**".to_owned(),
-                        target_types: [target_asset_type.to_owned()].into(),
+                        target_type: target_asset_type.to_owned(),
                         grantee,
                         /// Content permissions are controlled only at the project level
                         metadata: if asset_type == "project" {
