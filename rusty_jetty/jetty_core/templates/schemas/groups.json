@@ -2,20 +2,24 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": ".schema/groups.json",
     "type": "array",
+    "description": "An array of groups and their group membership. Jetty groups can be nested, and Jetty handles the conversion for connectors that don't support nested groups",
     "items": {
         "type": "object",
         "properties": {
             "name": {
+                "description": "The name of the group. This is the name the group will be referred to throughout the Jetty configuration files.\n\nIf the name of a group begins with a connector name, followed by two colons, that group will only be created on the specified platform only. Otherwise, the group will be created on all connected platforms. For example Tableau::Accounting will be a group called Accounting that exists in Tableau only.",
                 "type": "string"
             },
             "member of": {
                 "type": "array",
+                "description": "Names of the groups that this group is a member of",
                 "items": {
                     "$ref": "config.json#/properties/groups"
                 }
             },
             "identifiers": {
                 "type": "object",
+                "description": "(Optional) Connector-specific names for the group. For example, a value of Snowflake: MY_GROUP would create a group called MY_GROUP on Snowflake. Jetty will use value in the name field as the group name on connectors without a custom name specified here.",
                 "propertyNames": {
                     "$ref": "config.json#/properties/connectors"
                 },

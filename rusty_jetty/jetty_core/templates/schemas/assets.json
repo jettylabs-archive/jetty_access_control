@@ -2,6 +2,7 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": ".schema/assets.json",
     "type": "object",
+    "description": "Configuration for a data asset",
     "required": ["identifier"],
     "additionalProperties": false,
     "properties": {
@@ -10,10 +11,12 @@
         },
         "policies": {
             "type": "array",
+            "description": "The policies that are configured for the asset. These policies represent policies connector specific policies that are managed within Jetty.",
             "items": { "$ref": "#/$defs/policy" }
         },
         "default policies": {
             "type": "array",
+            "description": "The default policies that will be applied to child assets if no policy is specified within Jetty. Some of these default policies are connector-managed, meaning that they are implemented at the connector level. An example of this would be a future grant in Snowflake. All policies listed here, connector-managed or not, are also applied at the asset level to the relevant assets.",
             "items": { "$ref": "#/$defs/default_policy" }
         }
     },
@@ -21,11 +24,21 @@
     "$defs": {
         "identifier": {
             "type": "object",
+            "description": "The identifier for the data asset managed in the file",
             "additionalProperties": false,
             "properties": {
-                "name": { "type": "string" },
-                "id": { "type": "string" },
-                "asset type": { "type": "string" },
+                "name": {
+                    "type": "string",
+                    "description": "The name of the data asset"
+                },
+                "id": {
+                    "type": "string",
+                    "description": "The Jetty-specific stable identifier for the asset"
+                },
+                "asset type": {
+                    "type": "string",
+                    "description": "The asset type"
+                },
                 "connector": {
                     "$ref": "config.json#/properties/connectors"
                 }
@@ -41,6 +54,7 @@
                     "anyOf": [
                         {
                             "type": "array",
+                            "description": "The connector-specific privileges to be applied as part of this policy",
                             "items": {
                                 "type": "string"
                             }
@@ -50,18 +64,21 @@
                 },
                 "groups": {
                     "type": "array",
+                    "description": "The groups that this policy is granted to. Every policy must be applied to one or more groups or users.",
                     "items": {
                         "$ref": "config.json#/properties/groups"
                     }
                 },
                 "users": {
                     "type": "array",
+                    "description": "The groups that this policy is granted to. Every policy must be applied to one or more groups or users.",
                     "items": {
                         "$ref": "config.json#/properties/users"
                     }
                 },
                 "metadata": {
                     "type": "object",
+                    "description": "Key-value pairs of metadata that are specific to this policy",
                     "additionalProperties": { "type": "string" }
                 }
             },
@@ -77,6 +94,7 @@
                     "anyOf": [
                         {
                             "type": "array",
+                            "description": "The connector-specific privileges to be applied as part of this policy",
                             "items": {
                                 "type": "string"
                             }
@@ -86,25 +104,30 @@
                 },
                 "path": {
                     "type": "string",
+                    "description": "A matching pattern to specify which of this asset's descendants will be affected by this policy. It is specified with asterisks (e.g.: /*/*/**)",
                     "pattern": "^(?:\\/)?(?:\\*)(?:\\/\\*)*?(?:\\/\\*\\*)?(?:\\/)?$"
                 },
                 "target type": {
+                    "description": "The type of asset that this policy will be applied to",
                     "type": "string"
                 },
                 "groups": {
                     "type": "array",
+                    "description": "The groups that this policy is granted to. Every policy must be applied to one or more groups or users.",
                     "items": {
                         "$ref": "config.json#/properties/groups"
                     }
                 },
                 "users": {
                     "type": "array",
+                    "description": "The groups that this policy is granted to. Every policy must be applied to one or more groups or users.",
                     "items": {
                         "$ref": "config.json#/properties/users"
                     }
                 },
                 "metadata": {
                     "type": "object",
+                    "description": "Key-value pairs of metadata that are specific to this policy",
                     "additionalProperties": { "type": "string" }
                 },
                 "connector managed": {
