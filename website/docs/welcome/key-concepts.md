@@ -23,11 +23,11 @@ Jetty users can belong to [groups](#groups) and can have [policies](#policies) a
 
 ### Groups
 
-Groups represent collections of users and groups that can be managed together in Jetty. These groups are implemented by connectors in different ways (e.g.: as groups in Tableau, and as Roles in Snowflake). Jetty groups can have [policies](#policies) applied to them and can be members of other groups (Jetty takes care of this, even if the connected systems don't support nested groups)
+Groups represent collections of users and groups that can be managed together in Jetty. These groups are implemented by connectors in different ways (e.g., as groups in Tableau, and as Roles in Snowflake). Jetty groups can have [policies](#policies) applied to them and can be members of other groups (Jetty takes care of this, even if the connected systems don't support nested groups)
 
 ### Assets
 
-Assets represent the artifacts managed by the connected platforms (e.g.: database tables, dashboards, or projects). They can have descendants and ancestors based on hierarchy (e.g.: a table is a child of a schema) and lineage (e.g.: a view is derived from a table) and can have [policies](#policies) applied to them. All assets have a globally unique identifier that can be used to tie together lineage and other information between systems (e.g.: importing Snowflake lineage data based on a dbt project).
+Assets represent the artifacts managed by the connected platforms (e.g., database tables, dashboards, or projects). They can have descendants and ancestors based on hierarchy (e.g., a table is a child of a schema) and lineage (e.g., a view is derived from a table) and can have [policies](#policies) applied to them. All assets have a globally unique identifier that can be used to tie together lineage and other information between systems (e.g., importing Snowflake lineage data based on a dbt project).
 
 :::note Hierarchy vs Lineage
 Assets have two types of genealogy: hierarchy-based and lineage-based.
