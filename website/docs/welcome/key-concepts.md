@@ -44,9 +44,7 @@ Policies represent the policies as configured in a connected platform. Each poli
 :::note Policies and effective permissions
 Policies in Jetty are equivalent to policies set in the connected platforms. This means that, at times, the actual level of access that a user has may not match what a specific policy defines. For example, if a user a site administrator in Tableau, they have automatic access to all of the assets, even though that access is not explicitly controlled using individual policies.
 
-<!-- TODO: Add link -->
-
-Jetty Explore has preview functionality to show a users effective permissions, but this is still experimental. If you want to know more about the current state of this feature, please [reach out](mailto:product@get-jetty.com).
+[Jetty Explore](../cli/explore) has preview functionality to show a users effective permissions, but this is still experimental. If you want to know more about the current state of this feature, please [reach out](mailto:product@get-jetty.com).
 :::
 
 #### Default Policies
