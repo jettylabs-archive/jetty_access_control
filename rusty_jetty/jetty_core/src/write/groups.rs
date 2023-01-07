@@ -29,6 +29,9 @@ pub(crate) type GroupConfig = BTreeSet<GroupYaml>;
 pub struct GroupYaml {
     /// The name of the group
     name: String,
+    /// Description of the group
+    #[serde(skip_serializing_if = "Option::is_none")]
+    description: Option<String>,
     /// The connector-specific names of the group
     #[serde(skip_serializing_if = "BTreeMap::is_empty", default)]
     identifiers: BTreeMap<ConnectorNamespace, String>,
