@@ -17,6 +17,10 @@
                     "$ref": "config.json#/properties/groups"
                 }
             },
+            "description": {
+                "type": "string",
+                "description": "Description of the groups"
+            },
             "identifiers": {
                 "type": "object",
                 "description": "(Optional) Connector-specific names for the group. For example, a value of Snowflake: MY_GROUP would create a group called MY_GROUP on Snowflake. Jetty will use value in the name field as the group name on connectors without a custom name specified here.",

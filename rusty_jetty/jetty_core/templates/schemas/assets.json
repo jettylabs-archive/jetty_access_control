@@ -50,6 +50,10 @@
             "type": "object",
             "additionalProperties": false,
             "properties": {
+                "description": {
+                    "type": "string",
+                    "description": "A description of the policy"
+                },
                 "privileges": {
                     "anyOf": [
                         {
@@ -90,6 +94,10 @@
             "type": "object",
             "additionalProperties": false,
             "properties": {
+                "description": {
+                    "type": "string",
+                    "description": "A description of the default policy"
+                },
                 "privileges": {
                     "anyOf": [
                         {
@@ -130,7 +138,7 @@
                     "description": "Key-value pairs of metadata that are specific to this policy",
                     "additionalProperties": { "type": "string" }
                 },
-                "connector managed": {
+                "connector-managed": {
                     "type": "boolean",
                     "description": "Whether this policy should be managed directly by the connector (as well as by Jetty). Connector-managed default policies are used to represent Snowflake future grants and Tableau default permissions"
                 }

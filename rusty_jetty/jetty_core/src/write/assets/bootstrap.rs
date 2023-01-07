@@ -452,7 +452,13 @@ pub fn write_bootstrapped_asset_yaml(assets: HashMap<PathBuf, String>) -> Result
         let parent_path = project::assets_cfg_root_path_local().join(path);
         // make sure the parent directories exist
         fs::create_dir_all(&parent_path)?;
-        fs::write(parent_path.join(project::assets_cfg_filename()), policy_doc)?;
+        fs::write(
+            &parent_path.join(format!(
+                "{}.yaml",
+                parent_path.file_name().unwrap().to_string_lossy()
+            )),
+            policy_doc,
+        )?;
     }
     Ok(())
 }
@@ -519,7 +525,13 @@ pub fn update_asset_files(jetty: &Jetty) -> Result<()> {
             project::assets_cfg_root_path_local().join(jetty.asset_index_to_file_path(idx.into()));
         // make sure the parent directories exist
         fs::create_dir_all(&parent_path)?;
-        fs::write(parent_path.join(project::assets_cfg_filename()), yaml)?;
+        fs::write(
+            &parent_path.join(format!(
+                "{}.yaml",
+                parent_path.file_name().unwrap().to_string_lossy()
+            )),
+            yaml,
+        )?;
     }
 
     // Get the assets that don't exist in the env and delete files.

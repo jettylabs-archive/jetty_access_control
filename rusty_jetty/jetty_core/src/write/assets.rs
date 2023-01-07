@@ -78,11 +78,11 @@ pub(crate) struct YamlAssetIdentifier {
 struct YamlPolicy {
     #[serde(skip_serializing_if = "Option::is_none")]
     description: Option<String>,
-    privileges: Option<BTreeSet<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     users: Option<BTreeSet<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     groups: Option<BTreeSet<String>>,
+    privileges: Option<BTreeSet<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     metadata: Option<BTreeMap<String, String>>,
 }
@@ -96,15 +96,15 @@ struct YamlDefaultPolicy {
     target_type: AssetType,
     #[serde(skip_serializing_if = "bool_is_false", default)]
     /// Whether this default policy is managed by the connector (rather than just by Jetty)
-    #[serde(rename = "connector managed")]
+    #[serde(rename = "connector-managed")]
     connector_managed: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     description: Option<String>,
-    privileges: Option<BTreeSet<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     users: Option<BTreeSet<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     groups: Option<BTreeSet<String>>,
+    privileges: Option<BTreeSet<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     metadata: Option<BTreeMap<String, String>>,
 }
