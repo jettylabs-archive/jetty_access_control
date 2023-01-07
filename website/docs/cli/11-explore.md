@@ -1,44 +1,10 @@
----
-sidebar_position: 5
-slug: './fetch'
----
+# explore
 
-# Fetch and Explore
-
-## Fetch
-
-With a project set up, Jetty can now fetch the critical metadata from your configured connectors. To begin this process, run
-
-```
-jetty fetch
-```
-
-The time it takes for `fetch` to run will vary based on your data infrastructure, but will typically take well under a minute.
-
-The fetch process uses the APIs and configurations of your connected systems to understand users, data lineage, and data access permissions. This information is then used to populate the Explore interface.
-
-## Explore
-
-Once Fetch has completed successfully, you can start the Explore UI by running
-
-```
-jetty explore
-```
-
-:::tip
-You can automatically run `jetty fetch` and then `jetty explore` by running
-
-```
-jetty explore --fetch
-```
-
-:::
-
-This command will start a local server and open a browser window to a search page. You can use the search page to find specific users, groups (called Roles in Snowflake), data assets, and tags, and view detailed information about them. This information can be filtered, sorted, and downloaded. The displayed information includes:
+This command will start a local server and open a browser window to a search page. You can use the search page to find specific users, groups, data assets, and tags, and view detailed information about them. This information can be filtered, sorted, and downloaded. The displayed information includes:
 
 #### Users
 
--   User-accessible assets, including specific access privileges
+-   User-accessible assets, including specific access privileges (_in preview_)
 -   Groups the user is a member of (both directly, and through nested group relationships)
 -   Tagged assets the user has access to (grouped by tag)
 
@@ -51,8 +17,8 @@ This command will start a local server and open a browser window to a search pag
 #### Assets
 
 -   Tags applied to the asset
--   Users with direct asset to the asset
--   Users with access to an asset derived from the original asset (for example, a dashboard built from the original table)
+-   Users with direct asset to the asset (_in preview_)
+-   Users with access to an asset derived from the original asset (for example, a dashboard built from the original table) (_in preview_)
 -   Hierarchy of the asset (e.g., the projects a Tableau workbook is part of, and any sheets or metrics that are children of the workbook)
 -   Lineage of the asset (e.g., the assets that the original asset is derived from and the assets then derived from it)
 
@@ -60,9 +26,9 @@ This command will start a local server and open a browser window to a search pag
 
 -   Tag inheritance rules (passed via lineage and/or hierarchy)
 -   Assets that have the tag applied (directly or through inheritance)
--   Users with access to the tagged assets
+-   Users with access to the tagged assets (_in preview_)
 
-### Answering Questions
+#### Answering Questions
 
 The Explore UI can help find answers to countless questions. Here are a few example:
 
@@ -77,5 +43,22 @@ The Explore UI can help find answers to countless questions. Here are a few exam
     1. Filter the _Assets_ tab to find the asset in question, and look at the permissions granted and explanations
 
 :::note
-We will continue to improve the Explore UI - if there is more you wish you could do [let us know](mailto:support@get-jetty.com)!
+We will continue to improve the Explore UI - if there is more you wish you could do [let us know](mailto:product@get-jetty.com)!
 :::
+
+### Usage
+
+`jetty explore [OPTIONS]`
+
+### Arguments
+
+`[PROJECT_NAME]` Project name (optional)
+
+### Options
+
+| Flag                              | Description                                                        |
+| --------------------------------- | ------------------------------------------------------------------ |
+| `-f`, `--fetch`                   | Fetch the current configuration before launching the UI            |
+| `-b`, `--bind` `<BIND>`           | Select the ip and port to bind the server to (e.g. 127.0.0.1:3000) |
+| `-l`, `--log-level` `<LOG_LEVEL>` | Specify the log level. Can be debug, info, warn, or error          |
+| `-h`, `--help`                    | Print help information                                             |

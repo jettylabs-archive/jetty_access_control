@@ -1,11 +1,4 @@
----
-sidebar_position: 6
-slug: './tags'
----
-
-# Managing Tags
-
-## Introduction
+# Tags
 
 Jetty lets users define and manage tags to make it easier to track access to sensitive or important information. These tags are managed via a configuration file that can be found in your project directory under `tags/tags.yaml`.
 
@@ -36,13 +29,13 @@ Tags are applied to data assets based on the following configurations:
 -   **description** (optional) - A string describing the tag. This makes it easier to search for and identify specific tags
 -   **pass_through_lineage** (optional, default: `false`) - Whether this tag should be inherited by assets derived from the those the tag is explicitly applied to
 -   **pass_through_hierarchy** (optional, default: `false`) - Whether this tag should be inherited by assets that descend in hierarchy from those the tag is explicitly applied to (for example, tables could inherit tags applied to their schema)
--   **apply_to** (required) - A list of assets that this tag should be directly applied to. Jetty will try to infer which asset you are referring to based on the text you provide (for example, you could use `customer_table` to refer to `snowflake::ANALYTICS_DB/CUSTOMER_SCHEMA/ALL_CUSTOMER_TABLE`). If the text provided could reference multiple assets, when you run `jetty explore`, Jetty will show you all the potential matches so that you can update tags.yaml with something more specific. When necessary, an asset reference can include a name and type value (both of these will be provided by Jetty in the case of an ambiguous reference). These detailed references can be used alongside simple string references. This would look like the following:
+-   **apply_to** (required) - A list of assets that this tag should be directly applied to. Jetty will try to infer which asset you are referring to based on the text you provide (for example, you could use `customer_table` to refer to `snowflake::ANALYTICS_DB/CUSTOMER_SCHEMA/ALL_CUSTOMER_TABLE`). If the text provided could reference multiple assets and then try to run a Jetty command, the system will show you all the potential matches so that you can update tags.yaml with something more specific. When necessary, an asset reference can include a name and type value (both of these will be provided in the error message in the case of an ambiguous reference). These detailed references can be used alongside simple string references. This would look like the following:
 
 ```yaml
 Customer PII:
     apply_to:
         - name: customer
-        type: workbook
+          type: workbook
         - warehouse/raw/customer
 ```
 
