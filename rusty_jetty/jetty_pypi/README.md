@@ -7,15 +7,9 @@ Install Jetty by running `pip install jetty-core`
 ## First Use
 
 Once Jetty is installed, create a Jetty project by running `jetty init`.
-The application will walk you through the steps you need to connect Jetty to your data infrastructure. Once Jetty is configured, you can fetch up to date data access information and launch the Explore UI with `jetty explore --fetch`.
+The application will walk you through the steps you need to connect Jetty to your data infrastructure.
 
-## Updating Access Information
-
-Use `jetty fetch` to get an updated view of your data stack.
-
-## Launching the UI
-
-Launch the Explore UI for the most recent fetch of your data with `jetty explore`.
+For instructions how how to use Jetty, see [the complete documentation](https://docs.get-jetty.com).
 
 ## Reaching Out
 
