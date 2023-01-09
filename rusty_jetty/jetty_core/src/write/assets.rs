@@ -164,6 +164,9 @@ fn get_config_state(
     // Now that we've built out the state, expand the default policies:
     res.expand_default_policies(jetty)?;
 
+    // and remove non-connector-managed default policies
+    res.remove_non_connector_managed_default_policies();
+
     Ok(res)
 }
 
@@ -340,6 +343,16 @@ impl CombinedPolicyState {
         }
 
         Ok(())
+    }
+
+    /// Remove all non-connector-managed default policies as these are only ephemeral.
+    fn remove_non_connector_managed_default_policies(&mut self) {
+        self.default_policies = self
+            .default_policies
+            .to_owned()
+            .into_iter()
+            .filter(|(_, p)| p.connector_managed)
+            .collect();
     }
 
     /// Expand default policies into a map of <priority, combined policy state>
