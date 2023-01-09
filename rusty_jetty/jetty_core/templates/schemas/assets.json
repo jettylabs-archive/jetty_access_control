@@ -113,7 +113,7 @@
                 "path": {
                     "type": "string",
                     "description": "A matching pattern to specify which of this asset's descendants will be affected by this policy. It is specified with asterisks (e.g.: /*/*/**)",
-                    "pattern": "^(?:\\/)?(?:\\*)(?:\\/\\*)*?(?:\\/\\*\\*)?(?:\\/)?$"
+                    "pattern": "^(?:\\/)?(?:(?:\\*)(?:\\/\\*)*?(?:\\/\\*\\*)?(?:\\/)?|\\*\\*)$"
                 },
                 "target type": {
                     "description": "The type of asset that this policy will be applied to",
