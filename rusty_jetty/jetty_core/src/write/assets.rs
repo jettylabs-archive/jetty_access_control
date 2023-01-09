@@ -346,6 +346,7 @@ impl CombinedPolicyState {
     }
 
     /// Remove all non-connector-managed default policies as these are only ephemeral.
+    #[allow(clippy::unnecessary_to_owned)]
     fn remove_non_connector_managed_default_policies(&mut self) {
         self.default_policies = self
             .default_policies
