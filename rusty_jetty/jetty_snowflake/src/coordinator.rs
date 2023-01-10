@@ -62,7 +62,7 @@ pub(super) struct Coordinator<'a> {
     pub(crate) role_grants: HashMap<Grantee, HashSet<RoleName>>,
 }
 
-#[derive(Hash, Eq, PartialEq)]
+#[derive(Hash, Eq, PartialEq, Debug)]
 pub(crate) enum Grantee {
     User(String),
     Role(String),

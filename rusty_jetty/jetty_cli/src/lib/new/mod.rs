@@ -84,7 +84,7 @@ fn create_git_repo<P: AsRef<Path>>(project_path: P) -> Result<()> {
             .context("updating name of branch to main")?;
         std::fs::write(
             PathBuf::from(project_path.as_ref()).join(".gitignore"),
-            "# Environment state data\n.data/",
+            "# Environment state data\n.data/\n",
         )?;
 
         Ok(())

@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-
+use crate::strip_quotes_and_deserialize;
 
 use super::RoleName;
 
@@ -10,6 +10,7 @@ pub struct GrantOf {
     /// The role name in Snowflake.
     pub role: RoleName,
     pub granted_to: String,
+    #[serde(deserialize_with = "strip_quotes_and_deserialize")]
     pub grantee_name: String,
 }
 
