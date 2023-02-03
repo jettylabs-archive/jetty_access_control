@@ -5,6 +5,7 @@
 
 mod coordinator;
 mod file_parse;
+mod lineage;
 mod nodes;
 mod permissions;
 pub(crate) mod rest;
