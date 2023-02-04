@@ -1,4 +1,8 @@
 //! Collect lineage for tableau assets using the metadata API.
+//!
+
+mod assets;
+
 use anyhow::{anyhow, bail, Context, Result};
 use jetty_core::logging::warn;
 use serde::{de::DeserializeOwned, Deserialize};
@@ -21,17 +25,31 @@ type Databases = HashMap<String, String>;
 type DatabaseServers = HashMap<String, DatabaseServer>;
 
 /// Database server information returned from Tableau
+#[derive(Debug)]
 struct DatabaseServer {
     /// Server hostname (e.g., "abc12345.snowflakecomputing.com/")
-    hostname: String,
+    host_name: String,
     /// Server connection type (e.g., "snowflake")
     connection_type: String,
+}
+
+/// Just a string id (for deserialization purposes)
+#[derive(Deserialize)]
+struct IdField {
+    id: String,
 }
 
 impl DatabaseServer {
     fn cual_prefix(&self) -> Result<String> {
         Ok(match self.connection_type.as_str() {
-            "snowflake" => format!("snowflake://{}", self.hostname),
+            "snowflake" => format!(
+                "snowflake://{}",
+                if self.host_name.is_empty() {
+                    "NO_HOSTNAME"
+                } else {
+                    &self.host_name
+                }
+            ),
             _ => bail!("unsupported connection type: {}", self.connection_type),
         })
     }
@@ -48,46 +66,43 @@ impl TableResolver {
     /// Returns `None` if the database is not found. This can happen if the
     /// metadata API isn't working properly or if the db has been filtered out
     /// (e.g., snowflake only)
-    fn get_cual(&self, table: &DatabaseTable) -> Option<Vec<Cual>> {
-        let mut res = Vec::new();
-
-        for db_id in &table.database_ids {
-            let db_name = match self.databases.get(db_id) {
-                Some(s) => s,
-                None => continue,
-            };
-            let prefix = match self.database_servers.get(db_id) {
-                Some(s) => match s.cual_prefix() {
-                    Ok(s) => s,
-                    Err(e) => {
-                        warn!("tableau lineage: failed to get cual prefix: {e}");
-                        continue;
-                    }
-                },
-                None => continue,
-            };
-            match clean_table_name(&table.full_name) {
-                Ok((schema, table)) => res.push(Cual::new(
-                    format!("{}{}/{}/{}", prefix, db_name, schema, table,).as_str(),
-                )),
-                Err(e) => {
-                    warn!("tableau lineage: unable to clean table name: {e}");
-                    continue;
-                }
+    fn get_cual(&self, table: &DatabaseTable) -> Option<Cual> {
+        let db_name = self.databases.get(&table.database_id)?;
+        let prefix = self
+            .database_servers
+            .get(&table.database_id)?
+            .cual_prefix()
+            .ok()?;
+        match clean_table_name(&table.full_name) {
+            Ok((schema, table)) => Some(Cual::new(
+                format!(
+                    "{}{}{}/{}/{}",
+                    prefix,
+                    if prefix.ends_with("/") { "" } else { "/" },
+                    db_name,
+                    schema,
+                    table,
+                )
+                .as_str(),
+            )),
+            Err(e) => {
+                warn!("tableau lineage: unable to clean table name: {e}");
+                None
             }
         }
-
-        Some(res)
     }
 }
+
+/// Map of database IDs to DatabaseServer structs
+type DatabaseTables = HashMap<String, DatabaseTable>;
+
+#[derive(Debug)]
 /// All the database tables in the Tableau environment
 struct DatabaseTable {
-    /// The table ID (metadata API-only)
-    id: String,
     /// The full name of the database table ([SCHEMA].[TABLE])
     full_name: String,
     /// The id of the database the table belongs to (metadata API-only)
-    database_ids: Vec<String>,
+    database_id: String,
 }
 
 /// Given a tableau-formatted table full name (e.g., [SCHEMA].[table]), return two cual-ready
@@ -107,14 +122,61 @@ fn clean_table_name(name: &str) -> Result<(String, String)> {
     Ok((schema.to_owned(), table.to_owned()))
 }
 
+fn get_table_cuals(tables: DatabaseTables, resolver: TableResolver) -> HashMap<String, Cual> {
+    tables
+        .into_iter()
+        .filter_map(|(id, table)| resolver.get_cual(&table).map(|c| (id, c)))
+        .collect()
+}
+
 impl Coordinator {
-    /// Fetch the database servers from the tableau metadata API and
+    /// Fetch the database tables from the tableau metadata API
+    async fn get_database_tables(&self) -> Result<DatabaseTables> {
+        #[derive(Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct DatabaseTablesResponse {
+            full_name: String,
+            id: String,
+            database: IdField,
+        }
+
+        let query = r#"
+    query datbaseTables {
+        databaseTables {
+          fullName
+          id
+          database {
+            id
+          }
+        }
+      }
+    "#;
+
+        let response: Vec<DatabaseTablesResponse> = self
+            .graphql_query_to_object_vec(query, vec!["data", "databaseTables"])
+            .await?;
+
+        Ok(response
+            .into_iter()
+            .map(|r| {
+                (
+                    r.id,
+                    DatabaseTable {
+                        full_name: r.full_name,
+                        database_id: r.database.id,
+                    },
+                )
+            })
+            .collect())
+    }
+
+    /// Fetch the database servers from the tableau metadata API
     async fn get_database_servers(&self) -> Result<HashMap<String, DatabaseServer>> {
         #[derive(Deserialize)]
         #[serde(rename_all = "camelCase")]
         struct DatabaseServersResponse {
             connection_type: String,
-            hostname: String,
+            host_name: String,
             id: String,
         }
 
@@ -138,7 +200,7 @@ impl Coordinator {
                 (
                     r.id,
                     DatabaseServer {
-                        hostname: r.hostname,
+                        host_name: r.host_name,
                         connection_type: r.connection_type,
                     },
                 )
@@ -187,6 +249,47 @@ impl Coordinator {
 
         serde_json::from_value(node).map_err(anyhow::Error::from)
     }
+
+    /// Update the lineage of data assets
+    // FUTURE: If needed, parts of this can be run concurrently.
+    pub(super) async fn update_lineage(&mut self) -> Result<()> {
+        let resolver = TableResolver {
+            databases: self.get_databases().await?,
+            database_servers: self.get_database_servers().await?,
+        };
+        let tables = self.get_database_tables().await?;
+        let cual_map = get_table_cuals(tables, resolver);
+
+        // Update workbooks
+        assets::update_sources(
+            self.fetch_workbooks_references(&cual_map).await?,
+            &mut self.env.workbooks,
+        );
+
+        assets::update_sources(
+            self.fetch_metrics_references(&cual_map).await?,
+            &mut self.env.metrics,
+        );
+
+        assets::update_sources(
+            self.fetch_flows_references(&cual_map).await?,
+            &mut self.env.flows,
+        );
+
+        assets::update_sources(
+            self.fetch_datasources_references(&cual_map).await?,
+            &mut self.env.datasources,
+        );
+
+        assets::update_sources(
+            self.fetch_lenses_references(&cual_map).await?,
+            &mut self.env.lenses,
+        );
+
+        // View references set to be their parent cual when the jetty node is created
+
+        Ok(())
+    }
 }
 
 // graphql to vec of objects
@@ -194,6 +297,7 @@ impl Coordinator {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::tests::get_live_tableau_connector;
 
     #[test]
     fn test_clean_table_name() -> Result<()> {
@@ -210,6 +314,19 @@ mod tests {
         for (in_name, out_name) in name_pairs {
             assert_eq!(clean_table_name(in_name)?, out_name);
         }
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_fetch_data_works() -> Result<()> {
+        let tab = get_live_tableau_connector().await?;
+        let resolver = TableResolver {
+            databases: tab.coordinator.get_databases().await?,
+            database_servers: tab.coordinator.get_database_servers().await?,
+        };
+        let tables = tab.coordinator.get_database_tables().await?;
+        let cual_map = get_table_cuals(tables, resolver);
+        dbg!(cual_map);
         Ok(())
     }
 }

@@ -104,11 +104,11 @@ impl FromTableau<View> for jetty_nodes::RawAsset {
             // Governing policies will be assigned in the policy.
             HashSet::new(),
             // Views are children of their workbooks.
-            HashSet::from([parent_cual]),
+            HashSet::from([parent_cual.to_owned()]),
             // Children objects will be handled in their respective nodes.
             HashSet::new(),
-            // Views are not derived from/to anything.
-            HashSet::new(),
+            // Views are derived from their parent workbooks.
+            HashSet::from([parent_cual]),
             HashSet::new(),
             // No tags at this point.
             HashSet::new(),

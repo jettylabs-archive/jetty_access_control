@@ -1,11 +1,13 @@
 use std::collections::{HashMap, HashSet};
 
 use anyhow::{Context, Result};
+use async_trait::async_trait;
 use jetty_core::connectors::{nodes as jetty_nodes, AssetType};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    coordinator::Environment,
+    coordinator::{Coordinator, Environment, HasSources},
+    file_parse::origin::SourceOrigin,
     rest::{self, get_tableau_cual, FetchJson, TableauAssetType},
 };
 
@@ -20,6 +22,8 @@ pub(crate) struct Lens {
     pub project_id: ProjectId,
     pub owner_id: String,
     pub permissions: Vec<super::Permission>,
+    /// HashSet of derived-from origins
+    pub sources: HashSet<SourceOrigin>,
 }
 
 /// Convert JSON to a Lens struct
@@ -43,6 +47,7 @@ fn to_node(val: &serde_json::Value) -> Result<Lens> {
         project_id: ProjectId(asset_info.project_id),
         datasource_id: asset_info.datasource_id,
         permissions: Default::default(),
+        sources: Default::default(),
     })
 }
 
@@ -94,11 +99,14 @@ impl FromTableau<Lens> for jetty_nodes::RawAsset {
             // Governing policies will be assigned in the policy.
             HashSet::new(),
             // Lenses are children of their datasources
-            HashSet::from([parent_cual.clone()]),
+            HashSet::from([parent_cual]),
             // Children objects will be handled in their respective nodes.
             HashSet::new(),
-            // Lenses are derived from their source data.
-            HashSet::from([parent_cual]),
+            // Lenses are derived from upstream tables.
+            val.sources
+                .into_iter()
+                .map(|o| o.into_cual(env).to_string())
+                .collect(),
             HashSet::new(),
             // No tags at this point.
             HashSet::new(),
@@ -122,5 +130,35 @@ impl Permissionable for Lens {
 
     fn get_permissions(&self) -> &Vec<super::Permission> {
         &self.permissions
+    }
+}
+
+#[async_trait]
+impl HasSources for Lens {
+    fn id(&self) -> &String {
+        &self.id
+    }
+
+    fn name(&self) -> &String {
+        &self.name
+    }
+
+    fn updated_at(&self) -> &String {
+        todo!()
+    }
+
+    fn sources(&self) -> (HashSet<SourceOrigin>, HashSet<SourceOrigin>) {
+        (self.sources.to_owned(), HashSet::new())
+    }
+
+    async fn fetch_sources(
+        &self,
+        _: &Coordinator,
+    ) -> Result<(HashSet<SourceOrigin>, HashSet<SourceOrigin>)> {
+        todo!()
+    }
+
+    fn set_sources(&mut self, sources: (HashSet<SourceOrigin>, HashSet<SourceOrigin>)) {
+        self.sources = sources.0;
     }
 }

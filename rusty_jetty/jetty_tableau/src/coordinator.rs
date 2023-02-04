@@ -9,7 +9,7 @@ use async_trait::async_trait;
 use futures::StreamExt;
 use futures::{join, Future};
 use jetty_core::cual::Cual;
-use jetty_core::logging::error;
+use jetty_core::logging::{error, warn};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
@@ -86,7 +86,7 @@ pub(crate) trait HasSources {
     fn name(&self) -> &String;
     /// Get updated_at
     fn updated_at(&self) -> &String;
-    /// Get sources
+    /// Get sources - Tuple of (upsream sources, downstream sources)
     fn sources(&self) -> (HashSet<SourceOrigin>, HashSet<SourceOrigin>);
     /// Fetch sources for an asset
     async fn fetch_sources(
@@ -228,22 +228,6 @@ impl Coordinator {
             cual_id_map: Default::default(),
         };
 
-        // FUTURE: put this back in. Right now, we don't fetch the sources well, so we'll just skip it. This needs to be
-        // reworked to use the metadata api
-        // // Now, make sure that assets sources are all up to date
-
-        // let source_futures = vec![
-        //     self.get_source_futures_from_map(&mut new_env.flows, &self.env.flows),
-        //     self.get_source_futures_from_map(&mut new_env.datasources, &self.env.datasources),
-        //     self.get_source_futures_from_map(&mut new_env.workbooks, &self.env.workbooks),
-        // ];
-
-        // // Source fetches
-        // futures::stream::iter(source_futures.into_iter().flatten())
-        //     .buffer_unordered(CONCURRENT_ASSET_DOWNLOADS)
-        //     .collect::<Vec<_>>()
-        //     .await;
-
         // Clone the env so we don't try to both immutably and mutably borrow at the same time.
         let new_env_clone = new_env.clone();
         // Now update permissions. NOTE: This must happen AFTER getting groups and users.
@@ -299,6 +283,11 @@ impl Coordinator {
         build_cual_map(&mut new_env);
         // update self.env
         self.env = new_env;
+
+        // update the lineage
+        if let Err(e) = self.update_lineage().await {
+            warn!("problem updating Tableau lineage: {e}");
+        };
 
         // serialize as JSON
         if let Some(dir) = &self.data_dir {
