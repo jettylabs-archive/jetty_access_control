@@ -21,6 +21,7 @@ pub(crate) struct AssetReferences {
 struct AssetReferencesResponse {
     luid: String,
     upstream_tables: Vec<IdField>,
+    #[serde(default)]
     downstream_tables: Vec<IdField>,
 }
 
@@ -32,19 +33,27 @@ macro_rules! impl_fetch_references {
                 &self,
                 cual_map: &HashMap<String, Cual>,
             ) -> Result<Vec<AssetReferences>> {
-                let query = r#"
-                $t {
+                let query = format!(
+                    "query Assets {{
+                {} {{
                     luid
-                    upstreamTables {
+                    upstreamTables {{
                       id
+                    }}{}
+                  }}
+                }}",
+                    stringify!($t),
+                    if ["publishedDatasources", "flows"].contains(&stringify!($t)) {
+                        "
+                        downstreamTables {
+                          id
+                        }"
+                    } else {
+                        ""
                     }
-                    downstreamTables {
-
-                    }
-                  }
-                "#;
+                );
                 let response: Vec<AssetReferencesResponse> = self
-                    .graphql_query_to_object_vec(query, vec!["data", "$t"])
+                    .graphql_query_to_object_vec(query.as_str(), vec!["data", stringify!($t)])
                     .await?;
 
                 Ok(response

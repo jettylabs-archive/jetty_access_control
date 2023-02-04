@@ -86,7 +86,10 @@ impl TableResolver {
                 .as_str(),
             )),
             Err(e) => {
-                warn!("tableau lineage: unable to clean table name: {e}");
+                warn!(
+                    "tableau lineage: unable to clean table name ({}): {e}",
+                    table.full_name
+                );
                 None
             }
         }
@@ -241,7 +244,8 @@ impl Coordinator {
             .rest_client
             .build_graphql_request(query.to_owned())?
             .fetch_json_response(None)
-            .await?;
+            .await
+            .context(format!("query: {query}"))?;
         let node = rest::get_json_from_path(
             &node,
             &path.into_iter().map(|s| s.to_owned()).collect::<Vec<_>>(),
