@@ -103,6 +103,8 @@ export function nodeConnectors(node: NodeSummary): string[] {
     return node.Asset.connectors;
   } else if ('Tag' in node) {
     return node.Tag.connectors;
+  } else {
+    return [];
   }
 }
 
