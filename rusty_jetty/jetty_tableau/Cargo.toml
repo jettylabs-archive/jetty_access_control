@@ -24,6 +24,7 @@ uuid = { version = "1.1.2", features = ["v4"] }
 lazy_static = "1.4.0"
 bimap = { version = "0.6.2", features = ["serde"] }
 serde_with = { version = "2.1.0", features = ["json"] }
+sqlparser = "0.30.0"
 
 [dev-dependencies]
 dirs = "4.0.0"

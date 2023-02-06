@@ -2,13 +2,14 @@
 
 use super::IdField;
 use crate::{
-    coordinator::{Coordinator, Environment, HasSources},
+    coordinator::{Coordinator, HasSources},
     file_parse::origin::SourceOrigin,
 };
 use anyhow::Result;
 use jetty_core::cual::Cual;
+use jetty_core::logging::warn;
 use serde::Deserialize;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 pub(crate) struct AssetReferences {
     luid: String,
@@ -19,6 +20,7 @@ pub(crate) struct AssetReferences {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct AssetReferencesResponse {
+    name: String,
     luid: String,
     upstream_tables: Vec<IdField>,
     #[serde(default)]
@@ -32,10 +34,12 @@ macro_rules! impl_fetch_references {
             pub(super) async fn $b(
                 &self,
                 cual_map: &HashMap<String, Cual>,
+                unsupported_sql: &HashSet<String>,
             ) -> Result<Vec<AssetReferences>> {
                 let query = format!(
                     "query Assets {{
                 {} {{
+                    name
                     luid
                     upstreamTables {{
                       id
@@ -58,18 +62,29 @@ macro_rules! impl_fetch_references {
 
                 Ok(response
                     .into_iter()
-                    .map(|r| AssetReferences {
-                        luid: r.luid,
-                        upstream_table_ids: r
-                            .upstream_tables
-                            .into_iter()
-                            .filter_map(|t| cual_map.get(&t.id).cloned())
-                            .collect(),
-                        downstream_table_ids: r
-                            .downstream_tables
-                            .into_iter()
-                            .filter_map(|t| cual_map.get(&t.id).cloned())
-                            .collect(),
+                    .map(|r| {
+                        for table in r.upstream_tables.iter().chain(r.downstream_tables.iter()) {
+                            if unsupported_sql.contains(&table.id) {
+                                warn!(
+                                    "{} contains unsupported SQL: lineage may be incomplete",
+                                    r.name
+                                )
+                            }
+                        }
+
+                        AssetReferences {
+                            luid: r.luid,
+                            upstream_table_ids: r
+                                .upstream_tables
+                                .into_iter()
+                                .filter_map(|t| cual_map.get(&t.id).cloned())
+                                .collect(),
+                            downstream_table_ids: r
+                                .downstream_tables
+                                .into_iter()
+                                .filter_map(|t| cual_map.get(&t.id).cloned())
+                                .collect(),
+                        }
                     })
                     .collect())
             }
