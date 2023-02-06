@@ -13,9 +13,9 @@ use jetty_core::logging::{error, warn};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
-use crate::file_parse::origin::SourceOrigin;
 use crate::nodes::{self, Permissionable, ProjectId, TableauCualable};
 
+use crate::origin::SourceOrigin;
 use crate::rest::{self, TableauAssetType};
 use crate::TableauCredentials;
 

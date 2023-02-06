@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     coordinator::{Coordinator, Environment, HasSources},
-    file_parse::origin::SourceOrigin,
+    origin::SourceOrigin,
     rest::{self, get_tableau_cual, FetchJson, TableauAssetType},
 };
 

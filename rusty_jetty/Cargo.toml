@@ -5,7 +5,6 @@ members = [
     "jetty_snowflake",
     "jetty_tableau",
     "jetty_dbt",
-    "jetty_sql",
     "jetty_explore",
     "jetty_pypi",
     "firestore_serializer",
@@ -17,7 +16,6 @@ default-members = [
     "jetty_snowflake",
     "jetty_tableau",
     "jetty_dbt",
-    "jetty_sql",
     "jetty_explore",
     "firestore_serializer",
 ]

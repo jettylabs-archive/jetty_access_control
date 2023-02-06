@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     coordinator::{Coordinator, Environment, HasSources},
-    file_parse::{flow::FlowDoc, origin::SourceOrigin},
+    origin::SourceOrigin,
     rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType},
 };
 
@@ -58,13 +58,7 @@ impl HasSources for Flow {
         &self,
         coord: &Coordinator,
     ) -> Result<(HashSet<SourceOrigin>, HashSet<SourceOrigin>)> {
-        // download the source
-        let archive = coord.rest_client.download(self, true).await?;
-        // get the file
-        let file = rest::unzip_text_file(archive, Self::match_file)?;
-        // parse the file
-        let flow_doc = FlowDoc::new(file)?;
-        Ok(flow_doc.parse(coord))
+        todo!()
     }
 
     fn set_sources(&mut self, sources: (HashSet<SourceOrigin>, HashSet<SourceOrigin>)) {

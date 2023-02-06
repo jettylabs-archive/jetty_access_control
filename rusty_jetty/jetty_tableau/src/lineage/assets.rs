@@ -3,7 +3,7 @@
 use super::IdField;
 use crate::{
     coordinator::{Coordinator, HasSources},
-    file_parse::origin::SourceOrigin,
+    origin::SourceOrigin,
 };
 use anyhow::Result;
 use jetty_core::cual::Cual;

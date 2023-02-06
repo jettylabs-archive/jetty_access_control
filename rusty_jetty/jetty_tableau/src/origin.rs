@@ -16,14 +16,6 @@ pub(crate) enum SourceOrigin {
 }
 
 impl SourceOrigin {
-    pub(crate) fn from_cual(cual: Cual) -> Self {
-        Self::Other { cual }
-    }
-
-    pub(crate) fn from_id_type(asset_type: TableauAssetType, id: String) -> Self {
-        Self::Tableau { asset_type, id }
-    }
-
     pub(crate) fn into_cual(self, env: &Environment) -> Cual {
         match self {
             SourceOrigin::Other { cual } => cual,

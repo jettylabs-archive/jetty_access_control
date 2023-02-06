@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     coordinator::{Coordinator, Environment, HasSources},
-    file_parse::{origin::SourceOrigin, xml_docs},
+    origin::SourceOrigin,
     rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType},
 };
 
@@ -99,16 +99,7 @@ impl HasSources for Datasource {
         &self,
         coord: &Coordinator,
     ) -> Result<(HashSet<SourceOrigin>, HashSet<SourceOrigin>)> {
-        // download the source
-        let archive = coord.rest_client.download(self, true).await?;
-        // get the file
-        let file = rest::unzip_text_file(archive, Self::match_file)?;
-        // parse the file
-        let input_sources = xml_docs::parse(&file)?;
-        // datasources don't have output sources (derive_to), so just return an empty set
-        let output_sources = HashSet::new();
-
-        Ok((input_sources, output_sources))
+        todo!()
     }
 
     fn set_sources(&mut self, sources: (HashSet<SourceOrigin>, HashSet<SourceOrigin>)) {

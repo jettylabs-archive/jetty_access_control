@@ -8,7 +8,6 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.62"
 jetty_core = { path = "../jetty_core" }
-jetty_sql = { path = "../jetty_sql" }
 reqwest = { version = "0.11", features = ["json", "gzip"] }
 serde = { version = "1.0.144", features = ["derive"] }
 serde_json = "1.0.85"
