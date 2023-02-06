@@ -345,7 +345,7 @@ impl SnowflakeConnector {
     ) -> Result<()> {
         let res = self
             .query_to_obj::<FutureGrant>(&format!(
-                "SHOW FUTURE GRANTS IN SCHEMA {}.{}",
+                r#"SHOW FUTURE GRANTS IN SCHEMA "{}"."{}""#,
                 &schema.database_name, &schema.name
             ))
             .await
