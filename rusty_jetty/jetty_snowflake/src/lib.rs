@@ -296,8 +296,7 @@ impl Connector for SnowflakeConnector {
             }
         }
         Ok(format!(
-            "{} successful queries\n{} failed queries",
-            success_counter, failure_counter
+            "{success_counter} successful queries\n{failure_counter} failed queries"
         ))
     }
 }

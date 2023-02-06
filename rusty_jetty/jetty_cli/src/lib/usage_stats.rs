@@ -149,7 +149,7 @@ impl Invocation {
             firestore_serializer::to_document(firestore_serializer::to_string(self)?);
 
         let _res = CLIENT
-            .post(format!("{}{}/", FIRESTORE_URL, collection))
+            .post(format!("{FIRESTORE_URL}{collection}/"))
             .body(firestore_document)
             .header("Content-Type", "application/json")
             .send()

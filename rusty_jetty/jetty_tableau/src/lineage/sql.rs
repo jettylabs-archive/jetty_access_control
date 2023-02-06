@@ -21,8 +21,8 @@ fn format_tableau_table_name(name: &str) -> String {
             .map(|identifier| {
                 let identifier = identifier.strip_prefix('[').unwrap_or(identifier);
                 let identifier = identifier.strip_suffix(']').unwrap_or(identifier);
-                let identifier = identifier.replace(r#"""#, r#""""#);
-                format!("\"{}\"", identifier)
+                let identifier = identifier.replace('"', r#""""#);
+                format!("\"{identifier}\"")
             })
             .collect::<Vec<_>>()
             .join(".")
@@ -42,7 +42,7 @@ fn get_identifier(name: String) -> Result<sqlparser::ast::Expr> {
         Err(_) => bail!("unable to parse identifier name for {name}"),
     }[0];
     if let Statement::Query(q) = ast {
-        let q = &*q.as_ref();
+        let q = q.as_ref();
         if let SetExpr::Select(s) = &*q.body {
             let item = s
                 .projection
@@ -50,8 +50,8 @@ fn get_identifier(name: String) -> Result<sqlparser::ast::Expr> {
                 .ok_or_else(|| anyhow!("didn't find identifer"))?;
             let compound_id =
                 if let SelectItem::UnnamedExpr(sqlparser::ast::Expr::Identifier(i)) = item {
-                    let i = sqlparser::ast::Expr::CompoundIdentifier(vec![i.to_owned()]);
-                    i
+                    
+                    sqlparser::ast::Expr::CompoundIdentifier(vec![i.to_owned()])
                 } else if let SelectItem::UnnamedExpr(i) = item {
                     i.to_owned()
                 } else {
@@ -75,7 +75,7 @@ fn capitalize_and_split_identifier(identifier: sqlparser::ast::Expr) -> Vec<Stri
                 i.quote_style = Some('"');
                 let mut quoted_name = i.to_string();
                 quoted_name.pop(); // remove last
-                if quoted_name.len() > 0 {
+                if !quoted_name.is_empty() {
                     quoted_name.remove(0); // remove first
                 };
                 quoted_name

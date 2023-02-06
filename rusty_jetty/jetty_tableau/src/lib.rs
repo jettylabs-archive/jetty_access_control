@@ -403,8 +403,7 @@ impl Connector for TableauConnector {
             }
         }
         Ok(format!(
-            "{} successful requests\n{} failed requests",
-            success_counter, failure_counter
+            "{success_counter} successful requests\n{failure_counter} failed requests"
         ))
     }
 }

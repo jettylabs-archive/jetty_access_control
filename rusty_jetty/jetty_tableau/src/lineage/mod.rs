@@ -89,7 +89,7 @@ impl TableResolver {
                 format!(
                     "{}{}{}/{}/{}",
                     prefix,
-                    if prefix.ends_with("/") { "" } else { "/" },
+                    if prefix.ends_with('/') { "" } else { "/" },
                     db,
                     schema,
                     table,

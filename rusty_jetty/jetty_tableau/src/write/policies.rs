@@ -76,7 +76,7 @@ impl TableauConnector {
                     .coordinator
                     .env
                     .get_group_id_by_name(group)
-                    .unwrap_or(format!("<group_id name for new group: {}>", group));
+                    .unwrap_or(format!("<group_id name for new group: {group}>"));
                 match details {
                     jetty_core::write::assets::diff::policies::DiffDetails::AddAgent { add } => {
                         group_adds.insert(

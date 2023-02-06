@@ -82,7 +82,7 @@ pub(crate) async fn ask_snowflake_connector_setup(
         let should_create_keypair = keypair_answer.is_empty();
         let keypair_filepath = if should_create_keypair {
             default_keypair_dir_path()
-                .join(format!("{}.p8", connector_namespace))
+                .join(format!("{connector_namespace}.p8"))
                 .to_string_lossy()
                 .to_string()
         } else {

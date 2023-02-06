@@ -227,7 +227,7 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
     };
 
     for (namespace, mut conn) in selected_connectors {
-        let pb = basic_progress_bar(format!("Fetching {} data", namespace).as_str());
+        let pb = basic_progress_bar(format!("Fetching {namespace} data").as_str());
 
         let now = Instant::now();
         let data = conn.get_data().await;

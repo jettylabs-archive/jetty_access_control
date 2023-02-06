@@ -173,8 +173,8 @@ mod tests {
             lcp: "".to_owned(),
         };
         let res = fpc.update_input("~");
-        println!("res: {:?}", res);
-        println!("fpc: {:?}", fpc);
+        println!("res: {res:?}");
+        println!("fpc: {fpc:?}");
 
         assert!(fpc.paths.is_empty());
         assert!(fpc.lcp.is_empty());

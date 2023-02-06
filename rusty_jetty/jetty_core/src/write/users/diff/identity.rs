@@ -102,8 +102,10 @@ pub fn get_identity_diffs(
                 }
             }
             None => IdentityDiffDetails::Add {
-                #[allow(clippy::unnecessary_to_owned)]
-                add: config_identities.to_owned().into_iter().collect(),
+                add: {
+                    #[allow(clippy::unnecessary_to_owned)]
+                    config_identities.to_owned().into_iter().collect()
+                },
             },
         };
         res.insert(IdentityDiff {
@@ -153,8 +155,8 @@ fn get_identity_config_state(
 ) -> Result<HashMap<NodeName, HashMap<ConnectorNamespace, String>>> {
     let configs = get_validated_file_config_map(jetty, validated_group_config)?;
     let res: HashMap<_, HashMap<_, _>> = configs
-        .into_iter()
-        .map(|(_path, user)| {
+        .into_values()
+        .map(|user| {
             (
                 NodeName::User(user.name.to_owned()),
                 user.identifiers

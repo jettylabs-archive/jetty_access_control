@@ -110,7 +110,7 @@ impl<'a> ser::Serializer for &'a mut KeySerializer {
     }
 
     fn serialize_str(self, v: &str) -> Result<Self::Ok, Self::Error> {
-        self.output += format!("\"{}\"", v).as_str();
+        self.output += format!("\"{v}\"").as_str();
         Ok(())
     }
 

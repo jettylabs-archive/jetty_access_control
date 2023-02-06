@@ -20,9 +20,8 @@ pub(crate) fn project_dir_does_not_exist_validator(
     if Path::new(input).is_dir() {
         Ok(Validation::Invalid(
             format!(
-            "A directory called {} already exists. Choose a different project name, or run jetty \
-            with the -o flag to overwrite.",
-            input
+            "A directory called {input} already exists. Choose a different project name, or run jetty \
+            with the -o flag to overwrite."
         )
             .into(),
         ))
