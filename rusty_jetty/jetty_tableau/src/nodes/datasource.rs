@@ -6,7 +6,7 @@ use jetty_core::connectors::{nodes as jetty_nodes, AssetType};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    coordinator::{Coordinator, Environment, HasSources},
+    coordinator::{Environment, HasSources},
     origin::SourceOrigin,
     rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType},
 };
@@ -79,29 +79,6 @@ impl FromTableau<Datasource> for jetty_nodes::RawAsset {
 
 #[async_trait]
 impl HasSources for Datasource {
-    fn id(&self) -> &String {
-        &self.id
-    }
-
-    fn name(&self) -> &String {
-        &self.name
-    }
-
-    fn updated_at(&self) -> &String {
-        &self.updated_at
-    }
-
-    fn sources(&self) -> (HashSet<SourceOrigin>, HashSet<SourceOrigin>) {
-        (self.sources.to_owned(), HashSet::new())
-    }
-
-    async fn fetch_sources(
-        &self,
-        coord: &Coordinator,
-    ) -> Result<(HashSet<SourceOrigin>, HashSet<SourceOrigin>)> {
-        todo!()
-    }
-
     fn set_sources(&mut self, sources: (HashSet<SourceOrigin>, HashSet<SourceOrigin>)) {
         self.sources = sources.0;
     }

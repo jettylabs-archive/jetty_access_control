@@ -108,7 +108,7 @@ mod tests {
             r#"bob."""Special Name""""#.to_owned()
         );
         assert_eq!(
-            format_tableau_table_name(r#"[RAW].[\"Special Name\"]"#),
+            format_tableau_table_name(r#"[RAW].["Special Name"]"#),
             r#""RAW"."""Special Name""""#.to_owned()
         );
         assert_eq!(

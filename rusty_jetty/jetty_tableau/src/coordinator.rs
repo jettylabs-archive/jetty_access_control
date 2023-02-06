@@ -19,8 +19,6 @@ use crate::origin::SourceOrigin;
 use crate::rest::{self, TableauAssetType};
 use crate::TableauCredentials;
 
-/// Number of assets to download concurrently
-const CONCURRENT_ASSET_DOWNLOADS: usize = 25;
 /// Number of metadata request to run currently (e.g. permissions)
 pub(crate) const CONCURRENT_METADATA_FETCHES: usize = 100;
 /// Path to serialized version of the Tableau Env
@@ -80,40 +78,7 @@ impl Environment {
 /// Makes it simpler to download these sources
 #[async_trait]
 pub(crate) trait HasSources {
-    /// Get id of asset
-    fn id(&self) -> &String;
-    /// Get name of asset
-    fn name(&self) -> &String;
-    /// Get updated_at
-    fn updated_at(&self) -> &String;
-    /// Get sources - Tuple of (upsream sources, downstream sources)
-    fn sources(&self) -> (HashSet<SourceOrigin>, HashSet<SourceOrigin>);
-    /// Fetch sources for an asset
-    async fn fetch_sources(
-        &self,
-        coord: &Coordinator,
-    ) -> Result<(HashSet<SourceOrigin>, HashSet<SourceOrigin>)>;
     fn set_sources(&mut self, sources: (HashSet<SourceOrigin>, HashSet<SourceOrigin>));
-
-    /// Update sources for an asset
-    async fn update_sources<T: HasSources + Sync + Send>(
-        &mut self,
-        coord: &Coordinator,
-        env_assets: &HashMap<String, T>,
-    ) -> Result<()> {
-        let id = self.id().to_owned();
-        match env_assets.get(&id) {
-            Some(old_asset) if old_asset.updated_at() == self.updated_at() => {
-                self.set_sources(old_asset.sources());
-                anyhow::Ok(())
-            }
-            _ => {
-                let x = self.fetch_sources(coord);
-                self.set_sources(x.await?);
-                Ok(())
-            }
-        }
-    }
 }
 
 /// Coordinator handles manages and updates the connector's representation
@@ -310,29 +275,6 @@ impl Coordinator {
         let fetches = groups
             .values_mut()
             .map(|d| d.update_users(&self.rest_client, users))
-            .collect::<Vec<_>>();
-        fetches
-    }
-
-    /// Return a Vec of futures (sort of - look at return type) that will fetch futures from
-    /// a map of assets
-    #[allow(clippy::type_complexity)]
-    fn get_source_futures_from_map<'a, T: HasSources + Send + Sync>(
-        &'a self,
-        new_assets: &'a mut HashMap<String, T>,
-        old_assets: &'a HashMap<String, T>,
-    ) -> Vec<
-        Pin<
-            Box<
-                dyn futures::Future<Output = std::result::Result<(), anyhow::Error>>
-                    + std::marker::Send
-                    + '_,
-            >,
-        >,
-    > {
-        let fetches = new_assets
-            .values_mut()
-            .map(|d| d.update_sources(self, old_assets))
             .collect::<Vec<_>>();
         fetches
     }

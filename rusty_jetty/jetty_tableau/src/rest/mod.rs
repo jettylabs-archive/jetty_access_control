@@ -3,8 +3,6 @@
 
 mod cual;
 
-use std::io::{Cursor, Read};
-
 use super::*;
 pub(crate) use cual::get_cual_prefix;
 #[cfg(not(test))]
@@ -15,7 +13,6 @@ pub(crate) use cual::{get_tableau_cual, TableauAssetType};
 
 use anyhow::{bail, Context};
 use async_trait::async_trait;
-use bytes::Bytes;
 
 use reqwest::Request;
 use serde::Serialize;
@@ -59,24 +56,6 @@ impl TableauRestClient {
         request: Request,
     ) -> Result<reqwest::Response, reqwest::Error> {
         self.http_client.execute(request).await
-    }
-
-    /// Download a Tableau asset. Most Workbooks and Datasources can have a query parameter to exclude
-    /// extracts. Flows do not have that option, so the bool should be set to false.
-    pub(crate) async fn download<T: Downloadable>(
-        &self,
-        asset: &T,
-        exclude_extracts: bool,
-    ) -> Result<Bytes> {
-        let mut req = self
-            .build_request(asset.get_path(), None, reqwest::Method::GET)?
-            .header("Accept", "application/zip, application/octet-stream");
-
-        if exclude_extracts {
-            req = req.query(&[("includeExtract", "False")]);
-        }
-
-        req.send().await?.bytes().await.context("downloading file")
     }
 
     /// Create a dummy client
@@ -264,29 +243,6 @@ impl TableauRestClient {
         let req = req.header("X-Tableau-Auth", token);
         Ok(req)
     }
-}
-
-/// This function extracts and returns the first file in a zip archive that returns true for name_matcher
-pub(crate) fn unzip_text_file(archive: Bytes, name_matcher: fn(&str) -> bool) -> Result<String> {
-    let archive_cursor = Cursor::new(archive);
-
-    let mut zip_archive = zip::ZipArchive::new(archive_cursor)?;
-
-    let file_names = zip_archive
-        .file_names()
-        .map(|s| s.to_owned())
-        .collect::<Vec<_>>();
-
-    for name in file_names {
-        if name_matcher(&name) {
-            let mut archive_file = zip_archive.by_name(&name)?;
-            let mut data = String::new();
-            archive_file.read_to_string(&mut data)?;
-
-            return Ok(data);
-        }
-    }
-    bail!("unable to find file to parse");
 }
 
 pub(crate) fn get_json_from_path(
