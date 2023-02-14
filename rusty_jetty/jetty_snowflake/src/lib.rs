@@ -26,7 +26,7 @@ mod write;
 use cual::set_cual_account_name;
 pub use entry_types::{
     Asset, Database, Entry, FutureGrant, Grant, GrantOf, GrantType, Object, Role, RoleName, Schema,
-    StandardGrant, Table, User, View, Warehouse,
+    StandardGrant, User, Warehouse,
 };
 use futures::StreamExt;
 use jetty_core::access_graph::translate::diffs::LocalConnectorDiffs;
@@ -443,7 +443,7 @@ impl SnowflakeConnector {
     /// Execute the given query and deserialize the result into the given type.
     pub async fn query_to_obj<T>(&self, query: &str) -> Result<Vec<T>>
     where
-        T: for<'de> Deserialize<'de>,
+        T: for<'de> Deserialize<'de> + std::fmt::Debug,
     {
         let result = self
             .rest_client
@@ -584,7 +584,7 @@ impl SnowflakeConnector {
 
 pub(crate) fn strip_snowflake_quotes(object: String, capitalize: bool) -> String {
     if object.starts_with("\"\"\"") {
-        object.replace("\"\"\"", "\"")
+        object.replace("\"\"\"", "\"\"")
     } else if object.starts_with('"') {
         // Remove the quotes and return the contained part as-is.
         object.trim_matches('"').to_owned()
@@ -597,6 +597,15 @@ pub(crate) fn strip_snowflake_quotes(object: String, capitalize: bool) -> String
             // In some cases, like when it is a value from Snowflake, we don't need to capitalize it. We just leave it as is.
             object
         }
+    }
+}
+
+/// Given a snowflake identifier (e.g. a table name, but not a fqn), escape any quotes in it by converting to double quotes.
+pub(crate) fn escape_snowflake_quotes(identifier: &str) -> String {
+    if identifier.contains('"') {
+        identifier.replace("\"", "\"\"").to_owned()
+    } else {
+        identifier.to_owned()
     }
 }
 
