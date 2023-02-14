@@ -308,9 +308,9 @@ impl SnowflakeConnector {
         target: Arc<Mutex<&mut Vec<StandardGrant>>>,
     ) -> Result<()> {
         let res = self
-            .query_to_obj::<StandardGrant>(&format!("select * from snowflake.account_usage.grants_to_roles where deleted_on is null and granted_on in ('TABLE', 'DATABASE', 'SCHEMA', 'VIEW');"))
+            .query_to_obj::<StandardGrant>("select * from snowflake.account_usage.grants_to_roles where deleted_on is null and granted_on in ('TABLE', 'DATABASE', 'SCHEMA', 'VIEW');")
             .await
-            .context(format!("failed to get privilege grants"))?;
+            .context("failed to get privilege grants")?;
 
         let mut target = target.lock().unwrap();
         target.extend(res);
