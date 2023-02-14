@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     coordinator::{Environment, HasSources},
     origin::SourceOrigin,
-    rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType},
+    rest::{self, get_tableau_cual, FetchJson, TableauAssetType},
 };
 
 use super::{FromTableau, OwnedAsset, Permissionable, ProjectId, TableauAsset, DATASOURCE};
@@ -24,18 +24,6 @@ pub(crate) struct Datasource {
     /// collection of origin sources
     pub sources: HashSet<SourceOrigin>,
     pub permissions: Vec<super::Permission>,
-}
-
-impl Downloadable for Datasource {
-    /// URI Path for asset download
-    fn get_path(&self) -> String {
-        format!("/datasources/{}/content", &self.id)
-    }
-
-    /// Function to match the right filenames to extract from downloaded zip
-    fn match_file(name: &str) -> bool {
-        name.ends_with(".tds")
-    }
 }
 
 impl FromTableau<Datasource> for jetty_nodes::RawAsset {

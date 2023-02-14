@@ -17,13 +17,6 @@ use async_trait::async_trait;
 use reqwest::Request;
 use serde::Serialize;
 
-pub(crate) trait Downloadable {
-    /// URI path (not including domain, api version, or site id) to download the asset
-    fn get_path(&self) -> String;
-
-    /// a function the unzipper will use to make sure we return the correct file
-    fn match_file(name: &str) -> bool;
-}
 /// Wrapper struct for http functionality
 #[derive(Default)]
 pub struct TableauRestClient {
