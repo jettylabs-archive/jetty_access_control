@@ -50,7 +50,7 @@ use jetty_core::{
     jetty::{ConnectorConfig, CredentialsMap},
 };
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use async_trait::async_trait;
 use serde::{Deserialize, Deserializer};
 use serde_json::Value as JsonValue;
@@ -303,16 +303,14 @@ impl Connector for SnowflakeConnector {
 
 impl SnowflakeConnector {
     /// Get all grants to a role – the privileges and "children" roles.
-    pub(crate) async fn get_grants_to_role_future(
+    pub(crate) async fn get_privilege_grants_future(
         &self,
-        role: &Role,
         target: Arc<Mutex<&mut Vec<StandardGrant>>>,
     ) -> Result<()> {
-        let RoleName(role_name) = &role.name;
         let res = self
-            .query_to_obj::<StandardGrant>(&format!("SHOW GRANTS TO ROLE \"{}\"", &role_name))
+            .query_to_obj::<StandardGrant>(&format!("select * from snowflake.account_usage.grants_to_roles where deleted_on is null and granted_on in ('TABLE', 'DATABASE', 'SCHEMA', 'VIEW');"))
             .await
-            .context(format!("failed to get grants to role {role_name}"))?;
+            .context(format!("failed to get privilege grants"))?;
 
         let mut target = target.lock().unwrap();
         target.extend(res);
@@ -453,8 +451,16 @@ impl SnowflakeConnector {
                 sql: query.to_string(),
                 use_jwt: self.client != connectors::ConnectorClient::Test,
             })
-            .await
-            .context("query failed")?;
+            .await;
+
+        let result = match result {
+            Ok(s) => s,
+            Err(e) => {
+                error!("error running `{query}`: {e}");
+                bail!("error running `{query}`: {e}");
+            }
+        };
+
         if result.is_empty() {
             // TODO: Determine whether this is actually okay behavior.
             return Ok(vec![]);

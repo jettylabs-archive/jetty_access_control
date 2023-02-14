@@ -97,6 +97,21 @@ pub(crate) fn cual_from_snowflake_obj_name(name: &str, asset_type: &str) -> Resu
     }
 }
 
+/// Given snowlake name parts, get a Cual
+pub(crate) fn cual_from_snowflake_obj_name_parts(
+    name: &str,
+    db_name: &str,
+    schema_name: &str,
+    asset_type: &str,
+) -> Result<Cual> {
+    match asset_type {
+        "DATABASE" => return Ok(cual!(name)),
+        "SCHEMA" => return Ok(cual!(db_name, name)),
+        "TABLE" | "VIEW" => return Ok(cual!(db_name, schema_name, name, asset_type)),
+        _ => bail!("Unable to build cual for: db: {db_name}, schema: {schema_name:?}, name: {name}, type: {asset_type}")
+    }
+}
+
 impl Cualable for Table {
     /// Get the CUAL that points to this table or view.
     fn cual(&self) -> Cual {

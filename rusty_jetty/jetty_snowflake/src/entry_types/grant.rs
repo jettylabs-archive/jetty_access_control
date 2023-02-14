@@ -5,7 +5,7 @@ use std::collections::HashSet;
 use jetty_core::connectors::nodes;
 use serde::{Deserialize, Serialize};
 
-use crate::cual::cual_from_snowflake_obj_name;
+use crate::cual::{cual_from_snowflake_obj_name, cual_from_snowflake_obj_name_parts};
 
 #[derive(Deserialize, Serialize, Clone, PartialEq, Eq, Hash)]
 pub enum GrantType {
@@ -60,11 +60,14 @@ impl Grant for GrantType {
 
 /// Snowflake Grant entry.
 #[derive(Default, Deserialize, Serialize, Debug, PartialEq, Eq, Hash, Clone)]
+#[serde(rename_all = "UPPERCASE")]
 pub struct StandardGrant {
     // The role name or fully-qualified asset name this grant grants access to.
-    pub name: String,
-    pub privilege: String,
-    pub granted_on: String,
+    name: String,
+    table_catalog: String,
+    table_schema: String,
+    pub(crate) privilege: String,
+    granted_on: String,
     grantee_name: String,
 }
 
@@ -88,7 +91,13 @@ impl Grant for StandardGrant {
     }
 
     fn into_policy(self, all_privileges: HashSet<String>) -> nodes::RawPolicy {
-        let cual = cual_from_snowflake_obj_name(self.granted_on_name(), self.granted_on()).unwrap();
+        let cual = cual_from_snowflake_obj_name_parts(
+            &self.name,
+            &self.table_catalog,
+            &self.table_schema,
+            &self.granted_on,
+        )
+        .unwrap();
 
         nodes::RawPolicy::new(
             format!("snowflake.{}.{}", self.role_name(), self.granted_on_name()),
@@ -120,8 +129,10 @@ mod tests {
         let g = StandardGrant {
             name: "db".to_owned(),
             privilege: "priv".to_owned(),
-            granted_on: "TABLE".to_owned(),
+            granted_on: "DATABASE".to_owned(),
             grantee_name: "my_role".to_owned(),
+            table_catalog: "db".to_owned(),
+            table_schema: "".to_owned(),
         };
         assert_eq!(g.jetty_name(), "snowflake.my_role.db".to_owned());
     }
@@ -132,8 +143,10 @@ mod tests {
         let g = StandardGrant {
             name: "db".to_owned(),
             privilege: "priv".to_owned(),
-            granted_on: "TABLE".to_owned(),
+            granted_on: "DATABASE".to_owned(),
             grantee_name: "grantee_name".to_owned(),
+            table_catalog: "db".to_owned(),
+            table_schema: "".to_owned(),
         };
         let p: nodes::RawPolicy = g.into_policy(HashSet::from(["priv".to_owned()]));
         assert_eq!(
@@ -141,7 +154,9 @@ mod tests {
             nodes::RawPolicy::new(
                 "snowflake.grantee_name.db".to_owned(),
                 HashSet::from(["priv".to_owned()]),
-                HashSet::from([cual_from_snowflake_obj_name("DB", "DATABASE")?.uri()]),
+                HashSet::from([
+                    cual_from_snowflake_obj_name_parts("db", "db", "", "DATABASE")?.uri()
+                ]),
                 HashSet::new(),
                 HashSet::from(["grantee_name".to_owned()]),
                 HashSet::new(),
@@ -158,8 +173,10 @@ mod tests {
         let g = StandardGrant {
             name: "db".to_owned(),
             privilege: "priv".to_owned(),
-            granted_on: "grant_on".to_owned(),
+            granted_on: "DATABASE".to_owned(),
             grantee_name: "grantee_name".to_owned(),
+            table_catalog: "db".to_owned(),
+            table_schema: "".to_owned(),
         };
         let p: nodes::RawPolicy = g.clone().into_policy(HashSet::from(["priv".to_owned()]));
         let p2: nodes::RawPolicy = g.clone().into_policy(HashSet::from(["priv".to_owned()]));
@@ -175,8 +192,10 @@ mod tests {
         let g = StandardGrant {
             name: "db".to_owned(),
             privilege: "priv".to_owned(),
-            granted_on: "grant_on".to_owned(),
+            granted_on: "DATABASE".to_owned(),
             grantee_name: "grantee_name".to_owned(),
+            table_catalog: "db".to_owned(),
+            table_schema: "".to_owned(),
         };
         let p: nodes::RawPolicy =
             g.into_policy(HashSet::from(["priv".to_owned(), "priv2".to_owned()]));

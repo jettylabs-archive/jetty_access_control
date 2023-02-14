@@ -20,6 +20,7 @@ use jetty_core::connectors::nodes::SparseMatrix;
 use jetty_core::cual::Cualable;
 use jetty_core::logging::debug;
 use jetty_core::logging::error;
+use jetty_core::logging::info;
 use jetty_core::permissions::matrix::InsertOrMerge;
 
 use super::cual::{self, cual, get_cual_account_name, Cual};
@@ -108,12 +109,10 @@ impl<'a> Coordinator<'a> {
             hold.push(Box::pin(self.conn.get_objects_futures(schema, m)));
         }
 
-        // for each role, get grants to that role
+        // Get all the object grants
         let grants_to_role_mutex = Arc::new(Mutex::new(&mut self.env.standard_grants));
-        for role in &self.env.roles {
-            let m = Arc::clone(&grants_to_role_mutex);
-            hold.push(Box::pin(self.conn.get_grants_to_role_future(role, m)));
-        }
+        let m = Arc::clone(&grants_to_role_mutex);
+        hold.push(Box::pin(self.conn.get_privilege_grants_future(m)));
 
         // for each role, get grants of
         let target_arc = Arc::new(Mutex::new(&mut self.env.role_grants));
@@ -131,7 +130,7 @@ impl<'a> Coordinator<'a> {
             ));
         }
 
-        // for database, get future grants, using the same Arc<Mutex>
+        // for database, get future grants, using the same Arc<Mutex> as used for schemas
         for database in &self.env.databases {
             let m = Arc::clone(&future_grants_arc);
             hold.push(Box::pin(
