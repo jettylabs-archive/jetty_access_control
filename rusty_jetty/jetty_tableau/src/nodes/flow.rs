@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     coordinator::{Environment, HasSources},
     origin::SourceOrigin,
-    rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType},
+    rest::{self, get_tableau_cual, FetchJson, TableauAssetType},
 };
 
 use super::{FromTableau, OwnedAsset, Permissionable, ProjectId, TableauAsset, FLOW};
@@ -24,16 +24,6 @@ pub(crate) struct Flow {
     pub(crate) derived_from: HashSet<SourceOrigin>,
     pub(crate) derived_to: HashSet<SourceOrigin>,
     pub permissions: Vec<super::Permission>,
-}
-
-impl Downloadable for Flow {
-    fn get_path(&self) -> String {
-        format!("/flows/{}/content", &self.id)
-    }
-
-    fn match_file(name: &str) -> bool {
-        name == "flow"
-    }
 }
 
 #[async_trait]

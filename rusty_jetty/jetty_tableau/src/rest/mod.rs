@@ -14,16 +14,10 @@ pub(crate) use cual::{get_tableau_cual, TableauAssetType};
 use anyhow::{bail, Context};
 use async_trait::async_trait;
 
+use jetty_core::logging::error;
 use reqwest::Request;
 use serde::Serialize;
 
-pub(crate) trait Downloadable {
-    /// URI path (not including domain, api version, or site id) to download the asset
-    fn get_path(&self) -> String;
-
-    /// a function the unzipper will use to make sure we return the correct file
-    fn match_file(name: &str) -> bool;
-}
 /// Wrapper struct for http functionality
 #[derive(Default)]
 pub struct TableauRestClient {
@@ -286,16 +280,47 @@ impl FetchJson for reqwest::RequestBuilder {
         &self,
         path_to_paginated_iterable: Option<Vec<String>>,
     ) -> Result<serde_json::Value> {
-        let resp = self
+        let cloned_req = self
             .try_clone()
-            .ok_or_else(|| anyhow!("unable to clone request"))?
+            .ok_or_else(|| anyhow!("unable to clone request"))?;
+        // Build the request so that we can inspect it in the case of an error
+        let built_req = self.try_clone().map(|r| r.build());
+        let req_method = if let Some(Ok(built_req)) = &built_req {
+            Some(built_req.method().to_owned())
+        } else {
+            None
+        };
+        let req_url = if let Some(Ok(built_req)) = built_req {
+            Some(built_req.url().to_owned())
+        } else {
+            None
+        };
+
+        let resp = cloned_req
             .send()
             .await
+            .map_err(|e| {
+                if let (Some(method), Some(url)) = (&req_method, &req_url) {
+                    error!("error with request ({method:?} {url:?}): {e}")
+                } else {
+                    error!("error with request: {e}")
+                };
+                e
+            })
             .context("making request")?;
 
         let parsed_response = resp
             .json::<serde_json::Value>()
             .await
+            .map_err(|e| {
+                let request = if let (Some(method), Some(url)) = (&req_method, &req_url) {
+                    format!("({method:?} {url:?})")
+                } else {
+                    "".to_owned()
+                };
+                error!("error parsing json response {request}: {e}");
+                e
+            })
             .context("parsing json response")?;
 
         // Check for pagination

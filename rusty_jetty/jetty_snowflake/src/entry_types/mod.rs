@@ -7,9 +7,7 @@ mod grant_of;
 mod object;
 mod role;
 mod schema;
-mod table;
 mod user;
-mod view;
 mod warehouse;
 
 pub use asset::Asset;
@@ -21,7 +19,5 @@ pub use grant_of::GrantOf;
 pub use object::{Object, ObjectKind};
 pub use role::{Role, RoleName};
 pub use schema::Schema;
-pub use table::Table;
 pub use user::User;
-pub use view::View;
 pub use warehouse::Warehouse;

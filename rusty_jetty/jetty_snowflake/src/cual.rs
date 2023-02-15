@@ -6,7 +6,7 @@ use jetty_core::cual::Cualable;
 // Reexport for convenience.
 pub use jetty_core::cual::Cual;
 
-use crate::{Database, Object, Schema, SnowflakeAsset, Table, View};
+use crate::{escape_snowflake_quotes, Database, Object, Schema, SnowflakeAsset};
 
 static mut CUAL_ACCOUNT_NAME: String = String::new();
 static INIT_CUAL_ACCOUNT_NAME: Once = Once::new();
@@ -97,10 +97,18 @@ pub(crate) fn cual_from_snowflake_obj_name(name: &str, asset_type: &str) -> Resu
     }
 }
 
-impl Cualable for Table {
-    /// Get the CUAL that points to this table or view.
-    fn cual(&self) -> Cual {
-        cual!(self.database_name, self.schema_name, self.name, "TABLE")
+/// Given snowlake name parts, get a Cual
+pub(crate) fn cual_from_snowflake_obj_name_parts(
+    name: &str,
+    db_name: &str,
+    schema_name: &str,
+    asset_type: &str,
+) -> Result<Cual> {
+    match asset_type {
+        "DATABASE" => return Ok(cual!(escape_snowflake_quotes(name))),
+        "SCHEMA" => return Ok(cual!(escape_snowflake_quotes(db_name), escape_snowflake_quotes(name))),
+        "TABLE" | "VIEW" => return Ok(cual!(escape_snowflake_quotes(db_name), escape_snowflake_quotes(schema_name), escape_snowflake_quotes(name), asset_type)),
+        _ => bail!("Unable to build cual for: db: {db_name}, schema: {schema_name:?}, name: {name}, type: {asset_type}")
     }
 }
 
@@ -108,32 +116,28 @@ impl Cualable for Object {
     /// Get the CUAL that points to this table or view.
     fn cual(&self) -> Cual {
         cual!(
-            self.database_name,
-            self.schema_name,
-            self.name,
+            escape_snowflake_quotes(&self.database_name),
+            escape_snowflake_quotes(&self.schema_name),
+            escape_snowflake_quotes(&self.name),
             self.kind.to_string()
         )
-    }
-}
-
-impl Cualable for View {
-    /// Get the CUAL that points to this table or view.
-    fn cual(&self) -> Cual {
-        cual!(self.database_name, self.schema_name, self.name, "VIEW")
     }
 }
 
 impl Cualable for Schema {
     /// Get the CUAL that points to this schema.
     fn cual(&self) -> Cual {
-        cual!(self.database_name, self.name)
+        cual!(
+            escape_snowflake_quotes(&self.database_name),
+            escape_snowflake_quotes(&self.name)
+        )
     }
 }
 
 impl Cualable for Database {
     /// Get the CUAL that points to this database.
     fn cual(&self) -> Cual {
-        cual!(self.name)
+        cual!(escape_snowflake_quotes(&self.name))
     }
 }
 
@@ -156,6 +160,8 @@ pub(crate) fn cual_to_snowflake_asset(cual: &Cual) -> SnowflakeAsset {
 
 #[cfg(test)]
 mod tests {
+    use crate::entry_types::ObjectKind;
+
     use super::*;
 
     #[test]
@@ -173,10 +179,11 @@ mod tests {
     #[test]
     fn table_cual_constructs_properly() {
         set_cual_account_name("account");
-        let cual = Table {
+        let cual = Object {
             name: "my_table".to_owned(),
             schema_name: "schema".to_owned(),
             database_name: "database".to_owned(),
+            kind: ObjectKind::Table,
         }
         .cual();
         assert_eq!(
@@ -190,10 +197,11 @@ mod tests {
     #[test]
     fn view_cual_constructs_properly() {
         set_cual_account_name("account");
-        let cual = View {
+        let cual = Object {
             name: "my_table".to_owned(),
             schema_name: "schema".to_owned(),
             database_name: "database".to_owned(),
+            kind: ObjectKind::View,
         }
         .cual();
         assert_eq!(

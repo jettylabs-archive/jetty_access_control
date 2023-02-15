@@ -4,6 +4,7 @@
 use crate::{consts, creds::SnowflakeCredentials};
 
 use anyhow::{Context, Result};
+use jetty_core::logging::debug;
 use jsonwebtoken::{encode, get_current_timestamp, Algorithm, EncodingKey, Header};
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware, RequestBuilder};
 use reqwest_retry::{policies::ExponentialBackoff, RetryTransientMiddleware};
@@ -79,6 +80,7 @@ impl SnowflakeRestClient {
     }
 
     pub(crate) async fn query(&self, config: &SnowflakeRequestConfig) -> Result<String> {
+        debug!("starting query: {:?}", &config.sql);
         #[derive(Deserialize)]
         struct AcceptedResponse {
             #[serde(rename = "statementHandle")]
@@ -107,6 +109,7 @@ impl SnowflakeRestClient {
         }
 
         let res = response.text().await.context("couldn't get body text")?;
+        debug!("completed query: {:?}", &config.sql);
         Ok(res)
     }
 

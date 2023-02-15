@@ -26,7 +26,7 @@ mod write;
 use cual::set_cual_account_name;
 pub use entry_types::{
     Asset, Database, Entry, FutureGrant, Grant, GrantOf, GrantType, Object, Role, RoleName, Schema,
-    StandardGrant, Table, User, View, Warehouse,
+    StandardGrant, User, Warehouse,
 };
 use futures::StreamExt;
 use jetty_core::access_graph::translate::diffs::LocalConnectorDiffs;
@@ -50,7 +50,7 @@ use jetty_core::{
     jetty::{ConnectorConfig, CredentialsMap},
 };
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use async_trait::async_trait;
 use serde::{Deserialize, Deserializer};
 use serde_json::Value as JsonValue;
@@ -303,16 +303,14 @@ impl Connector for SnowflakeConnector {
 
 impl SnowflakeConnector {
     /// Get all grants to a role – the privileges and "children" roles.
-    pub(crate) async fn get_grants_to_role_future(
+    pub(crate) async fn get_privilege_grants_future(
         &self,
-        role: &Role,
         target: Arc<Mutex<&mut Vec<StandardGrant>>>,
     ) -> Result<()> {
-        let RoleName(role_name) = &role.name;
         let res = self
-            .query_to_obj::<StandardGrant>(&format!("SHOW GRANTS TO ROLE \"{}\"", &role_name))
+            .query_to_obj::<StandardGrant>("select * from snowflake.account_usage.grants_to_roles where deleted_on is null and granted_on in ('TABLE', 'DATABASE', 'SCHEMA', 'VIEW');")
             .await
-            .context(format!("failed to get grants to role {role_name}"))?;
+            .context("failed to get privilege grants")?;
 
         let mut target = target.lock().unwrap();
         target.extend(res);
@@ -445,7 +443,7 @@ impl SnowflakeConnector {
     /// Execute the given query and deserialize the result into the given type.
     pub async fn query_to_obj<T>(&self, query: &str) -> Result<Vec<T>>
     where
-        T: for<'de> Deserialize<'de>,
+        T: for<'de> Deserialize<'de> + std::fmt::Debug,
     {
         let result = self
             .rest_client
@@ -453,8 +451,16 @@ impl SnowflakeConnector {
                 sql: query.to_string(),
                 use_jwt: self.client != connectors::ConnectorClient::Test,
             })
-            .await
-            .context("query failed")?;
+            .await;
+
+        let result = match result {
+            Ok(s) => s,
+            Err(e) => {
+                error!("error running `{query}`: {e}");
+                bail!("error running `{query}`: {e}");
+            }
+        };
+
         if result.is_empty() {
             // TODO: Determine whether this is actually okay behavior.
             return Ok(vec![]);
@@ -578,7 +584,7 @@ impl SnowflakeConnector {
 
 pub(crate) fn strip_snowflake_quotes(object: String, capitalize: bool) -> String {
     if object.starts_with("\"\"\"") {
-        object.replace("\"\"\"", "\"")
+        object.replace("\"\"\"", "\"\"")
     } else if object.starts_with('"') {
         // Remove the quotes and return the contained part as-is.
         object.trim_matches('"').to_owned()
@@ -591,6 +597,15 @@ pub(crate) fn strip_snowflake_quotes(object: String, capitalize: bool) -> String
             // In some cases, like when it is a value from Snowflake, we don't need to capitalize it. We just leave it as is.
             object
         }
+    }
+}
+
+/// Given a snowflake identifier (e.g. a table name, but not a fqn), escape any quotes in it by converting to double quotes.
+pub(crate) fn escape_snowflake_quotes(identifier: &str) -> String {
+    if identifier.contains('"') {
+        identifier.replace('"', "\"\"")
+    } else {
+        identifier.to_owned()
     }
 }
 

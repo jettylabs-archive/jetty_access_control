@@ -20,7 +20,7 @@ use crate::rest::{self, TableauAssetType};
 use crate::TableauCredentials;
 
 /// Number of metadata request to run currently (e.g. permissions)
-pub(crate) const CONCURRENT_METADATA_FETCHES: usize = 100;
+pub(crate) const CONCURRENT_METADATA_FETCHES: usize = 50;
 /// Path to serialized version of the Tableau Env
 const SERIALIZED_ENV_FILENAME: &str = "tableau_env.json";
 

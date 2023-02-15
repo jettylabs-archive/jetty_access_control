@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     coordinator::{Environment, HasSources},
     origin::SourceOrigin,
-    rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType},
+    rest::{self, get_tableau_cual, FetchJson, TableauAssetType},
 };
 
 use jetty_core::connectors::{nodes as jetty_nodes, AssetType};
@@ -30,16 +30,6 @@ pub(crate) struct Workbook {
     pub sources: HashSet<SourceOrigin>,
     pub updated_at: String,
     pub permissions: Vec<super::Permission>,
-}
-
-impl Downloadable for Workbook {
-    fn get_path(&self) -> String {
-        format!("/workbooks/{}/content", &self.id)
-    }
-
-    fn match_file(name: &str) -> bool {
-        name.ends_with(".twb")
-    }
 }
 
 impl Permissionable for Workbook {
