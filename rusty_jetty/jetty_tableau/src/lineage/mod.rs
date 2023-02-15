@@ -314,13 +314,13 @@ impl Coordinator {
 }
 
 // graphql to vec of objects
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::tests::get_live_tableau_connector;
 
     #[tokio::test]
+    #[ignore]
     async fn test_fetch_data_works() -> Result<()> {
         let tab = get_live_tableau_connector().await?;
         let resolver = TableResolver {

@@ -121,6 +121,7 @@ impl TableauRestClient {
             .header("Accept".to_owned(), "application/json".to_owned())
             .send()
             .await?
+            .error_for_status()?
             .json::<serde_json::Value>()
             .await?;
 
@@ -307,7 +308,16 @@ impl FetchJson for reqwest::RequestBuilder {
                 };
                 e
             })
-            .context("making request")?;
+            .context("making request")?
+            .error_for_status()
+            .map_err(|e| {
+                if let (Some(method), Some(url)) = (&req_method, &req_url) {
+                    error!("error with request - bad response ({method:?} {url:?}): {e}")
+                } else {
+                    error!("error with request - bad response: {e}")
+                };
+                e
+            })?;
 
         let parsed_response = resp
             .json::<serde_json::Value>()
@@ -374,6 +384,15 @@ impl FetchJson for reqwest::RequestBuilder {
                     .send()
                     .await
                     .context("making request")?
+                    .error_for_status()
+                    .map_err(|e| {
+                        if let (Some(method), Some(url)) = (&req_method, &req_url) {
+                            error!("error with pagination request - bad response ({method:?} {url:?}): {e}")
+                        } else {
+                            error!("error with pagination request - bad response: {e}")
+                        };
+                        e
+                    })?
                     .json::<serde_json::Value>()
                     .await
                     .context("parsing json response")?;
