@@ -99,6 +99,8 @@ impl Grant for StandardGrant {
         )
         .unwrap();
 
+        let all_privileges = fix_privilege_names(all_privileges);
+
         nodes::RawPolicy::new(
             format!("snowflake.{}.{}", self.role_name(), self.granted_on_name()),
             all_privileges,
@@ -113,6 +115,14 @@ impl Grant for StandardGrant {
             false,
         )
     }
+}
+
+/// For some reason, the query returns at least one weird, improperly formatted privilege name. Fix that
+fn fix_privilege_names(mut privileges: HashSet<String>) -> HashSet<String> {
+    if privileges.remove("REFERENCE USAGE") {
+        privileges.insert("REFERENCE_USAGE".to_owned());
+    };
+    privileges
 }
 
 #[cfg(test)]
