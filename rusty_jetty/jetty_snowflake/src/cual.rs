@@ -105,9 +105,9 @@ pub(crate) fn cual_from_snowflake_obj_name_parts(
     asset_type: &str,
 ) -> Result<Cual> {
     match asset_type {
-        "DATABASE" => return Ok(cual!(escape_snowflake_quotes(&name))),
-        "SCHEMA" => return Ok(cual!(escape_snowflake_quotes(&db_name), escape_snowflake_quotes(&name))),
-        "TABLE" | "VIEW" => return Ok(cual!(escape_snowflake_quotes(&db_name), escape_snowflake_quotes(&schema_name), escape_snowflake_quotes(&name), asset_type)),
+        "DATABASE" => return Ok(cual!(escape_snowflake_quotes(name))),
+        "SCHEMA" => return Ok(cual!(escape_snowflake_quotes(db_name), escape_snowflake_quotes(name))),
+        "TABLE" | "VIEW" => return Ok(cual!(escape_snowflake_quotes(db_name), escape_snowflake_quotes(schema_name), escape_snowflake_quotes(name), asset_type)),
         _ => bail!("Unable to build cual for: db: {db_name}, schema: {schema_name:?}, name: {name}, type: {asset_type}")
     }
 }

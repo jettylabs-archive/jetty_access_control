@@ -603,7 +603,7 @@ pub(crate) fn strip_snowflake_quotes(object: String, capitalize: bool) -> String
 /// Given a snowflake identifier (e.g. a table name, but not a fqn), escape any quotes in it by converting to double quotes.
 pub(crate) fn escape_snowflake_quotes(identifier: &str) -> String {
     if identifier.contains('"') {
-        identifier.replace("\"", "\"\"").to_owned()
+        identifier.replace('"', "\"\"")
     } else {
         identifier.to_owned()
     }
