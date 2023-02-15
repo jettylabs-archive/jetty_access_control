@@ -29,7 +29,7 @@ impl TableauConnector {
                     .coordinator
                     .env
                     .get_group_id_by_name(group)
-                    .unwrap_or(format!("group_id_for_new_group_{}", group));
+                    .unwrap_or(format!("group_id_for_new_group_{group}"));
                 plans
                     .1
                     .push(self.build_add_user_request(&group_id, &diff.user)?);
@@ -40,7 +40,7 @@ impl TableauConnector {
                     .coordinator
                     .env
                     .get_group_id_by_name(group)
-                    .unwrap_or(format!("group_id_for_new_group_{}", group));
+                    .unwrap_or(format!("group_id_for_new_group_{group}"));
                 plans
                     .1
                     .push(self.build_remove_user_request(&group_id, &diff.user)?);
@@ -141,7 +141,7 @@ impl TableauConnector {
         self.coordinator
             .rest_client
             .build_request(
-                format!("groups/{group_id}/users/{}", user_id),
+                format!("groups/{group_id}/users/{user_id}"),
                 None,
                 reqwest::Method::DELETE,
             )?

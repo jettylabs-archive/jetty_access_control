@@ -6,8 +6,8 @@ use jetty_core::connectors::{nodes as jetty_nodes, AssetType};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    coordinator::{Coordinator, Environment, HasSources},
-    file_parse::{flow::FlowDoc, origin::SourceOrigin},
+    coordinator::{Environment, HasSources},
+    origin::SourceOrigin,
     rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType},
 };
 
@@ -38,35 +38,6 @@ impl Downloadable for Flow {
 
 #[async_trait]
 impl HasSources for Flow {
-    fn id(&self) -> &String {
-        &self.id
-    }
-
-    fn name(&self) -> &String {
-        &self.name
-    }
-
-    fn updated_at(&self) -> &String {
-        &self.updated_at
-    }
-
-    fn sources(&self) -> (HashSet<SourceOrigin>, HashSet<SourceOrigin>) {
-        (self.derived_from.to_owned(), self.derived_to.to_owned())
-    }
-
-    async fn fetch_sources(
-        &self,
-        coord: &Coordinator,
-    ) -> Result<(HashSet<SourceOrigin>, HashSet<SourceOrigin>)> {
-        // download the source
-        let archive = coord.rest_client.download(self, true).await?;
-        // get the file
-        let file = rest::unzip_text_file(archive, Self::match_file)?;
-        // parse the file
-        let flow_doc = FlowDoc::new(file)?;
-        Ok(flow_doc.parse(coord))
-    }
-
     fn set_sources(&mut self, sources: (HashSet<SourceOrigin>, HashSet<SourceOrigin>)) {
         self.derived_from = sources.0;
         self.derived_to = sources.1;

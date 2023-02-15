@@ -88,11 +88,11 @@ fn print_diff_inner_details(
     for (name, details) in inner_details {
         match details {
             DiffDetails::AddAgent { add } => {
-                text += &format!("{}", format!("  + {}{}\n", prefix, name).as_str().green());
+                text += &format!("{}", format!("  + {prefix}{name}\n").as_str().green());
                 if !add.privileges.is_empty() {
                     text += "    privileges:\n";
                     for privilege in &add.privileges {
-                        text += &format!("{}", format!("      + {}\n", privilege).as_str().green());
+                        text += &format!("{}", format!("      + {privilege}\n").as_str().green());
                     }
                 }
                 if !add.metadata.is_empty() {
@@ -104,11 +104,11 @@ fn print_diff_inner_details(
                 }
             }
             DiffDetails::RemoveAgent { remove } => {
-                text += &format!("{}", format!("  - {}{}\n", prefix, name).as_str().red());
+                text += &format!("{}", format!("  - {prefix}{name}\n").as_str().red());
                 if !remove.privileges.is_empty() {
                     text += "    privileges:\n";
                     for privilege in &remove.privileges {
-                        text += &format!("{}", format!("      - {}\n", privilege).as_str().red());
+                        text += &format!("{}", format!("      - {privilege}\n").as_str().red());
                     }
                 }
                 if !remove.metadata.is_empty() {
@@ -119,14 +119,14 @@ fn print_diff_inner_details(
                 }
             }
             DiffDetails::ModifyAgent { add, remove } => {
-                text += &format!("{}", format!("  ~ {}{}\n", prefix, name).as_str().yellow());
+                text += &format!("{}", format!("  ~ {prefix}{name}\n").as_str().yellow());
                 if !add.privileges.is_empty() || !remove.privileges.is_empty() {
                     text += "    privileges:\n";
                     for privilege in &add.privileges {
-                        text += &format!("{}", format!("      + {}\n", privilege).as_str().green());
+                        text += &format!("{}", format!("      + {privilege}\n").as_str().green());
                     }
                     for privilege in &remove.privileges {
-                        text += &format!("{}", format!("      - {}\n", privilege).as_str().red());
+                        text += &format!("{}", format!("      - {privilege}\n").as_str().red());
                     }
                 }
                 if !add.metadata.is_empty() || !remove.metadata.is_empty() {

@@ -6,8 +6,8 @@ use jetty_core::connectors::{nodes as jetty_nodes, AssetType};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    coordinator::{Coordinator, Environment, HasSources},
-    file_parse::{origin::SourceOrigin, xml_docs},
+    coordinator::{Environment, HasSources},
+    origin::SourceOrigin,
     rest::{self, get_tableau_cual, Downloadable, FetchJson, TableauAssetType},
 };
 
@@ -79,38 +79,6 @@ impl FromTableau<Datasource> for jetty_nodes::RawAsset {
 
 #[async_trait]
 impl HasSources for Datasource {
-    fn id(&self) -> &String {
-        &self.id
-    }
-
-    fn name(&self) -> &String {
-        &self.name
-    }
-
-    fn updated_at(&self) -> &String {
-        &self.updated_at
-    }
-
-    fn sources(&self) -> (HashSet<SourceOrigin>, HashSet<SourceOrigin>) {
-        (self.sources.to_owned(), HashSet::new())
-    }
-
-    async fn fetch_sources(
-        &self,
-        coord: &Coordinator,
-    ) -> Result<(HashSet<SourceOrigin>, HashSet<SourceOrigin>)> {
-        // download the source
-        let archive = coord.rest_client.download(self, true).await?;
-        // get the file
-        let file = rest::unzip_text_file(archive, Self::match_file)?;
-        // parse the file
-        let input_sources = xml_docs::parse(&file)?;
-        // datasources don't have output sources (derive_to), so just return an empty set
-        let output_sources = HashSet::new();
-
-        Ok((input_sources, output_sources))
-    }
-
     fn set_sources(&mut self, sources: (HashSet<SourceOrigin>, HashSet<SourceOrigin>)) {
         self.sources = sources.0;
     }

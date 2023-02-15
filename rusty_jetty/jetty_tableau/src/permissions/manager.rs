@@ -428,8 +428,7 @@ mod tests {
         result.sort();
         assert_eq!(
             result, expected,
-            "{:#?} compared to {:#?}",
-            result, expected
+            "{result:#?} compared to {expected:#?}"
         );
     }
 }

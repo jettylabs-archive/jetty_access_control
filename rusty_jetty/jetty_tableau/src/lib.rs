@@ -4,8 +4,9 @@
 #![deny(missing_docs)]
 
 mod coordinator;
-mod file_parse;
+mod lineage;
 mod nodes;
+mod origin;
 mod permissions;
 pub(crate) mod rest;
 mod write;
@@ -402,8 +403,34 @@ impl Connector for TableauConnector {
             }
         }
         Ok(format!(
-            "{} successful requests\n{} failed requests",
-            success_counter, failure_counter
+            "{success_counter} successful requests\n{failure_counter} failed requests"
         ))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    use dirs::home_dir;
+    use jetty_core::{fetch_credentials, jetty::ConnectorNamespace, Jetty};
+
+    use super::*;
+
+    pub(crate) async fn get_live_tableau_connector() -> Result<Box<TableauConnector>> {
+        let jetty = Jetty::new(
+            "jetty_config.yaml",
+            Path::new("data").into(),
+            Default::default(),
+        )?;
+        let creds = fetch_credentials(home_dir().unwrap().join(".jetty/connectors.yaml"))?;
+
+        crate::TableauConnector::new(
+            &jetty.config.connectors[&ConnectorNamespace("tableau".to_owned())],
+            &creds["tableau"],
+            Some(ConnectorClient::Core),
+            None,
+        )
+        .await
     }
 }

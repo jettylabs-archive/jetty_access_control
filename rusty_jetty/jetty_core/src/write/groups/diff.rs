@@ -69,7 +69,7 @@ impl Display for Diff {
                 };
                 for group in member_of {
                     text +=
-                        format!("{}", format!("    + {}\n", group).green()).as_str();
+                        format!("{}", format!("    + {group}\n").green()).as_str();
                 }
             }
             DiffDetails::RemoveGroup => {
@@ -93,11 +93,11 @@ impl Display for Diff {
                     text += "  member of:\n"
                 };
                 for user in add_member_of {
-                    text += format!("{}", format!("    + {}\n", user).green()).as_str();
+                    text += format!("{}", format!("    + {user}\n").green()).as_str();
                 }
 
                 for user in remove_member_of {
-                    text += format!("{}", format!("    - {}\n", user).red()).as_str();
+                    text += format!("{}", format!("    - {user}\n").red()).as_str();
                 }
             }
         }

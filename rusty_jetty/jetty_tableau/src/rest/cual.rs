@@ -116,10 +116,7 @@ pub(crate) fn get_tableau_cual(
                             .to_owned(),
                     )
                     .unwrap_or_else(|| {
-                        panic!(
-                            "Getting parent view {:#?} for metric {:#?}",
-                            immediate_parent_id, name
-                        )
+                        panic!("Getting parent view {immediate_parent_id:#?} for metric {name:#?}")
                     });
                 let grandparent_workbook = env
                     .workbooks
@@ -261,60 +258,62 @@ mod tests {
     #[test]
     fn metric_tableau_cual_works() -> Result<()> {
         set_cual_prefix("dummy-server", "dummy-site");
-        let mut env = Environment::default();
-        env.projects = HashMap::from([
-            (
-                "project".to_owned(),
-                Project::new(
-                    ProjectId("project".to_owned()),
-                    "projecty".to_owned(),
-                    "owner".to_owned(),
-                    Some(ProjectId("project2".to_owned())),
-                    None,
-                    vec![],
-                    Default::default(),
-                    Default::default(),
+        let mut env = Environment {
+            projects: HashMap::from([
+                (
+                    "project".to_owned(),
+                    Project::new(
+                        ProjectId("project".to_owned()),
+                        "projecty".to_owned(),
+                        "owner".to_owned(),
+                        Some(ProjectId("project2".to_owned())),
+                        None,
+                        vec![],
+                        Default::default(),
+                        Default::default(),
+                    ),
                 ),
-            ),
-            (
-                "project2".to_owned(),
-                Project::new(
-                    ProjectId("project2".to_owned()),
-                    "projecta wojecta".to_owned(),
-                    "owner".to_owned(),
-                    None,
-                    None,
-                    vec![],
-                    Default::default(),
-                    Default::default(),
+                (
+                    "project2".to_owned(),
+                    Project::new(
+                        ProjectId("project2".to_owned()),
+                        "projecta wojecta".to_owned(),
+                        "owner".to_owned(),
+                        None,
+                        None,
+                        vec![],
+                        Default::default(),
+                        Default::default(),
+                    ),
                 ),
-            ),
-        ]);
-        env.views = HashMap::from([(
-            "view".to_owned(),
-            View::new(
+            ]),
+            views: HashMap::from([(
                 "view".to_owned(),
-                "room with a view".to_owned(),
+                View::new(
+                    "view".to_owned(),
+                    "room with a view".to_owned(),
+                    "wb".to_owned(),
+                    String::new(),
+                    ProjectId(String::new()),
+                    String::new(),
+                    vec![],
+                ),
+            )]),
+            workbooks: HashMap::from([(
                 "wb".to_owned(),
-                String::new(),
-                ProjectId(String::new()),
-                String::new(),
-                vec![],
-            ),
-        )]);
-        env.workbooks = HashMap::from([(
-            "wb".to_owned(),
-            Workbook::new(
-                "wb".to_owned(),
-                "book work".to_owned(),
-                String::new(),
-                ProjectId("project".to_owned()),
-                false,
-                HashSet::new(),
-                String::new(),
-                vec![],
-            ),
-        )]);
+                Workbook::new(
+                    "wb".to_owned(),
+                    "book work".to_owned(),
+                    String::new(),
+                    ProjectId("project".to_owned()),
+                    false,
+                    HashSet::new(),
+                    String::new(),
+                    vec![],
+                ),
+            )]),
+            ..Default::default()
+        };
         let cual = get_tableau_cual(
             TableauAssetType::Metric,
             "metric station",

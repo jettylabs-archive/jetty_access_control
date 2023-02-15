@@ -88,9 +88,7 @@ impl TableauConnector {
         let group_map: HashMap<String, String> = self
             .coordinator
             .env
-            .groups
-            .iter()
-            .map(|(_name, g)| (g.name.to_owned(), g.id.to_owned()))
+            .groups.values().map(|g| (g.name.to_owned(), g.id.to_owned()))
             .collect();
 
         let group_map_mutex = Arc::new(Mutex::new(group_map));

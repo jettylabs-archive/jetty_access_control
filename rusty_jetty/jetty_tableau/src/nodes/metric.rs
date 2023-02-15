@@ -1,11 +1,13 @@
 use std::collections::{HashMap, HashSet};
 
 use anyhow::{Context, Result};
+use async_trait::async_trait;
 use jetty_core::connectors::{nodes as jetty_nodes, AssetType};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    coordinator::Environment,
+    coordinator::{Environment, HasSources},
+    origin::SourceOrigin,
     rest::{self, get_tableau_cual, FetchJson, TableauAssetType},
 };
 
@@ -22,6 +24,8 @@ pub(crate) struct Metric {
     pub owner_id: String,
     pub underlying_view_id: String,
     pub permissions: Vec<super::Permission>,
+    /// HashSet of derived-from origins
+    pub sources: HashSet<SourceOrigin>,
 }
 
 /// Convert JSON to a Metric struct
@@ -50,6 +54,7 @@ fn to_node(val: &serde_json::Value) -> Result<Metric> {
         suspended: asset_info.suspended,
         underlying_view_id: asset_info.underlying_view.id,
         permissions: Default::default(),
+        sources: Default::default(),
     })
 }
 
@@ -113,8 +118,11 @@ impl FromTableau<Metric> for jetty_nodes::RawAsset {
             HashSet::from([parent_cual]),
             // Children objects will be handled in their respective nodes.
             HashSet::new(),
-            // Metrics aren't derived from anything
-            HashSet::new(),
+            // Metrics are derived from upstream tables.
+            val.sources
+                .into_iter()
+                .map(|o| o.into_cual(env).to_string())
+                .collect(),
             HashSet::new(),
             // No tags at this point.
             HashSet::new(),
@@ -125,5 +133,12 @@ impl FromTableau<Metric> for jetty_nodes::RawAsset {
 impl TableauAsset for Metric {
     fn get_asset_type(&self) -> TableauAssetType {
         TableauAssetType::Metric
+    }
+}
+
+#[async_trait]
+impl HasSources for Metric {
+    fn set_sources(&mut self, sources: (HashSet<SourceOrigin>, HashSet<SourceOrigin>)) {
+        self.sources = sources.0;
     }
 }

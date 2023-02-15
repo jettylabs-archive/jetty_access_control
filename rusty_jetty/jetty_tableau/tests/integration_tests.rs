@@ -10,22 +10,28 @@ use jetty_core::{
 };
 
 use anyhow::Result;
+use jetty_tableau::TableauConnector;
 
-#[tokio::test]
-async fn test_fetch_data_works() -> Result<()> {
+async fn basic_tableau_connector() -> Result<Box<TableauConnector>> {
     let jetty = Jetty::new(
         "jetty_config.yaml",
         Path::new("data").into(),
         Default::default(),
     )?;
     let creds = fetch_credentials(home_dir().unwrap().join(".jetty/connectors.yaml"))?;
-    let mut tab = jetty_tableau::TableauConnector::new(
+
+    jetty_tableau::TableauConnector::new(
         &jetty.config.connectors[&ConnectorNamespace("tableau".to_owned())],
         &creds["tableau"],
         Some(ConnectorClient::Core),
         None,
     )
-    .await?;
+    .await
+}
+
+#[tokio::test]
+async fn test_fetch_data_works() -> Result<()> {
+    let mut tab = basic_tableau_connector().await?;
 
     info!("getting tableau data");
     tab.setup().await?;

@@ -1,5 +1,4 @@
 import { SearchOptions } from 'src/components/models';
-import TagPageVue from 'src/pages/TagPage.vue';
 import { nodeConnectors, nodeNameAsString, NodeSummary } from 'src/util';
 
 // By default, search will be case insensitive and return all results

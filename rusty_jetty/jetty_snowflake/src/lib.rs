@@ -296,8 +296,7 @@ impl Connector for SnowflakeConnector {
             }
         }
         Ok(format!(
-            "{} successful queries\n{} failed queries",
-            success_counter, failure_counter
+            "{success_counter} successful queries\n{failure_counter} failed queries"
         ))
     }
 }
@@ -345,7 +344,7 @@ impl SnowflakeConnector {
     ) -> Result<()> {
         let res = self
             .query_to_obj::<FutureGrant>(&format!(
-                "SHOW FUTURE GRANTS IN SCHEMA {}.{}",
+                r#"SHOW FUTURE GRANTS IN SCHEMA "{}"."{}""#,
                 &schema.database_name, &schema.name
             ))
             .await
