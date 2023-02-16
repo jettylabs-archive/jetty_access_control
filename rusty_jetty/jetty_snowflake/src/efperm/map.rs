@@ -83,7 +83,6 @@ impl<'a> EffectivePermissionMap<'a> {
                     && user_roles.contains(&RoleName(sg.role_name().to_owned()))
             })
             .collect();
-
         // Check whether the user is disabled right now.
         if user.disabled {
             return get_effective_permissions_for_all_privileges(

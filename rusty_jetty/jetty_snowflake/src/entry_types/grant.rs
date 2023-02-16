@@ -13,21 +13,17 @@ pub enum GrantType {
 }
 
 pub trait Grant {
-    fn granted_on_name(&self) -> &str;
+    /// String representation of the cual for the object the grant is on.
+    fn granted_on_name(&self) -> String;
     fn role_name(&self) -> &str;
     fn privilege(&self) -> &str;
     fn granted_on(&self) -> &str;
     fn into_policy(self, all_privileges: HashSet<String>) -> nodes::RawPolicy;
-
-    /// The globally-unique namespaced Jetty name.
-    fn jetty_name(&self) -> String {
-        format!("snowflake.{}.{}", self.role_name(), self.granted_on_name())
-    }
 }
 
 /// This can be totally reworked, but just leaving it is as
 impl Grant for GrantType {
-    fn granted_on_name(&self) -> &str {
+    fn granted_on_name(&self) -> String {
         match self {
             GrantType::Standard(s) => s.granted_on_name(),
         }
@@ -73,8 +69,15 @@ pub struct StandardGrant {
 
 impl Grant for StandardGrant {
     /// self.name corresponds to the object name when this is a grant on an object.
-    fn granted_on_name(&self) -> &str {
-        &self.name
+    fn granted_on_name(&self) -> String {
+        match self.granted_on.as_str() {
+            "TABLE" | "VIEW" => {
+                format!("{}.{}.{}", self.table_catalog, self.table_schema, self.name)
+            }
+            "DATABASE" => self.table_catalog.to_string(),
+            "SCHEMA" => format!("{}.{}", self.table_catalog, self.name),
+            _ => panic!("Unknown grant type: {}", self.granted_on),
+        }
     }
 
     /// self.grantee_name corresponds to the role name when this is a grant on a role.
@@ -133,19 +136,6 @@ mod tests {
     use crate::cual::set_cual_account_name;
 
     use super::*;
-
-    #[test]
-    fn jetty_name_works() {
-        let g = StandardGrant {
-            name: "db".to_owned(),
-            privilege: "priv".to_owned(),
-            granted_on: "DATABASE".to_owned(),
-            grantee_name: "my_role".to_owned(),
-            table_catalog: "db".to_owned(),
-            table_schema: "".to_owned(),
-        };
-        assert_eq!(g.jetty_name(), "snowflake.my_role.db".to_owned());
-    }
 
     #[test]
     fn grant_into_policy_works() -> Result<()> {

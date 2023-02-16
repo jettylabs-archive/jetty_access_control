@@ -502,11 +502,10 @@ impl SnowflakeConnector {
             .fold(
                 HashMap::new(),
                 |mut asset_map: HashMap<String, HashSet<GrantType>>, g| {
-                    if let Some(asset_privileges) = asset_map.get_mut(g.granted_on_name()) {
+                    if let Some(asset_privileges) = asset_map.get_mut(&g.granted_on_name()) {
                         asset_privileges.insert(g.clone());
                     } else {
-                        asset_map
-                            .insert(g.granted_on_name().to_owned(), HashSet::from([g.clone()]));
+                        asset_map.insert(g.granted_on_name(), HashSet::from([g.clone()]));
                     }
                     asset_map
                 },
