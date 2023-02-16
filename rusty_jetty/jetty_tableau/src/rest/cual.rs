@@ -258,7 +258,7 @@ mod tests {
     #[test]
     fn metric_tableau_cual_works() -> Result<()> {
         set_cual_prefix("dummy-server", "dummy-site");
-        let mut env = Environment {
+        let env = Environment {
             projects: HashMap::from([
                 (
                     "project".to_owned(),

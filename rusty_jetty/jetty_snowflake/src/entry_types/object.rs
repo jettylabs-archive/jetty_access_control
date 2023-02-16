@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-
 /// A type of object.
 #[derive(Copy, Clone, Default, Deserialize, Serialize, Debug)]
 pub enum ObjectKind {
