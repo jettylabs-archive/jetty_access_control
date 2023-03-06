@@ -4,6 +4,7 @@ use crate::nodes as tableau_nodes;
 use crate::rest::{self, FetchJson};
 
 use anyhow::{Context, Result};
+use jetty_core::logging::error;
 use serde::{Deserialize, Serialize};
 
 use jetty_core::connectors::nodes as jetty_nodes;
@@ -39,9 +40,13 @@ impl Group {
             serde_json::from_value(resp).context("parsing group membership")?;
         let group_users = user_ids
             .iter()
-            .map(|uid| {
-                users.get(&uid.id).unwrap_or_else(|| {
-                    panic!("user id {:?} not in tableau users {users:?}", uid.id)
+            .filter_map(|uid| {
+                users.get(&uid.id).or_else(|| {
+                    error!(
+                        "user id {:?} not in tableau users {users:?} (included in group id: {})",
+                        uid.id, self.id
+                    );
+                    None
                 })
             })
             .cloned()
