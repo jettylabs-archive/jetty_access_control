@@ -15,6 +15,7 @@ use petgraph::visit::EdgeRef;
 use petgraph::{dot, stable_graph::StableDiGraph};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::collections::HashSet;
 use uuid::Uuid;
 
 use self::typed_indices::AssetIndex;
@@ -36,6 +37,41 @@ pub(crate) struct Graph {
     pub(crate) nodes: NodeMap,
     /// A map of node hashes to indices
     pub(crate) node_ids: NodeIdMap,
+    /// A map to make it easy to find partially (path-only, not type) node matches
+    pub(crate) partial_match_mapping: PartialMatchMapping,
+}
+
+#[derive(Serialize, Deserialize, Default, Debug)]
+pub(crate) struct PartialMatchMapping {
+    pub(crate) assets: HashMap<NodeName, typed_indices::AssetIndex>,
+    pub(crate) non_unique_assets: HashSet<NodeName>,
+}
+
+impl PartialMatchMapping {
+    fn insert(&mut self, name: NodeName, index: AssetIndex) {
+        let path_only_name = if let NodeName::Asset {
+            connector,
+            asset_type: _,
+            path,
+        } = name
+        {
+            NodeName::Asset {
+                connector,
+                asset_type: None,
+                path,
+            }
+        } else {
+            panic!("PartialMatchMapping::insert called with non-asset node name")
+        };
+
+        if self
+            .assets
+            .insert(path_only_name.to_owned(), index)
+            .is_some()
+        {
+            self.non_unique_assets.insert(path_only_name);
+        };
+    }
 }
 
 /// A map of node names to typed indices
@@ -264,8 +300,12 @@ impl Graph {
                     self.node_ids.users.insert(node_id, UserIndex::new(idx));
                 }
                 JettyNode::Asset(_) => {
-                    self.nodes.assets.insert(node_name, AssetIndex::new(idx));
+                    self.nodes
+                        .assets
+                        .insert(node_name.to_owned(), AssetIndex::new(idx));
                     self.node_ids.assets.insert(node_id, AssetIndex::new(idx));
+                    self.partial_match_mapping
+                        .insert(node_name, AssetIndex::new(idx));
                 }
                 JettyNode::Tag(_) => {
                     self.nodes.tags.insert(node_name, TagIndex::new(idx));
@@ -442,33 +482,21 @@ impl Graph {
 
     /// check for a single asset with the correct connector and matching path (basically just ignoring the type).
     /// this is a pretty expensive search right now, but it lets us link up dbt to snowflake
-    // TODO: make this more efficient
     fn find_partially_matching_asset(&self, target: &NodeName) -> Option<NodeIndex> {
-        match target {
-            NodeName::Asset {
-                connector: target_connector,
-                path: target_path,
-                ..
-            } => {
-                let matches = self
-                    .nodes
-                    .assets
-                    .iter()
-                    .filter(|(n, _)| match n {
-                        NodeName::Asset {
-                            connector, path, ..
-                        } => connector == target_connector && path == target_path,
-                        _ => panic!("found a non-asset in the list of assets"),
-                    })
-                    .collect::<Vec<_>>();
-                if matches.len() == 1 {
-                    Some(matches[0].1.idx())
-                } else {
+        self.partial_match_mapping
+            .assets
+            .get(target)
+            .and_then(|idx| {
+                if self
+                    .partial_match_mapping
+                    .non_unique_assets
+                    .contains(target)
+                {
                     None
+                } else {
+                    Some(idx.idx())
                 }
-            }
-            _ => panic!("this function can only be used with assets"),
-        }
+            })
     }
 }
 

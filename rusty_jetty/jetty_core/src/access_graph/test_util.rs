@@ -34,5 +34,6 @@ pub(crate) fn new_graph() -> Graph {
         graph: petgraph::stable_graph::StableDiGraph::new(),
         nodes: Default::default(),
         node_ids: Default::default(),
+        partial_match_mapping: Default::default(),
     }
 }
