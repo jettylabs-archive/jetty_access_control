@@ -34,7 +34,7 @@ impl FutureGrant {
         self,
         all_privileges: HashSet<String>,
     ) -> nodes::RawDefaultPolicy {
-        let stripped_name = self.name.split_once('<').unwrap().0.trim_end_matches('.');
+        let stripped_name = self.root_asset();
         let cual = cual_from_snowflake_obj_name(stripped_name, self.grant_on()).unwrap();
 
         let wildcard_path = if self.grant_on == "SCHEMA" {
@@ -67,6 +67,10 @@ impl FutureGrant {
     /// Get the asset type that the grant is applied to
     pub(crate) fn grant_on(&self) -> &str {
         &self.grant_on
+    }
+
+    pub(crate) fn root_asset(&self) -> &str {
+        self.name.split_once('<').unwrap().0.trim_end_matches('.')
     }
 
     /// Get the asset the grant is set on

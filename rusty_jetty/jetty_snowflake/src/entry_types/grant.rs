@@ -13,7 +13,7 @@ pub enum GrantType {
 }
 
 pub trait Grant {
-    /// String representation of the cual for the object the grant is on.
+    /// String representation of the fqn for the object the grant is on.
     fn granted_on_name(&self) -> String;
     fn role_name(&self) -> &str;
     fn privilege(&self) -> &str;

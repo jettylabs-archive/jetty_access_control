@@ -51,7 +51,7 @@ use std::{
 };
 
 /// Map wrapper for config values.
-pub type TableauConfig = HashMap<String, String>;
+pub type TableauConfig = HashMap<String, serde_json::Value>;
 
 /// Credentials for authenticating with Tableau.
 ///

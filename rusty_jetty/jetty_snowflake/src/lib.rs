@@ -63,6 +63,21 @@ const CONCURRENT_WAREHOUSE_QUERIES: usize = 5;
 pub struct SnowflakeConnector {
     rest_client: SnowflakeRestClient,
     client: connectors::ConnectorClient,
+    config: SnowflakeConnectorConfig,
+}
+
+/// The configuration values from the jetty_config entry for the connector
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct SnowflakeConnectorConfig {
+    include: Option<Vec<String>>,
+}
+
+/// Given an ConnectorConfig object, return a SnowflakeConnectorConfig object.
+/// Throws an error on unexpected fields.
+fn parse_connector_config(connector_config: &ConnectorConfig) -> Result<SnowflakeConnectorConfig> {
+    let config = serde_json::to_value(connector_config.config.clone())?;
+    serde_json::from_value(config).context("Failed to parse Snowflake connector configuration")
 }
 
 #[derive(Deserialize, Debug)]
@@ -79,7 +94,7 @@ impl NewConnector for SnowflakeConnector {
     /// Snowflake. Stashes the credentials in the struct for use when
     /// connecting.
     async fn new(
-        _config: &ConnectorConfig,
+        config: &ConnectorConfig,
         credentials: &CredentialsMap,
         connector_client: Option<connectors::ConnectorClient>,
         _data_dir: Option<PathBuf>,
@@ -123,6 +138,7 @@ impl NewConnector for SnowflakeConnector {
             Ok(Box::new(SnowflakeConnector {
                 client,
                 rest_client: SnowflakeRestClient::new(conn, SnowflakeRestConfig { retry: true })?,
+                config: parse_connector_config(config)?,
             }))
         }
     }
@@ -398,10 +414,17 @@ impl SnowflakeConnector {
 
     /// Get all databases.
     pub async fn get_databases_future(&self, target: &mut Vec<Database>) -> Result<()> {
-        *target = self
+        // here is where we check the include list if it's not blank
+        let mut databases = self
             .query_to_obj::<Database>("SHOW DATABASES")
             .await
             .context("failed to get databases")?;
+
+        if self.config.include.is_some() {
+            databases.retain(|db| self.include_asset(&db.name));
+        }
+
+        *target = databases;
         Ok(())
     }
 
@@ -414,10 +437,17 @@ impl SnowflakeConnector {
 
     /// Get all schemas.
     pub async fn get_schemas_future(&self, target: &mut Vec<Schema>) -> Result<()> {
-        *target = self
+        let mut schemas = self
             .query_to_obj::<Schema>("SHOW SCHEMAS IN ACCOUNT")
             .await
             .context("failed to get schemas")?;
+
+        if self.config.include.is_some() {
+            schemas.retain(|schema| self.include_asset(&schema.fqn()));
+        }
+
+        *target = schemas;
+
         Ok(())
     }
 
@@ -431,10 +461,15 @@ impl SnowflakeConnector {
             "SHOW OBJECTS IN SCHEMA \"{}\".\"{}\"",
             &schema.database_name, &schema.name
         );
-        let res = self
+        let mut res = self
             .query_to_obj::<Object>(&query)
             .await
             .context("failed to get tables")?;
+
+        if self.config.include.is_some() {
+            res.retain(|object| self.include_asset(&object.fqn()));
+        }
+
         let mut target = target.lock().unwrap();
         target.extend(res);
         Ok(())
@@ -495,9 +530,13 @@ impl SnowflakeConnector {
     }
 
     fn grants_to_policies(&self, grants: &[GrantType]) -> Vec<nodes::RawPolicy> {
+        let filter_to_include_list = self.config.include.is_some();
         grants
             .iter()
-            .filter(|g| consts::ASSET_TYPES.contains(&g.granted_on()))
+            .filter(|g| {
+                consts::ASSET_TYPES.contains(&g.granted_on())
+                    && (!filter_to_include_list || self.include_asset(&g.granted_on_name()))
+            })
             // Collect roles by asset name so the role:asset ratio is 1:1.
             .fold(
                 HashMap::new(),
@@ -537,10 +576,14 @@ impl SnowflakeConnector {
         &self,
         grants: &[FutureGrant],
     ) -> Vec<nodes::RawDefaultPolicy> {
+        let filter_to_include_list = self.config.include.is_some();
         grants
             .iter()
             // filter down to the asset types we support
-            .filter(|g| consts::ASSET_TYPES.contains(&g.grant_on()))
+            .filter(|g| {
+                consts::ASSET_TYPES.contains(&g.grant_on())
+                    && (!filter_to_include_list || self.include_asset(g.root_asset()))
+            })
             // Collect policies by asset name and grant_on (asset type). Asset type and role combined give a path, so this will give us a single policy
             // for each combo of (Asset, Path, Asset Type, and Agent)
             .fold(
@@ -578,6 +621,18 @@ impl SnowflakeConnector {
                 Some(final_grant.into_default_policy(privileges))
             })
             .collect::<Vec<_>>()
+    }
+
+    fn include_asset(&self, asset_name: &str) -> bool {
+        let include_paths = match self.config.include {
+            Some(ref paths) => paths,
+            // If there are no include paths, we include everything.
+            None => return true,
+        };
+
+        include_paths.iter().any(|include_path| {
+            include_path.starts_with(asset_name) || asset_name.starts_with(include_path)
+        })
     }
 }
 
