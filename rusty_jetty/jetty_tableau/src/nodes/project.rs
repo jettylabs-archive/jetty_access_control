@@ -24,7 +24,8 @@ use serde::{Deserialize, Serialize};
 
 lazy_static! {
     // This determines the applicable types of the default policies that are fetched.
-    // Some are commented out because we don't support the Tableau Catalog yet.
+    // Some are commented out because we don't support the Tableau Catalog yet. Views are
+    // covered by workbooks.
     static ref DEFAULT_POLICY_TYPE_CONVERSION: HashMap<String, String> = [
         ("workbooks", "workbook"),
         ("datasources", "datasource"),
@@ -108,7 +109,13 @@ impl Project {
             let permissions_array = rest::get_json_from_path(
                 &resp,
                 &vec!["permissions".to_owned(), "granteeCapabilities".to_owned()],
-            )?;
+            );
+
+            let permissions_array = match permissions_array {
+                Ok(v) => v,
+                // if there are no permissions, we can just skip this asset type for the project
+                Err(_) => continue,
+            };
 
             // default project, no parent project, user permission
 
@@ -272,7 +279,13 @@ impl Permissionable for Project {
         let permissions_array = rest::get_json_from_path(
             &resp,
             &vec!["permissions".to_owned(), "granteeCapabilities".to_owned()],
-        )?;
+        );
+
+        let permissions_array = match permissions_array {
+            Ok(v) => v,
+            // if there are no permissions, we can just skip this part
+            Err(_) => return Ok(()),
+        };
 
         // default project, no parent project, user permission
         let final_permissions = if matches!(permissions_array, serde_json::Value::Array(_)) {
