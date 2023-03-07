@@ -287,7 +287,7 @@ impl TableauCualable for Lens {
 }
 
 /// Helper struct for deserializing Tableau assets
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, Default)]
 struct IdField {
     id: String,
 }

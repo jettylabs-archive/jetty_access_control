@@ -117,6 +117,7 @@ fn to_node_graphql(val: &serde_json::Value) -> Result<Workbook> {
         luid: String,
         owner: LuidField,
         project_luid: String,
+        project_name: String,
         updated_at: String,
         embedded_datasources: Vec<EmbeddedSourceHelper>,
     }
@@ -130,7 +131,11 @@ fn to_node_graphql(val: &serde_json::Value) -> Result<Workbook> {
         id: workbook_info.luid,
         name: workbook_info.name,
         owner_id: workbook_info.owner.luid,
-        project_id: ProjectId(workbook_info.project_luid),
+        project_id: if &workbook_info.project_name == "Personal Space" {
+            Default::default()
+        } else {
+            ProjectId(workbook_info.project_luid)
+        },
         updated_at: workbook_info.updated_at,
         has_embedded_sources: !workbook_info.embedded_datasources.is_empty(),
         sources: Default::default(),
@@ -152,6 +157,7 @@ pub(crate) async fn get_basic_workbooks(
             luid
           }
           projectLuid
+          projectName
           embeddedDatasources {
             id
             name
@@ -165,7 +171,15 @@ pub(crate) async fn get_basic_workbooks(
         .fetch_json_response(None)
         .await?;
     let node = rest::get_json_from_path(&node, &vec!["data".to_owned(), "workbooks".to_owned()])?;
-    super::to_asset_map(tc, node, &to_node_graphql)
+    let asset_map = super::to_asset_map(tc, node, &to_node_graphql)?;
+
+    // If the project ID is empty, it's in a personal space and we don't want to include it.
+    let asset_map = asset_map
+        .into_iter()
+        .filter(|(_, w)| !w.project_id.0.is_empty())
+        .collect();
+
+    Ok(asset_map)
 }
 
 #[cfg(test)]

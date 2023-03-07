@@ -442,6 +442,7 @@ impl Graph {
 
     /// check for a single asset with the correct connector and matching path (basically just ignoring the type).
     /// this is a pretty expensive search right now, but it lets us link up dbt to snowflake
+    // TODO: make this more efficient
     fn find_partially_matching_asset(&self, target: &NodeName) -> Option<NodeIndex> {
         match target {
             NodeName::Asset {
