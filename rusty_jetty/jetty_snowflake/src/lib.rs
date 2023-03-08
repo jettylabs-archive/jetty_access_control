@@ -70,14 +70,37 @@ pub struct SnowflakeConnector {
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct SnowflakeConnectorConfig {
-    include: Option<Vec<String>>,
+    include: Option<HashSet<String>>,
 }
 
 /// Given an ConnectorConfig object, return a SnowflakeConnectorConfig object.
 /// Throws an error on unexpected fields.
 fn parse_connector_config(connector_config: &ConnectorConfig) -> Result<SnowflakeConnectorConfig> {
     let config = serde_json::to_value(connector_config.config.clone())?;
-    serde_json::from_value(config).context("Failed to parse Snowflake connector configuration")
+    let mut parsed_config = serde_json::from_value(config)
+        .context("Failed to parse Snowflake connector configuration")?;
+
+    if let SnowflakeConnectorConfig {
+        include: Some(include_set),
+    } = parsed_config
+    {
+        parsed_config.include = Some(expand_include_set(include_set));
+    };
+
+    Ok(parsed_config)
+}
+
+fn expand_include_set(include_set: HashSet<String>) -> HashSet<String> {
+    let mut expanded_include = HashSet::new();
+    for include_name in include_set {
+        let name_parts = include_name.split('.').collect::<Vec<_>>();
+        for i in 1..name_parts.len() + 1 {
+            let prefix = format!("{}", name_parts[0..i].join("."));
+            expanded_include.insert(prefix);
+        }
+    }
+
+    expanded_include
 }
 
 #[derive(Deserialize, Debug)]
@@ -631,7 +654,11 @@ impl SnowflakeConnector {
         };
 
         include_paths.iter().any(|include_path| {
-            include_path.starts_with(asset_name) || asset_name.starts_with(include_path)
+            if include_path.ends_with('*') {
+                asset_name.starts_with(&include_path[..include_path.len() - 1])
+            } else {
+                include_path == asset_name
+            }
         })
     }
 }
@@ -700,4 +727,68 @@ where
 {
     let buf = String::deserialize(deserializer)?;
     Ok(strip_snowflake_quotes(buf, false))
+}
+
+#[cfg(test)]
+mod test {
+    use crate::creds::SnowflakeCredentials;
+
+    use super::*;
+
+    #[test]
+    fn test_include_set_expansion() -> Result<()> {
+        let include_set = ["A.B*", "D", "E*", "H.I", "F.G.J", "X.*"]
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+        let new_set = expand_include_set(include_set);
+        assert_eq!(
+            new_set,
+            ["A.B*", "A", "D", "E*", "F", "F.G", "F.G.J", "H", "H.I", "X.*", "X"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect::<HashSet<String>>()
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_include() -> Result<()> {
+        let include_set = ["A.B*", "D", "E*", "H.I", "F.G.J", "X.*"]
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+        let new_set = expand_include_set(include_set);
+
+        let creds = SnowflakeCredentials {
+            account: "my_account".to_owned(),
+            role: "role".to_owned(),
+            user: "user".to_owned(),
+            warehouse: "warehouse".to_owned(),
+            private_key: "private_key".to_owned(),
+            public_key_fp: "fp".to_owned(),
+            url: None,
+        };
+
+        let conn = SnowflakeConnector {
+            config: SnowflakeConnectorConfig {
+                include: Some(new_set),
+            },
+            rest_client: SnowflakeRestClient::new(creds, SnowflakeRestConfig::default()).unwrap(),
+            client: connectors::ConnectorClient::Test,
+        };
+
+        assert!(conn.include_asset("A.B.C"));
+        assert!(conn.include_asset("A.BC"));
+        assert!(!conn.include_asset("D.A"));
+        assert!(conn.include_asset("F"));
+        assert!(conn.include_asset("F.G"));
+        assert!(conn.include_asset("F.G.J"));
+        assert!(!conn.include_asset("F.G.A"));
+        assert!(!conn.include_asset("Z.G.A"));
+        assert!(conn.include_asset("X"));
+        assert!(conn.include_asset("X.X"));
+
+        Ok(())
+    }
 }
