@@ -30,6 +30,7 @@ fn to_node(val: &serde_json::Value) -> Result<View> {
         name: String,
         id: String,
         owner: super::IdField,
+        #[serde(default)]
         project: super::IdField,
         workbook: super::IdField,
         updated_at: String,
@@ -56,7 +57,15 @@ pub(crate) async fn get_basic_views(tc: &rest::TableauRestClient) -> Result<Hash
         .context("fetching views")?
         .fetch_json_response(Some(vec!["views".to_owned(), "view".to_owned()]))
         .await?;
-    super::to_asset_map(tc, node, &to_node)
+    let views = super::to_asset_map(tc, node, &to_node)?;
+
+    // If the project ID is empty, it's in a personal space and we don't want to include it.
+    let views = views
+        .into_iter()
+        .filter(|(_, w)| !w.project_id.0.is_empty())
+        .collect();
+
+    Ok(views)
 }
 
 impl Permissionable for View {

@@ -96,7 +96,13 @@ pub(crate) trait Permissionable: core::fmt::Debug {
         let permissions_array = rest::get_json_from_path(
             &resp,
             &vec!["permissions".to_owned(), "granteeCapabilities".to_owned()],
-        )?;
+        );
+
+        let permissions_array = match permissions_array {
+            Ok(v) => v,
+            // if there are no permissions, we can just skip this part
+            Err(_) => return Ok(()),
+        };
 
         let final_permissions = if matches!(permissions_array, serde_json::Value::Array(_)) {
             let permissions: Vec<SerializedPermission> = serde_json::from_value(permissions_array)?;
@@ -287,7 +293,7 @@ impl TableauCualable for Lens {
 }
 
 /// Helper struct for deserializing Tableau assets
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, Default)]
 struct IdField {
     id: String,
 }

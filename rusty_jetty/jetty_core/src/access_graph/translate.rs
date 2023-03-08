@@ -514,7 +514,10 @@ impl Translator {
         let connector = self
             .cual_prefix_to_namespace
             .get_by_left(&connector_prefix)
-            .context("unable to match cual prefix")?
+            .context(format!(
+                "unable to match cual prefix ({:?})",
+                &connector_prefix
+            ))?
             .to_owned();
 
         Ok(NodeName::Asset {

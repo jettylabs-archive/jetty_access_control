@@ -101,12 +101,12 @@ pub struct ConnectorConfig {
     pub connector_type: String,
     /// Additional configuration, specific to the connector
     #[serde(flatten)]
-    pub config: HashMap<String, String>,
+    pub config: HashMap<String, serde_json::Value>,
 }
 
 impl ConnectorConfig {
     /// Basic constructor
-    pub fn new(connector_type: String, config: HashMap<String, String>) -> Self {
+    pub fn new(connector_type: String, config: HashMap<String, serde_json::Value>) -> Self {
         Self {
             connector_type,
             config,

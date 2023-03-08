@@ -17,6 +17,6 @@ impl Schema {
     }
 
     pub(crate) fn fqn(&self) -> String {
-        format!("{}.{}", self.name, self.database_name)
+        format!("{}.{}", self.database_name, self.name)
     }
 }

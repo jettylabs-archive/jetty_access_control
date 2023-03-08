@@ -1,6 +1,6 @@
 [package]
 name = "jetty_pypi"
-version = "0.2.5-dev.3"
+version = "0.2.5-dev.4"
 edition = "2021"
 
 [[bin]]
