@@ -95,7 +95,7 @@ fn expand_include_set(include_set: HashSet<String>) -> HashSet<String> {
     for include_name in include_set {
         let name_parts = include_name.split('.').collect::<Vec<_>>();
         for i in 1..name_parts.len() + 1 {
-            let prefix = format!("{}", name_parts[0..i].join("."));
+            let prefix = name_parts[0..i].join(".").to_string();
             expanded_include.insert(prefix);
         }
     }
