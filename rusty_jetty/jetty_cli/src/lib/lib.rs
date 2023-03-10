@@ -35,6 +35,7 @@ use jetty_core::{
     jetty::{ConnectorNamespace, CredentialsMap, JettyConfig},
     logging::{self, debug, error, info, warn},
     project::{self, groups_cfg_path_local},
+    time_it,
     write::{
         self,
         assets::bootstrap::{update_asset_files, write_bootstrapped_asset_yaml},
@@ -247,8 +248,11 @@ async fn fetch(connectors: &Option<Vec<String>>, &visualize: &bool) -> Result<()
     // the last jetty was partially consumed by the fetch, so re-instantiating here
     let jetty = new_jetty_with_connectors(".").await?;
 
-    let ag = AccessGraph::new_from_connector_data(data_from_connectors, &jetty)?;
-    ag.serialize_graph(project::data_dir().join(project::graph_filename()))?;
+    time_it!("new graph", let ag = AccessGraph::new_from_connector_data(data_from_connectors, &jetty)?;);
+    time_it!(
+        "serialize graph",
+        ag.serialize_graph(project::data_dir().join(project::graph_filename()))?;
+    );
 
     pb.finish_with_message(format!(
         "Access graph created in {:.1} seconds",

@@ -17,3 +17,16 @@ pub mod logging;
 pub mod permissions;
 pub mod project;
 pub mod write;
+
+#[macro_export]
+/// Time stuff. For debugging.
+macro_rules! time_it {
+    ($context:literal, $($tt:tt)+) => {
+        println!("{}: starting", $context);
+        let timer = std::time::Instant::now();
+        $(
+            $tt
+        )+
+        println!("{}: {:?}", $context, timer.elapsed());
+    }
+}

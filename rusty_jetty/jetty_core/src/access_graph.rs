@@ -13,6 +13,7 @@ use crate::connectors::nodes::{ConnectorData, EffectivePermission, SparseMatrix}
 use crate::connectors::processed_nodes::{ProcessedConnectorData, ProcessedDefaultPolicy};
 #[cfg(test)]
 use crate::cual::Cual;
+use crate::time_it;
 use crate::Jetty;
 
 use crate::connectors::{AssetType, UserIdentifier};
@@ -810,8 +811,8 @@ impl AccessGraph {
             },
         };
         // Create all nodes first, then create edges.
-        ag.add_nodes(&connector_data)?;
-        ag.add_edges()?;
+        time_it!("Add nodes", ag.add_nodes(&connector_data)?;);
+        time_it!("Add Edges", ag.add_edges()?;);
 
         // Add default policies after the rest of the graph is created. This is necessary because
         // these policies depend on hierarchy, which isn't really established until this point.
@@ -834,15 +835,20 @@ impl AccessGraph {
         jetty: &Jetty,
     ) -> Result<Self> {
         // Build the translator
-        let tr = Translator::new(&connector_data, jetty)?;
+        time_it!("Initialize translator", let tr = Translator::new(&connector_data, jetty)?;);
         // Process the connector data
-        let pcd = tr.local_to_processed_connector_data(connector_data);
-        let ag_res = AccessGraph::new(pcd.to_owned(), Some(tr));
-        ag_res.map(|mut ag| {
-            ag.effective_permissions =
-                ag.translate_effective_permissions_to_global_indices(pcd.effective_permissions);
-            ag
-        })
+        time_it!("Local to processed data", let pcd = tr.local_to_processed_connector_data(connector_data););
+        time_it!("Create access graph", let ag_res = AccessGraph::new(pcd.to_owned(), Some(tr)););
+
+        time_it!(
+            "translate effective permissions",
+            let x = ag_res.map(|mut ag| {
+                ag.effective_permissions =
+                    ag.translate_effective_permissions_to_global_indices(pcd.effective_permissions);
+                ag
+            });
+        );
+        x
     }
 
     /// Return the translator
@@ -964,12 +970,12 @@ impl AccessGraph {
     /// **This intentionally excludes default policies. They must be handled separately
     /// after other nodes are added**
     pub(crate) fn add_nodes(&mut self, data: &ProcessedConnectorData) -> Result<()> {
-        self.register_nodes_and_edges(&data.groups)?;
-        self.register_nodes_and_edges(&data.users)?;
-        self.register_nodes_and_edges(&data.assets)?;
-        self.register_nodes_and_edges(&data.policies)?;
-        self.register_nodes_and_edges(&data.tags)?;
-        self.register_nodes_and_edges(&data.asset_references)?;
+        time_it!("add nodes for groups", self.register_nodes_and_edges(&data.groups)?;);
+        time_it!("add nodes for users", self.register_nodes_and_edges(&data.users)?;);
+        time_it!("add nodes for assets", self.register_nodes_and_edges(&data.assets)?;);
+        time_it!("add nodes for policies", self.register_nodes_and_edges(&data.policies)?;);
+        time_it!("add nodes for tags", self.register_nodes_and_edges(&data.tags)?;);
+        time_it!("add nodes for asset_references", self.register_nodes_and_edges(&data.asset_references)?;);
         Ok(())
     }
 
