@@ -528,6 +528,14 @@ impl SnowflakeConnector {
             return Ok(vec![]);
         }
 
+        // REMOVE THIS
+        {
+            if query.contains("where deleted_on is null") {
+                let end = result.chars().map(|c| c.len_utf8()).take(30000).sum();
+                println!("result (first 30,000 chars): {}", &result[..end])
+            }
+        }
+
         let rows_value: JsonValue = serde_json::from_str(&result)
             .context("failed to deserialize")
             .map_err(|e| {
@@ -542,14 +550,14 @@ impl SnowflakeConnector {
         }
         let rows_data = rows_value["data"].clone();
         let rows = serde_json::from_value::<Vec<Vec<Option<String>>>>(rows_data)
-            .context("failed to deserialize rows")
             .map_err(|e| {
                 error!(
                     "failed to deserialize rows for query: {query} -- error: {}",
                     &e
                 );
                 e
-            })?
+            })
+            .context("failed to deserialize rows")?
             .into_iter()
             .map(|v| v.iter().map(|f| f.clone().unwrap_or_default()).collect());
         let fields_intermediate: Vec<SnowflakeField> =
