@@ -349,6 +349,10 @@ impl SnowflakeConnector {
         let res = self
             .query_to_obj::<StandardGrant>("select * from snowflake.account_usage.grants_to_roles where deleted_on is null and granted_on in ('TABLE', 'DATABASE', 'SCHEMA', 'VIEW');")
             .await
+            .map_err(|e| {
+                error!("failed to get privilege grants -- error: {}", &e);
+                e
+            })
             .context("failed to get privilege grants")?;
 
         let mut target = target.lock().unwrap();
@@ -524,19 +528,40 @@ impl SnowflakeConnector {
             return Ok(vec![]);
         }
 
-        let rows_value: JsonValue =
-            serde_json::from_str(&result).context("failed to deserialize")?;
+        let rows_value: JsonValue = serde_json::from_str(&result)
+            .context("failed to deserialize")
+            .map_err(|e| {
+                error!(
+                    "failed to deserialize result for query: {query} -- error: {}",
+                    &e
+                );
+                e
+            })?;
         if let Some(info) = rows_value.get("partitionInfo") {
             panic!("Unexpected partitioned return value: {info}");
         }
         let rows_data = rows_value["data"].clone();
         let rows = serde_json::from_value::<Vec<Vec<Option<String>>>>(rows_data)
-            .context("failed to deserialize rows")?
+            .context("failed to deserialize rows")
+            .map_err(|e| {
+                error!(
+                    "failed to deserialize rows for query: {query} -- error: {}",
+                    &e
+                );
+                e
+            })?
             .into_iter()
             .map(|v| v.iter().map(|f| f.clone().unwrap_or_default()).collect());
         let fields_intermediate: Vec<SnowflakeField> =
             serde_json::from_value(rows_value["resultSetMetaData"]["rowType"].clone())
-                .context("failed to deserialize fields")?;
+                .context("failed to deserialize fields")
+                .map_err(|e| {
+                    error!(
+                        "failed to deserialize fields for query: {query} -- error: {}",
+                        &e
+                    );
+                    e
+                })?;
         let fields: Vec<String> = fields_intermediate.iter().map(|i| i.name.clone()).collect();
         Ok(rows
             .map(|i: Vec<_>| {
@@ -547,6 +572,13 @@ impl SnowflakeConnector {
                     serde::de::value::Error,
                 >::new(vals.into_iter()))
                 .context("couldn't deserialize")
+                .map_err(|e| {
+                    error!(
+                        "failed to deserialize final results for query: {query} -- error: {}",
+                        &e
+                    );
+                    e
+                })
                 .unwrap()
             })
             .collect())

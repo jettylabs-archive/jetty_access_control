@@ -4,7 +4,7 @@
 use crate::{consts, creds::SnowflakeCredentials};
 
 use anyhow::{Context, Result};
-use jetty_core::logging::debug;
+use jetty_core::logging::{debug, error};
 use jsonwebtoken::{encode, get_current_timestamp, Algorithm, EncodingKey, Header};
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware, RequestBuilder};
 use reqwest_retry::{policies::ExponentialBackoff, RetryTransientMiddleware};
@@ -51,7 +51,7 @@ impl SnowflakeRestClient {
         config: SnowflakeRestConfig,
     ) -> Result<Self> {
         credentials.validate()?;
-        let retry_policy = ExponentialBackoff::builder().build_with_max_retries(3);
+        let retry_policy = ExponentialBackoff::builder().build_with_max_retries(4);
         let mut client_builder = ClientBuilder::new(reqwest::Client::new());
         if config.retry {
             client_builder =
@@ -94,7 +94,11 @@ impl SnowflakeRestClient {
             .send()
             .await
             .context("couldn't send request")?
-            .error_for_status()?;
+            .error_for_status()
+            .map_err(|e| {
+                error!("error status for query: {} -- error: {}", &config.sql, &e);
+                e
+            })?;
 
         while response.status() == reqwest::StatusCode::ACCEPTED {
             thread::sleep(Duration::from_millis(1500));
