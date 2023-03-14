@@ -101,6 +101,8 @@ impl SnowflakeRestClient {
             })?;
 
         while response.status() == reqwest::StatusCode::ACCEPTED {
+            dbg!(response.status(), &response);
+            println!("sleeping for 1.5 seconds");
             thread::sleep(Duration::from_millis(1500));
             let statement_handle = response.json::<AcceptedResponse>().await?.statement_handle;
 
@@ -110,6 +112,13 @@ impl SnowflakeRestClient {
                 .await
                 .context("couldn't send request")?
                 .error_for_status()?;
+        }
+
+        // REMOVE THIS
+        {
+            if config.sql.contains("where deleted_on is null") {
+                dbg!(response.status(), &response);
+            }
         }
 
         let res = response.text().await.context("couldn't get body text")?;

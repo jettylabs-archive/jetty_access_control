@@ -174,10 +174,13 @@ pub(crate) async fn get_basic_workbooks(
     let asset_map = super::to_asset_map(tc, node, &to_node_graphql)?;
 
     // If the project ID is empty, it's in a personal space and we don't want to include it.
-    let asset_map = asset_map
+    let asset_map: HashMap<String, Workbook> = asset_map
         .into_iter()
         .filter(|(_, w)| !w.project_id.0.is_empty())
         .collect();
+
+    println!("Fetched {} workbooks", &asset_map.len());
+    println!("Workbook Ids: {:?}", &asset_map.keys());
 
     Ok(asset_map)
 }

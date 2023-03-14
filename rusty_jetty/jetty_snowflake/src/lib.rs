@@ -775,6 +775,19 @@ mod test {
 
     use super::*;
 
+    async fn new_snowflake_connector() -> SnowflakeConnector {
+        let config = &ConnectorConfig {
+            connector_type: "snowflake".to_owned(),
+            config: [].into(),
+        };
+        let creds = &jetty_core::fetch_credentials(jetty_core::project::connector_cfg_path())
+            .unwrap()["snowflake"];
+        let snow = *SnowflakeConnector::new(config, creds, None, None)
+            .await
+            .unwrap();
+        snow
+    }
+
     #[test]
     fn test_include_set_expansion() -> Result<()> {
         let include_set = ["A.B*", "D", "E*", "H.I", "F.G.J", "X.*"]
@@ -829,6 +842,37 @@ mod test {
         assert!(conn.include_asset("X"));
         assert!(conn.include_asset("X.X"));
 
+        Ok(())
+    }
+
+    impl SnowflakeConnector {
+        async fn test_get_privilege_grants_slow(
+            &self,
+            target: Arc<Mutex<&mut Vec<StandardGrant>>>,
+        ) -> Result<()> {
+            let res = self
+                .query_to_obj::<StandardGrant>("select * from snowflake.account_usage.grants_to_roles left join (SELECT COUNT(seq4()) as bob FROM TABLE(GENERATOR(TIMELIMIT => 60)) v) on TRUE  where deleted_on is null and granted_on in ('TABLE', 'DATABASE', 'SCHEMA', 'VIEW');")
+                .await
+                .map_err(|e| {
+                    error!("failed to get privilege grants -- error: {}", &e);
+                    e
+                })
+                .context("failed to get privilege grants")?;
+
+            let mut target = target.lock().unwrap();
+            target.extend(res);
+            Ok(())
+        }
+    }
+
+    #[ignore = "slow live query test"]
+    #[tokio::test]
+    async fn test_get_privilege_grants() -> Result<()> {
+        let snow = new_snowflake_connector().await;
+        let mut grants = vec![];
+        snow.test_get_privilege_grants_slow(Arc::new(Mutex::new(&mut grants)))
+            .await?;
+        println!("{} grants", grants.len());
         Ok(())
     }
 }
