@@ -85,12 +85,13 @@ impl SnowflakeRestClient {
         struct AcceptedResponse {
             #[serde(rename = "statementHandle")]
             statement_handle: String,
+            code: String,
         }
         let request = self
             .get_request(config)
             .context(format!("failed to get request for query {:?}", &config.sql))?;
 
-        let mut response = request
+        let response = request
             .send()
             .await
             .context("couldn't send request")?
@@ -100,28 +101,27 @@ impl SnowflakeRestClient {
                 e
             })?;
 
-        while response.status() == reqwest::StatusCode::ACCEPTED {
-            dbg!(response.status(), &response);
+        let mut res = response.text().await.context("couldn't get body text")?;
+
+        while serde_json::from_str::<AcceptedResponse>(&res)
+            .map(|r| r.code == "333334")
+            .unwrap_or(false)
+        {
             println!("sleeping for 1.5 seconds");
             thread::sleep(Duration::from_millis(1500));
-            let statement_handle = response.json::<AcceptedResponse>().await?.statement_handle;
+            let statement_handle = serde_json::from_str::<AcceptedResponse>(&res)?.statement_handle;
 
             let request = self.get_status_check_request(config, statement_handle)?;
-            response = request
+            res = request
                 .send()
                 .await
                 .context("couldn't send request")?
-                .error_for_status()?;
+                .error_for_status()?
+                .text()
+                .await
+                .context("couldn't get body text")?;
         }
 
-        // REMOVE THIS
-        {
-            if config.sql.contains("where deleted_on is null") {
-                dbg!(response.status(), &response);
-            }
-        }
-
-        let res = response.text().await.context("couldn't get body text")?;
         debug!("completed query: {:?}", &config.sql);
         Ok(res)
     }

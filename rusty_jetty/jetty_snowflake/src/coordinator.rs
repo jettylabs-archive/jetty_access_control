@@ -108,10 +108,14 @@ impl<'a> Coordinator<'a> {
             hold.push(Box::pin(self.conn.get_objects_futures(schema, m)));
         }
 
+        dbg!(&self.env.standard_grants.len());
         // Get all the object grants
         let grants_to_role_mutex = Arc::new(Mutex::new(&mut self.env.standard_grants));
-        let m = Arc::clone(&grants_to_role_mutex);
-        hold.push(Box::pin(self.conn.get_privilege_grants_future(m)));
+        let grants_to_role_mutex_clone = Arc::clone(&grants_to_role_mutex);
+        hold.push(Box::pin(
+            self.conn
+                .get_privilege_grants_future(grants_to_role_mutex_clone),
+        ));
 
         // for each role, get grants of
         let target_arc = Arc::new(Mutex::new(&mut self.env.role_grants));
@@ -141,6 +145,8 @@ impl<'a> Coordinator<'a> {
             .buffer_unordered(CONCURRENT_METADATA_FETCHES)
             .collect::<Vec<_>>()
             .await;
+
+        dbg!(&self.env.standard_grants.len());
 
         for res in results {
             if let Err(e) = res {

@@ -356,6 +356,7 @@ impl SnowflakeConnector {
             .context("failed to get privilege grants")?;
 
         let mut target = target.lock().unwrap();
+        println!("writing privilege grants to environment");
         target.extend(res);
         Ok(())
     }
