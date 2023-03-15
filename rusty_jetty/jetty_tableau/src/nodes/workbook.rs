@@ -24,8 +24,6 @@ pub(crate) struct Workbook {
     pub owner_id: String,
     /// LUID of project
     pub project_id: ProjectId,
-    /// Probably not necessary?
-    pub has_embedded_sources: bool,
     /// HashSet of derived-from origins
     pub sources: HashSet<SourceOrigin>,
     pub updated_at: String,
@@ -119,7 +117,6 @@ fn to_node_graphql(val: &serde_json::Value) -> Result<Workbook> {
         project_luid: String,
         project_name: String,
         updated_at: String,
-        embedded_datasources: Vec<EmbeddedSourceHelper>,
     }
 
     // Get inner result data
@@ -137,7 +134,6 @@ fn to_node_graphql(val: &serde_json::Value) -> Result<Workbook> {
             ProjectId(workbook_info.project_luid)
         },
         updated_at: workbook_info.updated_at,
-        has_embedded_sources: !workbook_info.embedded_datasources.is_empty(),
         sources: Default::default(),
         permissions: Default::default(),
     })
@@ -211,7 +207,6 @@ mod tests {
                 name,
                 owner_id,
                 project_id,
-                has_embedded_sources,
                 sources,
                 updated_at,
                 permissions,
