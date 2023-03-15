@@ -7,7 +7,7 @@ use jetty_core::{project, write};
 use crate::{cmd::RemoveOrModifyNodeType, new_jetty_with_connectors};
 
 pub(super) async fn remove(node_type: &RemoveOrModifyNodeType, name: &String) -> Result<()> {
-    let jetty = &new_jetty_with_connectors(".").await.map_err(|_| {
+    let jetty = &new_jetty_with_connectors(".", true).await.map_err(|_| {
         anyhow!(
             "unable to find {} - make sure you are in a \
         Jetty project directory, or create a new project by running `jetty new`",

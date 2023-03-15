@@ -71,7 +71,7 @@ pub async fn new(
     // create a new repository in the directory specified by the project name
     create_git_repo(jetty_config.get_name())?;
     // add schemas and vs code settings
-    let jetty = &new_jetty_with_connectors(jetty_config.get_name()).await?;
+    let jetty = &new_jetty_with_connectors(jetty_config.get_name(), false).await?;
     write::config::write_settings_and_schema(jetty, jetty_config.get_name())?;
     Ok(())
 }
