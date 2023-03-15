@@ -21,14 +21,18 @@ pub mod write;
 #[macro_export]
 /// Time the code inside the macro. Write the elapsed time to debug logs.
 /// Derived from https://notes.iveselov.info/programming/time_it-a-case-study-in-rust-macros
-macro_rules! time_it {
+macro_rules! log_runtime {
     ($context:literal, $($tt:tt)+) => {
-        debug!("{}: starting", $context);
-        let timer = std::time::Instant::now();
-        $(
-            $tt
-        )+
-        debug!("{}: {:?}", $context, timer.elapsed());
+        {
+            debug!("{}: starting", $context);
+            let timer = std::time::Instant::now();
+            let x =
+            $(
+                $tt
+            )+;
+            debug!("{}: {:?}", $context, timer.elapsed());
+            x
+        }
     }
 }
 
@@ -36,13 +40,17 @@ macro_rules! time_it {
 #[macro_export]
 /// Time the code inside the macro. Write the elapsed time to std out.
 /// Derived from https://notes.iveselov.info/programming/time_it-a-case-study-in-rust-macros
-macro_rules! time_it_print {
+macro_rules! print_runtime {
     ($context:literal, $($tt:tt)+) => {
-        println!("{}: starting", $context);
-        let timer = std::time::Instant::now();
-        $(
-            $tt
-        )+
-        println!("{}: {:?}", $context, timer.elapsed());
+        {
+            println!("{}: starting", $context);
+            let timer = std::time::Instant::now();
+            let x =
+            $(
+                $tt
+            )+;
+            println!("{}: {:?}", $context, timer.elapsed());
+            x
+        }
     }
 }

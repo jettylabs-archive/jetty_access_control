@@ -20,9 +20,9 @@ use crate::{
     },
     cual::Cual,
     jetty::ConnectorNamespace,
+    log_runtime,
     logging::debug,
     permissions::matrix::{DoubleInsert, InsertOrMerge},
-    time_it,
     write::{groups::parse_and_validate_groups, users},
     Jetty,
 };
@@ -190,71 +190,88 @@ impl Translator {
         &self,
         data: Vec<(ConnectorData, ConnectorNamespace)>,
     ) -> ProcessedConnectorData {
-        time_it!("translate ep axes", 
-        let mut result = ProcessedConnectorData {
-            effective_permissions: self
-                .translate_effective_permissions_axes_to_global_node_names(&data),
-            ..Default::default()
-        };);
+        let mut result = log_runtime!(
+            "translate ep axes",
+            ProcessedConnectorData {
+                effective_permissions: self
+                    .translate_effective_permissions_axes_to_global_node_names(&data),
+                ..Default::default()
+            }
+        );
 
         for (cd, namespace) in data {
             // convert the users
-            time_it!("translate users", result.users.extend(
-                cd.users
-                    .into_iter()
-                    .map(|u| self.translate_user_to_global(u, namespace.to_owned()))
-                    .collect::<Vec<ProcessedUser>>(),
-            ););
+            log_runtime!(
+                "translate users",
+                result.users.extend(
+                    cd.users
+                        .into_iter()
+                        .map(|u| self.translate_user_to_global(u, namespace.to_owned()))
+                        .collect::<Vec<ProcessedUser>>(),
+                )
+            );
             // convert the groups
-            time_it!("translate groups", 
-            result.groups.extend(
-                cd.groups
-                    .into_iter()
-                    .map(|g| self.translate_group_to_global(g, namespace.to_owned()))
-                    .collect::<Vec<ProcessedGroup>>(),
-            ););
+            log_runtime!(
+                "translate groups",
+                result.groups.extend(
+                    cd.groups
+                        .into_iter()
+                        .map(|g| self.translate_group_to_global(g, namespace.to_owned()))
+                        .collect::<Vec<ProcessedGroup>>(),
+                )
+            );
             // convert the assets
-            time_it!("translate assets", 
-            result.assets.extend(
-                cd.assets
-                    .into_iter()
-                    .map(|a| self.translate_asset_to_global(a, namespace.to_owned()))
-                    .collect::<Vec<ProcessedAsset>>(),
-            ););
+            log_runtime!(
+                "translate assets",
+                result.assets.extend(
+                    cd.assets
+                        .into_iter()
+                        .map(|a| self.translate_asset_to_global(a, namespace.to_owned()))
+                        .collect::<Vec<ProcessedAsset>>(),
+                )
+            );
             // convert the tags
-            time_it!("translate tags", 
-            result.tags.extend(
-                cd.tags
-                    .into_iter()
-                    .map(|t| self.translate_tag_to_global(t, namespace.to_owned()))
-                    .collect::<Vec<ProcessedTag>>(),
-            ););
+            log_runtime!(
+                "translate tags",
+                result.tags.extend(
+                    cd.tags
+                        .into_iter()
+                        .map(|t| self.translate_tag_to_global(t, namespace.to_owned()))
+                        .collect::<Vec<ProcessedTag>>(),
+                )
+            );
             // convert the policies
-            time_it!("translate policies", 
-            result.policies.extend(
-                cd.policies
-                    .into_iter()
-                    .map(|p| self.translate_policy_to_global(p, namespace.to_owned()))
-                    .collect::<Vec<ProcessedPolicy>>(),
-            ););
+            log_runtime!(
+                "translate policies",
+                result.policies.extend(
+                    cd.policies
+                        .into_iter()
+                        .map(|p| self.translate_policy_to_global(p, namespace.to_owned()))
+                        .collect::<Vec<ProcessedPolicy>>(),
+                )
+            );
             // convert the assets
-            time_it!("translate assets", 
-            result.asset_references.extend(
-                cd.asset_references
-                    .into_iter()
-                    .filter_map(|a| {
-                        self.translate_asset_reference_to_global(a, namespace.to_owned())
-                    })
-                    .collect::<Vec<ProcessedAssetReference>>(),
-            ););
+            log_runtime!(
+                "translate assets",
+                result.asset_references.extend(
+                    cd.asset_references
+                        .into_iter()
+                        .filter_map(|a| {
+                            self.translate_asset_reference_to_global(a, namespace.to_owned())
+                        })
+                        .collect::<Vec<ProcessedAssetReference>>(),
+                )
+            );
             // convert the default policies
-            time_it!("translate default policies", 
-            result.default_policies.extend(
-                cd.default_policies
-                    .into_iter()
-                    .map(|a| self.translate_default_policy_to_global(a, namespace.to_owned()))
-                    .collect::<Vec<ProcessedDefaultPolicy>>(),
-            ););
+            log_runtime!(
+                "translate default policies",
+                result.default_policies.extend(
+                    cd.default_policies
+                        .into_iter()
+                        .map(|a| self.translate_default_policy_to_global(a, namespace.to_owned()))
+                        .collect::<Vec<ProcessedDefaultPolicy>>(),
+                )
+            );
         }
 
         result

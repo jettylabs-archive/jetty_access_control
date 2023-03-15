@@ -21,6 +21,7 @@ use jetty_core::cual::Cualable;
 use jetty_core::logging::debug;
 use jetty_core::logging::error;
 use jetty_core::permissions::matrix::InsertOrMerge;
+use jetty_core::print_runtime;
 
 use super::cual::{self, cual, get_cual_account_name, Cual};
 use crate::consts::DATABASE;
@@ -108,7 +109,6 @@ impl<'a> Coordinator<'a> {
             hold.push(Box::pin(self.conn.get_objects_futures(schema, m)));
         }
 
-        dbg!(&self.env.standard_grants.len());
         // Get all the object grants
         let grants_to_role_mutex = Arc::new(Mutex::new(&mut self.env.standard_grants));
         let grants_to_role_mutex_clone = Arc::clone(&grants_to_role_mutex);
@@ -156,16 +156,22 @@ impl<'a> Coordinator<'a> {
 
         let mut connector_data = nodes::ConnectorData {
             // 19 Sec
-            groups: self.get_jetty_groups(),
+            groups: print_runtime!("getting jetty groups", self.get_jetty_groups()),
             // 7 Sec
-            users: self.get_jetty_users(),
+            users: print_runtime!("getting jetty users", self.get_jetty_users()),
             // 3.5 Sec
-            assets: self.get_jetty_assets(),
-            tags: self.get_jetty_tags(),
-            policies: self.get_jetty_policies(),
-            default_policies: self.get_jetty_default_policies(),
-            effective_permissions: self.get_effective_permissions(),
-            asset_references: Default::default(),
+            assets: print_runtime!("getting jetty assets", self.get_jetty_assets()),
+            tags: print_runtime!("getting jetty tags", self.get_jetty_tags()),
+            policies: print_runtime!("getting jetty policies", self.get_jetty_policies()),
+            default_policies: print_runtime!(
+                "getting jetty default_policies",
+                self.get_jetty_default_policies()
+            ),
+            effective_permissions: print_runtime!(
+                "getting jetty effective_permissions",
+                self.get_effective_permissions()
+            ),
+            asset_references: print_runtime!("getting jetty asset_references", Default::default()),
             cual_prefix: Some(
                 cual::get_cual_prefix()
                     .context("cual account not yet set")

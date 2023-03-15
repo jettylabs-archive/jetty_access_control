@@ -13,7 +13,7 @@ use crate::connectors::nodes::{ConnectorData, EffectivePermission, SparseMatrix}
 use crate::connectors::processed_nodes::{ProcessedConnectorData, ProcessedDefaultPolicy};
 #[cfg(test)]
 use crate::cual::Cual;
-use crate::time_it;
+use crate::log_runtime;
 use crate::Jetty;
 
 use crate::connectors::{AssetType, UserIdentifier};
@@ -811,8 +811,8 @@ impl AccessGraph {
             },
         };
         // Create all nodes first, then create edges.
-        time_it!("Add nodes", ag.add_nodes(&connector_data)?;);
-        time_it!("Add Edges", ag.add_edges()?;);
+        log_runtime!("Add nodes", ag.add_nodes(&connector_data)?);
+        log_runtime!("Add Edges", ag.add_edges()?);
 
         // Add default policies after the rest of the graph is created. This is necessary because
         // these policies depend on hierarchy, which isn't really established until this point.
@@ -835,20 +835,28 @@ impl AccessGraph {
         jetty: &Jetty,
     ) -> Result<Self> {
         // Build the translator
-        time_it!("Initialize translator", let tr = Translator::new(&connector_data, jetty)?;);
+        let tr = log_runtime!(
+            "Initialize translator",
+            Translator::new(&connector_data, jetty)?
+        );
         // Process the connector data
-        time_it!("Local to processed data", let pcd = tr.local_to_processed_connector_data(connector_data););
-        time_it!("Create access graph", let ag_res = AccessGraph::new(pcd.to_owned(), Some(tr)););
+        let pcd = log_runtime!(
+            "Local to processed data",
+            tr.local_to_processed_connector_data(connector_data)
+        );
+        let ag_res = log_runtime!(
+            "Create access graph",
+            AccessGraph::new(pcd.to_owned(), Some(tr))
+        );
 
-        time_it!(
+        log_runtime!(
             "translate effective permissions",
-            let x = ag_res.map(|mut ag| {
+            ag_res.map(|mut ag| {
                 ag.effective_permissions =
                     ag.translate_effective_permissions_to_global_indices(pcd.effective_permissions);
                 ag
-            });
-        );
-        x
+            })
+        )
     }
 
     /// Return the translator
@@ -980,12 +988,30 @@ impl AccessGraph {
             &data.asset_references.len()
         );
 
-        time_it!("add nodes for groups", self.register_nodes_and_edges(&data.groups)?;);
-        time_it!("add nodes for users", self.register_nodes_and_edges(&data.users)?;);
-        time_it!("add nodes for assets", self.register_nodes_and_edges(&data.assets)?;);
-        time_it!("add nodes for policies", self.register_nodes_and_edges(&data.policies)?;);
-        time_it!("add nodes for tags", self.register_nodes_and_edges(&data.tags)?;);
-        time_it!("add nodes for asset_references", self.register_nodes_and_edges(&data.asset_references)?;);
+        log_runtime!(
+            "add nodes for groups",
+            self.register_nodes_and_edges(&data.groups)?
+        );
+        log_runtime!(
+            "add nodes for users",
+            self.register_nodes_and_edges(&data.users)?
+        );
+        log_runtime!(
+            "add nodes for assets",
+            self.register_nodes_and_edges(&data.assets)?
+        );
+        log_runtime!(
+            "add nodes for policies",
+            self.register_nodes_and_edges(&data.policies)?
+        );
+        log_runtime!(
+            "add nodes for tags",
+            self.register_nodes_and_edges(&data.tags)?
+        );
+        log_runtime!(
+            "add nodes for asset_references",
+            self.register_nodes_and_edges(&data.asset_references)?
+        );
         Ok(())
     }
 

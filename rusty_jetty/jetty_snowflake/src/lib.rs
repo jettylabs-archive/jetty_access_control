@@ -529,14 +529,6 @@ impl SnowflakeConnector {
             return Ok(vec![]);
         }
 
-        // REMOVE THIS
-        {
-            if query.contains("where deleted_on is null") {
-                let end = result.chars().map(|c| c.len_utf8()).take(30000).sum();
-                println!("result (first 30,000 chars): {}", &result[..end])
-            }
-        }
-
         let rows_value: JsonValue = serde_json::from_str(&result)
             .context("failed to deserialize")
             .map_err(|e| {
