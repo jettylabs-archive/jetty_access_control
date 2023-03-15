@@ -10,7 +10,10 @@ use crate::{
     rest::{self, get_tableau_cual, FetchJson, TableauAssetType},
 };
 
-use jetty_core::connectors::{nodes as jetty_nodes, AssetType};
+use jetty_core::{
+    connectors::{nodes as jetty_nodes, AssetType},
+    logging::debug,
+};
 
 use super::{FromTableau, OwnedAsset, Permissionable, ProjectId, TableauAsset, WORKBOOK};
 
@@ -94,83 +97,43 @@ impl FromTableau<Workbook> for jetty_nodes::RawAsset {
     }
 }
 
-/// Take a JSON object returned from a GraphQL query and turn it into a workbook
-fn to_node_graphql(val: &serde_json::Value) -> Result<Workbook> {
-    #[derive(Deserialize)]
-    struct LuidField {
-        luid: String,
-    }
-
-    #[derive(Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    struct EmbeddedSourceHelper {
-        #[serde(rename = "name")]
-        _name: String,
-    }
-
+fn to_node(val: &serde_json::Value) -> Result<Workbook> {
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]
     struct WorkbookInfo {
         name: String,
-        luid: String,
-        owner: LuidField,
-        project_luid: String,
-        project_name: String,
+        id: String,
+        owner: super::IdField,
+        #[serde(default)]
+        project: super::IdField,
         updated_at: String,
     }
-
-    // Get inner result data
 
     let workbook_info: WorkbookInfo =
         serde_json::from_value(val.to_owned()).context("parsing workbook information")?;
 
     Ok(Workbook {
-        id: workbook_info.luid,
+        id: workbook_info.id,
         name: workbook_info.name,
-        owner_id: workbook_info.owner.luid,
-        project_id: if &workbook_info.project_name == "Personal Space" {
-            Default::default()
-        } else {
-            ProjectId(workbook_info.project_luid)
-        },
+        owner_id: workbook_info.owner.id,
+        project_id: ProjectId(workbook_info.project.id),
         updated_at: workbook_info.updated_at,
-        sources: Default::default(),
         permissions: Default::default(),
+        sources: Default::default(),
     })
 }
 
-/// Get basic workbook information. This uses a GraphQL query to get the essentials
 pub(crate) async fn get_basic_workbooks(
     tc: &rest::TableauRestClient,
 ) -> Result<HashMap<String, Workbook>> {
-    let query = r#"
-    query workbooks {
-        workbooks {
-          updatedAt
-          name
-          luid
-          owner {
-            luid
-          }
-          projectLuid
-          projectName
-          embeddedDatasources {
-            id
-            name
-          }
-        }
-      }"#
-    .to_owned();
     let node = tc
-        .build_graphql_request(query)
+        .build_request("workbooks".to_owned(), None, reqwest::Method::GET)
         .context("fetching workbooks")?
-        .fetch_json_response(None)
+        .fetch_json_response(Some(vec!["workbooks".to_owned(), "workbook".to_owned()]))
         .await?;
-    let node = rest::get_json_from_path(&node, &vec!["data".to_owned(), "workbooks".to_owned()])?;
-    let asset_map = super::to_asset_map(tc, node, &to_node_graphql)?;
+    let asset_map = super::to_asset_map(tc, node, &to_node)?;
 
-    println!("Fetched {} workbooks", &asset_map.len());
-    println!("Workbook Ids: {:?}", &asset_map.keys());
+    debug!("Fetched {} workbooks", &asset_map.len());
 
     // If the project ID is empty, it's in a personal space and we don't want to include it.
     let asset_map: HashMap<String, Workbook> = asset_map
@@ -178,8 +141,7 @@ pub(crate) async fn get_basic_workbooks(
         .filter(|(_, w)| !w.project_id.0.is_empty())
         .collect();
 
-    println!("Filtered to {} workbooks", &asset_map.len());
-    println!("Workbook Ids: {:?}", &asset_map.keys());
+    debug!("Filtered to {} workbooks", &asset_map.len());
 
     Ok(asset_map)
 }
@@ -197,7 +159,6 @@ mod tests {
             name: String,
             owner_id: String,
             project_id: ProjectId,
-            has_embedded_sources: bool,
             sources: HashSet<SourceOrigin>,
             updated_at: String,
             permissions: Vec<Permission>,

@@ -311,7 +311,6 @@ mod tests {
                     "book work".to_owned(),
                     String::new(),
                     ProjectId("project".to_owned()),
-                    false,
                     HashSet::new(),
                     String::new(),
                     vec![],
