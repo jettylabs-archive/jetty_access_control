@@ -567,7 +567,7 @@ impl SnowflakeConnector {
                             sql: Default::default(),
                             use_jwt: self.client != connectors::ConnectorClient::Test,
                         },
-                        &statement_handle,
+                        statement_handle,
                         current_partition,
                     )?
                     .send()
