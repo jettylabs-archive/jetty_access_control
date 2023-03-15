@@ -22,6 +22,17 @@ pub mod write;
 /// Time stuff. For debugging.
 macro_rules! time_it {
     ($context:literal, $($tt:tt)+) => {
+        debug!("{}: starting", $context);
+        let timer = std::time::Instant::now();
+        $(
+            $tt
+        )+
+        debug!("{}: {:?}", $context, timer.elapsed());
+    }
+}
+
+macro_rules! time_it_print {
+    ($context:literal, $($tt:tt)+) => {
         println!("{}: starting", $context);
         let timer = std::time::Instant::now();
         $(

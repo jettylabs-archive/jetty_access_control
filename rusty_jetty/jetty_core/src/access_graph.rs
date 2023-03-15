@@ -970,12 +970,15 @@ impl AccessGraph {
     /// **This intentionally excludes default policies. They must be handled separately
     /// after other nodes are added**
     pub(crate) fn add_nodes(&mut self, data: &ProcessedConnectorData) -> Result<()> {
-        dbg!(&data.groups.len());
-        dbg!(&data.users.len());
-        dbg!(&data.assets.len());
-        dbg!(&data.policies.len());
-        dbg!(&data.tags.len());
-        dbg!(&data.asset_references.len());
+        debug!("Number of groups being added: {}", &data.groups.len());
+        debug!("Number of users being added: {}", &data.users.len());
+        debug!("Number of assets being added: {}", &data.assets.len());
+        debug!("Number of policies being added: {}", &data.policies.len());
+        debug!("Number of tags being added: {}", &data.tags.len());
+        debug!(
+            "Number of asset_references being added: {}",
+            &data.asset_references.len()
+        );
 
         time_it!("add nodes for groups", self.register_nodes_and_edges(&data.groups)?;);
         time_it!("add nodes for users", self.register_nodes_and_edges(&data.users)?;);
@@ -988,7 +991,7 @@ impl AccessGraph {
 
     /// Adds all the edges from the edge cache, draining the cache as it goes.
     pub(crate) fn add_edges(&mut self) -> Result<()> {
-        dbg!(&self.edge_cache.len());
+        debug!("Edge cache size: {}", self.edge_cache.len());
         for edge in self.edge_cache.drain() {
             if !self.graph.add_edge(edge.to_owned()) {
                 debug!("couldn't add edge {:?} to graph", edge);

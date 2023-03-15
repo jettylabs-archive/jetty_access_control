@@ -20,6 +20,7 @@ use crate::{
     },
     cual::Cual,
     jetty::ConnectorNamespace,
+    logging::debug,
     permissions::matrix::{DoubleInsert, InsertOrMerge},
     time_it,
     write::{groups::parse_and_validate_groups, users},
