@@ -175,6 +175,27 @@ impl SnowflakeRestClient {
         Ok(builder)
     }
 
+    pub(crate) fn get_partition(
+        &self,
+        config: &SnowflakeRequestConfig,
+        statement_handle: &str,
+        partition_number: usize,
+    ) -> Result<RequestBuilder> {
+        let mut builder = self
+            .http_client
+            .get(format!("{}/{statement_handle}", self.get_url()))
+            .query(&[("partition", partition_number)])
+            .header(consts::CONTENT_TYPE_HEADER, "application/json")
+            .header(consts::ACCEPT_HEADER, "application/json")
+            .header(consts::SNOWFLAKE_AUTH_HEADER, "KEYPAIR_JWT")
+            .header(consts::USER_AGENT_HEADER, "jetty-labs");
+        if config.use_jwt {
+            let token = self.get_jwt().context("failed to get jwt")?;
+            builder = builder.header(consts::AUTH_HEADER, format!["Bearer {token}"]);
+        }
+        Ok(builder)
+    }
+
     fn get_body<'a>(&'a self, sql: &'a str) -> HashMap<&str, &'a str> {
         let mut body = HashMap::new();
         body.insert("statement", sql);

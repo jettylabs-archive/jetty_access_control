@@ -146,8 +146,6 @@ impl<'a> Coordinator<'a> {
             .collect::<Vec<_>>()
             .await;
 
-        dbg!(&self.env.standard_grants.len());
-
         for res in results {
             if let Err(e) = res {
                 error!("{}", e)
