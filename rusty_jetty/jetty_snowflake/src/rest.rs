@@ -107,7 +107,6 @@ impl SnowflakeRestClient {
             .map(|r| r.code == "333334")
             .unwrap_or(false)
         {
-            println!("sleeping for 1.5 seconds");
             thread::sleep(Duration::from_millis(1500));
             let statement_handle = serde_json::from_str::<AcceptedResponse>(&res)?.statement_handle;
 
