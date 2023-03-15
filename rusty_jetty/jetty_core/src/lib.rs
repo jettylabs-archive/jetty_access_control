@@ -19,7 +19,8 @@ pub mod project;
 pub mod write;
 
 #[macro_export]
-/// Time stuff. For debugging.
+/// Time the code inside the macro. Write the elapsed time to debug logs.
+/// Derived from https://notes.iveselov.info/programming/time_it-a-case-study-in-rust-macros
 macro_rules! time_it {
     ($context:literal, $($tt:tt)+) => {
         debug!("{}: starting", $context);
@@ -31,6 +32,10 @@ macro_rules! time_it {
     }
 }
 
+#[allow(unused_macros)]
+#[macro_export]
+/// Time the code inside the macro. Write the elapsed time to std out.
+/// Derived from https://notes.iveselov.info/programming/time_it-a-case-study-in-rust-macros
 macro_rules! time_it_print {
     ($context:literal, $($tt:tt)+) => {
         println!("{}: starting", $context);
