@@ -538,6 +538,20 @@ impl SnowflakeConnector {
                 );
                 e
             })?;
+
+        // Get column information. Only provided by the first partition
+        let fields_intermediate: Vec<SnowflakeField> =
+            serde_json::from_value(rows_value["resultSetMetaData"]["rowType"].clone())
+                .map_err(|e| {
+                    error!(
+                        "failed to deserialize fields for query: {query} -- error: {}",
+                        &e
+                    );
+                    e
+                })
+                .context("failed to deserialize fields")?;
+        let fields: Vec<String> = fields_intermediate.iter().map(|i| i.name.clone()).collect();
+
         if let Some(partition_info) = rows_value
             .get("resultSetMetaData")
             .and_then(|v| v.get("partitionInfo"))
@@ -550,7 +564,7 @@ impl SnowflakeConnector {
                 .as_array()
                 .expect("partitionInfo must be an array")
                 .len();
-            let mut results = value_to_vector(&rows_value, query)?;
+            let mut results = value_to_vector(&rows_value, query, &fields)?;
             for current_partition in 1..partition_count {
                 let partition_row_values: JsonValue = self
                     .rest_client
@@ -566,11 +580,11 @@ impl SnowflakeConnector {
                     .await?
                     .json()
                     .await?;
-                results.extend(value_to_vector(&partition_row_values, query)?);
+                results.extend(value_to_vector(&partition_row_values, query, &fields)?);
             }
             Ok(results)
         } else {
-            value_to_vector(&rows_value, query)
+            value_to_vector(&rows_value, query, &fields)
         }
     }
 
@@ -685,7 +699,7 @@ impl SnowflakeConnector {
     }
 }
 
-fn value_to_vector<T>(value: &JsonValue, query: &str) -> Result<Vec<T>>
+fn value_to_vector<T>(value: &JsonValue, query: &str, fields: &Vec<String>) -> Result<Vec<T>>
 where
     T: for<'de> Deserialize<'de> + std::fmt::Debug,
 {
@@ -701,17 +715,6 @@ where
         .context("failed to deserialize rows")?
         .into_iter()
         .map(|v| v.iter().map(|f| f.clone().unwrap_or_default()).collect());
-    let fields_intermediate: Vec<SnowflakeField> =
-        serde_json::from_value(value["resultSetMetaData"]["rowType"].clone())
-            .map_err(|e| {
-                error!(
-                    "failed to deserialize fields for query: {query} -- error: {}",
-                    &e
-                );
-                e
-            })
-            .context("failed to deserialize fields")?;
-    let fields: Vec<String> = fields_intermediate.iter().map(|i| i.name.clone()).collect();
     Ok(rows
         .map(|i: Vec<_>| {
             // Zip field - i
