@@ -703,14 +703,14 @@ where
         .map(|v| v.iter().map(|f| f.clone().unwrap_or_default()).collect());
     let fields_intermediate: Vec<SnowflakeField> =
         serde_json::from_value(value["resultSetMetaData"]["rowType"].clone())
-            .context("failed to deserialize fields")
             .map_err(|e| {
                 error!(
                     "failed to deserialize fields for query: {query} -- error: {}",
                     &e
                 );
                 e
-            })?;
+            })
+            .context("failed to deserialize fields")?;
     let fields: Vec<String> = fields_intermediate.iter().map(|i| i.name.clone()).collect();
     Ok(rows
         .map(|i: Vec<_>| {
