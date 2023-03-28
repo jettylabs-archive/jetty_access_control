@@ -169,7 +169,8 @@ impl<'a> Coordinator<'a> {
             ),
             effective_permissions: print_runtime!(
                 "getting jetty effective_permissions",
-                self.get_effective_permissions()
+                // self.get_effective_permissions()
+                Default::default()
             ),
             asset_references: print_runtime!("getting jetty asset_references", Default::default()),
             cual_prefix: Some(
