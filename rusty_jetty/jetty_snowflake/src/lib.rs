@@ -18,7 +18,6 @@ mod consts;
 mod coordinator;
 mod creds;
 mod cual;
-mod efperm;
 mod entry_types;
 mod rest;
 mod write;
@@ -34,7 +33,7 @@ use jetty_core::connectors::{
     AssetType, ConnectorCapabilities, NewConnector, ReadCapabilities, WriteCapabilities,
 };
 use jetty_core::jetty::ConnectorManifest;
-use jetty_core::logging::error;
+use jetty_core::logging::{debug, error};
 
 use rest::{SnowflakeRequestConfig, SnowflakeRestClient, SnowflakeRestConfig};
 use serde::de::value::MapDeserializer;
@@ -349,8 +348,13 @@ impl SnowflakeConnector {
         let res = self
             .query_to_obj::<StandardGrant>("select * from snowflake.account_usage.grants_to_roles where deleted_on is null and granted_on in ('TABLE', 'DATABASE', 'SCHEMA', 'VIEW');")
             .await
+            .map_err(|e| {
+                error!("failed to get privilege grants -- error: {}", &e);
+                e
+            })
             .context("failed to get privilege grants")?;
 
+        debug!("fetched {} privilege grants", res.len());
         let mut target = target.lock().unwrap();
         target.extend(res);
         Ok(())
@@ -524,32 +528,63 @@ impl SnowflakeConnector {
             return Ok(vec![]);
         }
 
-        let rows_value: JsonValue =
-            serde_json::from_str(&result).context("failed to deserialize")?;
-        if let Some(info) = rows_value.get("partitionInfo") {
-            panic!("Unexpected partitioned return value: {info}");
-        }
-        let rows_data = rows_value["data"].clone();
-        let rows = serde_json::from_value::<Vec<Vec<Option<String>>>>(rows_data)
-            .context("failed to deserialize rows")?
-            .into_iter()
-            .map(|v| v.iter().map(|f| f.clone().unwrap_or_default()).collect());
+        let rows_value: JsonValue = serde_json::from_str(&result)
+            .context("failed to deserialize")
+            .map_err(|e| {
+                error!(
+                    "failed to deserialize result for query: {query} -- error: {}",
+                    &e
+                );
+                e
+            })?;
+
+        // Get column information. Only provided by the first partition
         let fields_intermediate: Vec<SnowflakeField> =
             serde_json::from_value(rows_value["resultSetMetaData"]["rowType"].clone())
+                .map_err(|e| {
+                    error!(
+                        "failed to deserialize fields for query: {query} -- error: {}",
+                        &e
+                    );
+                    e
+                })
                 .context("failed to deserialize fields")?;
         let fields: Vec<String> = fields_intermediate.iter().map(|i| i.name.clone()).collect();
-        Ok(rows
-            .map(|i: Vec<_>| {
-                // Zip field - i
-                let vals: HashMap<String, String> = zip(fields.clone(), i).collect();
-                T::deserialize(MapDeserializer::<
-                    std::collections::hash_map::IntoIter<std::string::String, std::string::String>,
-                    serde::de::value::Error,
-                >::new(vals.into_iter()))
-                .context("couldn't deserialize")
-                .unwrap()
-            })
-            .collect())
+
+        if let Some(partition_info) = rows_value
+            .get("resultSetMetaData")
+            .and_then(|v| v.get("partitionInfo"))
+        {
+            let statement_handle = rows_value
+                .get("statementHandle")
+                .and_then(|v| v.as_str())
+                .expect("partitioned results must have a statement handle");
+            let partition_count = partition_info
+                .as_array()
+                .expect("partitionInfo must be an array")
+                .len();
+            let mut results = value_to_vector(&rows_value, query, &fields)?;
+            for current_partition in 1..partition_count {
+                let partition_row_values: JsonValue = self
+                    .rest_client
+                    .get_partition(
+                        &SnowflakeRequestConfig {
+                            sql: Default::default(),
+                            use_jwt: self.client != connectors::ConnectorClient::Test,
+                        },
+                        statement_handle,
+                        current_partition,
+                    )?
+                    .send()
+                    .await?
+                    .json()
+                    .await?;
+                results.extend(value_to_vector(&partition_row_values, query, &fields)?);
+            }
+            Ok(results)
+        } else {
+            value_to_vector(&rows_value, query, &fields)
+        }
     }
 
     fn grants_to_policies(&self, grants: &[GrantType]) -> Vec<nodes::RawPolicy> {
@@ -663,6 +698,43 @@ impl SnowflakeConnector {
     }
 }
 
+fn value_to_vector<T>(value: &JsonValue, query: &str, fields: &[String]) -> Result<Vec<T>>
+where
+    T: for<'de> Deserialize<'de> + std::fmt::Debug,
+{
+    let rows_data = value["data"].clone();
+    let rows = serde_json::from_value::<Vec<Vec<Option<String>>>>(rows_data)
+        .map_err(|e| {
+            error!(
+                "failed to deserialize rows for query: {query} -- error: {}",
+                &e
+            );
+            e
+        })
+        .context("failed to deserialize rows")?
+        .into_iter()
+        .map(|v| v.iter().map(|f| f.clone().unwrap_or_default()).collect());
+    Ok(rows
+        .map(|i: Vec<_>| {
+            // Zip field - i
+            let vals: HashMap<String, String> = zip(fields.to_owned(), i).collect();
+            T::deserialize(MapDeserializer::<
+                std::collections::hash_map::IntoIter<std::string::String, std::string::String>,
+                serde::de::value::Error,
+            >::new(vals.into_iter()))
+            .context("couldn't deserialize")
+            .map_err(|e| {
+                error!(
+                    "failed to deserialize final results for query: {query} -- error: {}",
+                    &e
+                );
+                e
+            })
+            .unwrap()
+        })
+        .collect())
+}
+
 pub(crate) fn strip_snowflake_quotes(object: String, capitalize: bool) -> String {
     if object.starts_with("\"\"\"") {
         object.replace("\"\"\"", "\"\"")
@@ -735,6 +807,19 @@ mod test {
 
     use super::*;
 
+    async fn new_snowflake_connector() -> SnowflakeConnector {
+        let config = &ConnectorConfig {
+            connector_type: "snowflake".to_owned(),
+            config: [].into(),
+        };
+        let creds = &jetty_core::fetch_credentials(jetty_core::project::connector_cfg_path())
+            .unwrap()["snowflake"];
+        let snow = *SnowflakeConnector::new(config, creds, None, None)
+            .await
+            .unwrap();
+        snow
+    }
+
     #[test]
     fn test_include_set_expansion() -> Result<()> {
         let include_set = ["A.B*", "D", "E*", "H.I", "F.G.J", "X.*"]
@@ -789,6 +874,37 @@ mod test {
         assert!(conn.include_asset("X"));
         assert!(conn.include_asset("X.X"));
 
+        Ok(())
+    }
+
+    impl SnowflakeConnector {
+        async fn test_get_privilege_grants_slow(
+            &self,
+            target: Arc<Mutex<&mut Vec<StandardGrant>>>,
+        ) -> Result<()> {
+            let res = self
+                .query_to_obj::<StandardGrant>("select * from snowflake.account_usage.grants_to_roles left join (SELECT COUNT(seq4()) as bob FROM TABLE(GENERATOR(TIMELIMIT => 60)) v) on TRUE  where deleted_on is null and granted_on in ('TABLE', 'DATABASE', 'SCHEMA', 'VIEW');")
+                .await
+                .map_err(|e| {
+                    error!("failed to get privilege grants -- error: {}", &e);
+                    e
+                })
+                .context("failed to get privilege grants")?;
+
+            let mut target = target.lock().unwrap();
+            target.extend(res);
+            Ok(())
+        }
+    }
+
+    #[ignore = "slow live query test"]
+    #[tokio::test]
+    async fn test_get_privilege_grants() -> Result<()> {
+        let snow = new_snowflake_connector().await;
+        let mut grants = vec![];
+        snow.test_get_privilege_grants_slow(Arc::new(Mutex::new(&mut grants)))
+            .await?;
+        println!("{} grants", grants.len());
         Ok(())
     }
 }

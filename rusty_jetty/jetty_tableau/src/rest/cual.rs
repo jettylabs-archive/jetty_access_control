@@ -2,7 +2,7 @@ use std::{fmt::Display, sync::Once};
 
 use anyhow::{bail, Context, Ok, Result};
 
-use jetty_core::cual::Cual;
+use jetty_core::{cual::Cual, logging::error};
 use serde::{Deserialize, Serialize};
 
 use crate::{coordinator::Environment, nodes::ProjectId};
@@ -99,10 +99,15 @@ pub(crate) fn get_tableau_cual(
                         &immediate_parent_id
                             .expect("getting parent workbook for view")
                             .to_owned(),
-                    )
-                    .expect("Getting parent workbook from env")
-                    .name
-                    .clone();
+                    ).map(|w| w.name.clone())
+                    .unwrap_or_else(|| {
+                        error!(
+                            "Getting parent workbook from env; name: {} parent: {:?}. Will use \"Unknown\" instead",
+                            &name, &immediate_parent_id
+                        );
+                        "Unknown".to_string()
+                        }
+                    );
                 parents.push(urlencoding::encode(&parent_workbook).into_owned());
                 parents.join("/")
             }
@@ -306,7 +311,6 @@ mod tests {
                     "book work".to_owned(),
                     String::new(),
                     ProjectId("project".to_owned()),
-                    false,
                     HashSet::new(),
                     String::new(),
                     vec![],

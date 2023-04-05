@@ -13,6 +13,7 @@ use crate::connectors::nodes::{ConnectorData, EffectivePermission, SparseMatrix}
 use crate::connectors::processed_nodes::{ProcessedConnectorData, ProcessedDefaultPolicy};
 #[cfg(test)]
 use crate::cual::Cual;
+use crate::log_runtime;
 use crate::Jetty;
 
 use crate::connectors::{AssetType, UserIdentifier};
@@ -810,8 +811,8 @@ impl AccessGraph {
             },
         };
         // Create all nodes first, then create edges.
-        ag.add_nodes(&connector_data)?;
-        ag.add_edges()?;
+        log_runtime!("Add nodes", ag.add_nodes(&connector_data)?);
+        log_runtime!("Add Edges", ag.add_edges()?);
 
         // Add default policies after the rest of the graph is created. This is necessary because
         // these policies depend on hierarchy, which isn't really established until this point.
@@ -834,15 +835,28 @@ impl AccessGraph {
         jetty: &Jetty,
     ) -> Result<Self> {
         // Build the translator
-        let tr = Translator::new(&connector_data, jetty)?;
+        let tr = log_runtime!(
+            "Initialize translator",
+            Translator::new(&connector_data, jetty)?
+        );
         // Process the connector data
-        let pcd = tr.local_to_processed_connector_data(connector_data);
-        let ag_res = AccessGraph::new(pcd.to_owned(), Some(tr));
-        ag_res.map(|mut ag| {
-            ag.effective_permissions =
-                ag.translate_effective_permissions_to_global_indices(pcd.effective_permissions);
-            ag
-        })
+        let pcd = log_runtime!(
+            "Local to processed data",
+            tr.local_to_processed_connector_data(connector_data)
+        );
+        let ag_res = log_runtime!(
+            "Create access graph",
+            AccessGraph::new(pcd.to_owned(), Some(tr))
+        );
+
+        log_runtime!(
+            "translate effective permissions",
+            ag_res.map(|mut ag| {
+                ag.effective_permissions =
+                    ag.translate_effective_permissions_to_global_indices(pcd.effective_permissions);
+                ag
+            })
+        )
     }
 
     /// Return the translator
@@ -964,17 +978,46 @@ impl AccessGraph {
     /// **This intentionally excludes default policies. They must be handled separately
     /// after other nodes are added**
     pub(crate) fn add_nodes(&mut self, data: &ProcessedConnectorData) -> Result<()> {
-        self.register_nodes_and_edges(&data.groups)?;
-        self.register_nodes_and_edges(&data.users)?;
-        self.register_nodes_and_edges(&data.assets)?;
-        self.register_nodes_and_edges(&data.policies)?;
-        self.register_nodes_and_edges(&data.tags)?;
-        self.register_nodes_and_edges(&data.asset_references)?;
+        debug!("Number of groups being added: {}", &data.groups.len());
+        debug!("Number of users being added: {}", &data.users.len());
+        debug!("Number of assets being added: {}", &data.assets.len());
+        debug!("Number of policies being added: {}", &data.policies.len());
+        debug!("Number of tags being added: {}", &data.tags.len());
+        debug!(
+            "Number of asset_references being added: {}",
+            &data.asset_references.len()
+        );
+
+        log_runtime!(
+            "add nodes for groups",
+            self.register_nodes_and_edges(&data.groups)?
+        );
+        log_runtime!(
+            "add nodes for users",
+            self.register_nodes_and_edges(&data.users)?
+        );
+        log_runtime!(
+            "add nodes for assets",
+            self.register_nodes_and_edges(&data.assets)?
+        );
+        log_runtime!(
+            "add nodes for policies",
+            self.register_nodes_and_edges(&data.policies)?
+        );
+        log_runtime!(
+            "add nodes for tags",
+            self.register_nodes_and_edges(&data.tags)?
+        );
+        log_runtime!(
+            "add nodes for asset_references",
+            self.register_nodes_and_edges(&data.asset_references)?
+        );
         Ok(())
     }
 
     /// Adds all the edges from the edge cache, draining the cache as it goes.
     pub(crate) fn add_edges(&mut self) -> Result<()> {
+        debug!("Edge cache size: {}", self.edge_cache.len());
         for edge in self.edge_cache.drain() {
             if !self.graph.add_edge(edge.to_owned()) {
                 debug!("couldn't add edge {:?} to graph", edge);

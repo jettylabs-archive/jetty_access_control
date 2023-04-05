@@ -13,25 +13,21 @@ use jetty_core::connectors::AssetType;
 use jetty_core::connectors::UserIdentifier;
 
 use jetty_core::connectors::nodes::ConnectorData;
-use jetty_core::connectors::nodes::EffectivePermission;
 use jetty_core::connectors::nodes::RawPolicy;
 use jetty_core::connectors::nodes::RawPolicyGrantee;
-use jetty_core::connectors::nodes::SparseMatrix;
 use jetty_core::cual::Cualable;
 use jetty_core::logging::debug;
 use jetty_core::logging::error;
-use jetty_core::permissions::matrix::InsertOrMerge;
+use jetty_core::print_runtime;
 
 use super::cual::{self, cual, get_cual_account_name, Cual};
 use crate::consts::DATABASE;
 use crate::consts::SCHEMA;
 use crate::consts::TABLE;
 use crate::consts::VIEW;
-use crate::efperm::EffectivePermissionMap;
 use crate::entry_types;
 use crate::entry_types::ObjectKind;
 use crate::entry_types::RoleName;
-use crate::Asset;
 use crate::FutureGrant;
 use crate::Grant;
 use crate::GrantType;
@@ -110,8 +106,11 @@ impl<'a> Coordinator<'a> {
 
         // Get all the object grants
         let grants_to_role_mutex = Arc::new(Mutex::new(&mut self.env.standard_grants));
-        let m = Arc::clone(&grants_to_role_mutex);
-        hold.push(Box::pin(self.conn.get_privilege_grants_future(m)));
+        let grants_to_role_mutex_clone = Arc::clone(&grants_to_role_mutex);
+        hold.push(Box::pin(
+            self.conn
+                .get_privilege_grants_future(grants_to_role_mutex_clone),
+        ));
 
         // for each role, get grants of
         let target_arc = Arc::new(Mutex::new(&mut self.env.role_grants));
@@ -152,16 +151,23 @@ impl<'a> Coordinator<'a> {
 
         let mut connector_data = nodes::ConnectorData {
             // 19 Sec
-            groups: self.get_jetty_groups(),
+            groups: print_runtime!("getting jetty groups", self.get_jetty_groups()),
             // 7 Sec
-            users: self.get_jetty_users(),
+            users: print_runtime!("getting jetty users", self.get_jetty_users()),
             // 3.5 Sec
-            assets: self.get_jetty_assets(),
-            tags: self.get_jetty_tags(),
-            policies: self.get_jetty_policies(),
-            default_policies: self.get_jetty_default_policies(),
-            effective_permissions: self.get_effective_permissions(),
-            asset_references: Default::default(),
+            assets: print_runtime!("getting jetty assets", self.get_jetty_assets()),
+            tags: print_runtime!("getting jetty tags", self.get_jetty_tags()),
+            policies: print_runtime!("getting jetty policies", self.get_jetty_policies()),
+            default_policies: print_runtime!(
+                "getting jetty default_policies",
+                self.get_jetty_default_policies()
+            ),
+            effective_permissions: print_runtime!(
+                "getting jetty effective_permissions",
+                // self.get_effective_permissions()
+                Default::default()
+            ),
+            asset_references: print_runtime!("getting jetty asset_references", Default::default()),
             cual_prefix: Some(
                 cual::get_cual_prefix()
                     .context("cual account not yet set")
@@ -388,53 +394,6 @@ impl<'a> Coordinator<'a> {
         for (_role, grants) in self.get_future_grants_by_role() {
             res.extend(self.conn.future_grants_to_default_policies(&grants))
         }
-        res
-    }
-
-    /// get effective_permissions from environment
-    pub(crate) fn get_effective_permissions(
-        &self,
-    ) -> SparseMatrix<String, Cual, HashSet<EffectivePermission>> {
-        let mut res = HashMap::new();
-        let ep_map = EffectivePermissionMap::new(&self.role_grants);
-
-        // The runtime performance here can definitely be improved, but this is
-        // a workable naive approach for now.
-        for user in &self.env.users {
-            let mut obj_eps = HashMap::new();
-            for obj in &self.env.objects {
-                obj_eps.insert_or_merge(
-                    obj.cual(),
-                    ep_map.get_effective_permissions_for_object(&self.env, user, obj),
-                );
-            }
-            res.insert_or_merge(user.name.to_owned(), obj_eps);
-            let mut db_eps = HashMap::new();
-            for db in &self.env.databases {
-                db_eps.insert_or_merge(
-                    db.cual(),
-                    ep_map.get_effective_permissions_for_asset(
-                        &self.env,
-                        user,
-                        &Asset::Database(db.clone()),
-                    ),
-                );
-            }
-            res.insert_or_merge(user.name.to_owned(), db_eps);
-            let mut schema_eps = HashMap::new();
-            for schema in &self.env.schemas {
-                schema_eps.insert_or_merge(
-                    schema.cual(),
-                    ep_map.get_effective_permissions_for_asset(
-                        &self.env,
-                        user,
-                        &Asset::Schema(schema.clone()),
-                    ),
-                )
-            }
-            res.insert_or_merge(user.name.to_owned(), schema_eps);
-        }
-
         res
     }
 }

@@ -43,7 +43,7 @@ impl Group {
             .filter_map(|uid| {
                 users.get(&uid.id).or_else(|| {
                     error!(
-                        "user id {:?} not in tableau users {users:?} (included in group id: {})",
+                        "user id {:?} not in tableau users (included in group id: {})",
                         uid.id, self.id
                     );
                     None

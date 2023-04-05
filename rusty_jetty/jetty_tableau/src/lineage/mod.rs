@@ -5,7 +5,7 @@ mod assets;
 mod sql;
 
 use anyhow::{bail, Context, Result};
-use jetty_core::logging::warn;
+use jetty_core::logging::{error, warn};
 use serde::{de::DeserializeOwned, Deserialize};
 
 use std::collections::{HashMap, HashSet};
@@ -268,42 +268,86 @@ impl Coordinator {
     /// Update the lineage of data assets
     // FUTURE: If needed, parts of this can be run concurrently.
     pub(super) async fn update_lineage(&mut self) -> Result<()> {
-        let unsupported_sql = &self.get_tables_with_unsupported_sql().await?;
+        let unsupported_sql = &self.get_tables_with_unsupported_sql().await.map_err(|e| {
+            error!("failed to get tables with unsupported sql -- error: {}", &e);
+            e
+        })?;
         let resolver = TableResolver {
-            databases: self.get_databases().await?,
-            database_servers: self.get_database_servers().await?,
+            databases: self.get_databases().await.map_err(|e| {
+                error!(
+                    "failed to get databases from the metadata api -- error: {}",
+                    &e
+                );
+                e
+            })?,
+            database_servers: self.get_database_servers().await.map_err(|e| {
+                error!(
+                    "failed to get database servers from the metadata api -- error: {}",
+                    &e
+                );
+                e
+            })?,
         };
-        let tables = self.get_database_tables().await?;
+        let tables = self.get_database_tables().await.map_err(|e| {
+            error!(
+                "failed to get database tables from the metadata api -- error: {}",
+                &e
+            );
+            e
+        })?;
         let cual_map = get_table_cuals(tables, resolver);
 
         // Update workbooks
         assets::update_sources(
             self.fetch_workbooks_references(&cual_map, unsupported_sql)
-                .await?,
+                .await
+                .map_err(|e| {
+                    error!("failed to fetch references for workbooks -- error: {}", &e);
+                    e
+                })?,
             &mut self.env.workbooks,
         );
 
         assets::update_sources(
             self.fetch_metrics_references(&cual_map, unsupported_sql)
-                .await?,
+                .await
+                .map_err(|e| {
+                    error!("failed to fetch references for metrics -- error: {}", &e);
+                    e
+                })?,
             &mut self.env.metrics,
         );
 
         assets::update_sources(
             self.fetch_flows_references(&cual_map, unsupported_sql)
-                .await?,
+                .await
+                .map_err(|e| {
+                    error!("failed to fetch references for flows -- error: {}", &e);
+                    e
+                })?,
             &mut self.env.flows,
         );
 
         assets::update_sources(
             self.fetch_datasources_references(&cual_map, unsupported_sql)
-                .await?,
+                .await
+                .map_err(|e| {
+                    error!(
+                        "failed to fetch references for datasources -- error: {}",
+                        &e
+                    );
+                    e
+                })?,
             &mut self.env.datasources,
         );
 
         assets::update_sources(
             self.fetch_lenses_references(&cual_map, unsupported_sql)
-                .await?,
+                .await
+                .map_err(|e| {
+                    error!("failed to fetch references for lenses -- error: {}", &e);
+                    e
+                })?,
             &mut self.env.lenses,
         );
 

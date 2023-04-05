@@ -174,13 +174,17 @@ impl Jetty {
 
     /// Convenience method for struct creation. Uses the default location for
     /// config files.
-    pub fn new_with_config<P: AsRef<Path>>(
-        path_prefix: P,
+    pub fn new_with_config(
         config: JettyConfig,
         data_dir: PathBuf,
         connectors: HashMap<ConnectorNamespace, Box<dyn Connector>>,
+        load_existing_graph: bool,
     ) -> Result<Self> {
-        let ag = load_access_graph(path_prefix)?;
+        let ag = if load_existing_graph {
+            load_access_graph(".")?
+        } else {
+            None
+        };
         Ok(Jetty {
             config,
             _data_dir: data_dir,

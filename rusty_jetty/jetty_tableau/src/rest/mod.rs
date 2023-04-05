@@ -52,24 +52,6 @@ impl TableauRestClient {
         self.http_client.execute(request).await
     }
 
-    /// Create a dummy client
-    #[cfg(test)]
-    pub(crate) fn new_dummy() -> Self {
-        set_cual_prefix("dummy-server", "dummy-site");
-
-        TableauRestClient {
-            credentials: TableauCredentials {
-                server_name: "dummy-server".to_owned(),
-                site_name: "dummy-site".to_owned(),
-                ..Default::default()
-            },
-            http_client: reqwest::Client::builder().gzip(true).build().unwrap(),
-            token: None,
-            site_id: None,
-            api_version: "3.16".to_owned(),
-        }
-    }
-
     /// Get site_id token from the TableauRestClient.
     pub(crate) fn get_site_id(&self) -> Result<String> {
         Ok(self

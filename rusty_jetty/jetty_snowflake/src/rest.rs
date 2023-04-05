@@ -4,7 +4,7 @@
 use crate::{consts, creds::SnowflakeCredentials};
 
 use anyhow::{Context, Result};
-use jetty_core::logging::debug;
+use jetty_core::logging::{debug, error};
 use jsonwebtoken::{encode, get_current_timestamp, Algorithm, EncodingKey, Header};
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware, RequestBuilder};
 use reqwest_retry::{policies::ExponentialBackoff, RetryTransientMiddleware};
@@ -51,7 +51,7 @@ impl SnowflakeRestClient {
         config: SnowflakeRestConfig,
     ) -> Result<Self> {
         credentials.validate()?;
-        let retry_policy = ExponentialBackoff::builder().build_with_max_retries(3);
+        let retry_policy = ExponentialBackoff::builder().build_with_max_retries(4);
         let mut client_builder = ClientBuilder::new(reqwest::Client::new());
         if config.retry {
             client_builder =
@@ -85,30 +85,42 @@ impl SnowflakeRestClient {
         struct AcceptedResponse {
             #[serde(rename = "statementHandle")]
             statement_handle: String,
+            code: String,
         }
         let request = self
             .get_request(config)
             .context(format!("failed to get request for query {:?}", &config.sql))?;
 
-        let mut response = request
+        let response = request
             .send()
             .await
             .context("couldn't send request")?
-            .error_for_status()?;
+            .error_for_status()
+            .map_err(|e| {
+                error!("error status for query: {} -- error: {}", &config.sql, &e);
+                e
+            })?;
 
-        while response.status() == reqwest::StatusCode::ACCEPTED {
+        let mut res = response.text().await.context("couldn't get body text")?;
+
+        while serde_json::from_str::<AcceptedResponse>(&res)
+            .map(|r| r.code == "333334")
+            .unwrap_or(false)
+        {
             thread::sleep(Duration::from_millis(1500));
-            let statement_handle = response.json::<AcceptedResponse>().await?.statement_handle;
+            let statement_handle = serde_json::from_str::<AcceptedResponse>(&res)?.statement_handle;
 
             let request = self.get_status_check_request(config, statement_handle)?;
-            response = request
+            res = request
                 .send()
                 .await
                 .context("couldn't send request")?
-                .error_for_status()?;
+                .error_for_status()?
+                .text()
+                .await
+                .context("couldn't get body text")?;
         }
 
-        let res = response.text().await.context("couldn't get body text")?;
         debug!("completed query: {:?}", &config.sql);
         Ok(res)
     }
@@ -151,6 +163,27 @@ impl SnowflakeRestClient {
         let mut builder = self
             .http_client
             .get(format!("{}/{statement_handle}", self.get_url()))
+            .header(consts::CONTENT_TYPE_HEADER, "application/json")
+            .header(consts::ACCEPT_HEADER, "application/json")
+            .header(consts::SNOWFLAKE_AUTH_HEADER, "KEYPAIR_JWT")
+            .header(consts::USER_AGENT_HEADER, "jetty-labs");
+        if config.use_jwt {
+            let token = self.get_jwt().context("failed to get jwt")?;
+            builder = builder.header(consts::AUTH_HEADER, format!["Bearer {token}"]);
+        }
+        Ok(builder)
+    }
+
+    pub(crate) fn get_partition(
+        &self,
+        config: &SnowflakeRequestConfig,
+        statement_handle: &str,
+        partition_number: usize,
+    ) -> Result<RequestBuilder> {
+        let mut builder = self
+            .http_client
+            .get(format!("{}/{statement_handle}", self.get_url()))
+            .query(&[("partition", partition_number)])
             .header(consts::CONTENT_TYPE_HEADER, "application/json")
             .header(consts::ACCEPT_HEADER, "application/json")
             .header(consts::SNOWFLAKE_AUTH_HEADER, "KEYPAIR_JWT")

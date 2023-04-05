@@ -126,17 +126,6 @@ impl Coordinator {
         })
     }
 
-    /// Create a dummy coordinator without a working rest client. The environment will be read from
-    /// a file, if available, but cannot be updated.
-    #[cfg(test)]
-    pub(crate) fn new_dummy() -> Self {
-        Coordinator {
-            env: Default::default(),
-            rest_client: rest::TableauRestClient::new_dummy(),
-            data_dir: None,
-        }
-    }
-
     /// Get current environment state from Tableau Online
     pub(crate) async fn update_env(&mut self) -> Result<()> {
         // Fetch all the basic resources. Make them into an iterable to make it easier to run concurrently
