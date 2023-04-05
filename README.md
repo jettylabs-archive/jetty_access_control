@@ -1,4 +1,4 @@
-# About Jetty Access Control
+# Jetty Access Control
 
 Jetty Access Control is tooling that is designed to make it easy for companies to manage data access across their data stack.
 
