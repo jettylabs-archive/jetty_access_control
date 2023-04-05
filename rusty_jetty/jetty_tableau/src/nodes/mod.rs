@@ -346,21 +346,6 @@ pub(crate) struct Permission {
     pub(crate) capabilities: HashMap<String, String>,
 }
 
-impl Permission {
-    pub(crate) fn has_capability(&self, cap: &str, mode: &str) -> bool {
-        self.capabilities
-            .iter()
-            .any(|(c, m)| c.as_str() == cap && m.as_str() == mode)
-    }
-
-    pub(crate) fn grantee_user_ids(&self) -> Vec<String> {
-        match &self.grantee {
-            Grantee::User(u) => vec![u.id.to_owned()],
-            Grantee::Group(g) => g.includes.clone().iter().map(|u| u.id.to_owned()).collect(),
-        }
-    }
-}
-
 /// Permissions and Jetty policies map 1:1.
 impl From<Permission> for jetty_nodes::RawPolicy {
     /// In order to get a Jetty policy from a permission, we need to grab
@@ -404,16 +389,6 @@ impl From<Permission> for jetty_nodes::RawPolicy {
 pub(crate) enum Grantee {
     Group(tableau_nodes::Group),
     User(tableau_nodes::User),
-}
-
-impl Grantee {
-    /// Get a human-readable name for this grantee.
-    pub(crate) fn get_name(&self) -> &str {
-        match self {
-            Grantee::Group(g) => &g.name,
-            Grantee::User(g) => &g.email,
-        }
-    }
 }
 
 /// Deserialization helper for Tableau permissions

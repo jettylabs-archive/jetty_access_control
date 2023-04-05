@@ -18,7 +18,6 @@ mod consts;
 mod coordinator;
 mod creds;
 mod cual;
-mod efperm;
 mod entry_types;
 mod rest;
 mod write;
@@ -699,7 +698,7 @@ impl SnowflakeConnector {
     }
 }
 
-fn value_to_vector<T>(value: &JsonValue, query: &str, fields: &Vec<String>) -> Result<Vec<T>>
+fn value_to_vector<T>(value: &JsonValue, query: &str, fields: &[String]) -> Result<Vec<T>>
 where
     T: for<'de> Deserialize<'de> + std::fmt::Debug,
 {
@@ -718,7 +717,7 @@ where
     Ok(rows
         .map(|i: Vec<_>| {
             // Zip field - i
-            let vals: HashMap<String, String> = zip(fields.clone(), i).collect();
+            let vals: HashMap<String, String> = zip(fields.to_owned(), i).collect();
             T::deserialize(MapDeserializer::<
                 std::collections::hash_map::IntoIter<std::string::String, std::string::String>,
                 serde::de::value::Error,

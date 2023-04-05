@@ -11,14 +11,3 @@ pub enum Asset {
     #[default]
     Unknown,
 }
-
-impl Asset {
-    pub(crate) fn fqn(&self) -> String {
-        match self {
-            Asset::Database(d) => d.name.to_owned(),
-            Asset::Schema(s) => s.fqn(),
-            Asset::Object(o) => o.fqn(),
-            Asset::Unknown => panic!("unknown asset type"),
-        }
-    }
-}
