@@ -1,0 +1,173 @@
+/**
+ * Any CSS included here will be global. The classic template
+ * bundles Infima by default. Infima is a CSS framework designed to
+ * work well for content-centric websites.
+ */
+
+
+nav.navbar div.navbar__logo {
+  height: 40px;
+  padding-left: 40px;
+}
+
+nav.navbar a.navbar__link {
+  color: black;
+  font-weight: 500;
+}
+
+
+.footer {
+  background-color: black;
+  border-top: none;
+}
+
+.footer__link-item:hover {
+  color: var(--ifm-navbar-link-color);
+}
+
+.footer__custom_inner {
+  max-width: 1280px;
+  font-size: 14px;
+  margin-left: auto;
+  margin-right: auto;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;  
+  padding-top:15px;
+}
+
+.footer__custom_legal_links {
+  display: flex;
+  flex-direction: row;
+}
+
+.footer__custom_legal_link {
+  padding-left: 15px;
+}
+
+.footer__custom_legal_link a {
+  color: var(--ifm-navbar-link-color);
+}
+
+.footer__custom_legal_link a:link {
+  text-decoration: none;
+}
+.footer__custom_legal_link a:visited {
+  text-decoration: none;
+}
+.footer__custom_legal_link a:hover {
+  text-decoration: none;
+  color: rgba(255, 255, 255, 0.6);
+}
+.footer__custom_legal_link a:active {
+  text-decoration: none;
+}
+
+
+.navbar__inner {
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.pagination-nav__link {
+  background-image: url("../../static/img/gradient-blur-tiny.png");
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position-x: left;
+  background-position-y: top;
+  background-size:1000px 1000px;
+}
+
+nav.navbar a.navbar__link--active {
+  color: black;
+  margin-bottom: -10px;
+  border-bottom: 1px solid #f47124;
+  padding-bottom: 10px;
+    
+}
+
+.custom-announcement {
+  font-size: 13pt;
+  font-weight: 500;
+}
+.custom-announcement-subtitle {
+  font-size: 11pt;
+  font-weight: normal;
+}
+
+
+button.navbar__toggle {
+  color: black;
+}
+/* You can override the default Infima variables here. */
+:root {
+  --ifm-font-family-base: Roboto, system-ui, -apple-system, Segoe UI, Ubuntu,
+    Cantarell, Noto Sans, sans-serif, BlinkMacSystemFont, "Segoe UI", Helvetica,
+    Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  --ifm-navbar-background-color: white;
+  --ifm-navbar-link-color: white;
+  --ifm-color-primary: #f47124;
+  --ifm-color-primary-dark: #348e5a;
+  --ifm-color-primary-darker: #247a40;
+  --ifm-color-primary-darkest: #944415;
+  --ifm-color-primary-light: #eda073;
+  --ifm-color-primary-lighter: #edc7b2;
+  --ifm-color-primary-lightest: #b5d6d6;
+  --ifm-code-font-size: 95%;
+  --ifm-navbar-height: 87px;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+  --docusaurus-announcement-bar-height: auto !important;
+}
+
+/* For readability concerns, you should choose a lighter palette in dark mode. */
+[data-theme="dark"] {
+  --ifm-navbar-background-color: #6f6f6f !important;
+  --ifm-color-primary: #f47124;
+  --ifm-color-primary-dark: #21af90;
+  --ifm-color-primary-darker: #1fa588;
+  --ifm-color-primary-darkest: #1a8870;
+  --ifm-color-primary-light: #29d5b0;
+  --ifm-color-primary-lighter: #32d8b4;
+  --ifm-color-primary-lightest: #4fddbf;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .theme-admonition.alert--secondary{
+  --ifm-alert-background-color: #303030;
+}
+
+[data-theme="dark"] .theme-admonition-tip.alert{
+  --ifm-alert-border-color: #025602 !important;
+  --ifm-alert-background-color: #002100;
+}
+
+
+[data-theme="dark"] .theme-code-block {
+  --prism-background-color: #201f22 !important;
+}
+
+[data-theme="dark"] .alert--info {
+  --prism-background-color: #201f22 !important;
+  --ifm-alert-border-color:  #f47124 !important;
+  --ifm-alert-background-color:#201f22 !important; 
+}
+
+.cardContainerCustom {
+  --ifm-link-color: var(--ifm-color-emphasis-800);
+  --ifm-link-hover-color: var(--ifm-color-emphasis-700);
+  --ifm-link-hover-decoration: none;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  box-shadow: 0 1.5px 3px 0 rgb(0 0 0 / 15%);
+  transition: all var(--ifm-transition-fast) ease;
+  transition-property: border, box-shadow;
+}
+
+.theme-code-block {
+  --prism-background-color: #ebebeb !important;
+}
+
+.language-buttonless button,
+.language-yaml button {
+  display: none !important;
+}
