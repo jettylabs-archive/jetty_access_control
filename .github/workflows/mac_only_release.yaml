@@ -1,0 +1,56 @@
+name: Mac-Only Production PyPI Release
+
+on: workflow_dispatch
+
+jobs:
+  macos:
+    runs-on: [self-hosted, macos]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install deps
+        run: cd rusty_jetty/jetty_explore/web &&  npm install -g @quasar/cli && npm ci
+      - name: Install Rust aarch toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          default: true
+      - name: Install Rust x86 toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          target: x86_64-apple-darwin
+      - name: Build wheels - x86_64
+        uses: messense/maturin-action@v1
+        with:
+          target: x86_64
+          args: --release --out dist --sdist -m rusty_jetty/jetty_pypi/Cargo.toml
+      - name: Build wheels - aarch64
+        uses: messense/maturin-action@v1
+        with:
+          args: --release --out dist -m rusty_jetty/jetty_pypi/Cargo.toml
+      - name: Install built wheel - aarch64
+        run: |
+          pip install jetty-core --no-index --find-links dist --force-reinstall
+      - name: Upload wheels
+        uses: actions/upload-artifact@v2
+        with:
+          name: wheels
+          path: dist
+
+  release:
+    name: Release to PyPi
+    runs-on: ubuntu-latest
+    if: "startsWith(github.ref, 'refs/tags/')"
+    needs: [macos]
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: wheels
+      - name: pypi-publish
+        uses: pypa/gh-action-pypi-publish@v1.5.1
+        with:
+          password: ${{ secrets.PYPI_API_KEY }}
+          packages_dir: ./
+          skip_existing: true

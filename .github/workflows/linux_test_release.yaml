@@ -1,0 +1,58 @@
+name: Linux-Only Test PyPI Release
+
+on: workflow_dispatch
+
+jobs:
+  linux:
+    strategy:
+      matrix:
+        target: [x86_64]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+          architecture: x64
+      - name: Setup Zig
+        uses: goto-bus-stop/setup-zig@v1.3.0
+      - name: Install node
+        uses: actions/setup-node@v2
+        with:
+          node-version: "18"
+      - name: Install deps
+        run: cd rusty_jetty/jetty_explore/web &&  npm install -g @quasar/cli && npm ci
+      - name: Install libz-dev
+        run: sudo apt-get install zlib1g-dev
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          default: true
+      - name: Build wheels – Linux
+        uses: messense/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          args: --release --out dist --sdist -m rusty_jetty/jetty_pypi/Cargo.toml --zig
+      - name: Upload wheels
+        uses: actions/upload-artifact@v2
+        with:
+          name: wheels
+          path: dist
+
+  release:
+    name: Release to PyPi
+    runs-on: ubuntu-latest
+    needs: [linux]
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: wheels
+      - name: pypi-publish
+        uses: pypa/gh-action-pypi-publish@v1.5.1
+        with:
+          password: ${{ secrets.TEST_PYPI_API_KEY }}
+          repository_url: https://test.pypi.org/legacy/
+          packages_dir: ./
+          skip_existing: true
