@@ -5,7 +5,14 @@ Below is the information you will need to connect to each connected platform. As
 <details>
   <summary><strong>Snowflake</strong></summary>
   <div>
-    <p>To read the relevant metadata from Snowflake, Jetty needs to a user with a role that is able to read account metadata and use a warehouse. You can create a custom role with these permissions - we recommend following DataHub's <a href="https://datahubproject.io/docs/generated/ingestion/sources/snowflake#prerequisites">excellent documentation</a> to set this up.</p> 
+    <p>To read and manage the relevant metadata from Snowflake, Jetty needs to a user with a role that is able to read account metadata, can manage grants, and can use a warehouse. You can create a custom role with these permissions using the following commands:
+    <ul>
+      <li><code>grant manage grants on account to role &lt;new role name&gt;;</code></li>
+      <li><code>grant create role on account to role &lt;new role name&gt;;</code></li>
+      <li><code>grant database role snowflake.security_viewer to role &lt;new role name&gt;;</code></li>
+      <li><code>grant usage on warehouse jetty_warehouse to role &lt;new role name&gt;;</code></li>
+    </ul>
+    </p> 
     <p>If you would like to manage group membership and permissions (recommended), you will need the <code>SECURITYADMIN</code> role.</p>
     <p>To make setup easy, be ready with the following:</p>
     <ol>
