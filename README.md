@@ -8,7 +8,7 @@ Today the platform integrates with Snowflake, Tableau, and dbt.
 
 # Development Status
 
-Development on this project is currently paused. If you're interested in contributing, don't hesitate to [reach out](mailto:product@get-jetty.com)!
+Development on this project is paused. If you're interested in contributing, don't hesitate to [reach out](mailto:product@get-jetty.com)!
 
 # Getting Started
 
